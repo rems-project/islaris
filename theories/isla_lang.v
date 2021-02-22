@@ -1,3 +1,11 @@
+(* isla-lang in Coq
+ * Based on the Ott file from
+ * https://github.com/rems-project/isla-lang/
+ *
+ * isla-lang is produced by isla:
+ * https://github.com/rems-project/isla/
+ *)
+
 Require Import Arith.
 Require Import Bool.
 Require Import List.
@@ -30,8 +38,10 @@ Inductive i_type : Type :=
 | I_128 : nat -> i_type
 .
 
-Inductive enum_member : Type :=
-| Mk_enum_member (eid:enum_id) (c:enum_ctor) : enum_member.
+Record enum_member : Type := {
+  enum_member_id: enum_id;
+  enum_member_ctor: enum_ctor;
+}.
 
 Inductive valu : Set := 
 | Val_Symbolic (x : isla_var)
@@ -39,7 +49,7 @@ Inductive valu : Set :=
 | Val_I (i:i_type)
 | Val_Bits (bs:bits)
 | Val_Enum (em:enum_member)
-| Val_String (str5: unit (* TODO: we don't care *) )
+| Val_String (str5: unit (* TODO: we don't care for Coq purposes *) )
 | Val_Unit : valu
 | Val_NamedUnit (name5:PLACEHOLDER) (* TODO: where does this come from??? *)
 | Val_Vector (vs:list valu)
@@ -220,7 +230,7 @@ Inductive smt : Set :=
 | DeclareConst (vvar5 : isla_var) (ty5 : ty)
 | DefineConst (vvar5 : isla_var) (exp5 : exp)
 | Assert (exp5:exp)
-| DefineEnum (int5:PLACEHOLDER).
+| DefineEnum (int5:PLACEHOLDER) (* TODO: ??? *).
 
 Inductive register : Type :=
 | Mk_register : nat -> register.
@@ -231,27 +241,28 @@ Definition register_eqb (xv yv : register) : bool :=
   end.
 
 Inductive event : Set := 
-| Smt (smt5:smt) (ann:annot)
-| Branch (int5:PLACEHOLDER) (sail_loc:unit) (ann:annot) (** TODO: "fork" ??? *)
-| ReadReg (name5:register) (accessor_list5:accessor_list) (valu5:valu) (ann:annot)
-| WriteReg (name5:register) (accessor_list5:accessor_list) (valu5:valu) (ann:annot)
+| Smt (smt:smt) (ann:annot)
+| Fork (n:nat) (sail_loc:unit) (ann:annot) (** for documentation, TODO: this is called `Branch` in the text output of sail; probably should be changed ??? *)
+| ReadReg (reg:register) (al:accessor_list) (val:valu) (ann:annot)
+| WriteReg (reg:register) (al:accessor_list) (val:valu) (ann:annot)
 | ReadMem (rkind:valu) (addr:valu) (val:valu) (num_bytes:nat) (tag_value:option valu) (ann:annot)
-| WriteMem (retval:valu) (wkind:valu) (addr:valu) (val:valu) (num_bytes:nat) (tag_value:option valu) (annot5:annot)
-| BranchAddress (addr:valu) (annot5:annot) (** announce a branch, to induce a `ctrl` dependency in the concurrency memory model *)
+| WriteMem (retval:valu) (wkind:valu) (addr:valu) (val:valu) (num_bytes:nat) (tag_value:option valu) (ann:annot)
+| BranchAddress (addr:valu) (ann:annot) (** announce a branch, to induce a `ctrl` dependency in the concurrency memory model *)
 | Barrier (bkind:valu) (ann:annot)
 | CacheOp (ckind:valu) (valu':valu) (ann:annot) (** for data cache clean, instruction cache clean, etc. *)
-| MarkReg (name5:PLACEHOLDER) (str5:PLACEHOLDER) (ann:annot) (** for instrumentation *)
-| Cycle (annot5:annot) (** separates different instruction *)
-| Instr (valu5:valu) (ann:annot)
-| Sleeping (vvar5:PLACEHOLDER) (ann:annot)
+| MarkReg (reg:register) (str:unit) (ann:annot) (** for instrumentation *)
+| Cycle (ann:annot) (** separates different instruction *)
+| Instr (opcode:valu) (ann:annot) (** records what instruction was fetched ??? *)
+(* TODO: the below sleep-related instructions don't matter too much for now *)
+| Sleeping (v:valu) (ann:annot)
 | WakeRequest (ann:annot)
 | SleepRequest (ann:annot).
 
 Inductive trc : Set := 
-| Trace (_:list event).
+| Trace (es:list event).
 
 Inductive write_kind : Type :=
-| WK_plain : write_kind
+| Mk_write_kind : enum_ctor -> write_kind
 .
 
 Inductive proper_label : Type :=
@@ -278,7 +289,8 @@ Inductive event_step : event -> smt_var_map -> label -> smt_var_map -> Prop :=
   eval_valu x_sym rho = Some x ->
   eval_valu v_sym rho = Some v ->
   eval_valu ret_sym rho = Some ret ->
-  event_step (WriteMem ret_sym wkd_sym x_sym v_sym num_bytes tag_value_sym al) rho (LAB_non_tau (PLAB_write_mem wkd x v ret num_bytes tag_value)) rho
+  eval_valu wkd_sym rho = Some (Val_Enum wkd) ->
+  event_step (WriteMem ret_sym wkd_sym x_sym v_sym num_bytes tag_value_sym al) rho (LAB_non_tau (PLAB_write_mem (Mk_write_kind wkd.(enum_member_ctor)) x v ret num_bytes tag_value)) rho
 (* TODO: other cases *)
 .
 
@@ -365,3 +377,5 @@ Definition instruction_is_live (i : instruction) : Prop :=
     exists tr'' rho'',
     trace_step tr rho1 (LAB_non_tau lab') tr'' rho''
 .
+
+(* TODO: chain multiple instructions *)
