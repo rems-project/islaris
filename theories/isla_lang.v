@@ -57,6 +57,12 @@ Inductive valu : Set :=
 | Val_Struct (ses:list (field_name * valu))
 | Val_Poison : valu.
 
+Fixpoint valu_eqb (v1 v2 : valu) : bool :=
+    match v1, v2 with
+    | Val_Bool b1, Val_Bool b2 => Bool.eqb b1 b2
+    | _, _ => false (* TODO: other cases *)
+    end.
+
 Definition smt_var_map := isla_var -> option valu.
 
 Fixpoint those_aux {A} (acc : option (list A)) (l : list (option A)) : option (list A) :=
@@ -296,13 +302,18 @@ Inductive event_step : event -> smt_var_map -> label -> smt_var_map -> Prop :=
 
 Record sequential_state := {
   seqst_reg_map : register -> valu;
-  seqst_mem_map : valu -> option PLACEHOLDER;
+  seqst_mem_map : valu -> option valu;
 }.
 
 Inductive sequential_state_step : sequential_state -> proper_label -> sequential_state -> Prop :=
 | seqststep_read_reg seqst r v :
   seqst.(seqst_reg_map) r = v ->
   sequential_state_step seqst (PLAB_read_reg r v) seqst
+| seqststep_write_mem seqst ret wkd x v num_bytes tv :
+  (* TODO: this assumes every write is of one byte *)
+  sequential_state_step seqst (PLAB_write_mem ret wkd x v num_bytes tv)
+    {| seqst_reg_map := seqst.(seqst_reg_map);
+       seqst_mem_map := fun y => if valu_eqb x y then Some v else seqst.(seqst_mem_map) y |}
 (* TODO: other cases *).
 
 Record sequential_system_state := {
