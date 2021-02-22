@@ -6,12 +6,12 @@
  * https://github.com/rems-project/isla/
  *)
 
-Require Import Arith.
-Require Import Bool.
-Require Import List.
+Require Import Arith Bool List String.
 
-Definition PLACEHOLDER := nat.
-Inductive annot : Type :=
+
+Definition PLACEHOLDER := nat (* TODO: get rid of this *).
+
+Inductive annot : Type := (* TODO: is this useful? *)
 | Mk_annot : annot.
 
 Inductive enum_id : Type :=
@@ -31,7 +31,7 @@ Definition isla_var_eqb (xv yv : isla_var) : bool :=
   | Mk_isla_var x, Mk_isla_var y => Nat.eqb x y
   end.
 
-Definition bits := list bool.
+Definition bits := list bool (* TODO: use a better representation? *).
 
 Inductive i_type : Type :=
 | I_64 : nat -> i_type
@@ -49,7 +49,7 @@ Inductive valu : Set :=
 | Val_I (i:i_type)
 | Val_Bits (bs:bits)
 | Val_Enum (em:enum_member)
-| Val_String (str5: unit (* TODO: we don't care for Coq purposes *) )
+| Val_String (str:unit (* TODO: we don't care for Coq purposes *) )
 | Val_Unit : valu
 | Val_NamedUnit (name5:PLACEHOLDER) (* TODO: where does this come from??? *)
 | Val_Vector (vs:list valu)
@@ -167,8 +167,8 @@ Inductive binop : Set :=
 
 Definition eval_binop (b : binop) (v1 v2 : valu) : option valu :=
 match b, v1, v2 with
-| Eq, Val_Bool b1, Val_Bool b2 => Some (Val_Bool (eqb b1 b2))
-| _, _, _ => (* TODO*) None
+| Eq, Val_Bool b1, Val_Bool b2 => Some (Val_Bool (Bool.eqb b1 b2))
+| _, _, _ => (* TODO: other cases *) None
 end.
 
 Inductive accessor : Set := 
@@ -233,11 +233,11 @@ Inductive smt : Set :=
 | DefineEnum (int5:PLACEHOLDER) (* TODO: ??? *).
 
 Inductive register : Type :=
-| Mk_register : nat -> register.
+| Mk_register : string -> register.
 
 Definition register_eqb (xv yv : register) : bool :=
   match xv, yv with
-  | Mk_register x, Mk_register y => Nat.eqb x y
+  | Mk_register x, Mk_register y => String.eqb x y
   end.
 
 Inductive event : Set := 
@@ -285,7 +285,7 @@ Inductive event_step : event -> smt_var_map -> label -> smt_var_map -> Prop :=
 | es_read_reg rho r al v ann :
   event_step (ReadReg r al v ann) rho (LAB_non_tau (PLAB_read_reg r v)) rho
 | es_write_mem rho ret_sym x_sym al v_sym wkd_sym num_bytes tag_value_sym x v ret wkd tag_value :
-  (* TODO: What to do with write kind? With tag_value? *)
+  (* TODO: What to do with tag_value? *)
   eval_valu x_sym rho = Some x ->
   eval_valu v_sym rho = Some v ->
   eval_valu ret_sym rho = Some ret ->
@@ -351,6 +351,7 @@ Definition related_label (l1 l2 : proper_label) : Prop :=
     r1 = r2
   | PLAB_write_mem kd1 x1 v1 ret1 num_bytes1 tag_value1,
     PLAB_write_mem kd2 x2 v2 ret2 num_bytes2 tag_value2 =>
+    (* TODO: tag_value? *)
     kd1 = kd2 /\ num_bytes1 = num_bytes2 /\ x1 = x2
   | _, _ => False
   end.
