@@ -46,6 +46,7 @@ jobs:
           ls -al
           ls .. -al
           touch test.txt
+          whoami
           mkdir .git
           git clone git@github.com:rems-project/isla-coq.git .
           git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
