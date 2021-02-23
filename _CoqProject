@@ -9,3 +9,4 @@
 theories/base.v
 theories/isla_lang.v
 theories/isla_lang2.v
+theories/example.v
