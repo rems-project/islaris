@@ -32,12 +32,6 @@ builddep/%-builddep.opam: %.opam Makefile
 	@echo "# Creating builddep package for $<."
 	@mkdir -p builddep
 	@sed <$< -E 's/^(build|install|remove):.*/\1: []/; s/"(.*)"(.*= *version.*)$$/"\1-builddep"\2/;' >$@
-	git status
-	git status builddep
-	ls builddep
-	cat builddep/coq-isla-builddep.opam
-# opam pin add -y -n -k "ver" "$PACKAGE" "$VERSION"
-# opam pin add -y -n builddep
 
 builddep-opamfiles: $(BUILDDEPFILES)
 .PHONY: builddep-opamfiles
