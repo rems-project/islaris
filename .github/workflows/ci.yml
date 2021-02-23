@@ -25,6 +25,8 @@ jobs:
       OPAM_PINS: "coq version 8.12.0"
       DENY_WARNINGS: "1"
 
+    container:
+      image: ralfjung/opam-ci:opam2
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
