@@ -27,6 +27,7 @@ jobs:
 
     container:
       image: ralfjung/opam-ci:opam2
+      options: --user ci
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
