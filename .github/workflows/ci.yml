@@ -22,7 +22,7 @@ jobs:
 
     env:
       OCAML: "ocaml-base-compiler.4.07.1"
-      OPAM_PINS: "coq version 8.12.0"
+      OPAM_PINS: "coq version 8.12.2"
       CPU_CORES: "1"
       DENY_WARNINGS: "1"
 
