@@ -28,6 +28,13 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - name: Cache opam
+        uses: actions/cache@v2
+        with:
+          path: |
+            _opam
+          key: $GITHUB_WORKFLOW
+
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
@@ -39,4 +46,5 @@ jobs:
 
       - name: Run CI
         run: |
+          echo $GITHUB_WORKFLOW
           ci/buildjob
