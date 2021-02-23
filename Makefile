@@ -36,7 +36,8 @@ builddep/%-builddep.opam: %.opam Makefile
 	git status builddep
 	ls builddep
 	cat builddep/coq-isla-builddep.opam
-	opam pin add -y -n builddep
+# opam pin add -y -n -k "ver" "$PACKAGE" "$VERSION"
+# opam pin add -y -n builddep
 
 builddep-opamfiles: $(BUILDDEPFILES)
 .PHONY: builddep-opamfiles
