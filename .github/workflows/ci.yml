@@ -26,7 +26,7 @@ jobs:
       DENY_WARNINGS: "1"
 
     container:
-      image: rdsadsaxalfjung/opam-ci:opam2
+      image: ralfjung/opam-ci:opam2
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
