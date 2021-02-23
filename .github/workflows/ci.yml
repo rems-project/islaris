@@ -43,7 +43,7 @@ jobs:
 
       - name: Run CI
         run: |
-          whoami
+          # whoami
           pwd
           ls -al
           ls .. -al
