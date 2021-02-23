@@ -43,6 +43,6 @@ jobs:
 
       - name: Run CI
         run: |
-          git clone git@github.com:rems-project/isla-coq.git .
+          ls -al
           git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
           ci/buildjob
