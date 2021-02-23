@@ -25,6 +25,7 @@ jobs:
       OPAM_PINS: "coq version 8.12.2"
       CPU_CORES: "1"
       DENY_WARNINGS: "1"
+      CI_RUNNER: "dummy"
 
     container:
       image: ralfjung/opam-ci:opam2
