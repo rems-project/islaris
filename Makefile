@@ -33,6 +33,7 @@ builddep/%-builddep.opam: %.opam Makefile
 	@mkdir -p builddep
 	@sed <$< -E 's/^(build|install|remove):.*/\1: []/; s/"(.*)"(.*= *version.*)$$/"\1-builddep"\2/;' >$@
 	git status
+	echo $CI_JOB_NAME
 
 builddep-opamfiles: $(BUILDDEPFILES)
 .PHONY: builddep-opamfiles
