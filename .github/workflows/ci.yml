@@ -37,13 +37,8 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      - uses: actions/checkout@v2
-        with:
-          repository: 'https://gitlab.mpi-sws.org/iris/ci.git'
-          ref: 'opam2'
-          path: 'ci'
-
       - name: Run CI
         run: |
           echo $GITHUB_WORKFLOW
+          git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
           ci/buildjob
