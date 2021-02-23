@@ -26,7 +26,7 @@ jobs:
       DENY_WARNINGS: "1"
 
     container:
-      image: ralfjung/opam-ci:opam2
+      image: rdsadsaxalfjung/opam-ci:opam2
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -42,6 +42,5 @@ jobs:
 
       - name: Run CI
         run: |
-          echo $GITHUB_WORKFLOW
           git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
           ci/buildjob
