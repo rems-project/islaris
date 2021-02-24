@@ -10,7 +10,7 @@ Require Import List.
 Require Import String.
 Require Import ZArith.
 
-Definition isla_var : Set := Z.
+Definition var_name : Set := Z.
 
 Definition register_name : Set := string.
 
@@ -80,7 +80,7 @@ Inductive binop : Set :=
  | Bvcomp (bvcomp5:bvcomp).
 
 Inductive valu : Set := 
- | Val_Symbolic (vvar5:isla_var)
+ | Val_Symbolic (vvar5:var_name)
  | Val_Bool (bool5:bool)
  | Val_I (bvi5:Z) (int5:Z)
  | Val_Bits (bv5:string)
@@ -103,7 +103,7 @@ Inductive ty : Set :=
  | Ty_Array (ty1:ty) (ty2:ty).
 
 Inductive exp : Set := 
- | Var (vvar5:isla_var) (annot5:annot)
+ | Var (vvar5:var_name) (annot5:annot)
  | Bits (bv5:string) (annot5:annot)
  | Bool (bool5:bool) (annot5:annot)
  | Enum (enum5:enum) (annot5:annot)
@@ -114,13 +114,11 @@ Inductive exp : Set :=
 
 Definition valu_option : Set := option valu.
 
-Inductive accessor_list : Set := 
- | Nil : accessor_list
- | Cons (_:list accessor).
+Definition accessor_list : Set := list accessor.
 
 Inductive smt : Set := 
- | DeclareConst (vvar5:isla_var) (ty5:ty)
- | DefineConst (vvar5:isla_var) (exp5:exp)
+ | DeclareConst (vvar5:var_name) (ty5:ty)
+ | DefineConst (vvar5:var_name) (exp5:exp)
  | Assert (exp5:exp)
  | DefineEnum (int5:Z).
 
@@ -130,19 +128,18 @@ Inductive event : Set :=
  | ReadReg (name5:register_name) (accessor_list5:accessor_list) (valu5:valu) (annot5:annot) (*r read register *)
  | WriteReg (name5:register_name) (accessor_list5:accessor_list) (valu5:valu) (annot5:annot) (*r write register *)
  | ReadMem (valu5:valu) (rkind:valu) (addr:valu) (nat5:nat) (tag_value:valu_option) (annot5:annot) (*r read memory *)
- | WriteMem (vvar5:isla_var) (wkind:valu) (addr:valu) (data:valu) (nat5:nat) (tag_value:valu_option) (annot5:annot) (*r write memory *)
+ | WriteMem (vvar5:var_name) (wkind:valu) (addr:valu) (data:valu) (nat5:nat) (tag_value:valu_option) (annot5:annot) (*r write memory *)
  | BranchAddress (addr:valu) (annot5:annot) (*r announce branch address, to induce ctrl dependency in concurrency model *)
  | Barrier (bkind:valu) (annot5:annot) (*r memory barrier *)
  | CacheOp (ckind:valu) (addr:valu) (annot5:annot) (*r cache maintenance effect, for data-cache clean etc. *)
  | MarkReg (name5:register_name) (str5:string) (annot5:annot) (*r instrumentation to tell concurrency model to ignore certain dependencies (TODO: support marking multiple registers). Currently the str is ignore-edge or ignore-write *)
  | Cycle (annot5:annot) (*r instruction boundary *)
  | Instr (opcode:valu) (annot5:annot) (*r records the instruction opcode that was fetched *)
- | Sleeping (vvar5:isla_var) (annot5:annot) (*r Arm sleeping predicate *)
+ | Sleeping (vvar5:var_name) (annot5:annot) (*r Arm sleeping predicate *)
  | WakeRequest (annot5:annot) (*r Arm wake request *)
  | SleepRequest (annot5:annot) (*r Arm sleep request *).
 
-Inductive trc : Set := 
- | Trace (_:list event).
+Definition trc : Set := list event.
 (** induction principles *)
 Section exp_rect.
 
@@ -151,7 +148,7 @@ Variables
   (P_exp : exp -> Prop).
 
 Hypothesis
-  (H_Var : forall (vvar5:isla_var), forall (annot5:annot), P_exp (Var vvar5 annot5))
+  (H_Var : forall (vvar5:var_name), forall (annot5:annot), P_exp (Var vvar5 annot5))
   (H_Bits : forall (bv5:string), forall (annot5:annot), P_exp (Bits bv5 annot5))
   (H_Bool : forall (bool5:bool), forall (annot5:annot), P_exp (Bool bool5 annot5))
   (H_Enum : forall (enum5:enum), forall (annot5:annot), P_exp (Enum enum5 annot5))

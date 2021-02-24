@@ -8,5 +8,7 @@
 
 theories/base.v
 theories/isla_lang.v
+theories/isla_lang_ext.v
 theories/isla_lang2.v
+theories/opsem.v
 theories/example.v

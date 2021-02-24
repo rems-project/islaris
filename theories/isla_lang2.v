@@ -15,9 +15,9 @@ Inductive label : Type :=
 | LAB_non_tau : proper_label -> label
 .
 
-Definition smt_var_map := isla_var -> option valu.
+Definition smt_var_map := var_name -> option valu.
 
-Definition isla_var_eqb (xv yv : isla_var) : bool := Z.eqb xv yv.
+Definition isla_var_eqb (xv yv : var_name) : bool := Z.eqb xv yv.
 
   Definition option_bind {A B : Type} (f : A -> option B) (xo : option A) : option B :=
   match xo with
@@ -181,7 +181,7 @@ Inductive sequential_system_head_step :
 Inductive trace_system_step : trc -> sequential_system_state -> trc -> sequential_system_state -> Prop :=
 | tss_cons e es sys sys' :
   sequential_system_head_step e sys sys' ->
-  trace_system_step (Trace (e :: es)) sys (Trace es) sys'
+  trace_system_step ((e :: es)) sys (es) sys'
 .
 
 Definition instruction := list trc.
@@ -189,7 +189,7 @@ Definition instruction := list trc.
 Inductive trace_step : trc -> smt_var_map -> label -> trc -> smt_var_map -> Prop :=
 | ts_cons e es rho lab rho' :
   event_step e rho lab rho' ->
-  trace_step (Trace (e :: es)) rho lab (Trace es) rho'
+  trace_step ((e :: es)) rho lab (es) rho'
 .
 
 Definition rho0 : smt_var_map := (fun _ => None).

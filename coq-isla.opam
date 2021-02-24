@@ -12,6 +12,7 @@ synopsis: "Coq formalization of isla"
 depends: [
   "coq" { (>= "8.12.2" & < "8.13~") | (= "dev") }
   "coq-iris" { (= "dev.2021-02-16.2.075ce23b") | (= "dev") }
+  "coq-record-update" { (= "0.2.0") }
 ]
 
 build: [make "-j%{jobs}%"]
