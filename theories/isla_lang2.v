@@ -17,10 +17,7 @@ Inductive label : Type :=
 
 Definition smt_var_map := isla_var -> option valu.
 
-Definition isla_var_eqb (xv yv : isla_var) : bool :=
-  match xv, yv with
-  | Mk_isla_var x, Mk_isla_var y => Nat.eqb x y
-  end.
+Definition isla_var_eqb (xv yv : isla_var) : bool := Z.eqb xv yv.
 
   Definition option_bind {A B : Type} (f : A -> option B) (xo : option A) : option B :=
   match xo with

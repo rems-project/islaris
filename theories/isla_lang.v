@@ -10,11 +10,9 @@ Require Import List.
 Require Import String.
 Require Import ZArith.
 
-Inductive isla_var : Type :=
-| Mk_isla_var : nat -> isla_var.
+Definition isla_var : Set := Z.
 
-Inductive register_name : Type :=  (* register and field names *)
-| Mk_register_name : string -> register_name.
+Definition register_name : Set := string.
 
 Inductive enum_id : Type :=
 | Mk_enum_id : nat -> enum_id.
@@ -105,14 +103,14 @@ Inductive ty : Set :=
  | Ty_Array (ty1:ty) (ty2:ty).
 
 Inductive exp : Set := 
- | Var (vvar5:isla_var) (annot5:unit)
- | Bits (bv5:string) (annot5:unit)
- | Bool (bool5:bool) (annot5:unit)
- | Enum (enum5:enum) (annot5:unit)
- | Unop (unop5:unop) (exp5:exp) (annot5:unit)
- | Binop (binop5:binop) (exp1:exp) (exp2:exp) (annot5:unit)
- | Manyop (manyop5:manyop) (_:list exp) (annot5:unit)
- | Ite (exp1:exp) (exp2:exp) (exp3:exp) (annot5:unit).
+ | Var (vvar5:isla_var) (annot5:annot)
+ | Bits (bv5:string) (annot5:annot)
+ | Bool (bool5:bool) (annot5:annot)
+ | Enum (enum5:enum) (annot5:annot)
+ | Unop (unop5:unop) (exp5:exp) (annot5:annot)
+ | Binop (binop5:binop) (exp1:exp) (exp2:exp) (annot5:annot)
+ | Manyop (manyop5:manyop) (_:list exp) (annot5:annot)
+ | Ite (exp1:exp) (exp2:exp) (exp3:exp) (annot5:annot).
 
 Definition valu_option : Set := option valu.
 
@@ -127,21 +125,21 @@ Inductive smt : Set :=
  | DefineEnum (int5:Z).
 
 Inductive event : Set := 
- | Smt (smt5:smt) (annot5:unit)
- | Branch (int5:Z) (str5:string) (annot5:unit) (*r Sail trace fork *)
- | ReadReg (name5:register_name) (accessor_list5:accessor_list) (valu5:valu) (annot5:unit) (*r read register *)
- | WriteReg (name5:register_name) (accessor_list5:accessor_list) (valu5:valu) (annot5:unit) (*r write register *)
- | ReadMem (valu5:valu) (rkind:valu) (addr:valu) (nat5:nat) (tag_value:valu_option) (annot5:unit) (*r read memory *)
- | WriteMem (vvar5:isla_var) (wkind:valu) (addr:valu) (data:valu) (nat5:nat) (tag_value:valu_option) (annot5:unit) (*r write memory *)
- | BranchAddress (addr:valu) (annot5:unit) (*r announce branch address, to induce ctrl dependency in concurrency model *)
- | Barrier (bkind:valu) (annot5:unit) (*r memory barrier *)
- | CacheOp (ckind:valu) (addr:valu) (annot5:unit) (*r cache maintenance effect, for data-cache clean etc. *)
- | MarkReg (name5:register_name) (str5:string) (annot5:unit) (*r instrumentation to tell concurrency model to ignore certain dependencies (TODO: support marking multiple registers). Currently the str is ignore-edge or ignore-write *)
- | Cycle (annot5:unit) (*r instruction boundary *)
- | Instr (opcode:valu) (annot5:unit) (*r records the instruction opcode that was fetched *)
- | Sleeping (vvar5:isla_var) (annot5:unit) (*r Arm sleeping predicate *)
- | WakeRequest (annot5:unit) (*r Arm wake request *)
- | SleepRequest (annot5:unit) (*r Arm sleep request *).
+ | Smt (smt5:smt) (annot5:annot)
+ | Branch (int5:Z) (str5:string) (annot5:annot) (*r Sail trace fork *)
+ | ReadReg (name5:register_name) (accessor_list5:accessor_list) (valu5:valu) (annot5:annot) (*r read register *)
+ | WriteReg (name5:register_name) (accessor_list5:accessor_list) (valu5:valu) (annot5:annot) (*r write register *)
+ | ReadMem (valu5:valu) (rkind:valu) (addr:valu) (nat5:nat) (tag_value:valu_option) (annot5:annot) (*r read memory *)
+ | WriteMem (vvar5:isla_var) (wkind:valu) (addr:valu) (data:valu) (nat5:nat) (tag_value:valu_option) (annot5:annot) (*r write memory *)
+ | BranchAddress (addr:valu) (annot5:annot) (*r announce branch address, to induce ctrl dependency in concurrency model *)
+ | Barrier (bkind:valu) (annot5:annot) (*r memory barrier *)
+ | CacheOp (ckind:valu) (addr:valu) (annot5:annot) (*r cache maintenance effect, for data-cache clean etc. *)
+ | MarkReg (name5:register_name) (str5:string) (annot5:annot) (*r instrumentation to tell concurrency model to ignore certain dependencies (TODO: support marking multiple registers). Currently the str is ignore-edge or ignore-write *)
+ | Cycle (annot5:annot) (*r instruction boundary *)
+ | Instr (opcode:valu) (annot5:annot) (*r records the instruction opcode that was fetched *)
+ | Sleeping (vvar5:isla_var) (annot5:annot) (*r Arm sleeping predicate *)
+ | WakeRequest (annot5:annot) (*r Arm wake request *)
+ | SleepRequest (annot5:annot) (*r Arm sleep request *).
 
 Inductive trc : Set := 
  | Trace (_:list event).
@@ -153,14 +151,14 @@ Variables
   (P_exp : exp -> Prop).
 
 Hypothesis
-  (H_Var : forall (vvar5:isla_var), forall (annot5:unit), P_exp (Var vvar5 annot5))
-  (H_Bits : forall (bv5:string), forall (annot5:unit), P_exp (Bits bv5 annot5))
-  (H_Bool : forall (bool5:bool), forall (annot5:unit), P_exp (Bool bool5 annot5))
-  (H_Enum : forall (enum5:enum), forall (annot5:unit), P_exp (Enum enum5 annot5))
-  (H_Unop : forall (unop5:unop), forall (exp5:exp), P_exp exp5 -> forall (annot5:unit), P_exp (Unop unop5 exp5 annot5))
-  (H_Binop : forall (binop5:binop), forall (exp1:exp), P_exp exp1 -> forall (exp2:exp), P_exp exp2 -> forall (annot5:unit), P_exp (Binop binop5 exp1 exp2 annot5))
-  (H_Manyop : forall (exp_list:list exp), P_list_exp exp_list -> forall (manyop5:manyop), forall (annot5:unit), P_exp (Manyop manyop5 exp_list annot5))
-  (H_Ite : forall (exp1:exp), P_exp exp1 -> forall (exp2:exp), P_exp exp2 -> forall (exp3:exp), P_exp exp3 -> forall (annot5:unit), P_exp (Ite exp1 exp2 exp3 annot5))
+  (H_Var : forall (vvar5:isla_var), forall (annot5:annot), P_exp (Var vvar5 annot5))
+  (H_Bits : forall (bv5:string), forall (annot5:annot), P_exp (Bits bv5 annot5))
+  (H_Bool : forall (bool5:bool), forall (annot5:annot), P_exp (Bool bool5 annot5))
+  (H_Enum : forall (enum5:enum), forall (annot5:annot), P_exp (Enum enum5 annot5))
+  (H_Unop : forall (unop5:unop), forall (exp5:exp), P_exp exp5 -> forall (annot5:annot), P_exp (Unop unop5 exp5 annot5))
+  (H_Binop : forall (binop5:binop), forall (exp1:exp), P_exp exp1 -> forall (exp2:exp), P_exp exp2 -> forall (annot5:annot), P_exp (Binop binop5 exp1 exp2 annot5))
+  (H_Manyop : forall (exp_list:list exp), P_list_exp exp_list -> forall (manyop5:manyop), forall (annot5:annot), P_exp (Manyop manyop5 exp_list annot5))
+  (H_Ite : forall (exp1:exp), P_exp exp1 -> forall (exp2:exp), P_exp exp2 -> forall (exp3:exp), P_exp exp3 -> forall (annot5:annot), P_exp (Ite exp1 exp2 exp3 annot5))
   (H_list_exp_nil : P_list_exp nil)
   (H_list_exp_cons : forall (exp0:exp), P_exp exp0 -> forall (exp_l:list exp), P_list_exp exp_l -> P_list_exp (cons exp0 exp_l)).
 

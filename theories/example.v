@@ -15,14 +15,14 @@ Require Import isla.isla_lang.
 *)
 Definition add_x1_x2_x3 : trc :=
   Trace [
-  ReadReg (Mk_register_name "R2") Nil (Val_Symbolic (Mk_isla_var 3359)) ();
-  Smt (DefineConst (Mk_isla_var 3425) (Var (Mk_isla_var 3359) ())) ();
-  ReadReg (Mk_register_name "R3") Nil (Val_Symbolic (Mk_isla_var 3361)) ();
-  Smt (DefineConst (Mk_isla_var 3426) (Var (Mk_isla_var 3361) ())) ();
-  Smt (DefineConst (Mk_isla_var 3431) (Unop (ZeroExtend 64) (Var (Mk_isla_var 3425) ()) ())) ();
-  Smt (DefineConst (Mk_isla_var 3432) (Unop (ZeroExtend 64) (Var (Mk_isla_var 3426) ()) ())) ();
-  Smt (DefineConst (Mk_isla_var 3433) (Manyop (Bvmanyarith Bvadd) [Var (Mk_isla_var 3431) (); Var (Mk_isla_var 3432) ()] ())) ();
-  Smt (DefineConst (Mk_isla_var 3437) (Unop (Extract 63 0) (Var (Mk_isla_var 3433) ()) ())) ();
-  Smt (DefineConst (Mk_isla_var 3452) (Var (Mk_isla_var 3467) ())) ();
-  WriteReg (Mk_register_name "R1") Nil (Val_Symbolic (Mk_isla_var 3453)) ()
+  ReadReg "R2" Nil (Val_Symbolic 3359) Mk_annot;
+  Smt (DefineConst 3425 (Var 3359 Mk_annot)) Mk_annot;
+  ReadReg "R3" Nil (Val_Symbolic 3361) Mk_annot;
+  Smt (DefineConst 3426 (Var 3361 Mk_annot)) Mk_annot;
+  Smt (DefineConst 3431 (Unop (ZeroExtend 64) (Var 3425 Mk_annot) Mk_annot)) Mk_annot;
+  Smt (DefineConst 3432 (Unop (ZeroExtend 64) (Var 3426 Mk_annot) Mk_annot)) Mk_annot;
+  Smt (DefineConst 3433 (Manyop (Bvmanyarith Bvadd) [Var 3431 Mk_annot; Var 3432 Mk_annot] Mk_annot)) Mk_annot;
+  Smt (DefineConst 3437 (Unop (Extract 63 0) (Var 3433 Mk_annot) Mk_annot)) Mk_annot;
+  Smt (DefineConst 3452 (Var 3467 Mk_annot)) Mk_annot;
+  WriteReg "R1" Nil (Val_Symbolic 3453) Mk_annot
 ].
