@@ -16,9 +16,14 @@ Fixpoint subst_valu (n : var_name) (z : valu) (v : valu) {struct v} : valu :=
   | Val_Poison => Val_Poison
   end.
 
-Fixpoint subst_exp (n : var_name) (v : valu) (e : exp) {struct e} : exp.
-(* TODO: How to fill this in? exp does not have a val constructor *)
-Admitted.
+Fixpoint subst_exp (n : var_name) (v : valu) (e : exp) {struct e} : exp :=
+  match e with
+  | Val w a => Val (subst_valu n v w) a
+  | Unop op e a => Unop op (subst_exp n v e) a
+  | Binop op e1 e2 a => Binop op (subst_exp n v e1) (subst_exp n v e2) a
+  | Manyop op x a => Manyop op (subst_exp n v <$> x) a
+  | Ite e1 e2 e3 a => Ite (subst_exp n v e1) (subst_exp n v e2) (subst_exp n v e3) a
+  end.
 
 Definition subst_smt (n : var_name) (v : valu) (s : smt) : smt :=
   match s with
@@ -31,22 +36,26 @@ Definition subst_smt (n : var_name) (v : valu) (s : smt) : smt :=
 
 Definition subst_event (n : var_name) (v : valu) (e : event) : event :=
   match e with
+  | Branch _ _ _ | MarkReg _ _ _ | Cycle _ | Sleeping _ _ | WakeRequest _ | SleepRequest _ => e
   | Smt s ann => Smt (subst_smt n v s) ann
-
-  | Branch _ _ _ | BranchAddress _ _ | Barrier _ _ | CacheOp _ _ _
-  | MarkReg _ _ _ | Cycle _ | Instr _ _ | Sleeping _ _ | WakeRequest _ | SleepRequest _ => e
-
+  | Instr i ann => Instr (subst_valu n v i) ann
+  | Barrier b ann => Barrier (subst_valu n v b) ann
+  | CacheOp v1 v2 ann => CacheOp (subst_valu n v v1) (subst_valu n v v2) ann
+  | BranchAddress a ann => BranchAddress (subst_valu n v a) ann
   | ReadReg r al vr ann => ReadReg r al (subst_valu n v vr) ann
   | WriteReg r al vr ann => WriteReg r al (subst_valu n v vr) ann
   | ReadMem vr rkind addr len tag_value ann => ReadMem (subst_valu n v vr) (subst_valu n v rkind) (subst_valu n v addr) len (subst_valu n v <$> tag_value) ann
-  (* TODO: handle the following. How to subsitute the var? *)
-  | WriteMem vvar5 wkind addr data nat5 tag_value ann => e
+  | WriteMem va wkind addr data nat5 tag_value ann => WriteMem (subst_valu n v va) (subst_valu n v wkind) (subst_valu n v addr) (subst_valu n v data) nat5 (subst_valu n v <$> tag_value) ann
   end.
+
+Definition Z_extract (i j n : Z) : Z :=
+  (Z.land n (Z.ones (i + 1))) ≫ j.
 
 Definition eval_unop (u : unop) (v : valu) : option valu :=
   match u, v with
   | Not, Val_Bool b => Some (Val_Bool (negb b))
-  | Not, _ => None
+  | ZeroExtend _, Val_Bits n => Some (Val_Bits n)
+  | Extract u l, Val_Bits n => Some (Val_Bits (Z_extract u l n))
   | _, _ => (* TODO: other cases *) None
   end.
 
@@ -58,15 +67,13 @@ Definition eval_binop (b : binop) (v1 v2 : valu) : option valu :=
 
 Definition eval_manyop (m : manyop) (vs : list valu) : option valu :=
   match m with
+  | Bvmanyarith Bvadd => (λ ns, Val_Bits (foldl Z.add 0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs)
   | _ => (* TODO: other cases *) None
   end.
 
 Fixpoint eval_exp (e : exp) : option valu :=
   match e with
-  | Var x _ => None
-  | Bits n _ => Some (Val_Bits n)
-  | Bool b _ => Some (Val_Bool b)
-  | Enum em _ => Some (Val_Enum em)
+  | Val x _ => Some x
   | Unop uo e' _ =>
     eval_exp e' ≫= eval_unop uo
   | Binop uo e1 e2 _ =>
@@ -87,7 +94,7 @@ Inductive trace_label : Set :=
 .
 
 Inductive trace_step : trc → option trace_label → trc → Prop :=
-| DeclareConstS x v ty ann es:
+| DeclareConstS v x ty ann es:
     trace_step (Smt (DeclareConst x ty) ann :: es) None (subst_event x v <$> es)
 | DefineConstS x e v ann es:
     eval_exp e = Some v ->
@@ -102,6 +109,14 @@ Inductive trace_step : trc → option trace_label → trc → Prop :=
 | DoneES es:
     trace_step [] (Some (LDone es)) es
 .
+
+Definition trace_module : module trace_label := {|
+  m_state := trc;
+  m_initial := [];
+  m_step := trace_step;
+  m_is_ub _ := False;
+|}.
+
 
 Definition addr := Z.
 

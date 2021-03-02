@@ -1,7 +1,10 @@
 From Coq Require Export ssreflect.
 From stdpp Require Export prelude strings gmap.
 From RecordUpdate Require Export RecordSet.
+From refframe Require Export module.
 Export RecordSetNotations.
+
+Open Scope Z_scope.
 
 Global Set Default Proof Using "Type".
 Global Unset Program Cases.

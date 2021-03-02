@@ -5,6 +5,10 @@
 -arg -w -arg -redundant-canonical-projection
 
 -Q theories isla
+-Q refframe refframe
+
+refframe/base.v
+refframe/module.v
 
 theories/base.v
 theories/isla_lang.v
