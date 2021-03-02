@@ -7,7 +7,7 @@ Inductive write_kind : Type :=
 
 Inductive proper_label : Type :=
 | PLAB_read_reg (r : register_name) (v : valu) : proper_label
-| PLAB_write_mem (kd : write_kind) (addr : valu) (val : valu) (ret : valu) (num_bytes : nat) (tag_value : bool) : proper_label
+| PLAB_write_mem (kd : write_kind) (addr : valu) (val : valu) (ret : valu) (num_bytes : Z) (tag_value : bool) : proper_label
 (* TODO: other cases *).
 
 Inductive label : Type :=

@@ -25,13 +25,6 @@ Inductive annot : Type :=
 
 Definition enum : Set := (enum_id*enum_ctor).
 
-Inductive bvmanyarith : Set := 
- | Bvand : bvmanyarith
- | Bvor : bvmanyarith
- | Bvxor : bvmanyarith
- | Bvadd : bvmanyarith
- | Bvmul : bvmanyarith.
-
 Inductive bvcomp : Set := 
  | Bvult : bvcomp
  | Bvslt : bvcomp
@@ -58,6 +51,18 @@ Inductive bvarith : Set :=
  | Bvlshr : bvarith
  | Bvashr : bvarith.
 
+Inductive bvmanyarith : Set := 
+ | Bvand : bvmanyarith
+ | Bvor : bvmanyarith
+ | Bvxor : bvmanyarith
+ | Bvadd : bvmanyarith
+ | Bvmul : bvmanyarith.
+
+Inductive binop : Set := 
+ | Eq : binop
+ | Bvarith (bvarith5:bvarith)
+ | Bvcomp (bvcomp5:bvcomp).
+
 Inductive manyop : Set := 
  | And : manyop
  | Or : manyop
@@ -74,11 +79,6 @@ Inductive unop : Set :=
  | ZeroExtend (int5:Z)
  | SignExtend (int5:Z).
 
-Inductive binop : Set := 
- | Eq : binop
- | Bvarith (bvarith5:bvarith)
- | Bvcomp (bvcomp5:bvcomp).
-
 Inductive valu : Set := 
  | Val_Symbolic (vvar5:var_name)
  | Val_Bool (bool5:bool)
@@ -92,9 +92,6 @@ Inductive valu : Set :=
  | Val_List (_:list valu)
  | Val_Struct (_:list register_name * valu)
  | Val_Poison : valu.
-
-Inductive accessor : Set := 
- | Field (name5:register_name).
 
 Inductive ty : Set := 
  | Ty_Bool : ty
@@ -112,9 +109,10 @@ Inductive exp : Set :=
  | Manyop (manyop5:manyop) (_:list exp) (annot5:annot)
  | Ite (exp1:exp) (exp2:exp) (exp3:exp) (annot5:annot).
 
-Definition valu_option : Set := option valu.
+Inductive accessor : Set := 
+ | Field (name5:register_name).
 
-Definition accessor_list : Set := list accessor.
+Definition valu_option : Set := option valu.
 
 Inductive smt : Set := 
  | DeclareConst (vvar5:var_name) (ty5:ty)
@@ -122,22 +120,46 @@ Inductive smt : Set :=
  | Assert (exp5:exp)
  | DefineEnum (int5:Z).
 
+Definition accessor_list : Set := list accessor.
+
+Inductive valu_concrete : Set := 
+ | CVal_Bool (bool5:bool)
+ | CVal_I (bvi5:Z) (int5:Z)
+ | CVal_Bits (bv5:string)
+ | CVal_Enum (enum5:enum)
+ | CVal_String (str5:string)
+ | CVal_Unit : valu_concrete
+ | CVal_NamedUnit (name5:register_name)
+ | CVal_Vector (_:list valu)
+ | CVal_List (_:list valu)
+ | CVal_Struct (_:list register_name * valu)
+ | CVal_Poison : valu_concrete.
+
 Inductive event : Set := 
  | Smt (smt5:smt) (annot5:annot)
  | Branch (int5:Z) (str5:string) (annot5:annot) (*r Sail trace fork *)
- | ReadReg (name5:register_name) (accessor_list5:accessor_list) (valu5:valu) (annot5:annot) (*r read register *)
- | WriteReg (name5:register_name) (accessor_list5:accessor_list) (valu5:valu) (annot5:annot) (*r write register *)
- | ReadMem (valu5:valu) (rkind:valu) (addr:valu) (nat5:nat) (tag_value:valu_option) (annot5:annot) (*r read memory *)
- | WriteMem (vvar5:var_name) (wkind:valu) (addr:valu) (data:valu) (nat5:nat) (tag_value:valu_option) (annot5:annot) (*r write memory *)
- | BranchAddress (addr:valu) (annot5:annot) (*r announce branch address, to induce ctrl dependency in concurrency model *)
- | Barrier (bkind:valu) (annot5:annot) (*r memory barrier *)
- | CacheOp (ckind:valu) (addr:valu) (annot5:annot) (*r cache maintenance effect, for data-cache clean etc. *)
+ | ReadReg (name5:register_name) (accessor_list5:accessor_list) (valu5:valu) (annot5:annot) (*r read value `valu` from register `name` *)
+ | WriteReg (name5:register_name) (accessor_list5:accessor_list) (valu5:valu) (annot5:annot) (*r write value `valu` to register `name` *)
+ | ReadMem (valu5:valu) (rkind:valu) (addr:valu) (num_bytes:Z) (tag_value:valu_option) (annot5:annot) (*r read value `valu` from memory address `addr`, with read kind `rkind`, byte width `byte_width`, and `tag_value` is the optional capability tag *)
+ | WriteMem (vvar5:var_name) (wkind:valu) (addr:valu) (data:valu) (num_bytes:Z) (tag_value:valu_option) (annot5:annot) (*r write value `valu` to memory address `addr`, with write kind `wkind`, byte width `byte_width`, `tag_value` is the optional capability tag, and success flag `vvar` *)
+ | BranchAddress (addr:valu) (annot5:annot) (*r announce branch address `addr`, to induce ctrl dependency in the concurrency model *)
+ | Barrier (bkind:valu) (annot5:annot) (*r memory barrier of kind `bkind` *)
+ | CacheOp (ckind:valu) (addr:valu) (annot5:annot) (*r cache maintenance effect of kind `ckind`, at address `addr`, for data-cache clean etc. *)
  | MarkReg (name5:register_name) (str5:string) (annot5:annot) (*r instrumentation to tell concurrency model to ignore certain dependencies (TODO: support marking multiple registers). Currently the str is ignore-edge or ignore-write *)
  | Cycle (annot5:annot) (*r instruction boundary *)
- | Instr (opcode:valu) (annot5:annot) (*r records the instruction opcode that was fetched *)
+ | Instr (opcode:valu) (annot5:annot) (*r records the instruction `opcode` that was fetched *)
  | Sleeping (vvar5:var_name) (annot5:annot) (*r Arm sleeping predicate *)
  | WakeRequest (annot5:annot) (*r Arm wake request *)
  | SleepRequest (annot5:annot) (*r Arm sleep request *).
+
+Inductive exp_val : Set := 
+ | EV_Bits (bv5:string) (annot5:annot)
+ | EV_Bool (bool5:bool) (annot5:annot)
+ | EV_Enum (enum5:enum) (annot5:annot)
+ | EV_Unop (unop5:unop) (exp_val5:exp_val) (annot5:annot)
+ | EV_Binop (binop5:binop) (exp_val1:exp_val) (exp_val2:exp_val) (annot5:annot)
+ | EV_Manyop (manyop5:manyop) (_:list exp_val) (annot5:annot)
+ | EV_Ite (exp_val1:exp_val) (exp_val2:exp_val) (exp_val3:exp_val) (annot5:annot).
 
 Definition trc : Set := list event.
 (** induction principles *)
@@ -172,5 +194,36 @@ Fixpoint exp_ott_ind (n:exp) : P_exp n :=
 end.
 
 End exp_rect.
+
+
+Section exp_val_rect.
+
+Variables
+  (P_list_exp_val : list exp_val -> Prop)
+  (P_exp_val : exp_val -> Prop).
+
+Hypothesis
+  (H_EV_Bits : forall (bv5:string), forall (annot5:annot), P_exp_val (EV_Bits bv5 annot5))
+  (H_EV_Bool : forall (bool5:bool), forall (annot5:annot), P_exp_val (EV_Bool bool5 annot5))
+  (H_EV_Enum : forall (enum5:enum), forall (annot5:annot), P_exp_val (EV_Enum enum5 annot5))
+  (H_EV_Unop : forall (unop5:unop), forall (exp_val5:exp_val), P_exp_val exp_val5 -> forall (annot5:annot), P_exp_val (EV_Unop unop5 exp_val5 annot5))
+  (H_EV_Binop : forall (binop5:binop), forall (exp_val1:exp_val), P_exp_val exp_val1 -> forall (exp_val2:exp_val), P_exp_val exp_val2 -> forall (annot5:annot), P_exp_val (EV_Binop binop5 exp_val1 exp_val2 annot5))
+  (H_EV_Manyop : forall (exp_val_list:list exp_val), P_list_exp_val exp_val_list -> forall (manyop5:manyop), forall (annot5:annot), P_exp_val (EV_Manyop manyop5 exp_val_list annot5))
+  (H_EV_Ite : forall (exp_val1:exp_val), P_exp_val exp_val1 -> forall (exp_val2:exp_val), P_exp_val exp_val2 -> forall (exp_val3:exp_val), P_exp_val exp_val3 -> forall (annot5:annot), P_exp_val (EV_Ite exp_val1 exp_val2 exp_val3 annot5))
+  (H_list_exp_val_nil : P_list_exp_val nil)
+  (H_list_exp_val_cons : forall (exp_val0:exp_val), P_exp_val exp_val0 -> forall (exp_val_l:list exp_val), P_list_exp_val exp_val_l -> P_list_exp_val (cons exp_val0 exp_val_l)).
+
+Fixpoint exp_val_ott_ind (n:exp_val) : P_exp_val n :=
+  match n as x return P_exp_val x with
+  | (EV_Bits bv5 annot5) => H_EV_Bits bv5 annot5
+  | (EV_Bool bool5 annot5) => H_EV_Bool bool5 annot5
+  | (EV_Enum enum5 annot5) => H_EV_Enum enum5 annot5
+  | (EV_Unop unop5 exp_val5 annot5) => H_EV_Unop unop5 exp_val5 (exp_val_ott_ind exp_val5) annot5
+  | (EV_Binop binop5 exp_val1 exp_val2 annot5) => H_EV_Binop binop5 exp_val1 (exp_val_ott_ind exp_val1) exp_val2 (exp_val_ott_ind exp_val2) annot5
+  | (EV_Manyop manyop5 exp_val_list annot5) => H_EV_Manyop exp_val_list (((fix exp_val_list_ott_ind (exp_val_l:list exp_val) : P_list_exp_val exp_val_l := match exp_val_l as x return P_list_exp_val x with nil => H_list_exp_val_nil | cons exp_val1 xl => H_list_exp_val_cons exp_val1(exp_val_ott_ind exp_val1)xl (exp_val_list_ott_ind xl) end)) exp_val_list) manyop5 annot5
+  | (EV_Ite exp_val1 exp_val2 exp_val3 annot5) => H_EV_Ite exp_val1 (exp_val_ott_ind exp_val1) exp_val2 (exp_val_ott_ind exp_val2) exp_val3 (exp_val_ott_ind exp_val3) annot5
+end.
+
+End exp_val_rect.
 
 
