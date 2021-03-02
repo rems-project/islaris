@@ -4,6 +4,8 @@
 # (https://github.com/coq/coq/issues/6294).
 -arg -w -arg -redundant-canonical-projection
 
+INSTALLDEFAULTROOT = isla # silence multiple roots warning
+
 -Q theories isla
 -Q refframe refframe
 
