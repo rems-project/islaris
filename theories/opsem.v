@@ -80,13 +80,13 @@ Fixpoint eval_exp (e : exp) : option valu :=
     end
   end.
 
-Inductive label : Set :=
+Inductive trace_label : Set :=
 | LReadReg (r : register_name) (al : accessor_list) (v : valu)
 | LWriteReg (r : register_name) (al : accessor_list) (v : valu)
 | LDone (next : trc)
 .
 
-Inductive trace_step : trc → option label → trc → Prop :=
+Inductive trace_step : trc → option trace_label → trc → Prop :=
 | DeclareConstS x v ty ann es:
     trace_step (Smt (DeclareConst x ty) ann :: es) None (subst_event x v <$> es)
 | DefineConstS x e v ann es:
@@ -109,6 +109,9 @@ Definition is_local_register (r : register_name) : bool :=
 (* TODO: define this as something sensible, e.g. PC + R registers *)
   true.
 
+Definition next_pc (regs : gmap register_name valu) : (addr * gmap register_name valu).
+Admitted.
+
 Record seq_state := {
   seq_trace  : trc;
   seq_regs   : gmap register_name valu;
@@ -116,22 +119,35 @@ Record seq_state := {
 }.
 Instance eta_seq_state : Settable _ := settable! Build_seq_state <seq_trace; seq_regs; seq_instrs>.
 
-Inductive seq_step : seq_state → option label → seq_state → Prop :=
+Inductive seq_label : Set :=
+| SReadReg (r : register_name) (al : accessor_list) (v : valu)
+| SWriteReg (r : register_name) (al : accessor_list) (v : valu)
+| SInstrTrap (pc : addr)
+.
+
+Inductive seq_step : seq_state → option seq_label → seq_state → Prop :=
 | SeqNone σ t':
     trace_step σ.(seq_trace) None t' →
     seq_step σ None (σ <| seq_trace := t'|>)
 | SeqReadReg σ t' al r v:
     trace_step σ.(seq_trace) (Some (LReadReg r al v)) t' →
     (if is_local_register r then σ.(seq_regs) !! r = Some v else True) →
-    seq_step σ (if is_local_register r then None else (Some (LReadReg r al v))) (σ <| seq_trace := t'|>)
+    seq_step σ (if is_local_register r then None else (Some (SReadReg r al v))) (σ <| seq_trace := t'|>)
 | SeqWriteReg σ t' al r v regs':
     trace_step σ.(seq_trace) (Some (LWriteReg r al v)) t' →
     regs' = (if is_local_register r then <[ r := v]> σ.(seq_regs) else σ.(seq_regs)) →
     seq_step σ
-             (if is_local_register r then None else (Some (LWriteReg r al v)))
+             (if is_local_register r then None else (Some (SWriteReg r al v)))
              (σ <| seq_trace := t'|> <| seq_regs := regs'|>)
-| SeqNextInstr σ t' es:
+| SeqNextInstr σ t' es regs' pc trcs:
     trace_step σ.(seq_trace) (Some (LDone es)) t' →
-    (* TODO: make sure that es is one of the traces stored at pc *)
-    seq_step σ None (σ <| seq_trace := t'|>)
+    next_pc σ.(seq_regs) = (pc, regs') →
+    σ.(seq_instrs) !! pc = Some trcs →
+    es ∈ trcs →
+    seq_step σ None (σ <| seq_trace := t'|> <| seq_regs := regs' |>)
+| SeqNextInstrTrap σ t' es regs' pc:
+    trace_step σ.(seq_trace) (Some (LDone es)) t' →
+    next_pc σ.(seq_regs) = (pc, regs') →
+    σ.(seq_instrs) !! pc = None →
+    seq_step σ (Some (SInstrTrap pc)) (σ <| seq_trace := t'|> <| seq_regs := regs' |>)
 .
