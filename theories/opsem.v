@@ -136,12 +136,13 @@ Instance reg_map_empty : Empty reg_map := {|
   R0 := Val_Poison;
   R30 := Val_Poison;
 |}.
-Definition register_name_to_accessor (n : register_name) : option ((reg_map → valu) * (reg_map → valu → reg_map)) :=
+Instance eta_regmap : Settable _ := settable! Build_reg_map <_PC; __PC_changed; R0; R30>.
+Definition register_name_to_accessor (n : register_name) : option ((reg_map → valu) * (valu → reg_map → reg_map)) :=
   match n with
-  | "_PC" => Some (_PC, λ m x, {| _PC := x; __PC_changed := m.(__PC_changed); R0 := m.(R0); R30 := m.(R30) |})
-  | "__PC_changed" => Some (__PC_changed, λ m x, {| _PC := m.(_PC); __PC_changed := x; R0 := m.(R0); R30 := m.(R30) |})
-  | "R0" => Some (R0, λ m x, {| _PC := m.(_PC); __PC_changed := m.(__PC_changed); R0 := x; R30 := m.(R30) |})
-  | "R30" => Some (R30, λ m x, {| _PC := m.(_PC); __PC_changed := m.(__PC_changed); R0 := m.(R0); R30 := x |})
+  | "_PC" => Some (_PC, λ v, set _PC (λ _, v))
+  | "__PC_changed" => Some (__PC_changed, λ v, set __PC_changed (λ _, v))
+  | "R0" => Some (R0, λ v, set R0 (λ _, v))
+  | "R30" => Some (R30, λ v, set R30 (λ _, v))
   | _ => None
   end.
 Arguments register_name_to_accessor : simpl nomatch.
@@ -154,10 +155,10 @@ Instance lookup_regmap : Lookup register_name valu reg_map :=
 Instance insert_regmap : Insert register_name valu reg_map :=
   λ k a m,
   match register_name_to_accessor k with
-  | Some (_, w) => w m a
+  | Some (_, w) => w a m
   | None => m
   end.
-
+Arguments insert_regmap _ _ !_ /.
 
 Definition is_local_register (r : register_name) : bool :=
   match register_name_to_accessor r with

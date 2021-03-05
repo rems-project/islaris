@@ -130,12 +130,12 @@ trace
   (write-reg |R28| nil v3450))
 
 *)
-Definition trc_mov_x28_x0 : trc := [
+Definition trc_mov_OUT_x0 : trc := [
   Smt (DeclareConst 3368 (Ty_BitVec 64)) Mk_annot;
   Smt (DefineConst 3369 (Val (Val_Symbolic 3368) Mk_annot)) Mk_annot;
   ReadReg "R0" nil (Val_Symbolic 3369) Mk_annot;
   Smt (DefineConst 3450 (Manyop (Bvmanyarith Bvor) [Val (Val_Bits 0x0000000000000000) Mk_annot; Val (Val_Symbolic 3369) Mk_annot] Mk_annot)) Mk_annot;
-  WriteReg "R28" nil (Val_Symbolic 3450) Mk_annot
+  WriteReg "OUT" nil (Val_Symbolic 3450) Mk_annot
 ].
 
 Definition test_state := {|
@@ -146,13 +146,11 @@ Definition test_state := {|
      ∅;
   seq_instrs :=
     <[0x0000000010300000 := [trc_bl_0x100]]> $
-    <[0x0000000010300004 := [trc_mov_x28_x0]]> $
+    <[0x0000000010300004 := [trc_mov_OUT_x0]]> $
     <[0x0000000010300100 := [trc_mov_w0_0]]> $
     <[0x0000000010300104 := [trc_ret]]> $
     ∅
 |}.
-
-Arguments insert_regmap _ _ _ /.
 
 Ltac do_seq_step :=
   apply: TraceStep'; [ econstructor; [solve_trace_step| done] | done |]; simpl.
@@ -161,10 +159,8 @@ Ltac do_seq_step_jmp :=
   apply: TraceStep'; [ econstructor; [solve_trace_step| ];
                        eexists _, _; repeat (split; first done); vm_compute; split => //; left | done |]; simpl.
 
-Arguments set _ _ _ _ _ _ /.
-
 Lemma test_state_trace :
-  test_state ~{ seq_module, [Vis (SWriteReg "R28" [] (Val_Bits 0)) ] }~> -.
+  test_state ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits 0)) ] }~> -.
 Proof.
   eexists _.
   do_seq_step_jmp.

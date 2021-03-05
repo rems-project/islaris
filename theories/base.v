@@ -10,3 +10,5 @@ Global Set Default Proof Using "Type".
 Global Unset Program Cases.
 Global Set Keyed Unification.
 Global Set Default Goal Selector "!".
+
+Arguments set _ _ _ _ _ !_ /.
