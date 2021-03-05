@@ -164,7 +164,7 @@ Ltac do_seq_step_jmp :=
 Arguments set _ _ _ _ _ _ /.
 
 Lemma test_state_trace :
-  test_state ~{ seq_module test_state, [Vis (SWriteReg "R28" [] (Val_Bits 0)) ] }~> -.
+  test_state ~{ seq_module, [Vis (SWriteReg "R28" [] (Val_Bits 0)) ] }~> -.
 Proof.
   eexists _.
   do_seq_step_jmp.

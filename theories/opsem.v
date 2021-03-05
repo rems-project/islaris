@@ -118,7 +118,6 @@ Inductive trace_step : trc → option trace_label → trc → Prop :=
 
 Definition trace_module : module trace_label := {|
   m_state := trc;
-  m_initial := [];
   m_step := trace_step;
   m_is_ub _ := False;
 |}.
@@ -219,9 +218,8 @@ Inductive seq_step : seq_state → option seq_label → seq_state → Prop :=
      seq_step σ κ' σ'
 .
 
-Definition seq_module (init : seq_state) : module seq_label := {|
+Definition seq_module  : module seq_label := {|
   m_state := _;
-  m_initial := init;
   m_step := seq_step;
   m_is_ub _ := False;
 |}.
