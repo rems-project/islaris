@@ -68,6 +68,7 @@ Definition eval_binop (b : binop) (v1 v2 : valu) : option valu :=
 Definition eval_manyop (m : manyop) (vs : list valu) : option valu :=
   match m with
   | Bvmanyarith Bvadd => (λ ns, Val_Bits (foldl Z.add 0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs)
+  | Bvmanyarith Bvor => (λ ns, Val_Bits (foldl Z.lor 0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs)
   | _ => (* TODO: other cases *) None
   end.
 
@@ -90,12 +91,15 @@ Fixpoint eval_exp (e : exp) : option valu :=
 Inductive trace_label : Set :=
 | LReadReg (r : register_name) (al : accessor_list) (v : valu)
 | LWriteReg (r : register_name) (al : accessor_list) (v : valu)
+| LBranchAddress (v : valu)
 | LDone (next : trc)
 .
 
 Inductive trace_step : trc → option trace_label → trc → Prop :=
-| DeclareConstS v x ty ann es:
-    trace_step (Smt (DeclareConst x ty) ann :: es) None (subst_event x v <$> es)
+| DeclareConstBitVecS x n ann es b:
+    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) None (subst_event x (Val_Bits n) <$> es)
+| DeclareConstBoolS x ann es b:
+    trace_step (Smt (DeclareConst x Ty_Bool) ann :: es) None (subst_event x (Val_Bool b) <$> es)
 | DefineConstS x e v ann es:
     eval_exp e = Some v ->
     trace_step (Smt (DefineConst x e) ann :: es) None (subst_event x v <$> es)
@@ -106,6 +110,8 @@ Inductive trace_step : trc → option trace_label → trc → Prop :=
     trace_step (ReadReg r al v ann :: es) (Some (LReadReg r al v)) es
 | WriteRegS r al v ann es:
     trace_step (WriteReg r al v ann :: es) (Some (LWriteReg r al v)) es
+| BranchAddressS v ann es:
+    trace_step (BranchAddress v ann :: es) (Some (LBranchAddress v)) es
 | DoneES es:
     trace_step [] (Some (LDone es)) es
 .
@@ -119,17 +125,59 @@ Definition trace_module : module trace_label := {|
 
 
 Definition addr := Z.
+Record reg_map := {
+  _PC : valu;
+  __PC_changed : valu;
+  R0 : valu;
+  R30 : valu;
+}.
+Instance reg_map_empty : Empty reg_map := {|
+  _PC := Val_Poison;
+  __PC_changed := Val_Poison;
+  R0 := Val_Poison;
+  R30 := Val_Poison;
+|}.
+Definition register_name_to_accessor (n : register_name) : option ((reg_map → valu) * (reg_map → valu → reg_map)) :=
+  match n with
+  | "_PC" => Some (_PC, λ m x, {| _PC := x; __PC_changed := m.(__PC_changed); R0 := m.(R0); R30 := m.(R30) |})
+  | "__PC_changed" => Some (__PC_changed, λ m x, {| _PC := m.(_PC); __PC_changed := x; R0 := m.(R0); R30 := m.(R30) |})
+  | "R0" => Some (R0, λ m x, {| _PC := m.(_PC); __PC_changed := m.(__PC_changed); R0 := x; R30 := m.(R30) |})
+  | "R30" => Some (R30, λ m x, {| _PC := m.(_PC); __PC_changed := m.(__PC_changed); R0 := m.(R0); R30 := x |})
+  | _ => None
+  end.
+Arguments register_name_to_accessor : simpl nomatch.
+Instance lookup_regmap : Lookup register_name valu reg_map :=
+  λ k m,
+  match register_name_to_accessor k with
+  | Some (r,_) => Some (r m)
+  | None => None
+  end.
+Instance insert_regmap : Insert register_name valu reg_map :=
+  λ k a m,
+  match register_name_to_accessor k with
+  | Some (_, w) => w m a
+  | None => m
+  end.
+
 
 Definition is_local_register (r : register_name) : bool :=
-(* TODO: define this as something sensible, e.g. PC + R registers *)
-  true.
+  match register_name_to_accessor r with
+  | Some _ => true
+  | None => false
+  end.
 
-Definition next_pc (regs : gmap register_name valu) : (addr * gmap register_name valu).
-Admitted.
+Definition next_pc (regs : reg_map) : option (addr * reg_map) :=
+  a ← regs !! "_PC";
+  an ← if a is Val_Bits n then Some n else None;
+  c ← regs !! "__PC_changed";
+  cb ← if c is Val_Bool b then Some b else None;
+  let new_pc := (if cb then an else an + 0x4) in
+  Some (new_pc, <["_PC" := Val_Bits new_pc]> $ <["__PC_changed" := Val_Bool false]> regs).
+
 
 Record seq_state := {
   seq_trace  : trc;
-  seq_regs   : gmap register_name valu;
+  seq_regs   : reg_map;
   seq_instrs : gmap addr (list trc);
 }.
 Instance eta_seq_state : Settable _ := settable! Build_seq_state <seq_trace; seq_regs; seq_instrs>.
@@ -141,28 +189,39 @@ Inductive seq_label : Set :=
 .
 
 Inductive seq_step : seq_state → option seq_label → seq_state → Prop :=
-| SeqNone σ t':
-    trace_step σ.(seq_trace) None t' →
-    seq_step σ None (σ <| seq_trace := t'|>)
-| SeqReadReg σ t' al r v:
-    trace_step σ.(seq_trace) (Some (LReadReg r al v)) t' →
-    (if is_local_register r then σ.(seq_regs) !! r = Some v else True) →
-    seq_step σ (if is_local_register r then None else (Some (SReadReg r al v))) (σ <| seq_trace := t'|>)
-| SeqWriteReg σ t' al r v regs':
-    trace_step σ.(seq_trace) (Some (LWriteReg r al v)) t' →
-    regs' = (if is_local_register r then <[ r := v]> σ.(seq_regs) else σ.(seq_regs)) →
-    seq_step σ
-             (if is_local_register r then None else (Some (SWriteReg r al v)))
-             (σ <| seq_trace := t'|> <| seq_regs := regs'|>)
-| SeqNextInstr σ t' es regs' pc trcs:
-    trace_step σ.(seq_trace) (Some (LDone es)) t' →
-    next_pc σ.(seq_regs) = (pc, regs') →
-    σ.(seq_instrs) !! pc = Some trcs →
-    es ∈ trcs →
-    seq_step σ None (σ <| seq_trace := t'|> <| seq_regs := regs' |>)
-| SeqNextInstrTrap σ t' es regs' pc:
-    trace_step σ.(seq_trace) (Some (LDone es)) t' →
-    next_pc σ.(seq_regs) = (pc, regs') →
-    σ.(seq_instrs) !! pc = None →
-    seq_step σ (Some (SInstrTrap pc)) (σ <| seq_trace := t'|> <| seq_regs := regs' |>)
+| SeqStep σ κ t' κ' σ':
+    trace_step σ.(seq_trace) κ t' →
+    match κ with
+    | None => κ' = None ∧ σ' = σ <| seq_trace := t'|>
+    | Some (LReadReg r al v) =>
+      σ' = σ <| seq_trace := t'|> ∧
+      if is_local_register r then
+        σ.(seq_regs) !! r = Some v ∧
+        κ' = None
+      else
+        κ' = Some (SReadReg r al v)
+    | Some (LWriteReg r al v) =>
+      if is_local_register r then
+        σ' = σ <| seq_trace := t'|> <| seq_regs := <[r := v]> σ.(seq_regs)|> ∧
+        κ' = None
+      else
+        σ' = σ <| seq_trace := t'|> ∧
+        κ' = Some (SWriteReg r al v)
+    | Some (LBranchAddress _) => κ' = None ∧ σ' = σ <| seq_trace := t'|>
+    | Some (LDone es) =>
+      ∃ pc regs', next_pc σ.(seq_regs) = Some (pc, regs') ∧
+      σ' = σ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
+      match σ.(seq_instrs) !! pc with
+      | Some trcs => es ∈ trcs ∧ κ' = None
+      | None => κ' = Some (SInstrTrap pc)
+      end
+     end →
+     seq_step σ κ' σ'
 .
+
+Definition seq_module (init : seq_state) : module seq_label := {|
+  m_state := _;
+  m_initial := init;
+  m_step := seq_step;
+  m_is_ub _ := False;
+|}.
