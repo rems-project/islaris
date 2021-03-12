@@ -128,20 +128,23 @@ Record reg_map := {
   _PC : valu;
   __PC_changed : valu;
   R0 : valu;
+  R1 : valu;
   R30 : valu;
 }.
 Instance reg_map_empty : Empty reg_map := {|
   _PC := Val_Poison;
   __PC_changed := Val_Poison;
   R0 := Val_Poison;
+  R1 := Val_Poison;
   R30 := Val_Poison;
 |}.
-Instance eta_regmap : Settable _ := settable! Build_reg_map <_PC; __PC_changed; R0; R30>.
+Instance eta_regmap : Settable _ := settable! Build_reg_map <_PC; __PC_changed; R0; R1; R30>.
 Definition register_name_to_accessor (n : register_name) : option ((reg_map → valu) * (valu → reg_map → reg_map)) :=
   match n with
   | "_PC" => Some (_PC, λ v, set _PC (λ _, v))
   | "__PC_changed" => Some (__PC_changed, λ v, set __PC_changed (λ _, v))
   | "R0" => Some (R0, λ v, set R0 (λ _, v))
+  | "R1" => Some (R1, λ v, set R1 (λ _, v))
   | "R30" => Some (R30, λ v, set R30 (λ _, v))
   | _ => None
   end.

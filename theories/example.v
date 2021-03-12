@@ -90,6 +90,10 @@ Definition trc_mov_w0_0 : trc := [
    WriteReg "R0" [] (Val_Bits 0x0000000000000000) Mk_annot
   ].
 
+Definition trc_mov_x0_1 : trc := [
+   WriteReg "R0" [] (Val_Bits 0x0000000000000001) Mk_annot
+  ].
+
 Definition trc_ret : trc := [
   Smt (DeclareConst 3428 (Ty_BitVec 64)) Mk_annot;
   Smt (DefineConst 3429 (Val (Val_Symbolic 3428) Mk_annot)) Mk_annot;
@@ -145,10 +149,10 @@ Definition test_state := {|
     <[ "__PC_changed" := Val_Bool false ]> $
      ∅;
   seq_instrs :=
-    <[0x0000000010300000 := [trc_bl_0x100]]> $
-    <[0x0000000010300004 := [trc_mov_OUT_x0]]> $
-    <[0x0000000010300100 := [trc_mov_w0_0]]> $
-    <[0x0000000010300104 := [trc_ret]]> $
+    <[0x0000000010300000 := [trc_bl_0x100]]> $   (* bl 0x100: (at address 0x0000000010300000 *)
+    <[0x0000000010300004 := [trc_mov_OUT_x0]]> $ (* mov OUT, x0 *)
+    <[0x0000000010300100 := [trc_mov_w0_0]]> $   (* mov w0, 0 *)
+    <[0x0000000010300104 := [trc_ret]]> $        (* ret *)
     ∅
 |}.
 
@@ -190,3 +194,148 @@ Proof.
   do_seq_step.
   apply: TraceEnd.
 Qed.
+
+
+(* trace of cmp x1, 0:
+  (declare-const v3370 (_ BitVec 64))
+  (define-const v3371 v3370)
+  (read-reg |R1| nil v3371)
+  (define-const v3435 v3371)
+  (define-const v3440 (bvadd (bvadd ((_ zero_extend 64) v3435) #x0000000000000000ffffffffffffffff) #x00000000000000000000000000000001))
+  (define-const v3444 ((_ extract 63 0) v3440))
+  (define-const v3457 (concat (concat (concat (bvor (bvand #b0 (bvnot #b1)) ((_ extract 0 0) (bvlshr v3444 ((_ extract 63 0) #x0000000000000000000000000000003f)))) (ite (= v3444 #x0000000000000000) #b1 #b0)) (ite (= ((_ zero_extend 64) v3444) v3440) #b0 #b1)) (ite (= ((_ sign_extend 64) v3444) (bvadd (bvadd ((_ sign_extend 64) v3435) #xffffffffffffffffffffffffffffffff) #x00000000000000000000000000000001)) #b0 #b1)))
+  (define-const v3459 ((_ extract 3 3) v3457))
+  (* TODO: Why is there the whole struct? Are we only interested in the |N| field? *)
+  (read-reg |PSTATE| ((_ field |N|)) (_ struct (|GE| v27) (|F| #b1) (|UAO| v23) (|C| v20) (|SP| #b1) (|N| v29) (|Q| v21) (|A| #b1) (|SS| #b0) (|E| v33) (|TCO| v13) (|I| #b1) (|PAN| v35) (|M| v12) (|D| #b1) (|nRW| #b0) (|EL| #b00) (|IT| v31) (|IL| #b0) (|Z| v15) (|BTYPE| v19) (|SSBS| v28) (|T| v16) (|J| v32) (|V| v25) (|DIT| #b0)))
+  (write-reg |PSTATE| ((_ field |N|)) (_ struct (|GE| v27) (|F| #b1) (|UAO| v23) (|C| v20) (|SP| #b1) (|N| v3459) (|Q| v21) (|A| #b1) (|SS| #b0) (|E| v33) (|TCO| v13) (|I| #b1) (|PAN| v35) (|M| v12) (|D| #b1) (|nRW| #b0) (|EL| #b00) (|IT| v31) (|IL| #b0) (|Z| v15) (|BTYPE| v19) (|SSBS| v28) (|T| v16) (|J| v32) (|V| v25) (|DIT| #b0)))
+  (define-const v3460 ((_ extract 2 2) v3457))
+  (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|GE| v27) (|F| #b1) (|UAO| v23) (|C| v20) (|SP| #b1) (|N| v3459) (|Q| v21) (|A| #b1) (|SS| #b0) (|E| v33) (|TCO| v13) (|I| #b1) (|PAN| v35) (|M| v12) (|D| #b1) (|nRW| #b0) (|EL| #b00) (|IT| v31) (|IL| #b0) (|Z| v15) (|BTYPE| v19) (|SSBS| v28) (|T| v16) (|J| v32) (|V| v25) (|DIT| #b0)))
+  (write-reg |PSTATE| ((_ field |Z|)) (_ struct (|GE| v27) (|F| #b1) (|UAO| v23) (|C| v20) (|SP| #b1) (|N| v3459) (|Q| v21) (|A| #b1) (|SS| #b0) (|E| v33) (|TCO| v13) (|I| #b1) (|PAN| v35) (|M| v12) (|D| #b1) (|nRW| #b0) (|EL| #b00) (|IT| v31) (|IL| #b0) (|Z| v3460) (|BTYPE| v19) (|SSBS| v28) (|T| v16) (|J| v32) (|V| v25) (|DIT| #b0)))
+  (define-const v3461 ((_ extract 1 1) v3457))
+  (read-reg |PSTATE| ((_ field |C|)) (_ struct (|GE| v27) (|F| #b1) (|UAO| v23) (|C| v20) (|SP| #b1) (|N| v3459) (|Q| v21) (|A| #b1) (|SS| #b0) (|E| v33) (|TCO| v13) (|I| #b1) (|PAN| v35) (|M| v12) (|D| #b1) (|nRW| #b0) (|EL| #b00) (|IT| v31) (|IL| #b0) (|Z| v3460) (|BTYPE| v19) (|SSBS| v28) (|T| v16) (|J| v32) (|V| v25) (|DIT| #b0)))
+  (write-reg |PSTATE| ((_ field |C|)) (_ struct (|GE| v27) (|F| #b1) (|UAO| v23) (|C| v3461) (|SP| #b1) (|N| v3459) (|Q| v21) (|A| #b1) (|SS| #b0) (|E| v33) (|TCO| v13) (|I| #b1) (|PAN| v35) (|M| v12) (|D| #b1) (|nRW| #b0) (|EL| #b00) (|IT| v31) (|IL| #b0) (|Z| v3460) (|BTYPE| v19) (|SSBS| v28) (|T| v16) (|J| v32) (|V| v25) (|DIT| #b0)))
+  (define-const v3462 ((_ extract 0 0) v3457))
+  (read-reg |PSTATE| ((_ field |V|)) (_ struct (|GE| v27) (|F| #b1) (|UAO| v23) (|C| v3461) (|SP| #b1) (|N| v3459) (|Q| v21) (|A| #b1) (|SS| #b0) (|E| v33) (|TCO| v13) (|I| #b1) (|PAN| v35) (|M| v12) (|D| #b1) (|nRW| #b0) (|EL| #b00) (|IT| v31) (|IL| #b0) (|Z| v3460) (|BTYPE| v19) (|SSBS| v28) (|T| v16) (|J| v32) (|V| v25) (|DIT| #b0)))
+  (write-reg |PSTATE| ((_ field |V|)) (_ struct (|GE| v27) (|F| #b1) (|UAO| v23) (|C| v3461) (|SP| #b1) (|N| v3459) (|Q| v21) (|A| #b1) (|SS| #b0) (|E| v33) (|TCO| v13) (|I| #b1) (|PAN| v35) (|M| v12) (|D| #b1) (|nRW| #b0) (|EL| #b00) (|IT| v31) (|IL| #b0) (|Z| v3460) (|BTYPE| v19) (|SSBS| v28) (|T| v16) (|J| v32) (|V| v3462) (|DIT| #b0))))
+*)
+Definition trc_cmp_x1_0 : trc := [
+(* TODO *)
+].
+
+(* trace of bne 0xc: (at address 0x0000000010300004)
+  (* TODO: Can we somehoe merge the common parts of the two traces? *)
+
+(trace
+  (declare-const v12 (_ BitVec 4))
+  (declare-const v14 (_ BitVec 1))
+  (declare-const v15 (_ BitVec 1))
+  (declare-const v16 (_ BitVec 5))
+  (declare-const v17 (_ BitVec 1))
+  (declare-const v20 (_ BitVec 1))
+  (declare-const v24 (_ BitVec 2))
+  (declare-const v25 (_ BitVec 1))
+  (declare-const v27 (_ BitVec 1))
+  (declare-const v28 (_ BitVec 8))
+  (declare-const v29 (_ BitVec 1))
+  (declare-const v30 (_ BitVec 1))
+  (declare-const v31 (_ BitVec 1))
+  (declare-const v32 (_ BitVec 1))
+  (declare-const v33 (_ BitVec 1))
+  (declare-const v35 (_ BitVec 1))
+  (declare-const v114 (_ BitVec 32))
+  (define-const v2091 (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand v114 #xffefffff) #x00000000) #xfff7ffff) #x00000000) #xffff7fff) #x00000000) #xffffffbf) #x00000000) #xffffffcf) #x00000010) #xfffbffff) #x00000000) #xfffdffff) #x00000000) #xfffeffff) #x00000000) #xffff7fff) #x00000000) #xffffbfff) #x00000000) #xffffdfff) #x00000000) #xffffefff) #x00000000) #xfffff7ff) #x00000000) #xfffffbff) #x00000000) #xfffffdff) #x00000000) #xfffffeff) #x00000000) #xffffff7f) #x00000000) #xfffffff7) #x00000000) #xfffffffb) #x00000000) #xfffffffd) #x00000000) #xfffffffe) #x00000000))
+  (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
+  (define-const v3435 (not (= v35 #b1)))
+  (branch 0 "model/aarch64.sail 12127:4 - 12129:5")
+  (assert v3435)
+  (read-reg |_PC| nil #x0000000010300004)
+  (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
+  (branch-address #x000000001030010c)
+  (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
+  (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
+  (read-reg |SCR_EL3| nil v2091)
+  (assert (not (not (= (bvor (bvand #b0 (bvnot #b1)) ((_ extract 0 0) (bvlshr v2091 ((_ extract 31 0) #x00000000000000000000000000000000)))) #b0))))
+  (read-reg |SCR_EL3| nil v2091)
+  (write-reg |_PC| nil #x0000000010300010)
+  (write-reg |__PC_changed| nil true))
+(trace
+  (declare-const v12 (_ BitVec 4))
+  (declare-const v14 (_ BitVec 1))
+  (declare-const v15 (_ BitVec 1))
+  (declare-const v16 (_ BitVec 5))
+  (declare-const v17 (_ BitVec 1))
+  (declare-const v20 (_ BitVec 1))
+  (declare-const v24 (_ BitVec 2))
+  (declare-const v25 (_ BitVec 1))
+  (declare-const v27 (_ BitVec 1))
+  (declare-const v28 (_ BitVec 8))
+  (declare-const v29 (_ BitVec 1))
+  (declare-const v30 (_ BitVec 1))
+  (declare-const v31 (_ BitVec 1))
+  (declare-const v32 (_ BitVec 1))
+  (declare-const v33 (_ BitVec 1))
+  (declare-const v35 (_ BitVec 1))
+  (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
+  (define-const v3435 (not (= v35 #b1)))
+  (branch 0 "model/aarch64.sail 12127:4 - 12129:5")
+  (assert (not v3435)))
+
+*)
+Definition trc_bne_0xc : list trc := [
+(* TODO *)
+].
+
+(* trace of b 0x8: (at 0x000000001030000c)
+  (read-reg |_PC| nil #x000000001030000c)
+  (branch-address #x0000000010300014)
+  (write-reg |_PC| nil #x0000000010300014)
+  (write-reg |__PC_changed| nil true))
+*)
+Definition trc_b_0x8 : trc := [
+  ReadReg "_PC" nil (Val_Bits 0x000000001030000c) Mk_annot;
+  BranchAddress (Val_Bits 0x0000000010300014) Mk_annot;
+  WriteReg "_PC" nil (Val_Bits 0x0000000010300014) Mk_annot;
+  WriteReg "__PC_changed" nil (Val_Bool true) Mk_annot
+].
+
+(*
+0x0000000010300000: cmp x1, 0
+0x0000000010300004: bne 0xc  --\
+0x0000000010300008: mov x0, 1  |
+0x000000001030000c: b   0x8    |
+0x0000000010300010: bl  0x100<-/
+0x0000000010300014: mov OUT, x0
+
+
+0x0000000010300110: mov x0, 0
+0x0000000010300114: ret
+*)
+
+
+Definition test_state2 (x1 : Z) := {|
+  seq_trace  := [];
+  seq_regs   :=
+    <[ "R1" := Val_Bits x1 ]> $
+    <[ "_PC" := Val_Bits (0x0000000010300000 - 0x4) ]> $
+    <[ "__PC_changed" := Val_Bool false ]> $
+     ∅;
+  seq_instrs :=
+    <[0x0000000010300000 := [trc_cmp_x1_0]]> $
+    <[0x0000000010300004 := trc_bne_0xc ]> $
+    <[0x0000000010300008 := [trc_mov_x0_1]]> $
+    <[0x000000001030000c := [trc_b_0x8]]> $
+    <[0x0000000010300010 := [trc_bl_0x100]]> $
+    <[0x0000000010300014 := [trc_mov_OUT_x0]]> $
+
+    <[0x0000000010300110 := [trc_mov_w0_0]]> $
+    <[0x0000000010300114 := [trc_ret]]> $
+    ∅
+|}.
+
+Lemma test_state2_trace x1 :
+  test_state2 x1 ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits 0)) ] }~> -.
+Proof.
+  eexists _.
+  do_seq_step_jmp.
+  (* do_seq_step. *)
+Abort.
