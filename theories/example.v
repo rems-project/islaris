@@ -132,7 +132,6 @@ trace
   (read-reg |R0| nil v3369)
   (define-const v3450 (bvor #x0000000000000000 v3369))
   (write-reg |R28| nil v3450))
-
 *)
 Definition trc_mov_OUT_x0 : trc := [
   Smt (DeclareConst 3368 (Ty_BitVec 64)) Mk_annot;
@@ -205,7 +204,7 @@ Qed.
   (define-const v3444 ((_ extract 63 0) v3440))
   (define-const v3457 (concat (concat (concat (bvor (bvand #b0 (bvnot #b1)) ((_ extract 0 0) (bvlshr v3444 ((_ extract 63 0) #x0000000000000000000000000000003f)))) (ite (= v3444 #x0000000000000000) #b1 #b0)) (ite (= ((_ zero_extend 64) v3444) v3440) #b0 #b1)) (ite (= ((_ sign_extend 64) v3444) (bvadd (bvadd ((_ sign_extend 64) v3435) #xffffffffffffffffffffffffffffffff) #x00000000000000000000000000000001)) #b0 #b1)))
   (define-const v3459 ((_ extract 3 3) v3457))
-  (* TODO: Why is there the whole struct? Are we only interested in the |N| field? *)
+  (* TODO: Add support for reading fields to the semantics: everything except the field should be ignored. *)
   (read-reg |PSTATE| ((_ field |N|)) (_ struct (|GE| v27) (|F| #b1) (|UAO| v23) (|C| v20) (|SP| #b1) (|N| v29) (|Q| v21) (|A| #b1) (|SS| #b0) (|E| v33) (|TCO| v13) (|I| #b1) (|PAN| v35) (|M| v12) (|D| #b1) (|nRW| #b0) (|EL| #b00) (|IT| v31) (|IL| #b0) (|Z| v15) (|BTYPE| v19) (|SSBS| v28) (|T| v16) (|J| v32) (|V| v25) (|DIT| #b0)))
   (write-reg |PSTATE| ((_ field |N|)) (_ struct (|GE| v27) (|F| #b1) (|UAO| v23) (|C| v20) (|SP| #b1) (|N| v3459) (|Q| v21) (|A| #b1) (|SS| #b0) (|E| v33) (|TCO| v13) (|I| #b1) (|PAN| v35) (|M| v12) (|D| #b1) (|nRW| #b0) (|EL| #b00) (|IT| v31) (|IL| #b0) (|Z| v15) (|BTYPE| v19) (|SSBS| v28) (|T| v16) (|J| v32) (|V| v25) (|DIT| #b0)))
   (define-const v3460 ((_ extract 2 2) v3457))
@@ -243,19 +242,11 @@ Definition trc_cmp_x1_0 : trc := [
   (declare-const v33 (_ BitVec 1))
   (declare-const v35 (_ BitVec 1))
   (declare-const v114 (_ BitVec 32))
-  (define-const v2091 (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand (bvor (bvand v114 #xffefffff) #x00000000) #xfff7ffff) #x00000000) #xffff7fff) #x00000000) #xffffffbf) #x00000000) #xffffffcf) #x00000010) #xfffbffff) #x00000000) #xfffdffff) #x00000000) #xfffeffff) #x00000000) #xffff7fff) #x00000000) #xffffbfff) #x00000000) #xffffdfff) #x00000000) #xffffefff) #x00000000) #xfffff7ff) #x00000000) #xfffffbff) #x00000000) #xfffffdff) #x00000000) #xfffffeff) #x00000000) #xffffff7f) #x00000000) #xfffffff7) #x00000000) #xfffffffb) #x00000000) #xfffffffd) #x00000000) #xfffffffe) #x00000000))
   (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
   (define-const v3435 (not (= v35 #b1)))
   (branch 0 "model/aarch64.sail 12127:4 - 12129:5")
   (assert v3435)
   (read-reg |_PC| nil #x0000000010300004)
-  (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
-  (branch-address #x000000001030010c)
-  (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
-  (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
-  (read-reg |SCR_EL3| nil v2091)
-  (assert (not (not (= (bvor (bvand #b0 (bvnot #b1)) ((_ extract 0 0) (bvlshr v2091 ((_ extract 31 0) #x00000000000000000000000000000000)))) #b0))))
-  (read-reg |SCR_EL3| nil v2091)
   (write-reg |_PC| nil #x0000000010300010)
   (write-reg |__PC_changed| nil true))
 (trace

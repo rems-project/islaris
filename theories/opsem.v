@@ -188,7 +188,7 @@ Instance eta_seq_state : Settable _ := settable! Build_seq_state <seq_trace; seq
 Inductive seq_label : Set :=
 | SReadReg (r : register_name) (al : accessor_list) (v : valu)
 | SWriteReg (r : register_name) (al : accessor_list) (v : valu)
-| SInstrTrap (pc : addr)
+| SInstrTrap (pc : addr) (regs : reg_map)
 .
 
 Inductive seq_step : seq_state → option seq_label → seq_state → Prop :=
@@ -216,7 +216,7 @@ Inductive seq_step : seq_state → option seq_label → seq_state → Prop :=
       σ' = σ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
       match σ.(seq_instrs) !! pc with
       | Some trcs => es ∈ trcs ∧ κ' = None
-      | None => κ' = Some (SInstrTrap pc)
+      | None => κ' = Some (SInstrTrap pc regs')
       end
      end →
      seq_step σ κ' σ'
