@@ -152,8 +152,7 @@ Definition test_state := {|
     <[0x0000000010300004 := [trc_mov_OUT_x0]]> $ (* mov OUT, x0 *)
     <[0x0000000010300100 := [trc_mov_w0_0]]> $   (* mov w0, 0 *)
     <[0x0000000010300104 := [trc_ret]]> $        (* ret *)
-    ∅;
-  seq_is_ub := false;
+    ∅
 |}.
 
 Ltac do_seq_step :=
@@ -161,7 +160,7 @@ Ltac do_seq_step :=
 
 Ltac do_seq_step_jmp :=
   apply: TraceStep'; [ econstructor; [solve_trace_step| ];
-                       eexists _, _, false; repeat (split; try done); vm_compute; left | done |]; simpl.
+                       eexists _, _; repeat (split; first done); vm_compute; split => //; left | done |]; simpl.
 
 Lemma test_state_trace :
   test_state ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits 0)) ] }~> -.
@@ -330,9 +329,24 @@ Val (Val_Bits 0x00000000000000000000000000000001) Mk_annot
 (* trace of bne 0xc: (at address 0x0000000010300004)
   (* TODO: Can we somehoe merge the common parts of the two traces? *)
 
-
 (trace
-  (declare-const v35 (_ BitVec 32))
+  (declare-const v12 (_ BitVec 4))
+  (declare-const v14 (_ BitVec 1))
+  (declare-const v15 (_ BitVec 1))
+  (declare-const v16 (_ BitVec 5))
+  (declare-const v17 (_ BitVec 1))
+  (declare-const v20 (_ BitVec 1))
+  (declare-const v24 (_ BitVec 2))
+  (declare-const v25 (_ BitVec 1))
+  (declare-const v27 (_ BitVec 1))
+  (declare-const v28 (_ BitVec 8))
+  (declare-const v29 (_ BitVec 1))
+  (declare-const v30 (_ BitVec 1))
+  (declare-const v31 (_ BitVec 1))
+  (declare-const v32 (_ BitVec 1))
+  (declare-const v33 (_ BitVec 1))
+  (declare-const v35 (_ BitVec 1))
+  (declare-const v114 (_ BitVec 32))
   (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
   (define-const v3435 (not (= v35 #b1)))
   (branch 0 "model/aarch64.sail 12127:4 - 12129:5")
@@ -341,7 +355,22 @@ Val (Val_Bits 0x00000000000000000000000000000001) Mk_annot
   (write-reg |_PC| nil #x0000000010300010)
   (write-reg |__PC_changed| nil true))
 (trace
-  (declare-const v35 (_ BitVec 32))
+  (declare-const v12 (_ BitVec 4))
+  (declare-const v14 (_ BitVec 1))
+  (declare-const v15 (_ BitVec 1))
+  (declare-const v16 (_ BitVec 5))
+  (declare-const v17 (_ BitVec 1))
+  (declare-const v20 (_ BitVec 1))
+  (declare-const v24 (_ BitVec 2))
+  (declare-const v25 (_ BitVec 1))
+  (declare-const v27 (_ BitVec 1))
+  (declare-const v28 (_ BitVec 8))
+  (declare-const v29 (_ BitVec 1))
+  (declare-const v30 (_ BitVec 1))
+  (declare-const v31 (_ BitVec 1))
+  (declare-const v32 (_ BitVec 1))
+  (declare-const v33 (_ BitVec 1))
+  (declare-const v35 (_ BitVec 1))
   (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
   (define-const v3435 (not (= v35 #b1)))
   (branch 0 "model/aarch64.sail 12127:4 - 12129:5")
@@ -423,8 +452,7 @@ Definition test_state2 (x1 : Z) := {|
 
     <[0x0000000010300110 := [trc_mov_w0_0]]> $
     <[0x0000000010300114 := [trc_ret]]> $
-    ∅;
-  seq_is_ub := false;
+    ∅
 |}.
 
 Lemma test_state2_trace x1 :

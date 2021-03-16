@@ -181,24 +181,15 @@ Definition next_pc (regs : reg_map) : option (addr * reg_map) :=
 Record seq_state := {
   seq_trace  : trc;
   seq_regs   : reg_map;
-  (* TODO: This assumes that one never writes to instructions in memory. *)
   seq_instrs : gmap addr (list trc);
-  seq_is_ub  : bool;
 }.
-Instance eta_seq_state : Settable _ := settable! Build_seq_state <seq_trace; seq_regs; seq_instrs; seq_is_ub>.
+Instance eta_seq_state : Settable _ := settable! Build_seq_state <seq_trace; seq_regs; seq_instrs>.
 
 Inductive seq_label : Set :=
 | SReadReg (r : register_name) (al : accessor_list) (v : valu)
 | SWriteReg (r : register_name) (al : accessor_list) (v : valu)
 | SInstrTrap (pc : addr) (regs : reg_map)
 .
-
-Definition trace_not_stuck (σ : seq_state) :=
-  (* TODO: define this. This is surprisingly tricky to define. What if
-    there are two traces where one gets stuck and the other completes,
-    but they produce different events? What about concurrent writes to memory?
-    Maybe we should just make the trace a tree and then define stuck as UB. *)
-  True.
 
 Inductive seq_step : seq_state → option seq_label → seq_state → Prop :=
 | SeqStep σ κ t' κ' σ':
@@ -221,13 +212,11 @@ Inductive seq_step : seq_state → option seq_label → seq_state → Prop :=
         κ' = Some (SWriteReg r al v)
     | Some (LBranchAddress _) => κ' = None ∧ σ' = σ <| seq_trace := t'|>
     | Some (LDone es) =>
-      ∃ pc regs' ub, next_pc σ.(seq_regs) = Some (pc, regs') ∧
-      σ' = σ <| seq_trace := t'|> <| seq_regs := regs' |> <| seq_is_ub := ub |> ∧
+      ∃ pc regs', next_pc σ.(seq_regs) = Some (pc, regs') ∧
+      σ' = σ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
       match σ.(seq_instrs) !! pc with
-      | Some trcs =>
-        es ∈ trcs ∧ κ' = None ∧
-        ((∃ e', e' ∈ es ∧ trace_not_stuck (σ <| seq_trace := t'|> <| seq_regs := regs' |>)) → ub = false)
-      | None => κ' = Some (SInstrTrap pc regs') ∧ ub = false
+      | Some trcs => es ∈ trcs ∧ κ' = None
+      | None => κ' = Some (SInstrTrap pc regs')
       end
      end →
      seq_step σ κ' σ'
@@ -236,5 +225,5 @@ Inductive seq_step : seq_state → option seq_label → seq_state → Prop :=
 Definition seq_module  : module seq_label := {|
   m_state := _;
   m_step := seq_step;
-  m_is_ub σ := σ.(seq_is_ub);
+  m_is_ub _ := False;
 |}.
