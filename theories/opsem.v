@@ -222,8 +222,23 @@ Inductive seq_step : seq_state → option seq_label → seq_state → Prop :=
      seq_step σ κ' σ'
 .
 
+Definition seq_module_no_ub  : module seq_label := {|
+  m_state := _;
+  m_step := seq_step;
+  m_is_ub σ := False
+|}.
+
 Definition seq_module  : module seq_label := {|
   m_state := _;
   m_step := seq_step;
-  m_is_ub _ := False;
+  m_is_ub σ :=
+    ∃ es t', trace_step σ.(seq_trace) (Some (LDone es)) t' ∧
+     ∃ σ' pc regs', next_pc σ.(seq_regs) = Some (pc, regs') ∧
+      σ' = σ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
+      match σ.(seq_instrs) !! pc with
+      | Some trcs => ¬ ∃ es κs σ'', es ∈ trcs ∧ σ' <| seq_trace := es |> ~{seq_module_no_ub, κs}~> σ'' ∧ σ''.(seq_trace) = []
+      | None => False
+      end
+
+  ;
 |}.
