@@ -81,7 +81,7 @@ Inductive valu : Set :=
  | Val_NamedUnit (name5:register_name)
  | Val_Vector (_:list valu)
  | Val_List (_:list valu)
- | Val_Struct (_:list register_name * valu)
+ | Val_Struct (_:list (register_name * valu))
  | Val_Poison : valu.
 
 Inductive ty : Set :=
