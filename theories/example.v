@@ -208,14 +208,27 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300104 [trc_ret] -∗
   "_PC" ↦ᵣ Val_Bits start_address -∗
   "__PC_changed" ↦ᵣ Val_Bool false -∗
+  "R30" ↦ᵣ Val_Poison -∗
+  "R0" ↦ᵣ Val_Poison -∗
   WPasm [].
 Proof.
-  iIntros "#Hi1 #Hi2 #Hi3 #Hi4 HPC HcPC".
-  iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [by eexists _; apply elem_of_cons; left|].
-  iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HnPC".
+  iIntros "#Hi1 #Hi2 #Hi3 #Hi4 HPC HcPC HR30 HR0".
+  iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
+  iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
   iEval (rewrite /trc_bl_0x100).
-  iApply (wp_read_reg with "HPC").
-  iIntros (_) "HPC".
+  iApply (wp_read_reg with "HPC"). iIntros (_) "HPC".
+  iApply (wp_write_reg with "HR30"). iIntros "HR3O".
+  iApply (wp_read_reg with "HPC"). iIntros (_) "HPC".
+  iApply (wp_branch_address).
+  iApply (wp_write_reg with "HPC"). iIntros "HPC".
+  iApply (wp_write_reg with "HcPC"). iIntros "HcPC".
+  iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
+  iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
+  iEval (rewrite /trc_mov_w0_0).
+  iApply (wp_write_reg with "HR0"). iIntros "HR0".
+  iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
+  iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
+  iEval (rewrite /trc_ret).
 Abort.
 
 (* trace of cmp x1, 0:
