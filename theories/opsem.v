@@ -1,4 +1,6 @@
 Require Export isla.isla_lang_ext.
+From iris.program_logic Require Export language.
+Open Scope Z_scope.
 
 Fixpoint subst_valu (n : var_name) (z : valu) (v : valu) {struct v} : valu :=
   match v with
@@ -144,14 +146,12 @@ Instance reg_map_empty : Empty reg_map := {|
 |}.
 Instance eta_regmap : Settable _ := settable! Build_reg_map <_PC; __PC_changed; R0; R1; R30>.
 Definition register_name_to_accessor (n : register_name) : option ((reg_map → valu) * (valu → reg_map → reg_map)) :=
-  match n with
-  | "_PC" => Some (_PC, λ v, set _PC (λ _, v))
-  | "__PC_changed" => Some (__PC_changed, λ v, set __PC_changed (λ _, v))
-  | "R0" => Some (R0, λ v, set R0 (λ _, v))
-  | "R1" => Some (R1, λ v, set R1 (λ _, v))
-  | "R30" => Some (R30, λ v, set R30 (λ _, v))
-  | _ => None
-  end.
+  if bool_decide (n = "_PC") then Some (_PC, λ v, set _PC (λ _, v)) else
+  if bool_decide (n = "__PC_changed") then Some (__PC_changed, λ v, set __PC_changed (λ _, v)) else
+  if bool_decide (n = "R0") then Some (R0, λ v, set R0 (λ _, v)) else
+  if bool_decide (n = "R1") then Some (R1, λ v, set R1 (λ _, v)) else
+  if bool_decide (n = "R30") then Some (R30, λ v, set R30 (λ _, v)) else
+  None.
 Arguments register_name_to_accessor : simpl nomatch.
 Instance lookup_regmap : Lookup register_name valu reg_map :=
   λ k m,
@@ -166,6 +166,30 @@ Instance insert_regmap : Insert register_name valu reg_map :=
   | None => m
   end.
 Arguments insert_regmap _ _ !_ /.
+Definition reg_map_to_gmap (regs : reg_map) : gmap string valu :=
+  list_to_map ((λ n, (n, default Val_Poison (regs !! n))) <$> ["_PC"; "__PC_changed"; "R0"; "R1"; "R30"]).
+
+Lemma reg_map_to_gmap_lookup r regs:
+  reg_map_to_gmap regs !! r = regs !! r.
+Proof.
+  rewrite {2}/lookup/lookup_regmap/=/register_name_to_accessor.
+  repeat (case_bool_decide; subst; [ done|]).
+  by rewrite ?lookup_insert_ne.
+Qed.
+
+Lemma reg_map_to_gmap_insert r regs v vold:
+  regs !! r = Some vold →
+  <[r := v]> (reg_map_to_gmap regs) = reg_map_to_gmap (<[r := v]> regs).
+Proof.
+  move => Hold.
+  rewrite {2}/insert/insert_regmap/=/register_name_to_accessor.
+  destruct regs.
+  repeat (case_bool_decide; subst; [
+    repeat (rewrite (insert_commute _ _ _ v) /=; [|done]); rewrite insert_insert /=; done
+    |]).
+  exfalso. move: Hold.
+  rewrite -reg_map_to_gmap_lookup ?lookup_insert_ne //.
+Qed.
 
 Definition is_local_register (r : register_name) : bool :=
   match register_name_to_accessor r with
@@ -173,23 +197,34 @@ Definition is_local_register (r : register_name) : bool :=
   | None => false
   end.
 
+Lemma reg_map_lookup_is_local (regs : reg_map) r v:
+  regs !! r = Some v → is_local_register r.
+Proof. rewrite /lookup/lookup_regmap /is_local_register. by case_match. Qed.
+
+
 Definition instruction_size : bv := [BV{64} 0x4].
 
-Definition next_pc (regs : reg_map) : option (addr * reg_map) :=
+Definition next_pc (nPC : bv) (changed : bool) : option (addr * valu * valu) :=
+  let new_pc := (if changed then nPC else bv_add nPC instruction_size) in
+  Some (new_pc.(bv_val), Val_Bits new_pc, Val_Bool false).
+
+Definition next_pc_regs (regs : reg_map) : option (addr * reg_map) :=
   a ← regs !! "_PC";
   an ← if a is Val_Bits n then Some n else None;
   c ← regs !! "__PC_changed";
   cb ← if c is Val_Bool b then Some b else None;
-  let new_pc := (if cb then an else bv_add an instruction_size) in
-  Some (new_pc.(bv_val), <["_PC" := Val_Bits new_pc]> $ <["__PC_changed" := Val_Bool false]> regs).
+  n ← next_pc an cb;
+  Some (n.1.1, <["_PC" := n.1.2]> $ <["__PC_changed" := n.2]> regs).
 
-
-Record seq_state := {
-  seq_trace  : trc;
-  seq_regs   : reg_map;
+Record seq_global_state := {
   seq_instrs : gmap addr (list trc);
 }.
-Instance eta_seq_state : Settable _ := settable! Build_seq_state <seq_trace; seq_regs; seq_instrs>.
+Record seq_local_state := {
+  seq_trace  : trc;
+  seq_regs   : reg_map;
+  seq_nb_state : bool;
+}.
+Instance eta_seq_local_state : Settable _ := settable! Build_seq_local_state <seq_trace; seq_regs; seq_nb_state>.
 
 Inductive seq_label : Set :=
 | SReadReg (r : register_name) (al : accessor_list) (v : valu)
@@ -197,54 +232,84 @@ Inductive seq_label : Set :=
 | SInstrTrap (pc : addr) (regs : reg_map)
 .
 
-Inductive seq_step : seq_state → option seq_label → seq_state → Prop :=
-| SeqStep σ κ t' κ' σ':
-    trace_step σ.(seq_trace) κ t' →
+Inductive seq_step : seq_local_state → seq_global_state → list seq_label → seq_local_state → seq_global_state → list seq_local_state → Prop :=
+| SeqStep σ θ κ t' κ' θ':
+    θ.(seq_nb_state) = false →
+    trace_step θ.(seq_trace) κ t' →
     match κ with
-    | None => κ' = None ∧ σ' = σ <| seq_trace := t'|>
+    | None => κ' = None ∧ θ' = θ <| seq_trace := t'|>
     | Some (LReadReg r al v) =>
-      σ' = σ <| seq_trace := t'|> ∧
       if is_local_register r then
-        σ.(seq_regs) !! r = Some v ∧
-        κ' = None
+        (θ' = θ <| seq_trace := t'|> ∧
+        θ.(seq_regs) !! r = Some v ∧
+        κ' = None)
+        ∨
+        (θ' = θ <| seq_nb_state := true|> ∧ κ' = None)
       else
+        θ' = θ <| seq_trace := t'|> ∧
         κ' = Some (SReadReg r al v)
     | Some (LWriteReg r al v) =>
       if is_local_register r then
-        σ' = σ <| seq_trace := t'|> <| seq_regs := <[r := v]> σ.(seq_regs)|> ∧
+        θ' = θ <| seq_trace := t'|> <| seq_regs := <[r := v]> θ.(seq_regs)|> ∧
         κ' = None
       else
-        σ' = σ <| seq_trace := t'|> ∧
+        θ' = θ <| seq_trace := t'|> ∧
         κ' = Some (SWriteReg r al v)
-    | Some (LBranchAddress _) => κ' = None ∧ σ' = σ <| seq_trace := t'|>
+    | Some (LBranchAddress _) => κ' = None ∧ θ' = θ <| seq_trace := t'|>
     | Some (LDone es) =>
-      ∃ pc regs', next_pc σ.(seq_regs) = Some (pc, regs') ∧
-      σ' = σ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
+      ∃ pc regs', next_pc_regs θ.(seq_regs) = Some (pc, regs') ∧
+      θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
       match σ.(seq_instrs) !! pc with
       | Some trcs => es ∈ trcs ∧ κ' = None
       | None => κ' = Some (SInstrTrap pc regs')
       end
      end →
-     seq_step σ κ' σ'
+     seq_step θ σ (option_list κ') θ' σ []
 .
 
 Definition seq_module_no_ub  : module seq_label := {|
   m_state := _;
-  m_step := seq_step;
+  m_step '(σ, θ) κ '(σ', θ') := seq_step θ σ (option_list κ) θ' σ' [];
   m_is_ub σ := False
 |}.
 
 Definition seq_module  : module seq_label := {|
   m_state := _;
-  m_step := seq_step;
-  m_is_ub σ :=
-    ∃ es t', trace_step σ.(seq_trace) (Some (LDone es)) t' ∧
-     ∃ σ' pc regs', next_pc σ.(seq_regs) = Some (pc, regs') ∧
-      σ' = σ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
+  m_step '(σ, θ) κ '(σ', θ') := seq_step θ σ (option_list κ) θ' σ' [];
+  m_is_ub '(σ, θ) :=
+    ∃ es t', trace_step θ.(seq_trace) (Some (LDone es)) t' ∧
+     ∃ θ' pc regs', next_pc_regs θ.(seq_regs) = Some (pc, regs') ∧
+      θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
       match σ.(seq_instrs) !! pc with
-      | Some trcs => ¬ ∃ es κs σ'', es ∈ trcs ∧ σ' <| seq_trace := es |> ~{seq_module_no_ub, κs}~> σ'' ∧ σ''.(seq_trace) = []
+      | Some trcs => ¬ ∃ es κs σ'', es ∈ trcs ∧ (σ, θ' <| seq_trace := es |>) ~{seq_module_no_ub, κs}~> σ'' ∧ σ''.2.(seq_trace) = []
       | None => False
       end
-
   ;
 |}.
+
+Record seq_val := {
+  seq_val_trace  : trc;
+  seq_val_regs   : reg_map;
+}.
+Definition seq_of_val (v : seq_val) : seq_local_state := {|
+  seq_trace := v.(seq_val_trace);
+  seq_regs := v.(seq_val_regs);
+  seq_nb_state := true;
+|}.
+Definition seq_to_val (e : seq_local_state) : option seq_val :=
+  if e.(seq_nb_state) then
+    Some ({|
+     seq_val_trace := e.(seq_trace);
+     seq_val_regs := e.(seq_regs);
+    |})
+  else None.
+
+
+Lemma seq_lang_mixin : LanguageMixin seq_of_val seq_to_val seq_step.
+Proof.
+  split => //.
+  - by case.
+  - move => [??[]] [??] //= [-> ->]. done.
+  - move => [???] ?????. inversion 1; simplify_eq/=. done.
+Qed.
+Canonical Structure isla_lang := Language seq_lang_mixin.

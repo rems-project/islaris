@@ -1,5 +1,6 @@
 Require Import isla.base.
 Require Import isla.opsem.
+Require Import isla.lifting.
 
 Ltac solve_trace_step := by econstructor.
 Ltac do_trace_step :=
@@ -143,13 +144,17 @@ Definition trc_mov_OUT_x0 : trc := [
 
 
 Definition start_address := [BV{64} (0x0000000010300000 - 0x4)].
-Definition test_state := {|
+Definition test_state_local := {|
   seq_trace  := [];
   seq_regs   :=
     <[ "_PC" := Val_Bits start_address ]> $
     <[ "__PC_changed" := Val_Bool false ]> $
      ∅;
-  seq_instrs :=
+  seq_nb_state  := false;
+|}.
+
+Definition test_state_global := {|
+    seq_instrs :=
     <[0x0000000010300000 := [trc_bl_0x100]]> $   (* bl 0x100: (at address 0x0000000010300000 *)
     <[0x0000000010300004 := [trc_mov_OUT_x0]]> $ (* mov OUT, x0 *)
     <[0x0000000010300100 := [trc_mov_w0_0]]> $   (* mov w0, 0 *)
@@ -158,14 +163,14 @@ Definition test_state := {|
 |}.
 
 Ltac do_seq_step :=
-  apply: TraceStep'; [ econstructor; [solve_trace_step| done] | done |]; simpl.
+  apply: (TraceStep' _ _ seq_module (_, _)); [ econstructor; [done|solve_trace_step| try left; done] | done |]; simpl.
 
 Ltac do_seq_step_jmp :=
-  apply: TraceStep'; [ econstructor; [solve_trace_step| ];
+  apply: (TraceStep' _ _ seq_module (_, _)); [ econstructor; [done|solve_trace_step| ];
                        eexists _, _; repeat (split; first done); vm_compute; split => //; left | done |]; simpl.
 
 Lemma test_state_trace :
-  test_state ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits [BV{64} 0x0])) ] }~> -.
+  (test_state_global, test_state_local) ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits [BV{64} 0x0])) ] }~> -.
 Proof.
   eexists _.
   do_seq_step_jmp.
@@ -196,6 +201,22 @@ Proof.
   apply: TraceEnd.
 Qed.
 
+Lemma test_state_iris `{!islaG Σ} `{!threadG} :
+  instr 0x0000000010300000 [trc_bl_0x100] -∗
+  instr 0x0000000010300004 [trc_mov_OUT_x0] -∗
+  instr 0x0000000010300100 [trc_mov_w0_0] -∗
+  instr 0x0000000010300104 [trc_ret] -∗
+  "_PC" ↦ᵣ Val_Bits start_address -∗
+  "__PC_changed" ↦ᵣ Val_Bool false -∗
+  WPasm [].
+Proof.
+  iIntros "#Hi1 #Hi2 #Hi3 #Hi4 HPC HcPC".
+  iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [by eexists _; apply elem_of_cons; left|].
+  iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HnPC".
+  iEval (rewrite /trc_bl_0x100).
+  iApply (wp_read_reg with "HPC").
+  iIntros (_) "HPC".
+Abort.
 
 (* trace of cmp x1, 0:
   (declare-const v3370 (_ BitVec 64))
@@ -437,13 +458,16 @@ Definition trc_b_0x8 : trc := [
 *)
 
 
-Definition test_state2 (x1 : bv) := {|
+Definition test_state2_local (x1 : bv) := {|
   seq_trace  := [];
   seq_regs   :=
     <[ "R1" := Val_Bits x1 ]> $
     <[ "_PC" := Val_Bits start_address ]> $
     <[ "__PC_changed" := Val_Bool false ]> $
-     ∅;
+                                             ∅;
+  seq_nb_state  := false;
+|}.
+Definition test_state2_global  := {|
   seq_instrs :=
     <[0x0000000010300000 := [trc_cmp_x1_0]]> $
     <[0x0000000010300004 := trc_bne_0xc ]> $
@@ -458,7 +482,7 @@ Definition test_state2 (x1 : bv) := {|
 |}.
 
 Lemma test_state2_trace x1 :
-  test_state2 x1 ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits [BV{64} 0])) ] }~> -.
+  (test_state2_global, test_state2_local x1) ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits [BV{64} 0])) ] }~> -.
 Proof.
   eexists _.
   do_seq_step_jmp.
