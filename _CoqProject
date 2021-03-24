@@ -13,6 +13,7 @@ refframe/base.v
 refframe/module.v
 
 theories/base.v
+theories/bitvector.v
 theories/isla_lang.v
 theories/isla_lang_ext.v
 theories/isla_lang2.v

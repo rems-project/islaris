@@ -1,4 +1,4 @@
-Require Export isla.base.
+Require Export isla.base isla.bitvector.
 Require isla.isla_lang.
 
 Definition var_name : Set := Z.
@@ -74,7 +74,7 @@ Inductive valu : Set :=
  | Val_Symbolic (vvar5:var_name)
  | Val_Bool (bool5:bool)
  | Val_I (bvi5:Z) (int5:Z)
- | Val_Bits (bv5:Z)
+ | Val_Bits (bv5: bv)
  | Val_Enum (enum5:enum)
  | Val_String (str5:string)
  | Val_Unit : valu

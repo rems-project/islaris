@@ -48,28 +48,32 @@ Definition subst_event (n : var_name) (v : valu) (e : event) : event :=
   | WriteMem va wkind addr data nat5 tag_value ann => WriteMem (subst_valu n v va) (subst_valu n v wkind) (subst_valu n v addr) (subst_valu n v data) nat5 (subst_valu n v <$> tag_value) ann
   end.
 
-Definition Z_extract (i j n : Z) : Z :=
-  (Z.land n (Z.ones (i + 1))) ≫ j.
-
 Definition eval_unop (u : unop) (v : valu) : option valu :=
   match u, v with
   | Not, Val_Bool b => Some (Val_Bool (negb b))
-  | ZeroExtend _, Val_Bits n => Some (Val_Bits n)
-  | Extract u l, Val_Bits n => Some (Val_Bits (Z_extract u l n))
+  | Bvnot, Val_Bits n => Some (Val_Bits (bv_not n))
+  | ZeroExtend z, Val_Bits n => Some (Val_Bits (bv_zero_extend z n))
+  | SignExtend z, Val_Bits n => Some (Val_Bits (bv_sign_extend z n))
+  | Extract u l, Val_Bits n => Some (Val_Bits (bv_extract u l n))
   | _, _ => (* TODO: other cases *) None
   end.
 
 Definition eval_binop (b : binop) (v1 v2 : valu) : option valu :=
   match b, v1, v2 with
   | Eq, Val_Bool b1, Val_Bool b2 => Some (Val_Bool (eqb b1 b2))
+  | Eq, Val_Bits n1, Val_Bits n2 => Some (Val_Bool (bool_decide (n1 = n2)))
+  | Bvarith Bvlshr, Val_Bits n1, Val_Bits n2 => Some (Val_Bits (bv_shr n1 n2))
   | _, _, _ => (* TODO: other cases *) None
   end.
 
+
 Definition eval_manyop (m : manyop) (vs : list valu) : option valu :=
-  match m with
-  | Bvmanyarith Bvadd => (λ ns, Val_Bits (foldl Z.add 0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs)
-  | Bvmanyarith Bvor => (λ ns, Val_Bits (foldl Z.lor 0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs)
-  | _ => (* TODO: other cases *) None
+  match m, vs with
+  | Bvmanyarith Bvadd, (Val_Bits n0 :: vs') => (λ ns, Val_Bits (foldl bv_add n0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs')
+  | Bvmanyarith Bvor, (Val_Bits n0 :: vs') => (λ ns, Val_Bits (foldl bv_or n0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs')
+  | Bvmanyarith Bvand, (Val_Bits n0 :: vs') => (λ ns, Val_Bits (foldl bv_and n0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs')
+  | Concat, (Val_Bits n0 :: vs') => (λ ns, Val_Bits (foldl bv_concat n0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs')
+  | _, _ => (* TODO: other cases *) None
   end.
 
 Fixpoint eval_exp (e : exp) : option valu :=
@@ -169,13 +173,15 @@ Definition is_local_register (r : register_name) : bool :=
   | None => false
   end.
 
+Definition instruction_size : bv := [BV{64} 0x4].
+
 Definition next_pc (regs : reg_map) : option (addr * reg_map) :=
   a ← regs !! "_PC";
   an ← if a is Val_Bits n then Some n else None;
   c ← regs !! "__PC_changed";
   cb ← if c is Val_Bool b then Some b else None;
-  let new_pc := (if cb then an else an + 0x4) in
-  Some (new_pc, <["_PC" := Val_Bits new_pc]> $ <["__PC_changed" := Val_Bool false]> regs).
+  let new_pc := (if cb then an else bv_add an instruction_size) in
+  Some (new_pc.(bv_val), <["_PC" := Val_Bits new_pc]> $ <["__PC_changed" := Val_Bool false]> regs).
 
 
 Record seq_state := {

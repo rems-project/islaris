@@ -38,7 +38,7 @@ Lemma add_x1_x2_x3_trace bv2 bv3 :
   trc_add_x1_x2_x3 ~{ trace_module, [
                     Vis (LReadReg "R2" [] (Val_Bits bv2));
                     Vis (LReadReg "R3" [] (Val_Bits bv3));
-                    Vis (LWriteReg "R1" [] (Val_Bits (Z_extract 63 0 (bv2 + bv3))))
+                    Vis (LWriteReg "R1" [] (Val_Bits (bv_extract 63 0 (bv_add (bv_zero_extend 64 bv2) (bv_zero_extend 64 bv3)))))
                 ] }~> [].
 Proof.
   do_trace_step.
@@ -87,11 +87,11 @@ trace of ret:
 *)
 
 Definition trc_mov_w0_0 : trc := [
-   WriteReg "R0" [] (Val_Bits 0x0000000000000000) Mk_annot
+   WriteReg "R0" [] (Val_Bits [BV{64} 0x0000000000000000]) Mk_annot
   ].
 
 Definition trc_mov_x0_1 : trc := [
-   WriteReg "R0" [] (Val_Bits 0x0000000000000001) Mk_annot
+   WriteReg "R0" [] (Val_Bits [BV{64} 0x0000000000000001]) Mk_annot
   ].
 
 Definition trc_ret : trc := [
@@ -117,11 +117,11 @@ Definition trc_ret : trc := [
   (write-reg |__PC_changed| nil true))
 *)
 Definition trc_bl_0x100 : trc := [
-  ReadReg "_PC" nil (Val_Bits 0x0000000010300000) Mk_annot;
-  WriteReg "R30" nil (Val_Bits 0x0000000010300004) Mk_annot;
-  ReadReg "_PC" nil (Val_Bits 0x0000000010300000) Mk_annot;
-  BranchAddress (Val_Bits 0x0000000010300100) Mk_annot;
-  WriteReg "_PC" nil (Val_Bits 0x0000000010300100) Mk_annot;
+  ReadReg "_PC" nil (Val_Bits [BV{64} 0x0000000010300000]) Mk_annot;
+  WriteReg "R30" nil (Val_Bits [BV{64} 0x0000000010300004]) Mk_annot;
+  ReadReg "_PC" nil (Val_Bits [BV{64} 0x0000000010300000]) Mk_annot;
+  BranchAddress (Val_Bits [BV{64} 0x0000000010300100]) Mk_annot;
+  WriteReg "_PC" nil (Val_Bits [BV{64} 0x0000000010300100]) Mk_annot;
   WriteReg "__PC_changed" nil (Val_Bool true) Mk_annot
 ].
 
@@ -137,14 +137,16 @@ Definition trc_mov_OUT_x0 : trc := [
   Smt (DeclareConst 3368 (Ty_BitVec 64)) Mk_annot;
   Smt (DefineConst 3369 (Val (Val_Symbolic 3368) Mk_annot)) Mk_annot;
   ReadReg "R0" nil (Val_Symbolic 3369) Mk_annot;
-  Smt (DefineConst 3450 (Manyop (Bvmanyarith Bvor) [Val (Val_Bits 0x0000000000000000) Mk_annot; Val (Val_Symbolic 3369) Mk_annot] Mk_annot)) Mk_annot;
+  Smt (DefineConst 3450 (Manyop (Bvmanyarith Bvor) [Val (Val_Bits [BV{64} 0x0000000000000000]) Mk_annot; Val (Val_Symbolic 3369) Mk_annot] Mk_annot)) Mk_annot;
   WriteReg "OUT" nil (Val_Symbolic 3450) Mk_annot
 ].
 
+
+Definition start_address := [BV{64} (0x0000000010300000 - 0x4)].
 Definition test_state := {|
   seq_trace  := [];
   seq_regs   :=
-    <[ "_PC" := Val_Bits (0x0000000010300000 - 0x4) ]> $
+    <[ "_PC" := Val_Bits start_address ]> $
     <[ "__PC_changed" := Val_Bool false ]> $
      ∅;
   seq_instrs :=
@@ -163,7 +165,7 @@ Ltac do_seq_step_jmp :=
                        eexists _, _; repeat (split; first done); vm_compute; split => //; left | done |]; simpl.
 
 Lemma test_state_trace :
-  test_state ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits 0)) ] }~> -.
+  test_state ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits [BV{64} 0x0])) ] }~> -.
 Proof.
   eexists _.
   do_seq_step_jmp.
@@ -224,9 +226,9 @@ Definition trc_cmp_x1_0 : trc := [
   Smt (DefineConst 3440 (Manyop (Bvmanyarith Bvadd) [
     Manyop (Bvmanyarith Bvadd) [
       (Unop (ZeroExtend 64) (Val (Val_Symbolic 3435) Mk_annot) Mk_annot);
-      (Val (Val_Bits 0x0000000000000000ffffffffffffffff) Mk_annot)
+      (Val (Val_Bits [BV{128} 0x0000000000000000ffffffffffffffff]) Mk_annot)
       ] Mk_annot;
-    (Val (Val_Bits 0x00000000000000000000000000000001) Mk_annot)
+    (Val (Val_Bits [BV{128} 0x00000000000000000000000000000001]) Mk_annot)
   ] Mk_annot)) Mk_annot;
   Smt (DefineConst 3444 (Unop (Extract 63 0) (Val (Val_Symbolic 3440) Mk_annot) Mk_annot)) Mk_annot;
   Smt (DefineConst 3457 (Manyop Concat [
@@ -234,96 +236,96 @@ Definition trc_cmp_x1_0 : trc := [
       Manyop Concat [
         Manyop (Bvmanyarith Bvor) [
           Manyop (Bvmanyarith Bvand) [
-            Val (Val_Bits 0) Mk_annot;
-            Unop Bvnot (Val (Val_Bits 1) Mk_annot) Mk_annot
+            Val (Val_Bits [BV{1} 0]) Mk_annot;
+            Unop Bvnot (Val (Val_Bits [BV{1} 1]) Mk_annot) Mk_annot
           ] Mk_annot;
             (Unop (Extract 0 0) (Binop (Bvarith Bvlshr)
                (Val (Val_Symbolic 3444) Mk_annot)
-               (Unop (Extract 63 0) (Val (Val_Bits 0x0000000000000000000000000000003f) Mk_annot) Mk_annot) Mk_annot) Mk_annot)
+               (Unop (Extract 63 0) (Val (Val_Bits [BV{128} 0x0000000000000000000000000000003f]) Mk_annot) Mk_annot) Mk_annot) Mk_annot)
         ] Mk_annot;
-        Ite (Binop Eq (Val (Val_Symbolic 3444) Mk_annot) (Val (Val_Bits 0x0000000000000000) Mk_annot) Mk_annot) (Val (Val_Bits 1) Mk_annot) (Val (Val_Bits 0) Mk_annot) Mk_annot
+        Ite (Binop Eq (Val (Val_Symbolic 3444) Mk_annot) (Val (Val_Bits [BV{64} 0x0000000000000000]) Mk_annot) Mk_annot) (Val (Val_Bits [BV{1} 1]) Mk_annot) (Val (Val_Bits [BV{1} 0]) Mk_annot) Mk_annot
        ] Mk_annot;
-        Ite (Binop Eq (Unop (ZeroExtend 64) (Val (Val_Symbolic 3444) Mk_annot) Mk_annot) (Val (Val_Symbolic 3440) Mk_annot) Mk_annot) (Val (Val_Bits 0) Mk_annot) (Val (Val_Bits 1) Mk_annot) Mk_annot
+        Ite (Binop Eq (Unop (ZeroExtend 64) (Val (Val_Symbolic 3444) Mk_annot) Mk_annot) (Val (Val_Symbolic 3440) Mk_annot) Mk_annot) (Val (Val_Bits [BV{1} 0]) Mk_annot) (Val (Val_Bits [BV{1} 1]) Mk_annot) Mk_annot
      ] Mk_annot;
         Ite (Binop Eq (Unop (SignExtend 64) (Val (Val_Symbolic 3444) Mk_annot) Mk_annot) (
           Manyop (Bvmanyarith Bvadd) [
             Manyop (Bvmanyarith Bvadd) [
 Unop (SignExtend 64) (Val (Val_Symbolic 3435) Mk_annot) Mk_annot;
-Val (Val_Bits 0xffffffffffffffffffffffffffffffff) Mk_annot
+Val (Val_Bits [BV{128} 0xffffffffffffffffffffffffffffffff]) Mk_annot
             ] Mk_annot;
-Val (Val_Bits 0x00000000000000000000000000000001) Mk_annot
+Val (Val_Bits [BV{128} 0x00000000000000000000000000000001]) Mk_annot
           ] Mk_annot
         ) Mk_annot)
-        (Val (Val_Bits 0) Mk_annot) (Val (Val_Bits 1) Mk_annot) Mk_annot
+        (Val (Val_Bits [BV{1} 0]) Mk_annot) (Val (Val_Bits [BV{1} 1]) Mk_annot) Mk_annot
    ] Mk_annot)) Mk_annot;
   Smt (DefineConst 3459 (Unop (Extract 3 3) (Val (Val_Symbolic 3457) Mk_annot) Mk_annot)) Mk_annot;
   ReadReg "PSTATE" [Field "N"] (Val_Struct [
-    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits 1)); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
-    ("SP", (Val_Bits 1)); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits 1));
-    ("SS", (Val_Bits 0)); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits 1));
-    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits 1)); ("nRW", (Val_Bits 0));
-    ("EL", (Val_Bits 0)); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits 0)); ("Z", (Val_Symbolic 15));
+    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits [BV{1} 1])); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
+    ("SP", (Val_Bits [BV{1} 1])); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits [BV{1} 1]));
+    ("SS", (Val_Bits [BV{1} 0])); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits [BV{1} 1]));
+    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits [BV{1} 1])); ("nRW", (Val_Bits [BV{1} 0]));
+    ("EL", (Val_Bits [BV{1} 0])); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits [BV{1} 0])); ("Z", (Val_Symbolic 15));
     ("BTYPE", (Val_Symbolic 19)); ("SSBS", (Val_Symbolic 28)); ("T", (Val_Symbolic 16));
-    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits 0)) ]) Mk_annot;
+    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits [BV{1} 0])) ]) Mk_annot;
   WriteReg "PSTATE" [Field "N"] (Val_Struct [
-    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits 1)); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
-    ("SP", (Val_Bits 1)); ("N", (Val_Symbolic 3459)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits 1));
-    ("SS", (Val_Bits 0)); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits 1));
-    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits 1)); ("nRW", (Val_Bits 0));
-    ("EL", (Val_Bits 0)); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits 0)); ("Z", (Val_Symbolic 15));
+    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits [BV{1} 1])); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
+    ("SP", (Val_Bits [BV{1} 1])); ("N", (Val_Symbolic 3459)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits [BV{1} 1]));
+    ("SS", (Val_Bits [BV{1} 0])); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits [BV{1} 1]));
+    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits [BV{1} 1])); ("nRW", (Val_Bits [BV{1} 0]));
+    ("EL", (Val_Bits [BV{1} 0])); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits [BV{1} 0])); ("Z", (Val_Symbolic 15));
     ("BTYPE", (Val_Symbolic 19)); ("SSBS", (Val_Symbolic 28)); ("T", (Val_Symbolic 16));
-    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits 0)) ]) Mk_annot;
+    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits [BV{1} 0])) ]) Mk_annot;
   Smt (DefineConst 3460 (Unop (Extract 2 2) (Val (Val_Symbolic 3457) Mk_annot) Mk_annot)) Mk_annot;
   ReadReg "PSTATE" [Field "Z"] (Val_Struct [
-    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits 1)); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
-    ("SP", (Val_Bits 1)); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits 1));
-    ("SS", (Val_Bits 0)); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits 1));
-    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits 1)); ("nRW", (Val_Bits 0));
-    ("EL", (Val_Bits 0)); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits 0)); ("Z", (Val_Symbolic 15));
+    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits [BV{1} 1])); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
+    ("SP", (Val_Bits [BV{1} 1])); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits [BV{1} 1]));
+    ("SS", (Val_Bits [BV{1} 0])); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits [BV{1} 1]));
+    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits [BV{1} 1])); ("nRW", (Val_Bits [BV{1} 0]));
+    ("EL", (Val_Bits [BV{1} 0])); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits [BV{1} 0])); ("Z", (Val_Symbolic 15));
     ("BTYPE", (Val_Symbolic 19)); ("SSBS", (Val_Symbolic 28)); ("T", (Val_Symbolic 16));
-    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits 0)) ]) Mk_annot;
+    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits [BV{1} 0])) ]) Mk_annot;
   WriteReg "PSTATE" [Field "Z"] (Val_Struct [
-    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits 1)); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
-    ("SP", (Val_Bits 1)); ("N", (Val_Symbolic 3459)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits 1));
-    ("SS", (Val_Bits 0)); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits 1));
-    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits 1)); ("nRW", (Val_Bits 0));
-    ("EL", (Val_Bits 0)); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits 0)); ("Z", (Val_Symbolic 3460));
+    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits [BV{1} 1])); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
+    ("SP", (Val_Bits [BV{1} 1])); ("N", (Val_Symbolic 3459)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits [BV{1} 1]));
+    ("SS", (Val_Bits [BV{1} 0])); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits [BV{1} 1]));
+    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits [BV{1} 1])); ("nRW", (Val_Bits [BV{1} 0]));
+    ("EL", (Val_Bits [BV{1} 0])); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits [BV{1} 0])); ("Z", (Val_Symbolic 3460));
     ("BTYPE", (Val_Symbolic 19)); ("SSBS", (Val_Symbolic 28)); ("T", (Val_Symbolic 16));
-    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits 0)) ]) Mk_annot;
+    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits [BV{1} 0])) ]) Mk_annot;
   Smt (DefineConst 3461 (Unop (Extract 1 1) (Val (Val_Symbolic 3457) Mk_annot) Mk_annot)) Mk_annot;
   ReadReg "PSTATE" [Field "C"] (Val_Struct [
-    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits 1)); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
-    ("SP", (Val_Bits 1)); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits 1));
-    ("SS", (Val_Bits 0)); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits 1));
-    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits 1)); ("nRW", (Val_Bits 0));
-    ("EL", (Val_Bits 0)); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits 0)); ("Z", (Val_Symbolic 15));
+    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits [BV{1} 1])); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
+    ("SP", (Val_Bits [BV{1} 1])); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits [BV{1} 1]));
+    ("SS", (Val_Bits [BV{1} 0])); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits [BV{1} 1]));
+    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits [BV{1} 1])); ("nRW", (Val_Bits [BV{1} 0]));
+    ("EL", (Val_Bits [BV{1} 0])); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits [BV{1} 0])); ("Z", (Val_Symbolic 15));
     ("BTYPE", (Val_Symbolic 19)); ("SSBS", (Val_Symbolic 28)); ("T", (Val_Symbolic 16));
-    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits 0)) ]) Mk_annot;
+    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits [BV{1} 0])) ]) Mk_annot;
   WriteReg "PSTATE" [Field "C"] (Val_Struct [
-    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits 1)); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 3461));
-    ("SP", (Val_Bits 1)); ("N", (Val_Symbolic 3459)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits 1));
-    ("SS", (Val_Bits 0)); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits 1));
-    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits 1)); ("nRW", (Val_Bits 0));
-    ("EL", (Val_Bits 0)); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits 0)); ("Z", (Val_Symbolic 15));
+    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits [BV{1} 1])); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 3461));
+    ("SP", (Val_Bits [BV{1} 1])); ("N", (Val_Symbolic 3459)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits [BV{1} 1]));
+    ("SS", (Val_Bits [BV{1} 0])); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits [BV{1} 1]));
+    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits [BV{1} 1])); ("nRW", (Val_Bits [BV{1} 0]));
+    ("EL", (Val_Bits [BV{1} 0])); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits [BV{1} 0])); ("Z", (Val_Symbolic 15));
     ("BTYPE", (Val_Symbolic 19)); ("SSBS", (Val_Symbolic 28)); ("T", (Val_Symbolic 16));
-    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits 0)) ]) Mk_annot;
+    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits [BV{1} 0])) ]) Mk_annot;
   Smt (DefineConst 3462 (Unop (Extract 0 0) (Val (Val_Symbolic 3457) Mk_annot) Mk_annot)) Mk_annot;
   ReadReg "PSTATE" [Field "V"] (Val_Struct [
-    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits 1)); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
-    ("SP", (Val_Bits 1)); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits 1));
-    ("SS", (Val_Bits 0)); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits 1));
-    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits 1)); ("nRW", (Val_Bits 0));
-    ("EL", (Val_Bits 0)); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits 0)); ("Z", (Val_Symbolic 15));
+    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits [BV{1} 1])); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
+    ("SP", (Val_Bits [BV{1} 1])); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits [BV{1} 1]));
+    ("SS", (Val_Bits [BV{1} 0])); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits [BV{1} 1]));
+    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits [BV{1} 1])); ("nRW", (Val_Bits [BV{1} 0]));
+    ("EL", (Val_Bits [BV{1} 0])); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits [BV{1} 0])); ("Z", (Val_Symbolic 15));
     ("BTYPE", (Val_Symbolic 19)); ("SSBS", (Val_Symbolic 28)); ("T", (Val_Symbolic 16));
-    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits 0)) ]) Mk_annot;
+    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits [BV{1} 0])) ]) Mk_annot;
   WriteReg "PSTATE" [Field "V"] (Val_Struct [
-    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits 1)); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
-    ("SP", (Val_Bits 1)); ("N", (Val_Symbolic 3459)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits 1));
-    ("SS", (Val_Bits 0)); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits 1));
-    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits 1)); ("nRW", (Val_Bits 0));
-    ("EL", (Val_Bits 0)); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits 0)); ("Z", (Val_Symbolic 15));
+    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits [BV{1} 1])); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
+    ("SP", (Val_Bits [BV{1} 1])); ("N", (Val_Symbolic 3459)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits [BV{1} 1]));
+    ("SS", (Val_Bits [BV{1} 0])); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits [BV{1} 1]));
+    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits [BV{1} 1])); ("nRW", (Val_Bits [BV{1} 0]));
+    ("EL", (Val_Bits [BV{1} 0])); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits [BV{1} 0])); ("Z", (Val_Symbolic 15));
     ("BTYPE", (Val_Symbolic 19)); ("SSBS", (Val_Symbolic 28)); ("T", (Val_Symbolic 16));
-    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 3462)); ("DIT", (Val_Bits 0)) ]) Mk_annot
+    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 3462)); ("DIT", (Val_Bits [BV{1} 0])) ]) Mk_annot
 ].
 
 (* trace of bne 0xc: (at address 0x0000000010300004)
@@ -381,29 +383,29 @@ Definition trc_bne_0xc : list trc := [
 [
   Smt (DeclareConst 35 (Ty_BitVec 1)) Mk_annot;
   ReadReg "PSTATE" [Field "Z"] (Val_Struct [
-    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits 1)); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
-    ("SP", (Val_Bits 1)); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits 1));
-    ("SS", (Val_Bits 0)); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits 1));
-    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits 1)); ("nRW", (Val_Bits 0));
-    ("EL", (Val_Bits 0)); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits 0)); ("Z", (Val_Symbolic 35));
+    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits [BV{1} 1])); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
+    ("SP", (Val_Bits [BV{1} 1])); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits [BV{1} 1]));
+    ("SS", (Val_Bits [BV{1} 0])); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits [BV{1} 1]));
+    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits [BV{1} 1])); ("nRW", (Val_Bits [BV{1} 0]));
+    ("EL", (Val_Bits [BV{1} 0])); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits [BV{1} 0])); ("Z", (Val_Symbolic 35));
     ("BTYPE", (Val_Symbolic 19)); ("SSBS", (Val_Symbolic 28)); ("T", (Val_Symbolic 16));
-    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits 0)) ]) Mk_annot;
-  Smt (DefineConst 3435 (Unop Not (Binop Eq (Val (Val_Symbolic 35) Mk_annot) (Val (Val_Bits 1) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
+    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits [BV{1} 0])) ]) Mk_annot;
+  Smt (DefineConst 3435 (Unop Not (Binop Eq (Val (Val_Symbolic 35) Mk_annot) (Val (Val_Bits [BV{1} 1]) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
   Smt (Assert (Val (Val_Symbolic (3435)) Mk_annot)) Mk_annot;
-  ReadReg "_PC" nil (Val_Bits 0x0000000010300004) Mk_annot;
-  WriteReg "_PC" nil (Val_Bits 0x0000000010300010) Mk_annot;
+  ReadReg "_PC" nil (Val_Bits [BV{64} 0x0000000010300004]) Mk_annot;
+  WriteReg "_PC" nil (Val_Bits [BV{64} 0x0000000010300010]) Mk_annot;
   WriteReg "__PC_changed" nil (Val_Bool true) Mk_annot
 ]; [
   Smt (DeclareConst 35 (Ty_BitVec 1)) Mk_annot;
   ReadReg "PSTATE" [Field "Z"] (Val_Struct [
-    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits 1)); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
-    ("SP", (Val_Bits 1)); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits 1));
-    ("SS", (Val_Bits 0)); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits 1));
-    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits 1)); ("nRW", (Val_Bits 0));
-    ("EL", (Val_Bits 0)); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits 0)); ("Z", (Val_Symbolic 35));
+    ("GE", (Val_Symbolic 27)); ("F", (Val_Bits [BV{1} 1])); ("UAO", (Val_Symbolic 23)); ("C", (Val_Symbolic 20));
+    ("SP", (Val_Bits [BV{1} 1])); ("N", (Val_Symbolic 29)); ("Q", (Val_Symbolic 21)); ("A", (Val_Bits [BV{1} 1]));
+    ("SS", (Val_Bits [BV{1} 0])); ("E", (Val_Symbolic 33)); ("TCO", (Val_Symbolic 13)); ("I", (Val_Bits [BV{1} 1]));
+    ("PAN", (Val_Symbolic 35)); ("M", (Val_Symbolic 12)); ("D", (Val_Bits [BV{1} 1])); ("nRW", (Val_Bits [BV{1} 0]));
+    ("EL", (Val_Bits [BV{1} 0])); ("IT", (Val_Symbolic 31)); ("IL", (Val_Bits [BV{1} 0])); ("Z", (Val_Symbolic 35));
     ("BTYPE", (Val_Symbolic 19)); ("SSBS", (Val_Symbolic 28)); ("T", (Val_Symbolic 16));
-    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits 0)) ]) Mk_annot;
-  Smt (DefineConst 3435 (Unop Not (Binop Eq (Val (Val_Symbolic 35) Mk_annot) (Val (Val_Bits 1) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
+    ("J", (Val_Symbolic 32)); ("V", (Val_Symbolic 25)); ("DIT", (Val_Bits [BV{1} 0])) ]) Mk_annot;
+  Smt (DefineConst 3435 (Unop Not (Binop Eq (Val (Val_Symbolic 35) Mk_annot) (Val (Val_Bits [BV{1} 1]) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
   Smt (Assert (Unop Not (Val (Val_Symbolic (3435)) Mk_annot) Mk_annot)) Mk_annot
 ]
 ].
@@ -415,9 +417,9 @@ Definition trc_bne_0xc : list trc := [
   (write-reg |__PC_changed| nil true))
 *)
 Definition trc_b_0x8 : trc := [
-  ReadReg "_PC" nil (Val_Bits 0x000000001030000c) Mk_annot;
-  BranchAddress (Val_Bits 0x0000000010300014) Mk_annot;
-  WriteReg "_PC" nil (Val_Bits 0x0000000010300014) Mk_annot;
+  ReadReg "_PC" nil (Val_Bits [BV{64} 0x000000001030000c]) Mk_annot;
+  BranchAddress (Val_Bits [BV{64} 0x0000000010300014]) Mk_annot;
+  WriteReg "_PC" nil (Val_Bits [BV{64} 0x0000000010300014]) Mk_annot;
   WriteReg "__PC_changed" nil (Val_Bool true) Mk_annot
 ].
 
@@ -435,11 +437,11 @@ Definition trc_b_0x8 : trc := [
 *)
 
 
-Definition test_state2 (x1 : Z) := {|
+Definition test_state2 (x1 : bv) := {|
   seq_trace  := [];
   seq_regs   :=
     <[ "R1" := Val_Bits x1 ]> $
-    <[ "_PC" := Val_Bits (0x0000000010300000 - 0x4) ]> $
+    <[ "_PC" := Val_Bits start_address ]> $
     <[ "__PC_changed" := Val_Bool false ]> $
      ∅;
   seq_instrs :=
@@ -456,7 +458,7 @@ Definition test_state2 (x1 : Z) := {|
 |}.
 
 Lemma test_state2_trace x1 :
-  test_state2 x1 ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits 0)) ] }~> -.
+  test_state2 x1 ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits [BV{64} 0])) ] }~> -.
 Proof.
   eexists _.
   do_seq_step_jmp.
