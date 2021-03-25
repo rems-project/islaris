@@ -1,6 +1,7 @@
 Require Import isla.base.
 Require Import isla.opsem.
-Require Import isla.lifting.
+Require Import isla.automation.
+Require Import isla.adequacy.
 
 Ltac solve_trace_step := by econstructor.
 Ltac do_trace_step :=
@@ -201,6 +202,16 @@ Proof.
   apply: TraceEnd.
 Qed.
 
+Definition test_state_spec : list seq_label := [SWriteReg "OUT" [] (Val_Bits ([BV{64} 0]));
+             SInstrTrap 0x0000000010300008 {|
+                          _PC := Val_Bits [BV{64} 0x0000000010300008];
+                          __PC_changed := Val_Bool false;
+                          R0 := Val_Bits [BV{64} 0];
+                          R1 := Val_Poison;
+                          R30 := Val_Bits [BV{64} 0x0000000010300004] |}
+             ].
+
+
 Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some [trc_bl_0x100]) -∗
   instr 0x0000000010300004 (Some [trc_mov_OUT_x0]) -∗
@@ -213,67 +224,32 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   "R1" ↦ᵣ Val_Poison -∗
   "R0" ↦ᵣ Val_Poison -∗
   "OUT" ↦ᵣ ! -∗
-  spec_trace [SWriteReg "OUT" [] (Val_Bits ([BV{64} 0]));
-             SInstrTrap 0x0000000010300008 {|
-                          _PC := Val_Bits [BV{64} 0x0000000010300008];
-                          __PC_changed := Val_Bool false;
-                          R0 := Val_Bits [BV{64} 0];
-                          R1 := Val_Poison;
-                          R30 := Val_Bits [BV{64} 0x0000000010300004] |}
-             ] -∗
+  spec_trace test_state_spec -∗
   WPasm [].
 Proof.
-  iIntros "#Hi1 #Hi2 #Hi3 #Hi4 #Hi5 HPC HcPC HR30 HR1 HR0 #HOUT Hspec".
-
-  iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
-  iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
-  iEval (rewrite /trc_bl_0x100).
-  iApply (wp_read_reg with "HPC"). iIntros (_) "HPC".
-  iApply (wp_write_reg with "HR30"). iIntros "HR30".
-  iApply (wp_read_reg with "HPC"). iIntros (_) "HPC".
-  iApply (wp_branch_address).
-  iApply (wp_write_reg with "HPC"). iIntros "HPC".
-  iApply (wp_write_reg with "HcPC"). iIntros "HcPC".
-
-  iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
-  iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
-  iEval (rewrite /trc_mov_w0_0).
-  iApply (wp_write_reg with "HR0"). iIntros "HR0".
-
-  iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
-  iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
-  iEval (rewrite /trc_ret).
-  iApply (wp_declare_const_bv). iIntros (?). simpl.
-  iApply (wp_define_const).
-  iApply (wpe_val). simpl.
-  iApply (wp_read_reg with "HR30"). iIntros ([= ->]) "HR30".
-  iApply (wp_define_const).
-  iApply (wpe_val). simpl.
-  iApply (wp_define_const).
-  iApply (wpe_val). simpl.
-  iApply (wp_branch_address).
-  iApply (wp_define_const).
-  iApply (wpe_val). simpl.
-  iApply (wp_write_reg with "HPC"). iIntros "HPC".
-  iApply (wp_write_reg with "HcPC"). iIntros "HcPC".
-
-  iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
-  iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
-  iEval (rewrite /trc_mov_OUT_x0).
-  iApply (wp_declare_const_bv). iIntros (?). simpl.
-  iApply (wp_define_const). simpl.
-  iApply (wpe_val).
-  iApply (wp_read_reg with "HR0"). iIntros ([= ->]) "HR0".
-  iApply (wp_define_const). simpl.
-  iApply (wpe_manyop). simpl.
-  iApply (wpe_val). simpl.
-  iApply (wpe_val). simpl.
-  iExists _. iSplitR; [done|].
-  iApply (wp_write_reg_extern with "HOUT Hspec"). iIntros "Hspec".
-
-  iApply (wp_next_instr_extern with "HPC HcPC HR0 HR1 HR30"); [| |done|done]; [done|].
-  done.
+  iStartProof.
+  repeat liAStep; liShow.
+  Unshelve.
+  all: done.
 Qed.
+
+Lemma test_state_adequate κs t2 σ2 n:
+  nsteps n (initial_local_state <$> [test_state_local.(seq_regs)], test_state_global) κs (t2, σ2) →
+  (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧
+  κs `prefix_of` test_state_spec.
+Proof.
+  set Σ : gFunctors := #[islaΣ].
+  apply: (isla_adequacy Σ) => //.
+  iIntros (?) "#Hi Hspec /= !>". iSplitL => //.
+  iIntros (?) "/=".
+  do 5 rewrite big_sepM_insert //=.
+  iIntros "(?&?&?&?&?&?)".
+  iApply (test_state_iris with "[] [] [] [] [] [$] [$] [$] [$] [$] [] [$]").
+  all: try by iApply (instr_intro with "Hi").
+  iApply extern_reg_intro.
+  naive_solver.
+Qed.
+
 
 (* trace of cmp x1, 0:
   (declare-const v3370 (_ BitVec 64))

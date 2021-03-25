@@ -108,6 +108,11 @@ Section instr.
   Global Instance instr_tl a i : Timeless (instr a i).
   Proof. rewrite instr_eq. by apply _. Qed.
 
+  Lemma instr_intro ins a i :
+    ins !! a = i →
+    instr_table ins -∗ instr a i.
+  Proof. rewrite instr_eq. iIntros (?) "?". iExists _. by iFrame. Qed.
+
   Lemma instr_table_agree i1 i2 :
     instr_table i1 -∗ instr_table i2 -∗ ⌜i1 = i2⌝.
   Proof.
@@ -138,6 +143,11 @@ Section reg.
 
   Global Instance reg_mapsto_tl γ r q v : Timeless (reg_mapsto γ r q v).
   Proof. rewrite reg_mapsto_eq. by apply _. Qed.
+
+  Lemma extern_reg_intro r:
+    ¬ is_local_register r →
+    ⊢ r ↦ᵣ !.
+  Proof. rewrite extern_reg_eq => ?. by iPureIntro. Qed.
 
   Lemma extern_reg_non_local r:
     r ↦ᵣ ! -∗ ⌜¬ is_local_register r⌝.

@@ -2,8 +2,7 @@ From iris.proofmode Require Import tactics.
 From iris.program_logic Require Export adequacy weakestpre.
 From iris.algebra Require Import csum excl auth cmra_big_op gmap.
 From iris.base_logic.lib Require Import ghost_map ghost_var.
-From isla Require Import ghost_state lifting.
-From iris.program_logic Require Export language.
+From isla Require Export ghost_state lifting.
 Set Default Proof Using "Type".
 
 Class islaPreG Σ := PreIslaG {
