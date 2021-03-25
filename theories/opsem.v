@@ -258,10 +258,9 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
     | Some (LBranchAddress _) => κ' = None ∧ θ' = θ <| seq_trace := t'|>
     | Some (LDone es) =>
       ∃ pc regs', next_pc_regs θ.(seq_regs) = Some (pc, regs') ∧
-      θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
       match σ.(seq_instrs) !! pc with
-      | Some trcs => es ∈ trcs ∧ κ' = None
-      | None => κ' = Some (SInstrTrap pc regs')
+      | Some trcs => θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧ es ∈ trcs ∧ κ' = None
+      | None => κ' = Some (SInstrTrap pc regs') ∧ θ' = θ <| seq_nb_state := true|> <| seq_regs := regs' |>
       end
      end →
      seq_step θ σ (option_list κ') θ' σ []

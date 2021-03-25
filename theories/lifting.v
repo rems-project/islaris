@@ -75,14 +75,14 @@ Section lifting.
     ins ≠ [] →
     "_PC" ↦ᵣ Val_Bits nPC -∗
     "__PC_changed" ↦ᵣ Val_Bool bPC_changed -∗
-    instr a ins -∗
+    instr a (Some ins) -∗
     (∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ newPC -∗ "__PC_changed" ↦ᵣ newPC_changed -∗ WPasm i) -∗
     WPasm [].
   Proof.
     iIntros (Hnext ?) "HPC Hchanged Hi Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(%&Hictx)".
+    iIntros (σ1 ??? ?) "(Hsctx&Hictx)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (reg_mapsto_lookup with "Hθ HPC") as %HPC.
     iDestruct (reg_mapsto_lookup with "Hθ Hchanged") as %Hchanged.
@@ -91,18 +91,65 @@ Section lifting.
       destruct ins => //.
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
       eexists _, _. rewrite /next_pc_regs HPC Hchanged. cbn -[next_pc]. rewrite Hnext/=.
-      split_and!; [done| done|]. rewrite Hi. split; [by left| done].
+      split_and!; [done|]. rewrite Hi. split_and!; [done|by left| done].
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
     inv_seq_step.
     revert select (∃ _, _) => -[?[?]].
-    rewrite /next_pc_regs HPC Hchanged. cbn -[next_pc]. rewrite Hnext/= => -[[<- <-] [-> ]].
-    rewrite Hi => -[? ?].
+    rewrite /next_pc_regs HPC Hchanged. cbn -[next_pc]. rewrite Hnext/= => -[[<- <-] ].
+    rewrite Hi => -[? [??]]. simplify_eq.
     iFrame. iSplitL; [|done].
     iMod (reg_mapsto_update with "Hθ HPC") as "[Hθ HPC]".
     iMod (reg_mapsto_update with "Hθ Hchanged") as "[Hθ Hchanged]".
     iApply ("Hcont" with "[//] HPC Hchanged"); [done|done|].
     iFrame.
+  Qed.
+
+  Lemma wp_next_instr_extern nPC bPC_changed vR0 vR1 vR30 a newPC newPC_changed κs:
+    next_pc nPC bPC_changed = Some (a, newPC, newPC_changed) →
+    head κs = Some (SInstrTrap a
+                 {|
+                 _PC := newPC;
+                 __PC_changed := newPC_changed;
+                 R0 := vR0;
+                 R1 := vR1;
+                 R30 := vR30 |}) →
+    "_PC" ↦ᵣ Val_Bits nPC -∗
+    "__PC_changed" ↦ᵣ Val_Bool bPC_changed -∗
+    "R0" ↦ᵣ vR0 -∗
+    "R1" ↦ᵣ vR1 -∗
+    "R30" ↦ᵣ vR30 -∗
+    instr a None -∗
+    spec_trace κs -∗
+    WPasm [].
+  Proof.
+    iIntros (Hnext ?) "HPC Hchanged HR0 HR1 HR30 Hi Hspec". setoid_rewrite wp_asm_unfold.
+    iIntros ([? regs ?]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "(Hsctx&Hictx)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iDestruct (reg_mapsto_lookup with "Hθ HPC") as %HPC.
+    iDestruct (reg_mapsto_lookup with "Hθ Hchanged") as %Hchanged.
+    iDestruct (reg_mapsto_lookup with "Hθ HR0") as %?.
+    iDestruct (reg_mapsto_lookup with "Hθ HR1") as %?.
+    iDestruct (reg_mapsto_lookup with "Hθ HR30") as %?.
+    iDestruct (instr_lookup with "Hictx Hi") as %Hi.
+    iSplit. {
+      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      eexists _, _. rewrite /next_pc_regs HPC Hchanged. cbn -[next_pc]. rewrite Hnext/=.
+      split_and!; [done|]. rewrite Hi. done.
+    }
+    iIntros "!>" (????). iMod "HE" as "_".
+    inv_seq_step.
+    revert select (∃ _, _) => -[?[?]].
+    rewrite /next_pc_regs HPC Hchanged. cbn -[next_pc]. rewrite Hnext/= => -[[<- <-] ].
+    rewrite Hi => -[? ?].
+    destruct regs, κs => //. simplify_eq/=.
+    unfold lookup_regmap in *. simplify_eq/=.
+    iMod (spec_ctx_cons with "Hsctx Hspec") as "[??]". iModIntro.
+    iFrame. iSplitL; [|done].
+    by iApply wp_value.
+    Unshelve. apply: [].
   Qed.
 
   Lemma wp_read_reg r v v' ann es q:
@@ -113,7 +160,7 @@ Section lifting.
     iIntros "Hr Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(%&Hictx)".
+    iIntros (σ1 ??? ?) "(?&Hictx)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (reg_mapsto_lookup with "Hθ Hr") as %Hr.
     move: (Hr) => /reg_map_lookup_is_local ?.
@@ -138,7 +185,7 @@ Section lifting.
     iIntros "Hr Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(%&Hictx)".
+    iIntros (σ1 ??? ?) "(?&Hictx)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (reg_mapsto_lookup with "Hθ Hr") as %Hr.
     move: (Hr) => /reg_map_lookup_is_local ?.
@@ -155,6 +202,30 @@ Section lifting.
     iFrame.
   Qed.
 
+  Lemma wp_write_reg_extern r v f κs ann es:
+    r ↦ᵣ ! -∗
+    spec_trace (SWriteReg r f v :: κs) -∗
+    (spec_trace κs -∗ WPasm es) -∗
+    WPasm (WriteReg r f v ann :: es).
+  Proof.
+    iIntros "Hr Hspec Hcont". setoid_rewrite wp_asm_unfold.
+    iIntros ([???]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "(Hsctx&Hictx)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iDestruct (extern_reg_non_local with "Hr") as %?.
+    iSplit. {
+      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      case_match; [|done]. done.
+    }
+    iIntros "!>" (????). iMod "HE" as "_".
+    inv_seq_step. case_match; [ done| destruct_and! ]; simplify_eq/=.
+    iMod (spec_ctx_cons with "Hsctx Hspec") as "[Hsctx Hspec]". iModIntro.
+    iFrame; iSplitL; [|done].
+    iApply ("Hcont" with "Hspec"); [done|done|].
+    iFrame.
+  Qed.
+
   Lemma wp_branch_address v es ann:
     WPasm es -∗
     WPasm (BranchAddress v ann :: es).
@@ -162,7 +233,7 @@ Section lifting.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(%&Hictx)".
+    iIntros (σ1 ??? ?) "(?&Hictx)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
@@ -182,7 +253,7 @@ Section lifting.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(%&Hictx)".
+    iIntros (σ1 ??? ?) "(?&Hictx)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
@@ -204,7 +275,7 @@ Section lifting.
     rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(%&Hictx)".
+    iIntros (σ1 ??? ?) "(?&Hictx)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
@@ -226,5 +297,27 @@ Section exp_lifting.
     Φ v -∗
     WPexp (Val v ann) {{ Φ }}.
   Proof. rewrite wp_exp_unfold. iIntros "?". iExists _. by iFrame. Qed.
+
+  Lemma wpe_manyop op es Φ ann:
+    foldr (λ e Ψ, λ vs, WPexp e {{ v, Ψ (vs ++ [v]) }}) (λ vs, ∃ v, ⌜eval_manyop op vs = Some v⌝ ∗ Φ v) es [] -∗
+    WPexp (Manyop op es ann) {{ Φ }}.
+  Proof.
+    rewrite -{2}(app_nil_l es).
+    have : Forall2 (λ e v, eval_exp e = Some v) [] [] by constructor.
+    move: (@nil exp) => es'.
+    move: {1 3}(@nil valu) => vs Hall.
+    iIntros "Hes".
+    iInduction es as [|e es] "IH" forall (es' vs Hall) => /=.
+    - rewrite right_id wp_exp_unfold.
+      iDestruct "Hes" as (v Hv) "HΦ".
+      iExists _. iFrame. iPureIntro. simpl.
+      erewrite mapM_Some_2; [|done]. done.
+    - rewrite wp_exp_unfold.
+      iDestruct "Hes" as (v Hv) "HΦ".
+      rewrite (cons_middle e) !app_assoc.
+      iApply ("IH"); [ | done].
+      iPureIntro. apply: Forall2_app; [done|].
+      constructor; [done|]. constructor.
+  Qed.
 
 End exp_lifting.

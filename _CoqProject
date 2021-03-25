@@ -21,3 +21,4 @@ theories/opsem.v
 theories/example.v
 theories/ghost_state.v
 theories/lifting.v
+theories/adequacy.v

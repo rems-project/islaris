@@ -202,17 +202,28 @@ Proof.
 Qed.
 
 Lemma test_state_iris `{!islaG Σ} `{!threadG} :
-  instr 0x0000000010300000 [trc_bl_0x100] -∗
-  instr 0x0000000010300004 [trc_mov_OUT_x0] -∗
-  instr 0x0000000010300100 [trc_mov_w0_0] -∗
-  instr 0x0000000010300104 [trc_ret] -∗
+  instr 0x0000000010300000 (Some [trc_bl_0x100]) -∗
+  instr 0x0000000010300004 (Some [trc_mov_OUT_x0]) -∗
+  instr 0x0000000010300008 None -∗
+  instr 0x0000000010300100 (Some [trc_mov_w0_0]) -∗
+  instr 0x0000000010300104 (Some [trc_ret]) -∗
   "_PC" ↦ᵣ Val_Bits start_address -∗
   "__PC_changed" ↦ᵣ Val_Bool false -∗
   "R30" ↦ᵣ Val_Poison -∗
+  "R1" ↦ᵣ Val_Poison -∗
   "R0" ↦ᵣ Val_Poison -∗
+  "OUT" ↦ᵣ ! -∗
+  spec_trace [SWriteReg "OUT" [] (Val_Bits ([BV{64} 0]));
+             SInstrTrap 0x0000000010300008 {|
+                          _PC := Val_Bits [BV{64} 0x0000000010300008];
+                          __PC_changed := Val_Bool false;
+                          R0 := Val_Bits [BV{64} 0];
+                          R1 := Val_Poison;
+                          R30 := Val_Bits [BV{64} 0x0000000010300004] |}
+             ] -∗
   WPasm [].
 Proof.
-  iIntros "#Hi1 #Hi2 #Hi3 #Hi4 HPC HcPC HR30 HR0".
+  iIntros "#Hi1 #Hi2 #Hi3 #Hi4 #Hi5 HPC HcPC HR30 HR1 HR0 #HOUT Hspec".
 
   iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
   iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
@@ -254,8 +265,15 @@ Proof.
   iApply (wpe_val).
   iApply (wp_read_reg with "HR0"). iIntros ([= ->]) "HR0".
   iApply (wp_define_const). simpl.
+  iApply (wpe_manyop). simpl.
+  iApply (wpe_val). simpl.
+  iApply (wpe_val). simpl.
+  iExists _. iSplitR; [done|].
+  iApply (wp_write_reg_extern with "HOUT Hspec"). iIntros "Hspec".
 
-Abort.
+  iApply (wp_next_instr_extern with "HPC HcPC HR0 HR1 HR30"); [| |done|done]; [done|].
+  done.
+Qed.
 
 (* trace of cmp x1, 0:
   (declare-const v3370 (_ BitVec 64))
