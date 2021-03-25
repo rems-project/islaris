@@ -103,7 +103,7 @@ Inductive trace_label : Set :=
 
 Inductive trace_step : trc → option trace_label → trc → Prop :=
 | DeclareConstBitVecS x n ann es b:
-    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) None (subst_event x (Val_Bits n) <$> es)
+    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) None (subst_event x (Val_Bits [BV{b} n]) <$> es)
 | DeclareConstBoolS x ann es b:
     trace_step (Smt (DeclareConst x Ty_Bool) ann :: es) None (subst_event x (Val_Bool b) <$> es)
 | DefineConstS x e v ann es:

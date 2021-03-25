@@ -35,11 +35,11 @@ Definition trc_add_x1_x2_x3 : trc :=
   WriteReg "R1" [] (Val_Symbolic 3452) Mk_annot
 ].
 
-Lemma add_x1_x2_x3_trace bv2 bv3 :
+Lemma add_x1_x2_x3_trace n2 n3 :
   trc_add_x1_x2_x3 ~{ trace_module, [
-                    Vis (LReadReg "R2" [] (Val_Bits bv2));
-                    Vis (LReadReg "R3" [] (Val_Bits bv3));
-                    Vis (LWriteReg "R1" [] (Val_Bits (bv_extract 63 0 (bv_add (bv_zero_extend 64 bv2) (bv_zero_extend 64 bv3)))))
+                    Vis (LReadReg "R2" [] (Val_Bits [BV{64} n2]));
+                    Vis (LReadReg "R3" [] (Val_Bits [BV{64} n3]));
+                    Vis (LWriteReg "R1" [] (Val_Bits (bv_extract 63 0 (bv_add (bv_zero_extend 64 [BV{64} n2]) (bv_zero_extend 64 [BV{64} n3])))))
                 ] }~> [].
 Proof.
   do_trace_step.
@@ -213,22 +213,48 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   WPasm [].
 Proof.
   iIntros "#Hi1 #Hi2 #Hi3 #Hi4 HPC HcPC HR30 HR0".
+
   iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
   iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
   iEval (rewrite /trc_bl_0x100).
   iApply (wp_read_reg with "HPC"). iIntros (_) "HPC".
-  iApply (wp_write_reg with "HR30"). iIntros "HR3O".
+  iApply (wp_write_reg with "HR30"). iIntros "HR30".
   iApply (wp_read_reg with "HPC"). iIntros (_) "HPC".
   iApply (wp_branch_address).
   iApply (wp_write_reg with "HPC"). iIntros "HPC".
   iApply (wp_write_reg with "HcPC"). iIntros "HcPC".
+
   iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
   iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
   iEval (rewrite /trc_mov_w0_0).
   iApply (wp_write_reg with "HR0"). iIntros "HR0".
+
   iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
   iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
   iEval (rewrite /trc_ret).
+  iApply (wp_declare_const_bv). iIntros (?). simpl.
+  iApply (wp_define_const).
+  iApply (wpe_val). simpl.
+  iApply (wp_read_reg with "HR30"). iIntros ([= ->]) "HR30".
+  iApply (wp_define_const).
+  iApply (wpe_val). simpl.
+  iApply (wp_define_const).
+  iApply (wpe_val). simpl.
+  iApply (wp_branch_address).
+  iApply (wp_define_const).
+  iApply (wpe_val). simpl.
+  iApply (wp_write_reg with "HPC"). iIntros "HPC".
+  iApply (wp_write_reg with "HcPC"). iIntros "HcPC".
+
+  iApply (wp_next_instr with "HPC HcPC"); [done| |done|]; [done|].
+  iIntros (i [->|?%elem_of_nil]%elem_of_cons) "// HPC HcPC".
+  iEval (rewrite /trc_mov_OUT_x0).
+  iApply (wp_declare_const_bv). iIntros (?). simpl.
+  iApply (wp_define_const). simpl.
+  iApply (wpe_val).
+  iApply (wp_read_reg with "HR0"). iIntros ([= ->]) "HR0".
+  iApply (wp_define_const). simpl.
+
 Abort.
 
 (* trace of cmp x1, 0:
@@ -471,10 +497,10 @@ Definition trc_b_0x8 : trc := [
 *)
 
 
-Definition test_state2_local (x1 : bv) := {|
+Definition test_state2_local (n1 : Z) := {|
   seq_trace  := [];
   seq_regs   :=
-    <[ "R1" := Val_Bits x1 ]> $
+    <[ "R1" := Val_Bits [BV{64} n1] ]> $
     <[ "_PC" := Val_Bits start_address ]> $
     <[ "__PC_changed" := Val_Bool false ]> $
                                              ∅;

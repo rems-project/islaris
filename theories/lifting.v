@@ -34,6 +34,18 @@ Definition wp_asm_eq `{!islaG Σ} `{!threadG} : wp_asm = @wp_asm_def Σ _ _ := (
 
 Notation WPasm := wp_asm.
 
+Definition wp_exp_def `{!islaG Σ} (e : exp) (Φ : valu → iProp Σ) : iProp Σ :=
+  (∃ v, ⌜eval_exp e = Some v⌝ ∗ Φ v).
+Definition wp_exp_aux `{!islaG Σ} : seal (@wp_exp_def Σ _). by eexists. Qed.
+Definition wp_exp `{!islaG Σ} : exp → (valu → iProp Σ ) → iProp Σ := (wp_exp_aux).(unseal).
+Definition wp_exp_eq `{!islaG Σ} : wp_exp = @wp_exp_def Σ _ := (wp_exp_aux).(seal_eq).
+
+Notation "'WPexp' e {{ Φ } }" := (wp_exp e%E Φ)
+  (at level 20, e, Φ at level 200, only parsing) : bi_scope.
+Notation "'WPexp' e {{ v , Q } }" := (wp_exp e (λ v, Q))
+  (at level 20, e, Q at level 200,
+   format "'[' 'WPexp'  e  '/' '[   ' {{  v ,  Q  } } ']' ']'") : bi_scope.
+
 Ltac inv_seq_step :=
   simplify_eq/=;
   lazymatch goal with
@@ -54,6 +66,9 @@ Section lifting.
   Lemma wp_asm_unfold e :
     WPasm e ⊣⊢ wp_asm_def e.
   Proof. by rewrite wp_asm_eq. Qed.
+  Lemma wp_exp_unfold e Φ:
+    WPexp e {{ Φ }} ⊣⊢ wp_exp_def e Φ.
+  Proof. by rewrite wp_exp_eq. Qed.
 
   Lemma wp_next_instr nPC bPC_changed a newPC newPC_changed ins :
     next_pc nPC bPC_changed = Some (a, newPC, newPC_changed) →
@@ -160,4 +175,56 @@ Section lifting.
     iFrame.
   Qed.
 
+  Lemma wp_declare_const_bv v es ann b:
+    (∀ n, WPasm ((subst_event v (Val_Bits [BV{b} n])) <$> es)) -∗
+    WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
+  Proof.
+    iIntros "Hcont". setoid_rewrite wp_asm_unfold.
+    iIntros ([???]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "(%&Hictx)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iSplit. {
+      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      done.
+    }
+    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
+    inv_seq_step.
+    iFrame; iSplitL; [|done].
+    iApply ("Hcont"); [done|done|].
+    iFrame.
+    Unshelve. apply: inhabitant.
+  Qed.
+
+  Lemma wp_define_const n es ann e:
+    WPexp e {{ v, WPasm ((subst_event n v) <$> es) }} -∗
+    WPasm (Smt (DefineConst n e) ann :: es).
+  Proof.
+    rewrite wp_asm_unfold wp_exp_unfold. iDestruct 1 as (v Hv) "Hcont".
+    rewrite wp_asm_unfold.
+    iIntros ([???]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "(%&Hictx)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iSplit. {
+      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      done.
+    }
+    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
+    inv_seq_step.
+    iFrame; iSplitL; [|done].
+    iApply ("Hcont"); [done|done|].
+    iFrame.
+  Qed.
+
 End lifting.
+
+Section exp_lifting.
+  Context `{!islaG Σ}.
+
+  Lemma wpe_val v Φ ann:
+    Φ v -∗
+    WPexp (Val v ann) {{ Φ }}.
+  Proof. rewrite wp_exp_unfold. iIntros "?". iExists _. by iFrame. Qed.
+
+End exp_lifting.
