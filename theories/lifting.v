@@ -76,6 +76,7 @@ Section lifting.
     "_PC" ↦ᵣ Val_Bits nPC -∗
     "__PC_changed" ↦ᵣ Val_Bool bPC_changed -∗
     instr a (Some ins) -∗
+    (* TODO: We want some receptiveness property here like ⌜∃ i, i ∈ ins ∧ i can execute to the end⌝ *)
     (∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ newPC -∗ "__PC_changed" ↦ᵣ newPC_changed -∗ WPasm i) -∗
     WPasm [].
   Proof.
@@ -99,40 +100,28 @@ Section lifting.
     rewrite /next_pc_regs HPC Hchanged. cbn -[next_pc]. rewrite Hnext/= => -[[<- <-] ].
     rewrite Hi => -[? [??]]. simplify_eq.
     iFrame. iSplitL; [|done].
-    iMod (reg_mapsto_update with "Hθ HPC") as "[Hθ HPC]".
     iMod (reg_mapsto_update with "Hθ Hchanged") as "[Hθ Hchanged]".
+    iMod (reg_mapsto_update with "Hθ HPC") as "[Hθ HPC]".
     iApply ("Hcont" with "[//] HPC Hchanged"); [done|done|].
     iFrame.
   Qed.
 
-  Lemma wp_next_instr_extern nPC bPC_changed vR0 vR1 vR30 a newPC newPC_changed κs:
+  Lemma wp_next_instr_extern nPC bPC_changed a newPC newPC_changed κs:
     next_pc nPC bPC_changed = Some (a, newPC, newPC_changed) →
-    head κs = Some (SInstrTrap a
-                 {|
-                 _PC := newPC;
-                 __PC_changed := newPC_changed;
-                 R0 := vR0;
-                 R1 := vR1;
-                 R30 := vR30 |}) →
+    head κs = Some (SInstrTrap a) →
     "_PC" ↦ᵣ Val_Bits nPC -∗
     "__PC_changed" ↦ᵣ Val_Bool bPC_changed -∗
-    "R0" ↦ᵣ vR0 -∗
-    "R1" ↦ᵣ vR1 -∗
-    "R30" ↦ᵣ vR30 -∗
     instr a None -∗
     spec_trace κs -∗
     WPasm [].
   Proof.
-    iIntros (Hnext ?) "HPC Hchanged HR0 HR1 HR30 Hi Hspec". setoid_rewrite wp_asm_unfold.
+    iIntros (Hnext ?) "HPC Hchanged Hi Hspec". setoid_rewrite wp_asm_unfold.
     iIntros ([? regs ?]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
     iIntros (σ1 ??? ?) "(Hsctx&Hictx)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (reg_mapsto_lookup with "Hθ HPC") as %HPC.
     iDestruct (reg_mapsto_lookup with "Hθ Hchanged") as %Hchanged.
-    iDestruct (reg_mapsto_lookup with "Hθ HR0") as %?.
-    iDestruct (reg_mapsto_lookup with "Hθ HR1") as %?.
-    iDestruct (reg_mapsto_lookup with "Hθ HR30") as %?.
     iDestruct (instr_lookup with "Hictx Hi") as %Hi.
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
@@ -145,7 +134,6 @@ Section lifting.
     rewrite /next_pc_regs HPC Hchanged. cbn -[next_pc]. rewrite Hnext/= => -[[<- <-] ].
     rewrite Hi => -[? ?].
     destruct regs, κs => //. simplify_eq/=.
-    unfold lookup_regmap in *. simplify_eq/=.
     iMod (spec_ctx_cons with "Hsctx Hspec") as "[??]". iModIntro.
     iFrame. iSplitL; [|done].
     by iApply wp_value.
@@ -163,16 +151,16 @@ Section lifting.
     iIntros (σ1 ??? ?) "(?&Hictx)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (reg_mapsto_lookup with "Hθ Hr") as %Hr.
-    move: (Hr) => /reg_map_lookup_is_local ?.
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
-      case_match; [|done]. by right.
+      eexists _. split_and! => //. by right.
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
-    inv_seq_step. case_match; [ destruct_or!; destruct_and! | done];
-      unfold register_name in *; simplify_eq.
-    all: iFrame; iSplitL; [|done].
-    2: { by iApply wp_value. }
+    inv_seq_step. revert select (∃ x, _) => -[?[?[?[[??]|?]]]]; simplify_eq/=. 2: {
+      iFrame. iSplitL; [|done]. by iApply wp_value.
+    }
+    unfold register_name in *. simplify_eq/=.
+    iFrame; iSplitL; [|done].
     iApply ("Hcont" with "[//] Hr"); [done|done|].
     iFrame.
   Qed.
@@ -188,41 +176,15 @@ Section lifting.
     iIntros (σ1 ??? ?) "(?&Hictx)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (reg_mapsto_lookup with "Hθ Hr") as %Hr.
-    move: (Hr) => /reg_map_lookup_is_local ?.
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
-      by case_match.
+      done.
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
-    inv_seq_step. case_match; [ destruct_and! | done];
-      unfold register_name in *; simplify_eq.
+    inv_seq_step.
     iFrame; iSplitL; [|done].
     iMod (reg_mapsto_update with "Hθ Hr") as "[Hθ Hr]".
     iApply ("Hcont" with "Hr"); [done|done|].
-    iFrame.
-  Qed.
-
-  Lemma wp_write_reg_extern r v f κs ann es:
-    r ↦ᵣ ! -∗
-    spec_trace (SWriteReg r f v :: κs) -∗
-    (spec_trace κs -∗ WPasm es) -∗
-    WPasm (WriteReg r f v ann :: es).
-  Proof.
-    iIntros "Hr Hspec Hcont". setoid_rewrite wp_asm_unfold.
-    iIntros ([???]) "/= -> -> Hθ".
-    iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(Hsctx&Hictx)".
-    iApply fupd_mask_intro; first set_solver. iIntros "HE".
-    iDestruct (extern_reg_non_local with "Hr") as %?.
-    iSplit. {
-      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
-      case_match; [|done]. done.
-    }
-    iIntros "!>" (????). iMod "HE" as "_".
-    inv_seq_step. case_match; [ done| destruct_and! ]; simplify_eq/=.
-    iMod (spec_ctx_cons with "Hsctx Hspec") as "[Hsctx Hspec]". iModIntro.
-    iFrame; iSplitL; [|done].
-    iApply ("Hcont" with "Hspec"); [done|done|].
     iFrame.
   Qed.
 

@@ -20,3 +20,11 @@ You might need to run `eval $(opam env)` afterwards to update the environment of
 Run `make -jN` to build the full development, where `N` is the number of your
 CPU cores.
 
+# TODOs
+
+- [ ] Write frontend that generates isla traces in Coq (Rodolphe)
+- [ ] Add memory model and try out memory instructions (Angus)
+- [ ] More work on bitvectors (Michael)
+- [ ] Try stating and proving the receptiveness property for instructions (Michael)
+- [ ] Tree-shaped traces (???)
+- [ ] Look at exception vectors (currently blocked on other pieces)

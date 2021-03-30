@@ -13,30 +13,6 @@ Section instances.
   Global Instance instr_intro_pers i a : IntroPersistent (instr a i) (instr a i).
   Proof. constructor. iIntros "#$". Qed.
 
-  Global Instance reg_extern_intro_pers r : IntroPersistent (r ↦ᵣ !) (r ↦ᵣ !).
-  Proof. constructor. iIntros "#$". Qed.
-
-  Definition FindReg (r : register_name) := {|
-    fic_A := option valu; fic_Prop ov := if ov is Some v then r ↦ᵣ v else r ↦ᵣ ! ;
-  |}%I.
-  Typeclasses Opaque FindReg.
-
-  Lemma find_in_context_reg_local r G:
-     (∃ v, r ↦ᵣ v ∗ G (Some v)) -∗
-    find_in_context (FindReg r) G.
-  Proof. iDestruct 1 as (?) "[Hr HG]". iExists _. by iFrame. Qed.
-  Global Instance find_in_context_reg_local_inst r :
-    FindInContext (FindReg r) 0%nat FICSyntactic :=
-    λ G, i2p (find_in_context_reg_local r G).
-
-  Lemma find_in_context_reg_extern r G:
-     (r ↦ᵣ ! ∗ G None) -∗
-    find_in_context (FindReg r) G.
-  Proof. iDestruct 1 as "[Hr HG]". iExists _. by iFrame. Qed.
-  Global Instance find_in_context_reg_extern_inst r :
-    FindInContext (FindReg r) 1%nat FICSyntactic :=
-    λ G, i2p (find_in_context_reg_extern r G).
-
   Global Instance reg_related r v : RelatedTo (r ↦ᵣ v) := {|
     rt_fic := FindDirect (λ v, r ↦ᵣ v)%I;
   |}.
@@ -82,9 +58,7 @@ Section instances.
      | Some ts =>
        ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, "_PC" ↦ᵣ newPC -∗ "__PC_changed" ↦ᵣ newPC_changed -∗ WPasm t
      | None =>
-       ∃ vR0 vR1 vR30 κs, "R0" ↦ᵣ vR0 ∗ "R1" ↦ᵣ vR1 ∗ "R30" ↦ᵣ vR30 ∗ spec_trace κs ∗
-          ⌜hd_error κs = Some (SInstrTrap a
-            {| _PC := newPC; __PC_changed := newPC_changed; R0 := vR0; R1 := vR1; R30 := vR30 |})⌝
+       ∃ κs, spec_trace κs ∗ ⌜hd_error κs = Some (SInstrTrap a)⌝
                               ∗ True
      end
     ) -∗
@@ -98,8 +72,8 @@ Section instances.
       iIntros (i Hi) "? ?".
       iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
       iApply ("Hwp" with "[$] [$]").
-    - iDestruct "Hwp" as (????) "(?&?&?&?&%&?)".
-      iApply (wp_next_instr_extern with "[$] [$] [$] [$] [$] [$] [$]") => //.
+    - iDestruct "Hwp" as (?) "(?&%&?)".
+      iApply (wp_next_instr_extern with "[$] [$] [$] [$]") => //.
   Qed.
 
   Lemma li_wp_read_reg r v ann es:
@@ -108,21 +82,11 @@ Section instances.
   Proof. iDestruct 1 as (?) "[Hr Hwp]". by iApply (wp_read_reg with "Hr"). Qed.
 
   Lemma li_wp_write_reg r f v ann es:
-    find_in_context (FindReg r) (λ ov,
-      if ov is Some v' then
-        ⌜f = []⌝ ∗ (r ↦ᵣ v -∗ WPasm es)
-      else
-        ∃ κs, spec_trace κs ∗
-              ⌜head κs = Some (SWriteReg r f v)⌝ ∗
-              (spec_trace (tail κs) -∗ WPasm es)
-     ) -∗
+    (∃ v', r ↦ᵣ v' ∗ ⌜f = []⌝ ∗ (r ↦ᵣ v -∗ WPasm es)) -∗
     WPasm (WriteReg r f v ann :: es).
   Proof.
-    iDestruct 1 as (?) "[Hr Hwp]". case_match; simplify_eq/=.
-    - iDestruct "Hwp" as (->) "Hwp".
+    iDestruct 1 as (?) "[Hr [% Hwp]]"; simplify_eq/=.
       by iApply (wp_write_reg with "Hr").
-    - iDestruct "Hwp" as ([|??]) "(?&%&Hwp)" => //. simplify_eq/=.
-      by iApply (wp_write_reg_extern with "Hr [$]").
   Qed.
 
   Lemma li_wp_branch_address v ann es:

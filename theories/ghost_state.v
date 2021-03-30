@@ -51,13 +51,6 @@ Section definitions.
   Definition instr_ctx (intrs : gmap addr (list trc)) : iProp Σ :=
     instr_table intrs.
 
-  Definition extern_reg_def `{!heapG Σ} (r : string) : iProp Σ :=
-    ⌜¬ is_local_register r⌝.
-  Definition extern_reg_aux : seal (@extern_reg_def _). by eexists. Qed.
-  Definition extern_reg := unseal extern_reg_aux.
-  Definition extern_reg_eq : @extern_reg = @extern_reg_def _ :=
-    seal_eq extern_reg_aux.
-
   Definition reg_mapsto_def (γ : gname) (r : string) (q : frac) (v: valu) : iProp Σ :=
     r ↪[ γ ]{# q} v.
   Definition reg_mapsto_aux : seal (@reg_mapsto_def). by eexists. Qed.
@@ -66,7 +59,7 @@ Section definitions.
     seal_eq reg_mapsto_aux.
 
   Definition regs_ctx `{!threadG} (regs : reg_map) : iProp Σ :=
-    ghost_map_auth thread_regs_name 1 (reg_map_to_gmap regs).
+    ghost_map_auth thread_regs_name 1 regs.
 
   Definition spec_trace_def (κs: list seq_label) : iProp Σ :=
     ghost_var heap_spec_trace_name (1/2) κs.
@@ -92,7 +85,6 @@ End definitions.
 Notation "r ↦ᵣ{ q } v" := (reg_mapsto thread_regs_name r q v)
   (at level 20, q at level 50, format "r  ↦ᵣ{ q }  v") : bi_scope.
 Notation "r ↦ᵣ v" := (reg_mapsto thread_regs_name r 1 v) (at level 20) : bi_scope.
-Notation "r ↦ᵣ !" := (extern_reg r) (at level 20) : bi_scope.
 
 Section instr.
   Context `{!heapG Σ}.
@@ -135,31 +127,15 @@ End instr.
 Section reg.
   Context `{!heapG Σ}.
 
-  Global Instance extern_reg_pers r : Persistent (r ↦ᵣ !).
-  Proof. rewrite extern_reg_eq. by apply _. Qed.
-
-  Global Instance extern_reg_tl r : Timeless (r ↦ᵣ !).
-  Proof. rewrite extern_reg_eq. by apply _. Qed.
-
   Global Instance reg_mapsto_tl γ r q v : Timeless (reg_mapsto γ r q v).
   Proof. rewrite reg_mapsto_eq. by apply _. Qed.
-
-  Lemma extern_reg_intro r:
-    ¬ is_local_register r →
-    ⊢ r ↦ᵣ !.
-  Proof. rewrite extern_reg_eq => ?. by iPureIntro. Qed.
-
-  Lemma extern_reg_non_local r:
-    r ↦ᵣ ! -∗ ⌜¬ is_local_register r⌝.
-  Proof. by rewrite extern_reg_eq. Qed.
 
   Lemma reg_mapsto_lookup `{!threadG} regs r q v :
     regs_ctx regs -∗ r ↦ᵣ{q} v -∗ ⌜regs !! r = Some v⌝.
   Proof.
     rewrite reg_mapsto_eq.
     iIntros "Hregs Hreg".
-    iDestruct (ghost_map_lookup with "Hregs Hreg") as %?.
-    by rewrite -reg_map_to_gmap_lookup.
+    by iDestruct (ghost_map_lookup with "Hregs Hreg") as %?.
   Qed.
 
   Lemma reg_mapsto_update `{!threadG} regs r v v' :
@@ -168,8 +144,7 @@ Section reg.
     iIntros "Hregs Hreg".
     iDestruct (reg_mapsto_lookup with "Hregs Hreg") as %?.
     rewrite reg_mapsto_eq.
-    iMod (ghost_map_update with "Hregs Hreg") as "[? $]".
-    by erewrite reg_map_to_gmap_insert.
+    by iMod (ghost_map_update with "Hregs Hreg") as "[? $]".
   Qed.
 End reg.
 

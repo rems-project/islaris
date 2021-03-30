@@ -3,12 +3,14 @@ Require Import isla.opsem.
 Require Import isla.automation.
 Require Import isla.adequacy.
 
-Ltac solve_trace_step := by econstructor.
-Ltac do_trace_step :=
-  apply: TraceStep'; [solve_trace_step | done |]; simpl.
+(* Ltac solve_trace_step := by econstructor. *)
+(* Ltac do_trace_step := *)
+(*   apply: TraceStep'; [solve_trace_step | done |]; simpl. *)
 
 
 (* trace of add x1, x2, x3:
+  (declare-const v3359 (_ BitVec 64))
+  (declare-const v3361 (_ BitVec 64))
   (read-reg |R2| nil v3359)
   (define-const v3425 v3359)
   (read-reg |R3| nil v3361)
@@ -36,27 +38,27 @@ Definition trc_add_x1_x2_x3 : trc :=
   WriteReg "R1" [] (Val_Symbolic 3452) Mk_annot
 ].
 
-Lemma add_x1_x2_x3_trace n2 n3 :
-  trc_add_x1_x2_x3 ~{ trace_module, [
-                    Vis (LReadReg "R2" [] (Val_Bits [BV{64} n2]));
-                    Vis (LReadReg "R3" [] (Val_Bits [BV{64} n3]));
-                    Vis (LWriteReg "R1" [] (Val_Bits (bv_extract 63 0 (bv_add (bv_zero_extend 64 [BV{64} n2]) (bv_zero_extend 64 [BV{64} n3])))))
-                ] }~> [].
-Proof.
-  do_trace_step.
-  do_trace_step.
-  do_trace_step.
-  do_trace_step.
-  do_trace_step.
-  do_trace_step.
-  do_trace_step.
-  do_trace_step.
-  do_trace_step.
-  do_trace_step.
-  do_trace_step.
-  do_trace_step.
-  by apply: TraceEnd.
-Qed.
+(* Lemma add_x1_x2_x3_trace n2 n3 : *)
+(*   trc_add_x1_x2_x3 ~{ trace_module, [ *)
+(*                     Vis (LReadReg "R2" [] (Val_Bits [BV{64} n2])); *)
+(*                     Vis (LReadReg "R3" [] (Val_Bits [BV{64} n3])); *)
+(*                     Vis (LWriteReg "R1" [] (Val_Bits (bv_extract 63 0 (bv_add (bv_zero_extend 64 [BV{64} n2]) (bv_zero_extend 64 [BV{64} n3]))))) *)
+(*                 ] }~> []. *)
+(* Proof. *)
+(*   do_trace_step. *)
+(*   do_trace_step. *)
+(*   do_trace_step. *)
+(*   do_trace_step. *)
+(*   do_trace_step. *)
+(*   do_trace_step. *)
+(*   do_trace_step. *)
+(*   do_trace_step. *)
+(*   do_trace_step. *)
+(*   do_trace_step. *)
+(*   do_trace_step. *)
+(*   do_trace_step. *)
+(*   by apply: TraceEnd. *)
+(* Qed. *)
 
 (*
 C:
@@ -150,6 +152,10 @@ Definition test_state_local := {|
   seq_regs   :=
     <[ "_PC" := Val_Bits start_address ]> $
     <[ "__PC_changed" := Val_Bool false ]> $
+    <[ "R30" := Val_Poison ]> $
+    <[ "R1" := Val_Poison ]> $
+    <[ "R0" := Val_Poison ]> $
+    <[ "OUT" := Val_Poison ]> $
      ∅;
   seq_nb_state  := false;
 |}.
@@ -163,53 +169,46 @@ Definition test_state_global := {|
     ∅
 |}.
 
-Ltac do_seq_step :=
-  apply: (TraceStep' _ _ seq_module (_, _)); [ econstructor; [done|solve_trace_step| try left; done] | done |]; simpl.
+(* Ltac do_seq_step := *)
+(*   apply: (TraceStep' _ _ seq_module (_, _)); [ econstructor; [done|solve_trace_step| try left; done] | done |]; simpl. *)
 
-Ltac do_seq_step_jmp :=
-  apply: (TraceStep' _ _ seq_module (_, _)); [ econstructor; [done|solve_trace_step| ];
-                       eexists _, _; repeat (split; first done); vm_compute; split => //; left | done |]; simpl.
+(* Ltac do_seq_step_jmp := *)
+(*   apply: (TraceStep' _ _ seq_module (_, _)); [ econstructor; [done|solve_trace_step| ]; *)
+(*                        eexists _, _; repeat (split; first done); vm_compute; split => //; left | done |]; simpl. *)
 
-Lemma test_state_trace :
-  (test_state_global, test_state_local) ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits [BV{64} 0x0])) ] }~> -.
-Proof.
-  eexists _.
-  do_seq_step_jmp.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step_jmp.
-  do_seq_step.
-  do_seq_step_jmp.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step_jmp.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  apply: TraceEnd.
-Qed.
+(* Lemma test_state_trace : *)
+(*   (test_state_global, test_state_local) ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits [BV{64} 0x0])) ] }~> -. *)
+(* Proof. *)
+(*   eexists _. *)
+(*   do_seq_step_jmp. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step_jmp. *)
+(*   do_seq_step. *)
+(*   do_seq_step_jmp. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step_jmp. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   apply: TraceEnd. *)
+(* Qed. *)
 
-Definition test_state_spec : list seq_label := [SWriteReg "OUT" [] (Val_Bits ([BV{64} 0]));
-             SInstrTrap 0x0000000010300008 {|
-                          _PC := Val_Bits [BV{64} 0x0000000010300008];
-                          __PC_changed := Val_Bool false;
-                          R0 := Val_Bits [BV{64} 0];
-                          R1 := Val_Poison;
-                          R30 := Val_Bits [BV{64} 0x0000000010300004] |}
-             ].
+Definition test_state_spec : list seq_label := [ SInstrTrap 0x0000000010300008 ].
 
 
 Lemma test_state_iris `{!islaG Σ} `{!threadG} :
@@ -223,7 +222,7 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   "R30" ↦ᵣ Val_Poison -∗
   "R1" ↦ᵣ Val_Poison -∗
   "R0" ↦ᵣ Val_Poison -∗
-  "OUT" ↦ᵣ ! -∗
+  "OUT" ↦ᵣ Val_Poison -∗
   spec_trace test_state_spec -∗
   WPasm [].
 Proof.
@@ -234,7 +233,8 @@ Proof.
 Qed.
 
 Lemma test_state_adequate κs t2 σ2 n:
-  nsteps n (initial_local_state <$> [test_state_local.(seq_regs)], test_state_global) κs (t2, σ2) →
+  nsteps n (initial_local_state <$> [test_state_local.(seq_regs)],
+            test_state_global) κs (t2, σ2) →
   (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧
   κs `prefix_of` test_state_spec.
 Proof.
@@ -242,12 +242,10 @@ Proof.
   apply: (isla_adequacy Σ) => //.
   iIntros (?) "#Hi Hspec /= !>". iSplitL => //.
   iIntros (?) "/=".
-  do 5 rewrite big_sepM_insert //=.
-  iIntros "(?&?&?&?&?&?)".
-  iApply (test_state_iris with "[] [] [] [] [] [$] [$] [$] [$] [$] [] [$]").
+  do 6 rewrite big_sepM_insert //=.
+  iIntros "(?&?&?&?&?&?&?)".
+  iApply (test_state_iris with "[] [] [] [] [] [$] [$] [$] [$] [$] [$] [$]").
   all: try by iApply (instr_intro with "Hi").
-  iApply extern_reg_intro.
-  naive_solver.
 Qed.
 
 
@@ -514,18 +512,18 @@ Definition test_state2_global  := {|
     ∅
 |}.
 
-Lemma test_state2_trace x1 :
-  (test_state2_global, test_state2_local x1) ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits [BV{64} 0])) ] }~> -.
-Proof.
-  eexists _.
-  do_seq_step_jmp.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-  do_seq_step.
-Abort.
+(* Lemma test_state2_trace x1 : *)
+(*   (test_state2_global, test_state2_local x1) ~{ seq_module, [Vis (SWriteReg "OUT" [] (Val_Bits [BV{64} 0])) ] }~> -. *)
+(* Proof. *)
+(*   eexists _. *)
+(*   do_seq_step_jmp. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(*   do_seq_step. *)
+(* Abort. *)
 
 (*
 trace of ldr x0, [x1]: (trace of str x0, [x1] is similar, only with write-mem)

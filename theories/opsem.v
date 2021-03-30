@@ -130,77 +130,12 @@ Definition trace_module : module trace_label := {|
 
 
 Definition addr := Z.
-Record reg_map := {
-  _PC : valu;
-  __PC_changed : valu;
-  R0 : valu;
-  R1 : valu;
-  R30 : valu;
-}.
-Instance reg_map_empty : Empty reg_map := {|
-  _PC := Val_Poison;
-  __PC_changed := Val_Poison;
-  R0 := Val_Poison;
-  R1 := Val_Poison;
-  R30 := Val_Poison;
-|}.
-Instance eta_regmap : Settable _ := settable! Build_reg_map <_PC; __PC_changed; R0; R1; R30>.
-Definition register_name_to_accessor (n : register_name) : option ((reg_map → valu) * (valu → reg_map → reg_map)) :=
-  if bool_decide (n = "_PC") then Some (_PC, λ v, set _PC (λ _, v)) else
-  if bool_decide (n = "__PC_changed") then Some (__PC_changed, λ v, set __PC_changed (λ _, v)) else
-  if bool_decide (n = "R0") then Some (R0, λ v, set R0 (λ _, v)) else
-  if bool_decide (n = "R1") then Some (R1, λ v, set R1 (λ _, v)) else
-  if bool_decide (n = "R30") then Some (R30, λ v, set R30 (λ _, v)) else
-  None.
-Arguments register_name_to_accessor : simpl nomatch.
-Instance lookup_regmap : Lookup register_name valu reg_map :=
-  λ k m,
-  match register_name_to_accessor k with
-  | Some (r,_) => Some (r m)
-  | None => None
-  end.
-Instance insert_regmap : Insert register_name valu reg_map :=
-  λ k a m,
-  match register_name_to_accessor k with
-  | Some (_, w) => w a m
-  | None => m
-  end.
-Arguments insert_regmap _ _ !_ /.
-Definition reg_map_to_gmap (regs : reg_map) : gmap string valu :=
-  list_to_map ((λ n, (n, default Val_Poison (regs !! n))) <$> ["_PC"; "__PC_changed"; "R0"; "R1"; "R30"]).
-
-Lemma reg_map_to_gmap_lookup r regs:
-  reg_map_to_gmap regs !! r = regs !! r.
-Proof.
-  rewrite {2}/lookup/lookup_regmap/=/register_name_to_accessor.
-  repeat (case_bool_decide; subst; [ done|]).
-  by rewrite ?lookup_insert_ne.
-Qed.
-
-Lemma reg_map_to_gmap_insert r regs v vold:
-  regs !! r = Some vold →
-  <[r := v]> (reg_map_to_gmap regs) = reg_map_to_gmap (<[r := v]> regs).
-Proof.
-  move => Hold.
-  rewrite {2}/insert/insert_regmap/=/register_name_to_accessor.
-  destruct regs.
-  repeat (case_bool_decide; subst; [
-    repeat (rewrite (insert_commute _ _ _ v) /=; [|done]); rewrite insert_insert /=; done
-    |]).
-  exfalso. move: Hold.
-  rewrite -reg_map_to_gmap_lookup ?lookup_insert_ne //.
-Qed.
-
-Definition is_local_register (r : register_name) : bool :=
-  match register_name_to_accessor r with
-  | Some _ => true
-  | None => false
-  end.
-
-Lemma reg_map_lookup_is_local (regs : reg_map) r v:
-  regs !! r = Some v → is_local_register r.
-Proof. rewrite /lookup/lookup_regmap /is_local_register. by case_match. Qed.
-
+(* TODO: this should probably be a simpler type than valu:
+- take out poison and symbolic
+- take out list and (maybe) arbitrary integer and (maybe) enum
+- add unknown
+ *)
+Definition reg_map := gmap string valu.
 
 Definition instruction_size : bv := [BV{64} 0x4].
 
@@ -227,9 +162,7 @@ Record seq_local_state := {
 Instance eta_seq_local_state : Settable _ := settable! Build_seq_local_state <seq_trace; seq_regs; seq_nb_state>.
 
 Inductive seq_label : Set :=
-| SReadReg (r : register_name) (al : accessor_list) (v : valu)
-| SWriteReg (r : register_name) (al : accessor_list) (v : valu)
-| SInstrTrap (pc : addr) (regs : reg_map)
+| SInstrTrap (pc : addr)
 .
 
 Inductive seq_step : seq_local_state → seq_global_state → list seq_label → seq_local_state → seq_global_state → list seq_local_state → Prop :=
@@ -239,28 +172,18 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
     match κ with
     | None => κ' = None ∧ θ' = θ <| seq_trace := t'|>
     | Some (LReadReg r al v) =>
-      if is_local_register r then
-        (θ' = θ <| seq_trace := t'|> ∧
-        θ.(seq_regs) !! r = Some v ∧
-        κ' = None)
-        ∨
-        (θ' = θ <| seq_nb_state := true|> ∧ κ' = None)
-      else
-        θ' = θ <| seq_trace := t'|> ∧
-        κ' = Some (SReadReg r al v)
+      ∃ v', θ.(seq_regs) !! r = Some v' ∧
+            κ' = None ∧
+            ((θ' = θ <| seq_trace := t'|> ∧ v = v') ∨ (θ' = θ <| seq_nb_state := true|>))
     | Some (LWriteReg r al v) =>
-      if is_local_register r then
-        θ' = θ <| seq_trace := t'|> <| seq_regs := <[r := v]> θ.(seq_regs)|> ∧
-        κ' = None
-      else
-        θ' = θ <| seq_trace := t'|> ∧
-        κ' = Some (SWriteReg r al v)
+      θ' = θ <| seq_trace := t'|> <| seq_regs := <[r := v]> θ.(seq_regs)|> ∧
+      κ' = None
     | Some (LBranchAddress _) => κ' = None ∧ θ' = θ <| seq_trace := t'|>
     | Some (LDone es) =>
       ∃ pc regs', next_pc_regs θ.(seq_regs) = Some (pc, regs') ∧
       match σ.(seq_instrs) !! pc with
       | Some trcs => θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧ es ∈ trcs ∧ κ' = None
-      | None => κ' = Some (SInstrTrap pc regs') ∧ θ' = θ <| seq_nb_state := true|> <| seq_regs := regs' |>
+      | None => κ' = Some (SInstrTrap pc) ∧ θ' = θ <| seq_nb_state := true|> <| seq_regs := regs' |>
       end
      end →
      seq_step θ σ (option_list κ') θ' σ []

@@ -27,7 +27,7 @@ Definition initial_local_state (regs : reg_map) : seq_local_state := {|
 Lemma isla_adequacy Σ `{!islaPreG Σ} (instrs : gmap addr (list trc)) (regs : list reg_map) κsspec t2 σ2 κs n:
   (∀ {HG : islaG Σ},
     ⊢ instr_table instrs -∗ spec_trace κsspec
-    ={⊤}=∗ [∗ list] rs ∈ regs, ∀ (_ : threadG), ([∗ map] r↦v∈reg_map_to_gmap rs, r ↦ᵣ v) -∗ WPasm []) →
+    ={⊤}=∗ [∗ list] rs ∈ regs, ∀ (_ : threadG), ([∗ map] r↦v∈rs, r ↦ᵣ v) -∗ WPasm []) →
   nsteps n (initial_local_state <$> regs, {| seq_instrs := instrs |}) κs (t2, σ2) →
   (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧
   κs `prefix_of` κsspec.
@@ -52,7 +52,7 @@ Proof.
   - rewrite big_sepL2_replicate_r ?fmap_length // big_sepL_fmap.
     iApply (big_sepL_impl with "Hwp").
     iIntros "!>" (? rs ?) "Hwp".
-    iMod (ghost_map_alloc (reg_map_to_gmap rs)) as (γr) "[Hr1 Hr2]".
+    iMod (ghost_map_alloc (rs)) as (γr) "[Hr1 Hr2]".
     set (HthreadG := ThreadG γr).
     setoid_rewrite wp_asm_unfold.
     iApply ("Hwp" with "[Hr2]"); [|done|done|done].
