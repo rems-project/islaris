@@ -7,6 +7,8 @@ Set Default Proof Using "Type".
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
+Ltac normalize_tac ::= normalize_autorewrite.
+
 Section instances.
   Context `{!islaG Σ} `{!threadG}.
 

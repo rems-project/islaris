@@ -533,6 +533,7 @@ Definition test_state2_spec : list seq_label := [ SInstrTrap 0x0000000010300018 
 Lemma ite_bits b n1 n2 :
   ite b (Val_Bits n1) (Val_Bits n2) = Val_Bits (ite b n1 n2).
 Proof. by destruct b. Qed.
+Hint Rewrite ite_bits : lithium_rewrite.
 
 Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 :
   instr 0x0000000010300000 (Some [trc_cmp_x1_0]) -∗
@@ -566,151 +567,18 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 :
   WPasm [].
 Proof.
   iStartProof.
-  repeat liAStep; liShow.
-  rewrite ite_bits.
-  repeat liAStep; liShow.
-  rewrite ite_bits.
-  repeat liAStep; liShow.
-  rewrite ite_bits.
-  do 10 liAStep; liShow.
-  do 10 liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+
+  (* repeat liAStep; liShow. *)
 Abort.
 
 

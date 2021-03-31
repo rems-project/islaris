@@ -11,7 +11,7 @@ synopsis: "Coq formalization of isla"
 
 depends: [
   "coq" { (>= "8.12.2" & < "8.13~") | (= "dev") }
-  "refinedc" { (= "dev.2021-03-25.0.40972f03") | (= "dev") }
+  "refinedc" { (= "dev.2021-03-31.0.079c2b54") | (= "dev") }
   "coq-record-update" { (= "0.2.0") }
 ]
 
