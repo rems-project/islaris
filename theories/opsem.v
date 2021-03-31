@@ -2,6 +2,11 @@ Require Export isla.isla_lang_ext.
 From iris.program_logic Require Export language.
 Open Scope Z_scope.
 
+Definition ite {A} (b : bool) (x y : A) : A :=
+  if b then x else y.
+Typeclasses Opaque ite.
+
+
 Fixpoint subst_valu (n : var_name) (z : valu) (v : valu) {struct v} : valu :=
   match v with
   | Val_Symbolic x => if bool_decide (n = x) then z else Val_Symbolic x
@@ -14,7 +19,7 @@ Fixpoint subst_valu (n : var_name) (z : valu) (v : valu) {struct v} : valu :=
   | Val_NamedUnit u => Val_NamedUnit u
   | Val_Vector vs => Val_Vector (subst_valu n z <$> vs)
   | Val_List vs => Val_List (subst_valu n z <$> vs)
-  | Val_Struct s => Val_Struct s
+  | Val_Struct s => Val_Struct (prod_map id (subst_valu n z) <$> s)
   | Val_Poison => Val_Poison
   end.
 
@@ -151,6 +156,32 @@ Definition next_pc_regs (regs : reg_map) : option (addr * reg_map) :=
   n ← next_pc an cb;
   Some (n.1.1, <["_PC" := n.1.2]> $ <["__PC_changed" := n.2]> regs).
 
+Fixpoint read_accessor (al : accessor_list) (v : valu) : option valu :=
+  match al with
+  | [] => Some v
+  | Field a :: al' =>
+    s ← (if v is Val_Struct s then Some s else None);
+    i ← (list_find_idx (λ x, x.1 = a) s);
+    v' ← s !! i;
+    read_accessor al' v'.2
+  end.
+
+Fixpoint write_accessor (al : accessor_list) (v : valu) (vnew : valu) : option valu :=
+  match al with
+  | [] => Some vnew
+  | Field a :: al' =>
+    s ← (if v is Val_Struct s then Some s else None);
+    i ← (list_find_idx (λ x, x.1 = a) s);
+    v' ← s !! i;
+    (λ vnew', Val_Struct (<[i := (a, vnew')]> s))
+      <$> write_accessor al' v'.2 vnew
+  end.
+
+Arguments write_accessor : simpl never.
+Arguments read_accessor : simpl never.
+Typeclasses Opaque write_accessor.
+Typeclasses Opaque read_accessor.
+
 Record seq_global_state := {
   seq_instrs : gmap addr (list trc);
 }.
@@ -172,11 +203,17 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
     match κ with
     | None => κ' = None ∧ θ' = θ <| seq_trace := t'|>
     | Some (LReadReg r al v) =>
-      ∃ v', θ.(seq_regs) !! r = Some v' ∧
-            κ' = None ∧
-            ((θ' = θ <| seq_trace := t'|> ∧ v = v') ∨ (θ' = θ <| seq_nb_state := true|>))
+      ∃ v' v'' vread,
+        θ.(seq_regs) !! r = Some v' ∧
+        κ' = None ∧
+        read_accessor al v' = Some v'' ∧
+        read_accessor al v = Some vread ∧
+        ((θ' = θ <| seq_trace := t'|> ∧ vread = v'') ∨ (θ' = θ <| seq_nb_state := true|>))
     | Some (LWriteReg r al v) =>
-      θ' = θ <| seq_trace := t'|> <| seq_regs := <[r := v]> θ.(seq_regs)|> ∧
+      ∃ v' v'' vnew, θ.(seq_regs) !! r = Some v' ∧
+      read_accessor al v = Some vnew ∧
+      write_accessor al v' vnew = Some v'' ∧
+      θ' = θ <| seq_trace := t'|> <| seq_regs := <[r := v'']> θ.(seq_regs)|> ∧
       κ' = None
     | Some (LBranchAddress _) => κ' = None ∧ θ' = θ <| seq_trace := t'|>
     | Some (LDone es) =>

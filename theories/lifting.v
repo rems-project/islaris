@@ -140,12 +140,14 @@ Section lifting.
     Unshelve. apply: [].
   Qed.
 
-  Lemma wp_read_reg r v v' ann es q:
+  Lemma wp_read_reg_acc r v v' v'' vread ann es q al:
+    read_accessor al v' = Some v'' →
+    read_accessor al v = Some vread →
     r ↦ᵣ{q} v' -∗
-    (⌜v = v'⌝ -∗ r ↦ᵣ{q} v' -∗ WPasm es) -∗
-    WPasm (ReadReg r [] v ann :: es).
+    (⌜vread = v''⌝ -∗ r ↦ᵣ{q} v' -∗ WPasm es) -∗
+    WPasm (ReadReg r al v ann :: es).
   Proof.
-    iIntros "Hr Hcont". setoid_rewrite wp_asm_unfold.
+    iIntros (??) "Hr Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
     iIntros (σ1 ??? ?) "(?&Hictx)".
@@ -153,10 +155,10 @@ Section lifting.
     iDestruct (reg_mapsto_lookup with "Hθ Hr") as %Hr.
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
-      eexists _. split_and! => //. by right.
+      eexists _, _, _. split_and! => //. by right.
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
-    inv_seq_step. revert select (∃ x, _) => -[?[?[?[[??]|?]]]]; simplify_eq/=. 2: {
+    inv_seq_step. revert select (∃ x, _) => -[?[?[?[?[?[?[?[[??]|?]]]]]]]]; simplify_eq/=. 2: {
       iFrame. iSplitL; [|done]. by iApply wp_value.
     }
     unfold register_name in *. simplify_eq/=.
@@ -165,12 +167,20 @@ Section lifting.
     iFrame.
   Qed.
 
-  Lemma wp_write_reg r v v' ann es:
+  Lemma wp_read_reg r v v' ann es q:
+    r ↦ᵣ{q} v' -∗
+    (⌜v = v'⌝ -∗ r ↦ᵣ{q} v' -∗ WPasm es) -∗
+    WPasm (ReadReg r [] v ann :: es).
+  Proof. by apply: wp_read_reg_acc. Qed.
+
+  Lemma wp_write_reg_acc r v v' v'' vnew ann es al:
+    read_accessor al v = Some vnew →
+    write_accessor al v' vnew = Some v'' →
     r ↦ᵣ v' -∗
-    (r ↦ᵣ v -∗ WPasm es) -∗
-    WPasm (WriteReg r [] v ann :: es).
+    (r ↦ᵣ v'' -∗ WPasm es) -∗
+    WPasm (WriteReg r al v ann :: es).
   Proof.
-    iIntros "Hr Hcont". setoid_rewrite wp_asm_unfold.
+    iIntros (? ?) "Hr Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
     iIntros (σ1 ??? ?) "(?&Hictx)".
@@ -178,15 +188,23 @@ Section lifting.
     iDestruct (reg_mapsto_lookup with "Hθ Hr") as %Hr.
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
-      done.
+      eexists _, _, _. done.
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
     inv_seq_step.
+    revert select (∃ _, _) => -[?[?[?[?[?[?[??]]]]]]].
+    unfold register_name in *. simplify_eq.
     iFrame; iSplitL; [|done].
     iMod (reg_mapsto_update with "Hθ Hr") as "[Hθ Hr]".
     iApply ("Hcont" with "Hr"); [done|done|].
     iFrame.
   Qed.
+
+  Lemma wp_write_reg r v v' ann es:
+    r ↦ᵣ v' -∗
+    (r ↦ᵣ v -∗ WPasm es) -∗
+    WPasm (WriteReg r [] v ann :: es).
+  Proof. by apply: wp_write_reg_acc. Qed.
 
   Lemma wp_branch_address v es ann:
     WPasm es -∗
@@ -280,6 +298,35 @@ Section exp_lifting.
       iApply ("IH"); [ | done].
       iPureIntro. apply: Forall2_app; [done|].
       constructor; [done|]. constructor.
+  Qed.
+
+  Lemma wpe_unop op e Φ ann:
+    WPexp e {{ v1, ∃ v, ⌜eval_unop op v1 = Some v⌝ ∗ Φ v}} -∗
+    WPexp (Unop op e ann) {{ Φ }}.
+  Proof.
+    rewrite wp_exp_unfold. iDestruct 1 as (? Hv ??) "HΦ".
+    rewrite wp_exp_unfold. iExists _ => /=. iFrame. by rewrite Hv /=.
+  Qed.
+
+  Lemma wpe_binop op e1 e2 Φ ann:
+    WPexp e1 {{ v1, WPexp e2 {{ v2, ∃ v, ⌜eval_binop op v1 v2 = Some v⌝ ∗ Φ v}} }} -∗
+    WPexp (Binop op e1 e2 ann) {{ Φ }}.
+  Proof.
+    rewrite wp_exp_unfold. iDestruct 1 as (? Hv1) "He2".
+    rewrite wp_exp_unfold. iDestruct "He2" as (? Hv2 ? Hv) "HΦ".
+    rewrite wp_exp_unfold. iExists _ => /=. iFrame. by rewrite Hv1 Hv2 /=.
+  Qed.
+
+  Lemma wpe_ite e1 e2 e3 Φ ann:
+    WPexp e1 {{ v1, WPexp e2 {{ v2, WPexp e3 {{ v3,
+       ∃ b, ⌜v1 = Val_Bool b⌝ ∗ Φ (ite b v2 v3)}} }} }} -∗
+    WPexp (Ite e1 e2 e3 ann) {{ Φ }}.
+  Proof.
+    rewrite wp_exp_unfold. iDestruct 1 as (? Hv1) "He2".
+    rewrite wp_exp_unfold. iDestruct "He2" as (? Hv2) "He3".
+    rewrite wp_exp_unfold. iDestruct "He3" as (? Hv3 ? Hv) "HΦ".
+    rewrite wp_exp_unfold. iExists _ => /=. iFrame. iPureIntro. simplify_eq.
+    rewrite Hv1 Hv2 Hv3. by case_match.
   Qed.
 
 End exp_lifting.
