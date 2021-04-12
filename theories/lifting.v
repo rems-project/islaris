@@ -273,6 +273,15 @@ End lifting.
 Section exp_lifting.
   Context `{!islaG Σ}.
 
+  Lemma wpe_wand e Φ1 Φ2:
+    WPexp e {{ Φ1 }} -∗
+    (∀ v, Φ1 v -∗ Φ2 v) -∗
+    WPexp e {{ Φ2 }}.
+  Proof.
+    rewrite !wp_exp_unfold. iDestruct 1 as (??) "?". iIntros "Hv".
+    iExists _. iSplit; [done|]. by iApply "Hv".
+  Qed.
+
   Lemma wpe_val v Φ ann:
     Φ v -∗
     WPexp (Val v ann) {{ Φ }}.

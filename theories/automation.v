@@ -9,6 +9,11 @@ Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
 Ltac normalize_tac ::= normalize_autorewrite.
 
+Definition normalize_valu (v v' : valu) : Prop :=
+  v = v'.
+Typeclasses Opaque normalize_valu.
+Arguments normalize_valu : simpl never.
+
 Section instances.
   Context `{!islaG Σ} `{!threadG}.
 
@@ -106,9 +111,13 @@ Section instances.
   Proof. apply: wp_declare_const_bv. Qed.
 
   Lemma li_wp_define_const n es ann e:
-    WPexp e {{ v, WPasm ((subst_event n v) <$> es) }} -∗
+    WPexp e {{ v, ∃ v', ⌜normalize_valu v v'⌝ ∗ WPasm ((subst_event n v') <$> es) }} -∗
     WPasm (Smt (DefineConst n e) ann :: es).
-  Proof. apply: wp_define_const. Qed.
+  Proof.
+    iIntros "Hexp". iApply wp_define_const.
+    iApply (wpe_wand with "Hexp"). rewrite /normalize_valu.
+    iIntros (?). by iDestruct 1 as (? ->) "?".
+  Qed.
 
   Lemma li_wpe_val v Φ ann:
     Φ v -∗

@@ -210,6 +210,10 @@ Definition test_state_global := {|
 
 Definition test_state_spec : list seq_label := [ SInstrTrap 0x0000000010300008 ].
 
+Global Instance simpl_normalize_valu_end v1 v2:
+  SimplAndUnsafe true (normalize_valu v1 v2) (λ T, v1 = v2 ∧ T) | 1000.
+Proof. move => ?. done. Qed.
+
 
 Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some [trc_bl_0x100]) -∗
@@ -569,15 +573,44 @@ Proof.
   iStartProof.
   do 100 liAStep; liShow.
   do 100 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
 
+
+
+  do 10 liAStep; liShow.
+
+
+(*
+  do 10 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+*)
   (* repeat liAStep; liShow. *)
 Abort.
 
