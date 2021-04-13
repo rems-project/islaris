@@ -58,7 +58,7 @@ Section instances.
 
 
   Lemma li_wp_next_instr:
-    (∃ nPC bPC_changed, "_PC" ↦ᵣ Val_Bits nPC ∗ "__PC_changed" ↦ᵣ Val_Bool bPC_changed ∗
+    (∃ (nPC : bv 64) bPC_changed, "_PC" ↦ᵣ Val_Bits nPC ∗ "__PC_changed" ↦ᵣ Val_Bool bPC_changed ∗
      ∃ a newPC newPC_changed, ⌜next_pc nPC bPC_changed = Some (a, newPC, newPC_changed)⌝ ∗
      ∃ ins, instr a ins ∗
      match ins with
@@ -106,7 +106,7 @@ Section instances.
   Proof. apply: wp_branch_address. Qed.
 
   Lemma li_wp_declare_const_bv v es ann b:
-    (∀ n, WPasm ((subst_event v (Val_Bits [BV{b} n])) <$> es)) -∗
+    (∀ n Heq, WPasm ((subst_event v (Val_Bits (BV b n Heq))) <$> es)) -∗
     WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
   Proof. apply: wp_declare_const_bv. Qed.
 
