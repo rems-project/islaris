@@ -69,7 +69,7 @@ Definition eval_binop (b : binop) (v1 v2 : valu) : option valu :=
   match b, v1, v2 with
   | Eq, Val_Bool b1, Val_Bool b2 => Some (Val_Bool (eqb b1 b2))
   | Eq, Val_Bits n1, Val_Bits n2 => mguard (n1.(bvn_n) = n2.(bvn_n)) (λ _, Some (Val_Bool (bool_decide (n1 = n2))))
-  | Bvarith Bvlshr, Val_Bits n1, Val_Bits n2 => n2' ← bvn_to_bv n1.(bvn_n) n2; Some (Val_Bits (bv_shr n1.(bvn_val) n2'))
+  | Bvarith Bvlshr, Val_Bits n1, Val_Bits n2 => n2' ← bvn_to_bv n1.(bvn_n) n2; Some (Val_Bits (bv_shiftr n1.(bvn_val) n2'))
   | _, _, _ => (* TODO: other cases *) None
   end.
 
@@ -153,8 +153,8 @@ Definition reg_map := gmap string valu.
 Definition instruction_size : Z := 0x4.
 
 Definition next_pc (nPC : bv 64) (changed : bool) : option (addr * valu * valu) :=
-  new_pc ← (if changed then Some nPC else bv_of_Z_checked 64 (nPC + instruction_size));
-  Some (new_pc.(bv_val), Val_Bits new_pc, Val_Bool false).
+  new_pc ← (if changed then Some nPC else bv_of_Z_checked 64 (bv_unsigned nPC + instruction_size));
+  Some (bv_unsigned new_pc, Val_Bits new_pc, Val_Bool false).
 Arguments next_pc !_ !_ /.
 
 Definition next_pc_regs (regs : reg_map) : option (addr * reg_map) :=
