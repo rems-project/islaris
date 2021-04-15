@@ -157,9 +157,11 @@ Ltac solve_bitvector_eq :=
     fail "Bitvector constant" v "does not fit into" l "bits"
   end.
 
-Notation "'[BV{' l } v ]" := (BV l v _) (at level 9, format "[BV{ l }  v ]", only printing) : stdpp_scope.
+Notation "'[BV{' l }  v ]" := (BV l v _) (at level 9, only printing) : stdpp_scope.
+(* TODO: Somehow the following version creates a warning. *)
+(* Notation "'[BV{' l } v ]" := (BV l v _) (at level 9, format "[BV{ l }  v ]", only printing) : stdpp_scope. *)
 (* TODO: This notation breaks when used in gmap notations. Why? *)
-Notation "'[BV{' l } v ]" := (BV l v ltac:(solve_bitvector_eq)) (at level 9, only parsing) : stdpp_scope.
+Notation "'[BV{' l }  v ]" := (BV l v ltac:(solve_bitvector_eq)) (at level 9, only parsing) : stdpp_scope.
 
 (*** Automation *)
 Ltac bv_saturate :=
@@ -171,6 +173,16 @@ Ltac bv_saturate :=
 
 
 (*** Operations on [bv n] *)
+Program Definition bv_0 (n : N) :=
+  BV n 0 _.
+Next Obligation.
+  intros n. apply bv_ok_in_range. split; [done| apply bv_modulus_pos].
+Qed.
+
+Definition bv_succ {n} (x : bv n) : bv n :=
+  bv_of_Z n (Z.succ (bv_unsigned x)).
+Definition bv_pred {n} (x : bv n) : bv n :=
+  bv_of_Z n (Z.pred (bv_unsigned x)).
 
 Definition bv_add {n} (x y : bv n) : bv n := (* SMT: bvadd *)
   bv_of_Z n (Z.add (bv_unsigned x) (bv_unsigned y)).
@@ -282,6 +294,15 @@ Next Obligation.
   - apply (Z.lt_le_trans _ (bv_modulus n2)); [lia|]. apply Z.pow_le_mono_r; lia.
 Qed.
 
+Program Fixpoint bv_merge_litte {n} (bs : list (bv n)) : bv (N.of_nat (length bs) * n) :=
+  match bs with
+  | [] => bv_0 0
+  | b :: bs' => bv_concat b (bv_merge_litte bs')
+  end.
+Next Obligation. simpl. Admitted.
+
+
+
 (*** [bvn] *)
 Record bvn := BVN {
   bvn_n : N;
@@ -326,96 +347,89 @@ Fail Goal ([BV{2} 4 ] = [BV{2} 5]).
 Goal bvn_to_bv 2 [BV{2} 3] = Some [BV{2} 3]. done. Abort.
 End test.
 
-(*
-(*** Old definition of bit vectors *)
+Require Import Coq.micromega.ZifyClasses.
 
-Record bv := BV {
-  bv_len : Z;
-  bv_val : Z;
-  (* TODO: Should we include the following?
-  bv_in_range : -1 < bv_val < 2 ^ bv_len;
-  Arguments for:
-  - all bit vectors are in normal form by construction and equivalence becomes eq
-    - can maybe be mitigated by normalizing aggressively
-  Arguments against:
-  - Makes constants annoying to write (needs tactics in terms which seems to break stuff in weird ways, e.g typeclass search)
-  - n1 = n2 cannot be long solved by done
-  *)
-}.
+Instance Inj_bv_Z n : InjTyp (bv n) Z :=
+  mkinj _ _ bv_unsigned (fun x => 0 ≤ x < bv_modulus n ) (bv_in_range _).
 
-Global Instance bv_eq_dec : EqDecision bv.
-Proof. solve_decision. Defined.
+Instance Op_bv_unsigned n : UnOp bv_unsigned :=
+  { TUOp := fun x => x ; TUOpInj := (fun x : bv n => @eq_refl Z (bv_unsigned x)) }.
 
-Definition bv_normalize (n : bv) : bv := {|
-  bv_len := n.(bv_len);
-  bv_val := n.(bv_val) `mod` 2 ^ n.(bv_len);
-|}.
+Instance Op_bv_eq n : BinRel (@eq (bv n)) :=
+  {| TR := @eq Z ; TRInj := bv_eq n |}.
 
-Definition bv_is_normal (n : bv) : Prop := n = bv_normalize n.
+Section test_automation.
+  Context (n : N).
+  Implicit Type a : bv n.
+  Implicit Type l : list nat.
 
-(* Ltac solve_bitvector_eq := *)
-(*   try (vm_compute; done); *)
-(*   lazymatch goal with *)
-(*   | |- -1 < ?v < 2 ^ ?l => *)
-(*     fail "Bitvector constant" v "does not fit into" l "bits" *)
-(*   end. *)
+  Add InjTyp (Inj_bv_Z n).
+  Add UnOp (Op_bv_unsigned n).
+  Add BinRel (Op_bv_eq n).
 
-(* Notation "'[BV{' l } v ]" := (BV l v _) (at level 9, format "[BV{ l }  v ]", only printing) : stdpp_scope. *)
-(* Notation "'[BV{' l } v ]" := (BV l v ltac:(solve_bitvector_eq)) (at level 9, only parsing) : stdpp_scope. *)
-Notation "'[BV{' l } v ]" := (BV l v) (at level 9, format "[BV{ l }  v ]") : stdpp_scope.
-
-(* Goal ([BV{2} 3 ] = [BV{10} 5]). Abort. *)
-(* Fail Goal ([BV{2} 4 ] = [BV{10} 5]).  *)
-
-(* Assumes z ≥ 0 *)
-Program Definition bv_zero_extend (z : Z) (n : bv) : bv := {|
-  bv_len := n.(bv_len) + (z `max` 0);
-  bv_val := n.(bv_val);
-|}.
-
-(* Assumes z ≥ 0 *)
-Definition bv_sign_extend (z : Z) (n : bv) : bv.
-Admitted.
+  Goal ∀ a n1 n2,
+      bv_of_Z n (bv_unsigned (bv_of_Z n (bv_unsigned a + n1)) + n2) =
+      bv_of_Z n (bv_unsigned a + (n1 + n2)).
+  Abort.
 
 
-(* Assumes l < u *)
-Program Definition bv_extract (u l : Z) (n : bv) : bv := {|
-  bv_len := u + 1 - l;
-  bv_val := (n.(bv_val) ≫ l) `mod` 2 ^ (u + 1 - l);
-|}.
+  Goal ∀ a z, 0 ≤ bv_unsigned a < bv_modulus n * bv_modulus z.
+    intros. pose proof (bv_modulus_pos z). nia.
+  Abort.
 
-(* Assumes n1.(bv_len) = n2.(bv_len) *)
-Program Definition bv_add (n1 n2 : bv) : bv := {|
-  bv_len := n1.(bv_len);
-  bv_val := n1.(bv_val) + n2.(bv_val);
-|}.
+  (* Goal ∀ a, a = a. *)
+  (*   zify. *)
+  (* Goal ∀ a, bv_of_Z n (bv_unsigned a + 0) = a. *)
+  (*   zify. *)
+  (*   bv_of_Z n (bv_unsigned a) = a *)
+  (* Abort. *)
 
-(* Assumes n1.(bv_len) = n2.(bv_len) *)
-Program Definition bv_or (n1 n2 : bv) : bv := {|
-  bv_len := n1.(bv_len);
-  bv_val := Z.lor n1.(bv_val) n2.(bv_val);
-|}.
+  Goal ∀ a1 a2,
+      bv_unsigned a2 ≤ bv_unsigned a1 →
+      a1 ≠ a2 → Z.to_nat (bv_unsigned a1 - bv_unsigned a2) ≠ 0%nat.
+    intros ???. rewrite bv_eq. lia.
+  Abort.
 
-(* Assumes n1.(bv_len) = n2.(bv_len) *)
-Program Definition bv_and (n1 n2 : bv) : bv := {|
-  bv_len := n1.(bv_len);
-  bv_val := Z.land n1.(bv_val) n2.(bv_val);
-|}.
+  Goal ∀ a a0 m, bv_of_Z n (bv_unsigned a + m) = bv_of_Z n (bv_unsigned a0 + m) → a = a0.
+  Abort.
 
-Program Definition bv_not (n : bv) : bv := {|
-  bv_len := n.(bv_len);
-  bv_val := Z.lnot n.(bv_val) `mod` 2 ^ n.(bv_len);
-|}.
+  Goal ∀ a m n', bv_of_Z n (bv_unsigned a + m) = bv_of_Z n (bv_unsigned a + n') → m = n'.
+  Abort.
 
-Program Definition bv_concat (n1 n2 : bv) : bv := {|
-  bv_len := n1.(bv_len) + n2.(bv_len);
-  (* TODO: Is this the right way around? *)
-  bv_val := Z.lor (n1.(bv_val) ≪ n2.(bv_len)) n2.(bv_val);
-|}.
+  Goal ∀ a1 a2 l,
+      bv_unsigned a1 ≤ bv_unsigned a2 ∧ bv_unsigned a2 < bv_unsigned a1 + S (length l) →
+      a2 ≠ a1 →
+      bv_unsigned (bv_succ a1) ≤ bv_unsigned a2 ∧ bv_unsigned a2 < bv_unsigned (bv_succ a1) + length l.
+  Abort.
 
-Program Definition bv_shr (n1 n2 : bv) : bv := {|
-  bv_len := n1.(bv_len);
-  (* TODO: Is this the right way around? *)
-  bv_val := (n1.(bv_val) ≫ n2.(bv_val));
-|}.
-*)
+  Goal ∀ a2 l,
+      bv_unsigned a2 + S (length l) < bv_modulus n →
+      bv_unsigned (bv_succ a2) + length l < bv_modulus n.
+  Abort.
+
+  Goal ∀ a1 a2 l,
+      bv_unsigned a2 + S (length l) < bv_modulus n →
+      bv_unsigned a1 < bv_unsigned a2 ∨ bv_unsigned a2 + S (length l) ≤ bv_unsigned a1→
+      bv_unsigned a1 < bv_unsigned (bv_succ a2) ∨ bv_unsigned (bv_succ a2) + length l ≤ bv_unsigned a1.
+  Abort.
+
+  Goal ∀ a1 a2 l,
+      bv_unsigned a1 < bv_unsigned a2 ∨ bv_unsigned a2 + S (length l) ≤ bv_unsigned a1 →
+      a2 ≠ a1.
+  Abort.
+
+  Goal ∀ a1 a2 l,
+      bv_unsigned a2 + S (length l) < bv_modulus n →
+      a1 ≠ a2 →
+      bv_unsigned a2 ≤ bv_unsigned a1 ∧ bv_unsigned a1 < bv_unsigned a2 + S (length l) →
+      bv_unsigned (bv_succ a2) ≤ bv_unsigned a1 ∧ bv_unsigned a1 < bv_unsigned (bv_succ a2) + length l.
+  Abort.
+
+  Goal ∀ a1 a2 l,
+      bv_unsigned a2 + S (length l) < bv_modulus n →
+      bv_unsigned a2 ≤ bv_unsigned a1 ∧ bv_unsigned a1 < bv_unsigned a2 + S (length l) →
+      a1 ≠ a2 →
+      Z.to_nat (bv_unsigned a1 - bv_unsigned (bv_succ a2)) =
+      Init.Nat.pred (Z.to_nat (bv_unsigned a1 - bv_unsigned a2)).
+  Abort.
+End test_automation.
