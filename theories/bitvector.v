@@ -80,8 +80,8 @@ Record bv (n : N) := BV {
   bv_unsigned : Z;
   bv_is_ok : bv_ok n bv_unsigned;
 }.
-Arguments bv_unsigned {_}.
-Arguments bv_is_ok {_}.
+Global Arguments bv_unsigned {_}.
+Global Arguments bv_is_ok {_}.
 
 Definition bv_signed {n} (b : bv n) := bv_swrap n (bv_unsigned b).
 
@@ -122,7 +122,7 @@ Lemma bv_of_Z_unsigned n z:
   bv_unsigned (bv_of_Z n z) = bv_wrap n z.
 Proof. done. Qed.
 
-Arguments bv_of_Z : simpl never.
+Global Arguments bv_of_Z : simpl never.
 Global Opaque bv_of_Z.
 
 Lemma bv_of_Z_elim n z:
@@ -147,8 +147,8 @@ Next Obligation.
   intros. apply elem_of_list_lookup. eexists (Z.to_nat (bv_unsigned x)).
   rewrite list_lookup_fmap. apply fmap_Some. eexists _.
   pose proof (bv_in_range _ x). split.
-  - apply lookup_seqZ. split; [done|]. lia.
-  - apply bv_eq. rewrite bv_of_Z_elim; lia.
+  - apply lookup_seqZ. split; [done|]. rewrite Z2Nat.id; lia.
+  - apply bv_eq. rewrite bv_of_Z_elim; rewrite Z2Nat.id; lia.
 Qed.
 
 
@@ -323,7 +323,7 @@ Definition bvn_to_bv (n : N) (b : bvn) : option (bv n) :=
   | left eq => Some (eq_rect (bvn_n b) (λ n0 : N, bv n0) (bvn_val b) n eq)
   | right _ => None
   end.
-Arguments bvn_to_bv !_ !_ /.
+Global Arguments bvn_to_bv !_ !_ /.
 
 Definition bv_to_bvn {n} (b : bv n) : bvn := BVN _ b.
 Coercion bv_to_bvn : bv >-> bvn.
@@ -337,17 +337,18 @@ Fail Goal ([BV{2} 4 ] = [BV{2} 5]).
 Goal bvn_to_bv 2 [BV{2} 3] = Some [BV{2} 3]. done. Abort.
 End test.
 
-
+(*
 (*** Work in progress benchmarks for the automation  *)
+(* TODO: Coq.micromega.ZifyClasses does not yet exist in Coq 8.10.2 *)
 Require Import Coq.micromega.ZifyClasses.
 
-Instance Inj_bv_Z n : InjTyp (bv n) Z :=
+Global Instance Inj_bv_Z n : InjTyp (bv n) Z :=
   mkinj _ _ bv_unsigned (fun x => 0 ≤ x < bv_modulus n ) (bv_in_range _).
 
-Instance Op_bv_unsigned n : UnOp bv_unsigned :=
+Global Instance Op_bv_unsigned n : UnOp bv_unsigned :=
   { TUOp := fun x => x ; TUOpInj := (fun x : bv n => @eq_refl Z (bv_unsigned x)) }.
 
-Instance Op_bv_eq n : BinRel (@eq (bv n)) :=
+Global Instance Op_bv_eq n : BinRel (@eq (bv n)) :=
   {| TR := @eq Z ; TRInj := bv_eq n |}.
 
 Section test_automation.
@@ -425,3 +426,4 @@ Section test_automation.
       Init.Nat.pred (Z.to_nat (bv_unsigned a1 - bv_unsigned a2)).
   Abort.
 End test_automation.
+*)
