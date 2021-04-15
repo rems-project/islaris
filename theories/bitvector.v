@@ -4,8 +4,9 @@ From stdpp Require Import options.
 
 Local Open Scope Z_scope.
 
-Lemma pos_bounded_iff_bits k n :
-  (0 ≤ k → 0 ≤ n → n < 2^k ↔ ∀ l, k ≤ l → Z.testbit n l = false)%Z.
+Lemma Z_bounded_iff_bits_nonneg k n :
+  0 ≤ k → 0 ≤ n →
+  n < 2^k ↔ ∀ l, k ≤ l → Z.testbit n l = false.
 Proof.
   intros.
   destruct (decide (n = 0)) as [->|].
@@ -13,21 +14,20 @@ Proof.
   - split.
     + intros Hb%Z.log2_lt_pow2 l Hl; [| lia]. apply Z.bits_above_log2; lia.
     + intros Hl.
-      destruct (decide (n < 2^k)%Z); [done|].
+      destruct (decide (n < 2^k)); [done|].
       assert (Z.testbit n (Z.log2 n) = false) as Hbit.
       { apply Hl, Z.log2_le_pow2; lia. }
       rewrite Z.bit_log2 in Hbit; [done| lia].
 Qed.
 
-(* From Program.Tactics *)
-Ltac add_hypothesis H' p :=
-  match type of p with
-    ?X =>
-    match goal with
-      | [ H : X |- _ ] => fail 1
-      | _ => pose proof p as H'
-    end
+Tactic Notation "learn_hyp" constr(p) "as" ident(H') :=
+  let P := type of p in
+  match goal with
+  | H : P |- _ => fail 1
+  | _ => pose proof p as H'
   end.
+Tactic Notation "learn_hyp" constr(p) :=
+  let H := fresh in learn_hyp p as H.
 
 
 (*** Preliminary definitions *)
@@ -69,9 +69,9 @@ Lemma bv_ok_bitwise_op {n} op bop n1 n2 :
 Proof.
   intros Hbits Hnonneg Hop [? Hok1]%bv_ok_in_range [? Hok2]%bv_ok_in_range. apply bv_ok_in_range.
   split; [lia|].
-  apply pos_bounded_iff_bits; [lia..|]. intros l ?.
-  eapply pos_bounded_iff_bits in Hok1;[|try done; lia..].
-  eapply pos_bounded_iff_bits in Hok2;[|try done; lia..].
+  apply Z_bounded_iff_bits_nonneg; [lia..|]. intros l ?.
+  eapply Z_bounded_iff_bits_nonneg in Hok1;[|try done; lia..].
+  eapply Z_bounded_iff_bits_nonneg in Hok2;[|try done; lia..].
   by rewrite Hbits, Hok1, Hok2.
 Qed.
 
@@ -165,11 +165,7 @@ Notation "'[BV{' l }  v ]" := (BV l v ltac:(solve_bitvector_eq)) (at level 9, on
 
 (*** Automation *)
 Ltac bv_saturate :=
-  repeat match goal with
-         | b : bv _ |- _ =>
-           let H := fresh in
-           add_hypothesis H (bv_in_range _ b)
-         end.
+  repeat match goal with | b : bv _ |- _ => learn_hyp (bv_in_range _ b) end.
 
 
 (*** Operations on [bv n] *)
@@ -275,7 +271,7 @@ Next Obligation.
   apply bv_ok_in_range.
   assert (0 ≤ Z.land (bv_unsigned b ≫ Z.of_N s) (Z.ones (Z.of_N l))).
   { apply Z.land_nonneg. left. apply Z.shiftr_nonneg. bv_saturate. lia. }
-  split; [lia|]. apply pos_bounded_iff_bits; [lia.. |].
+  split; [lia|]. apply Z_bounded_iff_bits_nonneg; [lia.. |].
   intros k ?. rewrite Z.land_spec. apply andb_false_intro2.
   apply Z.ones_spec_high. lia.
 Qed.
@@ -287,21 +283,12 @@ Next Obligation.
   apply bv_ok_in_range.
   assert (0 ≤ Z.lor (bv_unsigned b1 ≪ Z.of_N n2) (bv_unsigned b2)).
   { apply Z.lor_nonneg. bv_saturate. split; [|lia]. apply Z.shiftl_nonneg. lia. }
-  split; [lia|]. apply pos_bounded_iff_bits; [lia.. |].
+  split; [lia|]. apply Z_bounded_iff_bits_nonneg; [lia.. |].
   intros k ?. rewrite Z.lor_spec, Z.shiftl_spec; [|lia].
-  apply orb_false_intro; (eapply pos_bounded_iff_bits; [..|done]); bv_saturate; try lia.
+  apply orb_false_intro; (eapply Z_bounded_iff_bits_nonneg; [..|done]); bv_saturate; try lia.
   - apply (Z.lt_le_trans _ (bv_modulus n1)); [lia|]. apply Z.pow_le_mono_r; lia.
   - apply (Z.lt_le_trans _ (bv_modulus n2)); [lia|]. apply Z.pow_le_mono_r; lia.
 Qed.
-
-Program Fixpoint bv_merge_litte {n} (bs : list (bv n)) : bv (N.of_nat (length bs) * n) :=
-  match bs with
-  | [] => bv_0 0
-  | b :: bs' => bv_concat b (bv_merge_litte bs')
-  end.
-Next Obligation. simpl. Admitted.
-
-
 
 (*** [bvn] *)
 Record bvn := BVN {
@@ -338,7 +325,7 @@ Arguments bvn_to_bv !_ !_ /.
 Definition bv_to_bvn {n} (b : bv n) : bvn := BVN _ b.
 Coercion bv_to_bvn : bv >-> bvn.
 
-(*** [tests] *)
+(*** tests *)
 Section test.
 Goal ([BV{10} 3 ] = [BV{10} 5]). Abort.
 Fail Goal ([BV{2} 3 ] = [BV{10} 5]).
@@ -347,6 +334,8 @@ Fail Goal ([BV{2} 4 ] = [BV{2} 5]).
 Goal bvn_to_bv 2 [BV{2} 3] = Some [BV{2} 3]. done. Abort.
 End test.
 
+
+(*** Work in progress benchmarks for the automation  *)
 Require Import Coq.micromega.ZifyClasses.
 
 Instance Inj_bv_Z n : InjTyp (bv n) Z :=
