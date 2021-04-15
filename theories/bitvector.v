@@ -87,7 +87,10 @@ Definition bv_signed {n} (b : bv n) := bv_swrap n (bv_unsigned b).
 
 Lemma bv_eq n (b1 b2 : bv n) :
   b1 = b2 ↔ b1.(bv_unsigned) = b2.(bv_unsigned).
-Proof. destruct b1, b2. split; simpl; [ naive_solver|]. intros. subst. f_equal. apply proof_irrel. Qed.
+Proof.
+  destruct b1, b2. split; simpl; [ naive_solver|].
+  intros. subst. f_equal. apply proof_irrel.
+Qed.
 
 Global Program Instance bv_eq_dec n : EqDecision (bv n) := λ '(BV _ v1 p1) '(BV _ v2 p2),
    match decide (v1 = v2) with
