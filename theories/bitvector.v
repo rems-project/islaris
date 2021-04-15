@@ -1,5 +1,5 @@
 From stdpp Require Export numbers.
-From stdpp Require Import countable.
+From stdpp Require Import countable finite.
 From stdpp Require Import options.
 
 Local Open Scope Z_scope.
@@ -18,6 +18,16 @@ Proof.
       { apply Hl, Z.log2_le_pow2; lia. }
       rewrite Z.bit_log2 in Hbit; [done| lia].
 Qed.
+
+(* From Program.Tactics *)
+Ltac add_hypothesis H' p :=
+  match type of p with
+    ?X =>
+    match goal with
+      | [ H : X |- _ ] => fail 1
+      | _ => pose proof p as H'
+    end
+  end.
 
 
 (*** Preliminary definitions *)
@@ -46,6 +56,10 @@ Proof.
   pose proof (Z.mod_pos_bound z (bv_modulus n)) as [??]. { apply bv_modulus_pos. }
   split; lia.
 Qed.
+
+Lemma bv_wrap_elim n z :
+  0 ≤ z < bv_modulus n → bv_wrap n z = z.
+Proof. intros. by apply Z.mod_small. Qed.
 
 Lemma bv_ok_bitwise_op {n} op bop n1 n2 :
   (∀ k, Z.testbit (op n1 n2) k = bop (Z.testbit n1 k) (Z.testbit n2 k)) →
@@ -91,23 +105,49 @@ Proof.
   by pose proof bv_is_ok x.
 Qed.
 
-
 Definition bv_of_Z_checked (n : N) (z : Z) : option (bv n) :=
   match decide (bv_ok n z) with
   | left Heq => Some (BV n z Heq)
   | right _ => None
   end.
 
-Program Definition bv_of_Z (n : N) (z : Z) : bv n := {|
-  bv_unsigned := bv_wrap n z;
-|}.
+Program Definition bv_of_Z (n : N) (z : Z) : bv n :=
+  BV n (bv_wrap n z) _.
 Next Obligation. apply bv_wrap_ok. Qed.
+
+Lemma bv_of_Z_unsigned n z:
+  bv_unsigned (bv_of_Z n z) = bv_wrap n z.
+Proof. done. Qed.
+
 Arguments bv_of_Z : simpl never.
 Global Opaque bv_of_Z.
+
+Lemma bv_of_Z_elim n z:
+  0 ≤ z < bv_modulus n →
+  bv_unsigned (bv_of_Z n z) = z.
+Proof. rewrite bv_of_Z_unsigned. apply bv_wrap_elim. Qed.
 
 Lemma bv_in_range n (b : bv n):
   0 ≤ bv_unsigned b < bv_modulus n.
 Proof. apply bv_ok_in_range. apply bv_is_ok. Qed.
+
+Global Program Instance bv_finite n : Finite (bv n) :=
+  {| enum := bv_of_Z n <$> (seqZ 0 (bv_modulus n)) |}.
+Next Obligation.
+  intros n. apply NoDup_alt. intros i j x.
+  rewrite !list_lookup_fmap.
+  intros [? [[??]%lookup_seqZ ?]]%fmap_Some.
+  intros [? [[??]%lookup_seqZ Hz]]%fmap_Some. subst.
+  apply bv_eq in Hz. rewrite !bv_of_Z_elim in Hz; lia.
+Qed.
+Next Obligation.
+  intros. apply elem_of_list_lookup. eexists (Z.to_nat (bv_unsigned x)).
+  rewrite list_lookup_fmap. apply fmap_Some. eexists _.
+  pose proof (bv_in_range _ x). split.
+  - apply lookup_seqZ. split; [done|]. lia.
+  - apply bv_eq. rewrite bv_of_Z_elim; lia.
+Qed.
+
 
 (*** Notation for [bv n] *)
 Ltac solve_bitvector_eq :=
@@ -122,15 +162,6 @@ Notation "'[BV{' l } v ]" := (BV l v _) (at level 9, format "[BV{ l }  v ]", onl
 Notation "'[BV{' l } v ]" := (BV l v ltac:(solve_bitvector_eq)) (at level 9, only parsing) : stdpp_scope.
 
 (*** Automation *)
-(* From Program.Tactics *)
-Ltac add_hypothesis H' p :=
-  match type of p with
-    ?X =>
-    match goal with
-      | [ H : X |- _ ] => fail 1
-      | _ => set (H':=p) ; try (change p with H') ; clearbody H'
-    end
-  end.
 Ltac bv_saturate :=
   repeat match goal with
          | b : bv _ |- _ =>
@@ -150,10 +181,26 @@ Definition bv_opp {n} (x y : bv n) : bv n := (* SMT: bvneg *)
 
 Definition bv_mul {n} (x y : bv n) : bv n := (* SMT: bvmul *)
   bv_of_Z n (Z.mul (bv_unsigned x) (bv_unsigned y)).
-Definition bv_divu {n} (x y : bv n) : bv n := (* SMT: bvudiv *)
-  bv_of_Z n (Z.div (bv_unsigned x) (bv_unsigned y)).
-Definition bv_modu {n} (x y : bv n) : bv n := (* SMT: bvurem *)
-  bv_of_Z n (Z.modulo (bv_unsigned x) (bv_unsigned y)).
+Program Definition bv_divu {n} (x y : bv n) : bv n := (* SMT: bvudiv *)
+  BV n (Z.div (bv_unsigned x) (bv_unsigned y)) _.
+Next Obligation.
+  intros n x y. apply bv_ok_in_range. bv_saturate.
+  destruct (decide (bv_unsigned y = 0)) as [->|?].
+  { rewrite Zdiv_0_r. lia. }
+  split; [ apply Z.div_pos; lia |].
+  apply (Z.le_lt_trans _ (bv_unsigned x)); [|lia].
+  apply Z.div_le_upper_bound; [ lia|]. nia.
+Qed.
+Program Definition bv_modu {n} (x y : bv n) : bv n := (* SMT: bvurem *)
+  BV n (Z.modulo (bv_unsigned x) (bv_unsigned y)) _.
+Next Obligation.
+  intros n x y. apply bv_ok_in_range. bv_saturate.
+  destruct (decide (bv_unsigned y = 0)) as [->|?].
+  { rewrite Zmod_0_r. lia. }
+  split; [ apply Z_mod_pos; lia |].
+  apply (Z.le_lt_trans _ (bv_unsigned x)); [|lia].
+  apply Z.mod_le; lia.
+Qed.
 Definition bv_divs {n} (x y : bv n) : bv n :=
   bv_of_Z n (Z.div (bv_signed x) (bv_signed y)).
 Definition bv_quots {n} (x y : bv n) : bv n := (* SMT: bvsdiv *)
@@ -165,8 +212,16 @@ Definition bv_rems {n} (x y : bv n) : bv n := (* SMT: bvsrem *)
 
 Definition bv_shiftl {n} (x y : bv n) : bv n := (* SMT: bvshl *)
   bv_of_Z n (Z.shiftl (bv_unsigned x) (bv_unsigned y)).
-Definition bv_shiftr {n} (x y : bv n) : bv n := (* SMT: bvlshr *)
-  bv_of_Z n (Z.shiftr (bv_unsigned x) (bv_unsigned y)).
+Program Definition bv_shiftr {n} (x y : bv n) : bv n := (* SMT: bvlshr *)
+  BV n (Z.shiftr (bv_unsigned x) (bv_unsigned y)) _.
+Next Obligation.
+  intros n x y. apply bv_ok_in_range. bv_saturate.
+  split; [ apply Z.shiftr_nonneg; lia|].
+  rewrite Z.shiftr_div_pow2; [|lia].
+  apply (Z.le_lt_trans _ (bv_unsigned x)); [|lia].
+  pose proof (Z.pow_pos_nonneg 2 (bv_unsigned y)).
+  apply Z.div_le_upper_bound; [ lia|]. nia.
+Qed.
 Definition bv_ashiftr {n} (x y : bv n) : bv n := (* SMT: bvashr *)
   bv_of_Z n (Z.shiftr (bv_signed x) (bv_unsigned y)).
 
