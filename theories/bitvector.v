@@ -29,10 +29,16 @@ Tactic Notation "learn_hyp" constr(p) "as" ident(H') :=
 Tactic Notation "learn_hyp" constr(p) :=
   let H := fresh in learn_hyp p as H.
 
+Lemma Zmul_assoc_comm n2 n1 n3 : n1 * n2 * n3 = n1 * n3 * n2.
+Proof. lia. Qed.
 
-(*** Preliminary definitions *)
+Lemma Zpow_2_mul a : a ^ 2 = a * a.
+Proof. lia. Qed.
+
+
+(** * Preliminary definitions *)
 Definition bv_modulus (n : N) : Z := 2 ^ (Z.of_N n).
-Definition bv_half_modulus (n : N) : Z := 2 ^ (Z.of_N (n - 1)).
+Definition bv_half_modulus (n : N) : Z := bv_modulus n `div` 2.
 Definition bv_wrap (n : N) (z : Z) : Z := z `mod` bv_modulus n.
 Definition bv_swrap (n : N) (z : Z) : Z := bv_wrap n (z + bv_half_modulus n) - bv_half_modulus n.
 Definition bv_ok (n : N) (z : Z) : Prop := -1 < z < bv_modulus n.
@@ -44,6 +50,23 @@ Proof. apply Z.pow_pos_nonneg; lia. Qed.
 Lemma bv_modulus_add n1 n2 :
   bv_modulus (n1 + n2) = bv_modulus n1 * bv_modulus n2.
 Proof. unfold bv_modulus. rewrite N2Z.inj_add. eapply Z.pow_add_r; lia. Qed.
+
+Lemma bv_half_modulus_twice n:
+  n ≠ 0%N →
+  bv_half_modulus n + bv_half_modulus n = bv_modulus n.
+Proof.
+  intros. unfold bv_half_modulus, bv_modulus.
+  rewrite Z.add_diag. symmetry. apply Z_div_exact_2; [lia|].
+  rewrite <-Z_pow_pred_r by lia. rewrite Z.mul_comm. by apply Z.mod_mul.
+Qed.
+
+Lemma bv_half_modulus_0:
+  bv_half_modulus 0 = 0.
+Proof. done. Qed.
+
+Lemma bv_half_modulus_twice_mult n:
+  bv_half_modulus n + bv_half_modulus n = (if (decide (n = 0%N)) then 0 else 1) * bv_modulus n.
+Proof. case_decide; subst; [ rewrite bv_half_modulus_0 | rewrite bv_half_modulus_twice]; lia. Qed.
 
 Lemma bv_ok_in_range n z:
   bv_ok n z ↔ 0 ≤ z < bv_modulus n.
@@ -57,9 +80,57 @@ Proof.
   split; lia.
 Qed.
 
-Lemma bv_wrap_elim n z :
+Lemma bv_wrap_small n z :
   0 ≤ z < bv_modulus n → bv_wrap n z = z.
 Proof. intros. by apply Z.mod_small. Qed.
+
+Definition bv_wrap_factor (n : N) (x z : Z) :=
+  x = - z `div` bv_modulus n.
+
+Lemma bv_wrap_factor_intro n z :
+  ∃ x, bv_wrap_factor n x z ∧ bv_wrap n z = z + x * bv_modulus n.
+Proof.
+  eexists _. split; [done|].
+  pose proof (bv_modulus_pos n). unfold bv_wrap. rewrite Z.mod_eq; lia.
+Qed.
+
+Lemma bv_wrap_add_modulus c n z:
+  bv_wrap n (z + c * bv_modulus n) = bv_wrap n z.
+Proof. apply Z_mod_plus_full. Qed.
+Lemma bv_wrap_add_modulus_1 n z:
+  bv_wrap n (z + bv_modulus n) = bv_wrap n z.
+Proof. rewrite <-(bv_wrap_add_modulus 1 n z). f_equal. lia. Qed.
+Lemma bv_wrap_sub_modulus c n z:
+  bv_wrap n (z - c * bv_modulus n) = bv_wrap n z.
+Proof. rewrite <-(bv_wrap_add_modulus (-c) n z). f_equal. lia. Qed.
+Lemma bv_wrap_sub_modulus_1 n z:
+  bv_wrap n (z - bv_modulus n) = bv_wrap n z.
+Proof. rewrite <-(bv_wrap_add_modulus (-1) n z). done. Qed.
+
+Lemma bv_wrap_add_idemp n x y :
+  bv_wrap n (bv_wrap n x + bv_wrap n y) = bv_wrap n (x + y).
+Proof. symmetry. apply Zplus_mod. Qed.
+Lemma bv_wrap_add_idemp_l n x y :
+  bv_wrap n (bv_wrap n x + y) = bv_wrap n (x + y).
+Proof. apply Zplus_mod_idemp_l. Qed.
+Lemma bv_wrap_add_idemp_r n x y :
+  bv_wrap n (x + bv_wrap n y) = bv_wrap n (x + y).
+Proof. apply Zplus_mod_idemp_r. Qed.
+
+Lemma bv_wrap_add_inj n x1 x2 y :
+  bv_wrap n x1 = bv_wrap n x2 ↔ bv_wrap n (x1 + y) = bv_wrap n (x2 + y).
+Proof.
+  split; intros Heq.
+  - by rewrite <-bv_wrap_add_idemp_l, Heq, bv_wrap_add_idemp_l.
+  - pose proof (bv_wrap_factor_intro n (x1 + y)) as [f1[? Hx1]].
+    pose proof (bv_wrap_factor_intro n (x2 + y)) as [f2[? Hx2]].
+    assert (x1 = x2 + f2 * bv_modulus n - f1 * bv_modulus n) as -> by lia.
+    by rewrite bv_wrap_sub_modulus, bv_wrap_add_modulus.
+Qed.
+
+Lemma bv_swrap_wrap n z:
+  bv_swrap n (bv_wrap n z) = bv_swrap n z.
+Proof. unfold bv_swrap, bv_wrap. by rewrite Zplus_mod_idemp_l. Qed.
 
 Lemma bv_ok_bitwise_op {n} op bop n1 n2 :
   (∀ k, Z.testbit (op n1 n2) k = bop (Z.testbit n1 k) (Z.testbit n2 k)) →
@@ -75,7 +146,7 @@ Proof.
   by rewrite Hbits, Hok1, Hok2.
 Qed.
 
-(*** Definition of [bv n] *)
+(** * Definition of [bv n] *)
 Record bv (n : N) := BV {
   bv_unsigned : Z;
   bv_is_ok : bv_ok n bv_unsigned;
@@ -122,13 +193,17 @@ Lemma bv_of_Z_unsigned n z:
   bv_unsigned (bv_of_Z n z) = bv_wrap n z.
 Proof. done. Qed.
 
+Lemma bv_of_Z_signed n z:
+  bv_signed (bv_of_Z n z) = bv_swrap n z.
+Proof. apply bv_swrap_wrap. Qed.
+
 Global Arguments bv_of_Z : simpl never.
 Global Opaque bv_of_Z.
 
-Lemma bv_of_Z_elim n z:
+Lemma bv_of_Z_small n z:
   0 ≤ z < bv_modulus n →
   bv_unsigned (bv_of_Z n z) = z.
-Proof. rewrite bv_of_Z_unsigned. apply bv_wrap_elim. Qed.
+Proof. rewrite bv_of_Z_unsigned. apply bv_wrap_small. Qed.
 
 Lemma bv_in_range n (b : bv n):
   0 ≤ bv_unsigned b < bv_modulus n.
@@ -141,18 +216,18 @@ Next Obligation.
   rewrite !list_lookup_fmap.
   intros [? [[??]%lookup_seqZ ?]]%fmap_Some.
   intros [? [[??]%lookup_seqZ Hz]]%fmap_Some. subst.
-  apply bv_eq in Hz. rewrite !bv_of_Z_elim in Hz; lia.
+  apply bv_eq in Hz. rewrite !bv_of_Z_small in Hz; lia.
 Qed.
 Next Obligation.
   intros. apply elem_of_list_lookup. eexists (Z.to_nat (bv_unsigned x)).
   rewrite list_lookup_fmap. apply fmap_Some. eexists _.
   pose proof (bv_in_range _ x). split.
   - apply lookup_seqZ. split; [done|]. rewrite Z2Nat.id; lia.
-  - apply bv_eq. rewrite bv_of_Z_elim; rewrite Z2Nat.id; lia.
+  - apply bv_eq. rewrite bv_of_Z_small; rewrite Z2Nat.id; lia.
 Qed.
 
 
-(*** Notation for [bv n] *)
+(** * Notation for [bv n] *)
 Ltac solve_bitvector_eq :=
   try (vm_compute; done);
   lazymatch goal with
@@ -166,12 +241,94 @@ Notation "'[BV{' l }  v ]" := (BV l v _) (at level 9, only printing) : stdpp_sco
 (* TODO: This notation breaks when used in gmap notations. Why? *)
 Notation "'[BV{' l }  v ]" := (BV l v ltac:(solve_bitvector_eq)) (at level 9, only parsing) : stdpp_scope.
 
-(*** Automation *)
+(** * Automation *)
 Ltac bv_saturate :=
   repeat match goal with | b : bv _ |- _ => learn_hyp (bv_in_range _ b) end.
 
+Definition bv_wrap_simplify_marker (z1 z2 : Z) : Z := z1 + z2.
 
-(*** Operations on [bv n] *)
+Lemma bv_wrap_simplify_marker_intro n z x:
+  bv_wrap n (bv_wrap_simplify_marker z 0) = x →
+  bv_wrap n z = x.
+Proof. intros <-. unfold bv_wrap_simplify_marker. f_equal. lia. Qed.
+
+Lemma bv_wrap_simplify_marker_move n z1 z2 x m:
+  bv_wrap n (bv_wrap_simplify_marker z1 (z2 + m)) = x →
+  bv_wrap n (bv_wrap_simplify_marker (z1 + z2) m) = x.
+Proof. intros <-. unfold bv_wrap_simplify_marker. f_equal. lia. Qed.
+
+Lemma bv_wrap_simplify_marker_remove n z1 z2 x m:
+  bv_wrap n (bv_wrap_simplify_marker z1 m) = x →
+  bv_wrap n (bv_wrap_simplify_marker (z1 + z2 * bv_modulus n) m) = x.
+Proof.
+  intros <-. unfold bv_wrap_simplify_marker.
+  assert ((z1 + z2 * bv_modulus n + m) = (z1 + m + z2 * bv_modulus n)) as -> by lia.
+  by apply bv_wrap_add_modulus.
+Qed.
+
+Lemma bv_wrap_simplify_marker_remove_sub n z1 z2 x m:
+  bv_wrap n (bv_wrap_simplify_marker z1 m) = x →
+  bv_wrap n (bv_wrap_simplify_marker (z1 - z2 * bv_modulus n) m) = x.
+Proof.
+  intros <-. unfold bv_wrap_simplify_marker.
+  assert ((z1 - z2 * bv_modulus n + m) = (z1 + m - z2 * bv_modulus n)) as -> by lia.
+  by apply bv_wrap_sub_modulus.
+Qed.
+
+Lemma bv_wrap_simplify_marker_move_end n z x m:
+  bv_wrap n (z + m) = x →
+  bv_wrap n (bv_wrap_simplify_marker z m) = x.
+Proof. intros <-. unfold bv_wrap_simplify_marker. f_equal. Qed.
+
+Lemma bv_wrap_simplify_marker_remove_end n z x m:
+  bv_wrap n m = x →
+  bv_wrap n (bv_wrap_simplify_marker (z * bv_modulus n) m) = x.
+Proof. intros <-. unfold bv_wrap_simplify_marker. rewrite Z.add_comm. apply bv_wrap_add_modulus. Qed.
+
+Lemma bv_wrap_simplify_marker_remove_end_opp n z x m:
+  bv_wrap n m = x →
+  bv_wrap n (bv_wrap_simplify_marker (- z * bv_modulus n) m) = x.
+Proof. intros <-. unfold bv_wrap_simplify_marker. rewrite Z.add_comm. apply bv_wrap_add_modulus. Qed.
+
+Ltac bv_wrap_simplify_cancel :=
+  apply bv_wrap_simplify_marker_intro;
+  repeat first [ apply bv_wrap_simplify_marker_remove | apply bv_wrap_simplify_marker_remove_sub | apply bv_wrap_simplify_marker_move];
+  first [ apply bv_wrap_simplify_marker_remove_end | apply bv_wrap_simplify_marker_remove_end_opp | apply bv_wrap_simplify_marker_move_end].
+
+Ltac bv_wrap_simplify :=
+  match goal with
+  | |- bv_wrap ?n1 ?z1 = bv_wrap ?n2 ?z2 => change (block bv_wrap n1 z1 = block bv_wrap n2 z2)
+  end;
+  repeat match goal with
+  | |- context [ bv_wrap ?n ?z ] =>
+    let x := fresh "x" in
+    let Heq := fresh "Heq" in
+    pose proof (bv_wrap_factor_intro n z) as [x [? Heq]];
+    rewrite !Heq;
+    clear Heq
+  end;
+  match goal with
+  | |- block bv_wrap ?n1 ?z1 = block bv_wrap ?n2 ?z2 => change (bv_wrap n1 z1 = bv_wrap n2 z2)
+  end;
+  match goal with | |- bv_wrap _ ?z = _ => ring_simplify z end;
+  match goal with | |- _ = bv_wrap _ ?z => ring_simplify z end;
+  repeat rewrite (Z.mul_comm (bv_modulus _));
+  repeat rewrite (Z.mul_comm ((bv_modulus _) ^ _));
+  repeat rewrite (Zmul_assoc_comm (bv_modulus _));
+  repeat rewrite (Zmul_assoc_comm ((bv_modulus _) ^ _));
+  repeat rewrite Zpow_2_mul;
+  repeat rewrite Z.mul_assoc;
+
+  bv_wrap_simplify_cancel;
+  symmetry;
+  bv_wrap_simplify_cancel;
+  match goal with | |- bv_wrap _ ?z = _ => ring_simplify z end;
+  match goal with | |- _ = bv_wrap _ ?z => ring_simplify z end.
+
+Ltac bv_wrap_simplify_solve :=
+  bv_wrap_simplify; f_equal; lia.
+
+(** * Operations on [bv n] *)
 Program Definition bv_0 (n : N) :=
   BV n 0 _.
 Next Obligation.
@@ -187,7 +344,7 @@ Definition bv_add {n} (x y : bv n) : bv n := (* SMT: bvadd *)
   bv_of_Z n (Z.add (bv_unsigned x) (bv_unsigned y)).
 Definition bv_sub {n} (x y : bv n) : bv n := (* SMT: bvsub *)
   bv_of_Z n (Z.sub (bv_unsigned x) (bv_unsigned y)).
-Definition bv_opp {n} (x y : bv n) : bv n := (* SMT: bvneg *)
+Definition bv_opp {n} (x : bv n) : bv n := (* SMT: bvneg *)
   bv_of_Z n (Z.opp (bv_unsigned x)).
 
 Definition bv_mul {n} (x y : bv n) : bv n := (* SMT: bvmul *)
@@ -293,7 +450,57 @@ Next Obligation.
   - apply (Z.lt_le_trans _ (bv_modulus n2)); [lia|]. apply Z.pow_le_mono_r; lia.
 Qed.
 
-(*** [bvn] *)
+(** * Lemmas about [bv n] operations *)
+
+(** ** Lemmas about [bv_opp], [bv_add], and [bv_sub] *)
+Section add_sub.
+  Context {n : N}.
+  Implicit Types (b : bv n).
+
+  Lemma bv_sub_add_opp b1 b2:
+    bv_sub b1 b2 = bv_add b1 (bv_opp b2).
+  Proof.
+    apply bv_eq. unfold bv_sub, bv_add, bv_opp.
+    rewrite !bv_of_Z_unsigned. bv_wrap_simplify_solve.
+  Qed.
+
+  Lemma bv_add_signed b1 b2 :
+    bv_signed (bv_add b1 b2) = bv_swrap n (bv_signed b1 + bv_signed b2).
+  Proof.
+    unfold bv_add. rewrite bv_of_Z_signed. unfold bv_signed, bv_swrap. f_equal.
+    bv_wrap_simplify_solve.
+  Qed.
+
+  Lemma bv_opp_signed b :
+    bv_signed (bv_opp b) = bv_swrap n (- bv_signed b).
+  Proof.
+    unfold bv_opp. rewrite bv_of_Z_signed. unfold bv_signed, bv_swrap. f_equal.
+    bv_wrap_simplify_solve.
+  Qed.
+
+  Lemma bv_sub_signed b1 b2 :
+    bv_signed (bv_sub b1 b2) = bv_swrap n (bv_signed b1 - bv_signed b2).
+  Proof.
+    unfold bv_sub. rewrite bv_of_Z_signed. unfold bv_signed, bv_swrap. f_equal.
+    bv_wrap_simplify_solve.
+  Qed.
+End add_sub.
+
+(** ** Lemmas about [bv_mul] *)
+Section mul.
+  Context {n : N}.
+  Implicit Types (b : bv n).
+
+  Lemma bv_mul_signed b1 b2 :
+    bv_signed (bv_mul b1 b2) = bv_swrap n (bv_signed b1 * bv_signed b2).
+  Proof.
+    unfold bv_mul. rewrite bv_of_Z_signed. unfold bv_signed, bv_swrap. f_equal.
+    bv_wrap_simplify_solve.
+  Qed.
+End mul.
+
+
+(** * [bvn] *)
 Record bvn := BVN {
   bvn_n : N;
   bvn_val : bv bvn_n;
@@ -328,7 +535,7 @@ Global Arguments bvn_to_bv !_ !_ /.
 Definition bv_to_bvn {n} (b : bv n) : bvn := BVN _ b.
 Coercion bv_to_bvn : bv >-> bvn.
 
-(*** tests *)
+(** * tests *)
 Section test.
 Goal ([BV{10} 3 ] = [BV{10} 5]). Abort.
 Fail Goal ([BV{2} 3 ] = [BV{10} 5]).
@@ -336,6 +543,28 @@ Goal ([BV{2} 3 ] =@{bvn} [BV{10} 5]). Abort.
 Fail Goal ([BV{2} 4 ] = [BV{2} 5]).
 Goal bvn_to_bv 2 [BV{2} 3] = Some [BV{2} 3]. done. Abort.
 End test.
+
+
+
+Section test_automation.
+  Context (n : N).
+  Implicit Type a : bv n.
+  Goal ∀ a n1 n2,
+      bv_of_Z n (bv_unsigned (bv_of_Z n (bv_unsigned a + n1)) + n2) =
+      bv_of_Z n (bv_unsigned a + (n1 + n2)).
+    intros ???.
+    apply bv_eq. rewrite !bv_of_Z_unsigned. bv_wrap_simplify_solve.
+    all: fail.
+  Abort.
+
+  Goal ∀ a n1 n2,
+      bv_of_Z n (bv_unsigned (bv_of_Z n (bv_unsigned a + n1 * n1)) + bv_unsigned (bv_of_Z n n2)) =
+      bv_of_Z n (bv_unsigned a + (n1 * bv_unsigned (bv_of_Z n n1) + n2)).
+    intros ???.
+    apply bv_eq. rewrite !bv_of_Z_unsigned. bv_wrap_simplify_solve.
+    all: fail.
+  Abort.
+End test_automation.
 
 (*
 (*** Work in progress benchmarks for the automation  *)
