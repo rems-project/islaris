@@ -20,6 +20,15 @@ Proof.
       rewrite Z.bit_log2 in Hbit; [done| lia].
 Qed.
 
+Lemma Z_bounded_iff_bits_nonneg' k n :
+  0 ≤ k → 0 ≤ n →
+  0 ≤ n < 2^k ↔ ∀ l, k ≤ l → Z.testbit n l = false.
+Proof.
+  intros ??. split.
+  - intros ?. apply Z_bounded_iff_bits_nonneg; lia.
+  - intros ?%Z_bounded_iff_bits_nonneg; lia.
+Qed.
+
 Tactic Notation "learn_hyp" constr(p) "as" ident(H') :=
   let P := type of p in
   match goal with
@@ -34,6 +43,91 @@ Proof. lia. Qed.
 
 Lemma Zpow_2_mul a : a ^ 2 = a * a.
 Proof. lia. Qed.
+
+Fixpoint Z_to_little (m : nat) (n : Z) (z : Z) : list Z :=
+  match m with
+  | O => []
+  | S m' => Z.land z (Z.ones n) :: Z_to_little m' n (z ≫ n)
+  end.
+
+Fixpoint Z_of_little (n : Z) (bs : list Z) : Z :=
+  match bs with
+  | [] => 0
+  | b :: bs' => Z.lor (Z_of_little n bs' ≪ n) b
+  end.
+
+Lemma Z_ones_spec n m:
+  0 ≤ m → 0 ≤ n →
+  Z.testbit (Z.ones n) m = if decide (m < n) then true else false.
+Proof. intros. case_decide; [ by rewrite Z.ones_spec_low by lia | by rewrite Z.ones_spec_high by lia ]. Qed.
+
+Lemma Z_to_of_little m n bs:
+  m = length bs → 0 ≤ n →
+  Forall (λ b, 0 ≤ b < 2 ^ n) bs →
+  Z_to_little m n (Z_of_little n bs) = bs.
+Proof.
+  intros -> ? Hall. induction Hall as [|b bs ? ? IH]; [done|]; csimpl.
+  f_equal.
+  - apply Z.bits_inj_iff'. intros n' ?.
+    rewrite !Z.land_spec, Z.lor_spec, Z_ones_spec by lia.
+    case_decide.
+    + rewrite andb_true_r, Z.shiftl_spec_low by lia. done.
+    + rewrite !andb_false_r by lia.
+      symmetry. eapply (Z_bounded_iff_bits_nonneg n); lia.
+  - rewrite <-IH at 3. f_equal.
+    apply Z.bits_inj_iff'. intros n' ?.
+    rewrite Z.shiftr_spec, Z.lor_spec, Z.shiftl_spec by lia.
+    assert (Z.testbit b (n' + n) = false) as ->. {
+      eapply (Z_bounded_iff_bits_nonneg n); lia.
+    }
+    rewrite orb_false_r. f_equal. lia.
+Qed.
+
+Lemma Z_of_to_little m n z:
+  0 ≤ n →
+  Z_of_little n (Z_to_little m n z) = z `mod` 2 ^ (m * n).
+Proof.
+  intros. rewrite <-Z.land_ones by nia.
+  revert z. induction m as [|m IH]; simpl. { intros. Z.bitwise. by rewrite andb_false_r. }
+  intros z. rewrite IH.
+  apply Z.bits_inj_iff'. intros n' ?.
+  rewrite Z.land_spec, Z.lor_spec, Z.shiftl_spec, !Z.land_spec by lia.
+  rewrite (Z_ones_spec n n') by lia. case_decide.
+  - rewrite andb_true_r. rewrite Z.testbit_neg_r by lia. simpl.
+    rewrite Z_ones_spec by nia. case_decide; [ by rewrite andb_true_r| nia].
+  - rewrite andb_false_r, orb_false_r.
+    rewrite Z.shiftr_spec by lia. f_equal. { f_equal. lia. }
+    rewrite !Z_ones_spec by nia. repeat case_decide; try done; nia.
+Qed.
+
+Lemma Z_to_little_bound x m n z:
+  0 ≤ n →
+  x ∈ Z_to_little m n z → 0 ≤ x < 2 ^ n.
+Proof.
+  intros ?. revert z. induction m as [|m IH]; simpl. { by intros ? ?%elem_of_nil. }
+  intros ?. intros [->|?%IH]%elem_of_cons; [|done].
+  rewrite Z.land_ones by lia.
+  apply Z.mod_pos_bound. apply Z.pow_pos_nonneg; lia.
+Qed.
+
+Lemma Z_of_little_bound n bs:
+  0 ≤ n →
+  Forall (λ b, 0 ≤ b < 2 ^ n) bs →
+  0 ≤ Z_of_little n bs < 2 ^ ((length bs) * n).
+Proof.
+  intros ? Hall.
+  induction Hall as [|b bs Hb ? IH]; [done|]; simpl.
+  apply Z_bounded_iff_bits_nonneg'; [ nia | |].
+  - apply Z.lor_nonneg. split; [|lia]. apply Z.shiftl_nonneg. lia.
+  - intros l ?. rewrite Z.lor_spec.
+    eapply Z_bounded_iff_bits_nonneg' in Hb.
+    + erewrite Hb, orb_false_r.
+      rewrite Z.shiftl_spec by nia.
+      eapply Z_bounded_iff_bits_nonneg'; [| | done |]; nia.
+    + lia.
+    + lia.
+    + nia.
+Qed.
 
 
 (** * Preliminary definitions *)
@@ -429,9 +523,8 @@ Program Definition bv_extract {n} (s l : N) (b : bv n) : bv l :=
 Next Obligation.
   intros.
   apply bv_ok_in_range.
-  assert (0 ≤ Z.land (bv_unsigned b ≫ Z.of_N s) (Z.ones (Z.of_N l))).
+  apply Z_bounded_iff_bits_nonneg'; [lia | |].
   { apply Z.land_nonneg. left. apply Z.shiftr_nonneg. bv_saturate. lia. }
-  split; [lia|]. apply Z_bounded_iff_bits_nonneg; [lia.. |].
   intros k ?. rewrite Z.land_spec. apply andb_false_intro2.
   apply Z.ones_spec_high. lia.
 Qed.
@@ -441,14 +534,19 @@ Program Definition bv_concat {n1 n2} (b1 : bv n1) (b2 : bv n2) : bv (n1 + n2) :=
 Next Obligation.
   intros.
   apply bv_ok_in_range.
-  assert (0 ≤ Z.lor (bv_unsigned b1 ≪ Z.of_N n2) (bv_unsigned b2)).
+  apply Z_bounded_iff_bits_nonneg'; [lia | |].
   { apply Z.lor_nonneg. bv_saturate. split; [|lia]. apply Z.shiftl_nonneg. lia. }
-  split; [lia|]. apply Z_bounded_iff_bits_nonneg; [lia.. |].
   intros k ?. rewrite Z.lor_spec, Z.shiftl_spec; [|lia].
   apply orb_false_intro; (eapply Z_bounded_iff_bits_nonneg; [..|done]); bv_saturate; try lia.
   - apply (Z.lt_le_trans _ (bv_modulus n1)); [lia|]. apply Z.pow_le_mono_r; lia.
   - apply (Z.lt_le_trans _ (bv_modulus n2)); [lia|]. apply Z.pow_le_mono_r; lia.
 Qed.
+
+Definition bv_to_little m n (z : Z) : list (bv n) :=
+  (λ b, bv_of_Z n b) <$> Z_to_little m (Z.of_N n) z.
+
+Definition bv_of_little n (bs : list (bv n)) : Z :=
+  Z_of_little (Z.of_N n) (bv_unsigned <$> bs).
 
 (** * Lemmas about [bv n] operations *)
 
@@ -499,6 +597,32 @@ Section mul.
   Qed.
 End mul.
 
+(** ** Lemmas about [bv_to_little] and [bv_of_little] *)
+Section little.
+
+  Lemma bv_to_litte_unsigned m n z:
+    bv_unsigned <$> bv_to_little m n z = Z_to_little m (Z.of_N n) z.
+  Proof.
+    apply list_eq. intros i. unfold bv_to_little.
+    rewrite list_lookup_fmap, list_lookup_fmap.
+    destruct (Z_to_little m (Z.of_N n) z !! i) eqn: Heq; [simpl |done].
+    rewrite bv_of_Z_small; [done|].
+    eapply Z_to_little_bound; [lia|]. by eapply elem_of_list_lookup_2.
+  Qed.
+
+  Lemma bv_to_of_little m n bs:
+    m = length bs →
+    bv_to_little m n (bv_of_little n bs) = bs.
+  Proof.
+    intros ->. eapply (fmap_inj bv_unsigned). { intros ???. by apply bv_eq. }
+    rewrite bv_to_litte_unsigned. apply Z_to_of_little; [by rewrite fmap_length | lia |].
+    apply Forall_forall. intros ? [?[->?]]%elem_of_list_fmap_2. apply bv_in_range.
+  Qed.
+
+  Lemma bv_of_to_little m n z:
+    bv_of_little n (bv_to_little m n z) = z `mod` 2 ^ (m * Z.of_N n).
+  Proof. unfold bv_of_little. rewrite bv_to_litte_unsigned. apply Z_of_to_little. lia. Qed.
+End little.
 
 (** * [bvn] *)
 Record bvn := BVN {
