@@ -517,7 +517,9 @@ Program Definition bv_sign_extend {n} (z : N) (b : bv n) : bv (n + z) := (* SMT:
 
 (* s is start index and l is length. Note that this is different from
 extract in SMTLIB which uses [extract (inclusive upper bound)
-(inclusive lower bound)] *)
+(inclusive lower bound)]. The version here is phrased in a way that
+makes it impossible to use an upper bound that is lower than the lower
+bound. *)
 Program Definition bv_extract {n} (s l : N) (b : bv n) : bv l :=
   BV l (Z.land (bv_unsigned b ≫ Z.of_N s) (Z.ones (Z.of_N l))) _.
 Next Obligation.
