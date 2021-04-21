@@ -66,15 +66,15 @@ Inductive unop : Set :=
  | Bvredand : unop
  | Bvredor : unop
  | Bvneg : unop
- | Extract (int5:Z) (int':Z)
- | ZeroExtend (int5:Z)
- | SignExtend (int5:Z).
+ | Extract (int5:N) (int':N)
+ | ZeroExtend (int5:N)
+ | SignExtend (int5:N).
 
 Inductive valu : Set :=
  | Val_Symbolic (vvar5:var_name)
  | Val_Bool (bool5:bool)
  | Val_I (bvi5:Z) (int5:Z)
- | Val_Bits (bv5: bv)
+ | Val_Bits (bv5: bvn)
  | Val_Enum (enum5:enum)
  | Val_String (str5:string)
  | Val_Unit : valu
@@ -86,7 +86,7 @@ Inductive valu : Set :=
 
 Inductive ty : Set :=
  | Ty_Bool : ty
- | Ty_BitVec (int5:Z)
+ | Ty_BitVec (int5:N)
  | Ty_Enum (enum_ty5:enum_id)
  | Ty_Array (ty1:ty) (ty2:ty).
 

@@ -91,15 +91,16 @@ Section lifting.
     iSplit. {
       destruct ins => //.
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
-      split. { reflexivity. }
-      eexists _, _. rewrite /next_pc_regs HPC Hchanged. cbn -[next_pc]. rewrite Hnext/=.
+      eexists _, _. rewrite /next_pc_regs HPC Hchanged.
+      cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc]. rewrite Hnext/=.
       split_and!; [done|]. rewrite Hi. split_and!; [done|by left| done].
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
     inv_seq_step.
     revert select (∃ _, _) => -[?[?]].
-    rewrite /next_pc_regs HPC Hchanged. cbn -[next_pc]. rewrite Hnext/= => -[[<- <-] ].
-    rewrite Hi => -[? [??]]. simplify_eq.
+    rewrite /next_pc_regs HPC Hchanged.
+    cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc].
+    rewrite Hnext/= => -[[<- <-] ]. rewrite Hi => -[? [??]]. simplify_eq.
     iFrame. iSplitL; [|done].
     iMod (reg_mapsto_update with "Hθ Hchanged") as "[Hθ Hchanged]".
     iMod (reg_mapsto_update with "Hθ HPC") as "[Hθ HPC]".
@@ -126,15 +127,16 @@ Section lifting.
     iDestruct (instr_lookup with "Hictx Hi") as %Hi.
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
-      split. { reflexivity. }
-      eexists _, _. rewrite /next_pc_regs HPC Hchanged. cbn -[next_pc]. rewrite Hnext/=.
+      eexists _, _. rewrite /next_pc_regs HPC Hchanged.
+      cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc]. rewrite Hnext/=.
       split_and!; [done|]. rewrite Hi. done.
     }
     iIntros "!>" (????). iMod "HE" as "_".
     inv_seq_step.
     revert select (∃ _, _) => -[?[?]].
-    rewrite /next_pc_regs HPC Hchanged. cbn -[next_pc]. rewrite Hnext/= => -[[<- <-] ].
-    rewrite Hi => -[? ?].
+    rewrite /next_pc_regs HPC Hchanged.
+    cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc].
+    rewrite Hnext/= => -[[<- <-] ]. rewrite Hi => -[? ?].
     destruct regs, κs => //. simplify_eq/=.
     iMod (spec_ctx_cons with "Hsctx Hspec") as "[??]". iModIntro.
     iFrame. iSplitL; [|done].
@@ -298,7 +300,7 @@ Section lifting.
   Qed.
 
   Lemma wp_declare_const_bv v es ann b:
-    (∀ n, WPasm ((subst_event v (Val_Bits [BV{b} n])) <$> es)) -∗
+    (∀ n Heq, WPasm ((subst_event v (Val_Bits (BV b n Heq))) <$> es)) -∗
     WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
   Proof.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.
@@ -315,7 +317,8 @@ Section lifting.
     iFrame; iSplitL; [|done].
     iApply ("Hcont"); [done|done|].
     iFrame.
-    Unshelve. apply: inhabitant.
+    Unshelve. 1: exact 0.
+    split; [done|]. apply: Z.pow_pos_nonneg; lia.
   Qed.
 
   Lemma wp_define_const n es ann e:
@@ -343,6 +346,15 @@ End lifting.
 
 Section exp_lifting.
   Context `{!islaG Σ}.
+
+  Lemma wpe_wand e Φ1 Φ2:
+    WPexp e {{ Φ1 }} -∗
+    (∀ v, Φ1 v -∗ Φ2 v) -∗
+    WPexp e {{ Φ2 }}.
+  Proof.
+    rewrite !wp_exp_unfold. iDestruct 1 as (??) "?". iIntros "Hv".
+    iExists _. iSplit; [done|]. by iApply "Hv".
+  Qed.
 
   Lemma wpe_val v Φ ann:
     Φ v -∗

@@ -58,28 +58,36 @@ Definition subst_event (n : var_name) (v : valu) (e : event) : event :=
 Definition eval_unop (u : unop) (v : valu) : option valu :=
   match u, v with
   | Not, Val_Bool b => Some (Val_Bool (negb b))
-  | Bvnot, Val_Bits n => Some (Val_Bits (bv_not n))
-  | ZeroExtend z, Val_Bits n => Some (Val_Bits (bv_zero_extend z n))
-  | SignExtend z, Val_Bits n => Some (Val_Bits (bv_sign_extend z n))
-  | Extract u l, Val_Bits n => Some (Val_Bits (bv_extract u l n))
+  | Bvnot, Val_Bits n => Some (Val_Bits (bv_not n.(bvn_val)))
+  | ZeroExtend z, Val_Bits n => Some (Val_Bits (bv_zero_extend z n.(bvn_val)))
+  | SignExtend z, Val_Bits n => Some (Val_Bits (bv_sign_extend z n.(bvn_val)))
+  | Extract u l, Val_Bits n => Some (Val_Bits (bv_extract l (u + 1 - l) n.(bvn_val)))
   | _, _ => (* TODO: other cases *) None
   end.
 
 Definition eval_binop (b : binop) (v1 v2 : valu) : option valu :=
   match b, v1, v2 with
   | Eq, Val_Bool b1, Val_Bool b2 => Some (Val_Bool (eqb b1 b2))
-  | Eq, Val_Bits n1, Val_Bits n2 => Some (Val_Bool (bool_decide (n1 = n2)))
-  | Bvarith Bvlshr, Val_Bits n1, Val_Bits n2 => Some (Val_Bits (bv_shr n1 n2))
+  | Eq, Val_Bits n1, Val_Bits n2 => mguard (n1.(bvn_n) = n2.(bvn_n)) (λ _, Some (Val_Bool (bool_decide (n1 = n2))))
+  | Bvarith Bvlshr, Val_Bits n1, Val_Bits n2 => n2' ← bvn_to_bv n1.(bvn_n) n2; Some (Val_Bits (bv_shiftr n1.(bvn_val) n2'))
   | _, _, _ => (* TODO: other cases *) None
   end.
 
 
 Definition eval_manyop (m : manyop) (vs : list valu) : option valu :=
   match m, vs with
-  | Bvmanyarith Bvadd, (Val_Bits n0 :: vs') => (λ ns, Val_Bits (foldl bv_add n0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs')
-  | Bvmanyarith Bvor, (Val_Bits n0 :: vs') => (λ ns, Val_Bits (foldl bv_or n0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs')
-  | Bvmanyarith Bvand, (Val_Bits n0 :: vs') => (λ ns, Val_Bits (foldl bv_and n0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs')
-  | Concat, (Val_Bits n0 :: vs') => (λ ns, Val_Bits (foldl bv_concat n0 ns)) <$> (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs')
+  | Bvmanyarith Bvadd, (Val_Bits n0 :: vs') =>
+    (λ ns, Val_Bits (foldl bv_add n0.(bvn_val) ns)) <$>
+     (mapM (M := option) (λ v, match v with | Val_Bits n => bvn_to_bv n0.(bvn_n) n | _ => None end ) vs')
+  | Bvmanyarith Bvor, (Val_Bits n0 :: vs') =>
+    (λ ns, Val_Bits (foldl bv_or n0.(bvn_val) ns)) <$>
+    (mapM (M := option) (λ v, match v with | Val_Bits n => bvn_to_bv n0.(bvn_n) n | _ => None end ) vs')
+  | Bvmanyarith Bvand, (Val_Bits n0 :: vs') =>
+    (λ ns, Val_Bits (foldl bv_and n0.(bvn_val) ns)) <$> (
+      mapM (M := option) (λ v, match v with | Val_Bits n => bvn_to_bv n0.(bvn_n) n | _ => None end ) vs')
+  | Concat, (Val_Bits n0 :: vs') =>
+    (λ ns, Val_Bits (foldl (λ b1 b2, bv_to_bvn (bv_concat b1.(bvn_val) b2.(bvn_val))) n0 ns)) <$>
+    (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs')
   | _, _ => (* TODO: other cases *) None
   end.
 
@@ -109,8 +117,8 @@ Inductive trace_label : Set :=
 .
 
 Inductive trace_step : trc → option trace_label → trc → Prop :=
-| DeclareConstBitVecS x n ann es b:
-    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) None (subst_event x (Val_Bits [BV{b} n]) <$> es)
+| DeclareConstBitVecS x n ann es b Heq:
+    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) None (subst_event x (Val_Bits (BV b n Heq)) <$> es)
 | DeclareConstBoolS x ann es b:
     trace_step (Smt (DeclareConst x Ty_Bool) ann :: es) None (subst_event x (Val_Bool b) <$> es)
 | DefineConstS x e v ann es:
@@ -155,15 +163,16 @@ Definition bits_of_valu (v : valu) : option bv :=
 Definition reg_map := gmap string valu.
 Definition mem_map := gmap addr byte.
 
-Definition instruction_size : bv := [BV{64} 0x4].
+Definition instruction_size : Z := 0x4.
 
-Definition next_pc (nPC : bv) (changed : bool) : option (addr * valu * valu) :=
-  let new_pc := (if changed then nPC else bv_add nPC instruction_size) in
-  Some (new_pc.(bv_val), Val_Bits new_pc, Val_Bool false).
+Definition next_pc (nPC : bv 64) (changed : bool) : option (addr * valu * valu) :=
+  new_pc ← (if changed then Some nPC else bv_of_Z_checked 64 (bv_unsigned nPC + instruction_size));
+  Some (bv_unsigned new_pc, Val_Bits new_pc, Val_Bool false).
+Arguments next_pc !_ !_ /.
 
 Definition next_pc_regs (regs : reg_map) : option (addr * reg_map) :=
   a ← regs !! "_PC";
-  an ← if a is Val_Bits n then Some n else None;
+  an ← if a is Val_Bits n then bvn_to_bv 64 n else None;
   c ← regs !! "__PC_changed";
   cb ← if c is Val_Bool b then Some b else None;
   n ← next_pc an cb;

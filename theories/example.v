@@ -211,6 +211,10 @@ Definition test_state_global := {|
 
 Definition test_state_spec : list seq_label := [ SInstrTrap 0x0000000010300008 ].
 
+Global Instance simpl_normalize_valu_end v1 v2:
+  SimplAndUnsafe true (normalize_valu v1 v2) (λ T, v1 = v2 ∧ T) | 1000.
+Proof. move => ?. done. Qed.
+
 
 Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some [trc_bl_0x100]) -∗
@@ -493,23 +497,25 @@ Definition trc_b_0x8 : trc := [
 0x0000000010300114: ret
 *)
 
+Definition bv_1 := [BV{1} 1].
+Definition bv_0 := [BV{1} 0].
 
-Definition test_state2_local (n1 : Z) := {|
+Definition test_state2_local (n1 : Z) Hin := {|
   seq_trace  := [];
   seq_regs   :=
-    <[ "R1" := Val_Bits [BV{64} n1] ]> $
+    <[ "R1" := Val_Bits (BV 64 n1 Hin) ]> $
     <[ "PSTATE" := (Val_Struct
-          [("GE", Val_Poison); ("F", Val_Bits [BV{1} 1]);
-          ("UAO", Val_Poison); ("C", Val_Bits [BV{1} 0]);
-          ("SP", Val_Poison); ("N", Val_Bits [BV{1} 0]);
-          ("Q", Val_Poison); ("A", Val_Bits [BV{1} 1]); ("SS", Val_Bits [BV{1} 0]);
-          ("E", Val_Poison); ("TCO", Val_Poison); ("I", Val_Bits [BV{1} 1]);
-          ("PAN", Val_Poison); ("M", Val_Poison); ("D", Val_Bits [BV{1} 1]);
-          ("nRW", Val_Bits [BV{1} 0]); ("EL", Val_Bits [BV{1} 0]);
-          ("IT", Val_Poison); ("IL", Val_Bits [BV{1} 0]);
-          ("Z", Val_Bits [BV{1} 0]); ("BTYPE", Val_Poison);
+          [("GE", Val_Poison); ("F", Val_Bits bv_1);
+          ("UAO", Val_Poison); ("C", Val_Bits bv_0);
+          ("SP", Val_Poison); ("N", Val_Bits bv_0);
+          ("Q", Val_Poison); ("A", Val_Bits bv_1); ("SS", Val_Bits bv_0);
+          ("E", Val_Poison); ("TCO", Val_Poison); ("I", Val_Bits bv_1);
+          ("PAN", Val_Poison); ("M", Val_Poison); ("D", Val_Bits bv_1);
+          ("nRW", Val_Bits bv_0); ("EL", Val_Bits bv_0);
+          ("IT", Val_Poison); ("IL", Val_Bits bv_0);
+          ("Z", Val_Bits bv_0); ("BTYPE", Val_Poison);
           ("SSBS", Val_Poison); ("T", Val_Poison); ("J", Val_Poison);
-          ("V", Val_Bits [BV{1} 0]); ("DIT", Val_Bits [BV{1} 0])]) ]> $
+          ("V", Val_Bits bv_0); ("DIT", Val_Bits bv_0)]) ]> $
     <[ "_PC" := Val_Bits start_address ]> $
     <[ "__PC_changed" := Val_Bool false ]> $
                                              ∅;
@@ -537,7 +543,7 @@ Lemma ite_bits b n1 n2 :
 Proof. by destruct b. Qed.
 Hint Rewrite ite_bits : lithium_rewrite.
 
-Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 :
+Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   instr 0x0000000010300000 (Some [trc_cmp_x1_0]) -∗
   instr 0x0000000010300004 (Some trc_bne_0xc ) -∗
   instr 0x0000000010300008 (Some [trc_mov_x0_1]) -∗
@@ -550,36 +556,65 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 :
   "_PC" ↦ᵣ Val_Bits start_address -∗
   "__PC_changed" ↦ᵣ Val_Bool false -∗
   "R30" ↦ᵣ Val_Poison -∗
-  "R1" ↦ᵣ Val_Bits [BV{64} n1] -∗
+  "R1" ↦ᵣ Val_Bits (BV 64 n1 Hin) -∗
   "R0" ↦ᵣ Val_Poison -∗
   "OUT" ↦ᵣ Val_Poison -∗
   "PSTATE" ↦ᵣ (Val_Struct
-          [("GE", Val_Poison); ("F", Val_Bits [BV{1} 1]);
-          ("UAO", Val_Poison); ("C", Val_Bits [BV{1} 0]);
-          ("SP", Val_Poison); ("N", Val_Bits [BV{1} 0]);
-          ("Q", Val_Poison); ("A", Val_Bits [BV{1} 1]); ("SS", Val_Bits [BV{1} 0]);
-          ("E", Val_Poison); ("TCO", Val_Poison); ("I", Val_Bits [BV{1} 1]);
-          ("PAN", Val_Poison); ("M", Val_Poison); ("D", Val_Bits [BV{1} 1]);
-          ("nRW", Val_Bits [BV{1} 0]); ("EL", Val_Bits [BV{1} 0]);
-          ("IT", Val_Poison); ("IL", Val_Bits [BV{1} 0]);
-          ("Z", Val_Bits [BV{1} 0]); ("BTYPE", Val_Poison);
+          [("GE", Val_Poison); ("F", Val_Bits bv_1);
+          ("UAO", Val_Poison); ("C", Val_Bits bv_0);
+          ("SP", Val_Poison); ("N", Val_Bits bv_0);
+          ("Q", Val_Poison); ("A", Val_Bits bv_1); ("SS", Val_Bits bv_0);
+          ("E", Val_Poison); ("TCO", Val_Poison); ("I", Val_Bits bv_1);
+          ("PAN", Val_Poison); ("M", Val_Poison); ("D", Val_Bits bv_1);
+          ("nRW", Val_Bits bv_0); ("EL", Val_Bits bv_0);
+          ("IT", Val_Poison); ("IL", Val_Bits bv_0);
+          ("Z", Val_Bits bv_0); ("BTYPE", Val_Poison);
           ("SSBS", Val_Poison); ("T", Val_Poison); ("J", Val_Poison);
-          ("V", Val_Bits [BV{1} 0]); ("DIT", Val_Bits [BV{1} 0])]) -∗
+          ("V", Val_Bits bv_0); ("DIT", Val_Bits bv_0)]) -∗
   spec_trace test_state_spec -∗
   WPasm [].
 Proof.
   iStartProof.
   do 100 liAStep; liShow.
   do 100 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
-  do 20 liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
 
+
+
+  (* do 10 liAStep; liShow. *)
+
+
+(*
+  do 10 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+  do 20 liAStep; liShow.
+*)
   (* repeat liAStep; liShow. *)
 Abort.
 
