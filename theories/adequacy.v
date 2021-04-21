@@ -9,11 +9,12 @@ Class islaPreG Σ := PreIslaG {
   isla_pre_invG :> invPreG Σ;
   heap_pre_instrs_inG :> inG Σ (instrtblUR);
   heap_pre_regs_inG :> ghost_mapG Σ string valu;
+  heap_pre_mem_ingG :> ghost_mapG Σ addr byte;
   heap_pre_spec_inG :> ghost_varG Σ (list seq_label);
 }.
 
 Definition islaΣ : gFunctors :=
-  #[invΣ; GFunctor (constRF instrtblUR); ghost_mapΣ string valu; ghost_varΣ (list seq_label)].
+  #[invΣ; GFunctor (constRF instrtblUR); ghost_mapΣ string valu; ghost_mapΣ addr byte; ghost_varΣ (list seq_label)].
 
 Instance subG_islaPreG {Σ} : subG islaΣ Σ → islaPreG Σ.
 Proof. solve_inG. Qed.
@@ -24,11 +25,11 @@ Definition initial_local_state (regs : reg_map) : seq_local_state := {|
   seq_nb_state := false;
 |}.
 
-Lemma isla_adequacy Σ `{!islaPreG Σ} (instrs : gmap addr (list trc)) (regs : list reg_map) κsspec t2 σ2 κs n:
+Lemma isla_adequacy Σ `{!islaPreG Σ} (instrs : gmap addr (list trc)) (mem : mem_map) (regs : list reg_map) κsspec t2 σ2 κs n:
   (∀ {HG : islaG Σ},
     ⊢ instr_table instrs -∗ spec_trace κsspec
     ={⊤}=∗ [∗ list] rs ∈ regs, ∀ (_ : threadG), ([∗ map] r↦v∈rs, r ↦ᵣ v) -∗ WPasm []) →
-  nsteps n (initial_local_state <$> regs, {| seq_instrs := instrs |}) κs (t2, σ2) →
+  nsteps n (initial_local_state <$> regs, {| seq_instrs := instrs; seq_mem := mem |}) κs (t2, σ2) →
   (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧
   κs `prefix_of` κsspec.
 Proof.
@@ -37,8 +38,9 @@ Proof.
   set i := to_instrtbl instrs.
   iMod (own_alloc (i)) as (γi) "#Hi" => //.
   iMod (ghost_var_alloc κsspec) as (γs) "[Hs1 Hs2]".
+  iMod (ghost_map_alloc mem) as (γm) "[Hm1 Hm2]".
 
-  set (HheapG := HeapG _ _ γi _ κs κsspec _ γs).
+  set (HheapG := HeapG _ _ γi _ _ γm κs κsspec _ γs).
   set (HislaG := IslaG _ _ HheapG).
   iAssert (instr_table instrs) as "#His". { by rewrite instr_table_eq. }
 
@@ -48,7 +50,7 @@ Proof.
 
   iModIntro.
   iExists NotStuck, _, (replicate (length regs) (λ _, True%I)), _, _.
-  iSplitL "Hs2"; last first; [iSplitL|].
+  iSplitL "Hs2 Hm1"; last first; [iSplitL|].
   - rewrite big_sepL2_replicate_r ?fmap_length // big_sepL_fmap.
     iApply (big_sepL_impl with "Hwp").
     iIntros "!>" (? rs ?) "Hwp".
@@ -65,6 +67,6 @@ Proof.
     simpl in *. subst.
     iPureIntro. split; [naive_solver|].
     rewrite right_id. by apply: prefix_app_r.
-  - simpl. iFrame "His".
+  - simpl. iFrame "His". iFrame.
     iExists [], _. by iFrame.
 Qed.

@@ -102,6 +102,8 @@ Fixpoint eval_exp (e : exp) : option valu :=
 Inductive trace_label : Set :=
 | LReadReg (r : register_name) (al : accessor_list) (v : valu)
 | LWriteReg (r : register_name) (al : accessor_list) (v : valu)
+| LReadMem (data : valu) (kind : valu) (addr : valu) (len : nat) (tag : valu_option)
+| LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : nat) (tag : valu_option)
 | LBranchAddress (v : valu)
 | LDone (next : trc)
 .
@@ -121,6 +123,10 @@ Inductive trace_step : trc → option trace_label → trc → Prop :=
     trace_step (ReadReg r al v ann :: es) (Some (LReadReg r al v)) es
 | WriteRegS r al v ann es:
     trace_step (WriteReg r al v ann :: es) (Some (LWriteReg r al v)) es
+| ReadMemS data kind addr len tag ann es:
+    trace_step (ReadMem data kind addr len tag ann :: es) (Some (LReadMem data kind addr len tag)) es
+| WriteMemS res kind addr data len tag ann es:
+    trace_step (WriteMem res kind addr data len tag ann :: es) (Some (LWriteMem res kind addr data len tag)) es
 | BranchAddressS v ann es:
     trace_step (BranchAddress v ann :: es) (Some (LBranchAddress v)) es
 | DoneES es:
@@ -133,14 +139,21 @@ Definition trace_module : module trace_label := {|
   m_is_ub _ := False;
 |}.
 
-
+(* This should probably be a bitvector *)
 Definition addr := Z.
+(* Seems like a case where we'd like indexed bitvector types *)
+Definition byte := bv. 
 (* TODO: this should probably be a simpler type than valu:
 - take out poison and symbolic
 - take out list and (maybe) arbitrary integer and (maybe) enum
 - add unknown
  *)
+
+Definition bits_of_valu (v : valu) : option bv :=
+  if v is Val_Bits n then Some n else None.
+
 Definition reg_map := gmap string valu.
+Definition mem_map := gmap addr byte.
 
 Definition instruction_size : bv := [BV{64} 0x4].
 
@@ -184,7 +197,9 @@ Typeclasses Opaque read_accessor.
 
 Record seq_global_state := {
   seq_instrs : gmap addr (list trc);
+  seq_mem    : mem_map;
 }.
+Instance eta_seq_global_state : Settable _ := settable! Build_seq_global_state <seq_instrs; seq_mem>.
 Record seq_local_state := {
   seq_trace  : trc;
   seq_regs   : reg_map;
@@ -195,35 +210,82 @@ Instance eta_seq_local_state : Settable _ := settable! Build_seq_local_state <se
 Inductive seq_label : Set :=
 | SInstrTrap (pc : addr)
 .
+  
+Fixpoint read_mem (mem : mem_map) (addr : bv) (len : nat) : bv :=
+  match len with
+  | 0%nat => [BV{0} 0]
+  | S n => 
+    let next := bv_add addr [BV{64} 1] in
+    (* TODO: Probably want to fail instead of reading 0 for bad reads here *)
+    let byte := match (mem !! addr.(bv_val)) with | Some b => b | None => [BV{64} 0] end in
+    bv_concat (read_mem mem next n) byte
+  end.
 
+Fixpoint write_mem (mem : mem_map) (addr : bv) (v : bv) (len : nat) : mem_map :=
+  match len with
+  | 0%nat => mem
+  | S n =>
+    let next := bv_add addr [BV{64} 1] in
+    let byte := (bv_extract 7 0 v) in
+    let rest := bv_extract (v.(bv_len) - 1) 8 v in
+    write_mem (<[addr.(bv_val):=byte]> mem) next rest n
+  end.
+
+(* TODO: Maybe refactor this into several constructors rather than a match *)
 Inductive seq_step : seq_local_state → seq_global_state → list seq_label → seq_local_state → seq_global_state → list seq_local_state → Prop :=
-| SeqStep σ θ κ t' κ' θ':
+| SeqStep σ θ κ t' κ' θ' σ':
     θ.(seq_nb_state) = false →
     trace_step θ.(seq_trace) κ t' →
     match κ with
-    | None => κ' = None ∧ θ' = θ <| seq_trace := t'|>
+    | None => κ' = None ∧ θ' = θ <| seq_trace := t'|> ∧ σ' = σ
     | Some (LReadReg r al v) =>
       ∃ v' v'' vread,
         θ.(seq_regs) !! r = Some v' ∧
         κ' = None ∧
         read_accessor al v' = Some v'' ∧
         read_accessor al v = Some vread ∧
+        σ' = σ ∧
         ((θ' = θ <| seq_trace := t'|> ∧ vread = v'') ∨ (θ' = θ <| seq_nb_state := true|>))
     | Some (LWriteReg r al v) =>
       ∃ v' v'' vnew, θ.(seq_regs) !! r = Some v' ∧
       read_accessor al v = Some vnew ∧
       write_accessor al v' vnew = Some v'' ∧
+      σ' = σ ∧
       θ' = θ <| seq_trace := t'|> <| seq_regs := <[r := v'']> θ.(seq_regs)|> ∧
       κ' = None
-    | Some (LBranchAddress _) => κ' = None ∧ θ' = θ <| seq_trace := t'|>
+    | Some (LReadMem data kind addr len tag) =>
+      (* Ignoring tags and kinds for the time being *)
+      ∃ addr' data',
+      bits_of_valu addr = Some addr' ∧
+      bits_of_valu data = Some data' ∧
+      κ' = None ∧
+      σ' = σ ∧
+       ((θ' = θ <| seq_trace := t' |> ∧ read_mem σ.(seq_mem) addr' len = data') ∨ (θ' = θ <| seq_nb_state := true|>))
+    | Some (LWriteMem res kind addr data len tag) =>
+      (* Ignoring tags and kinds. There are no cases were the write fails *)
+      ∃ mem' addr' data',
+      κ' = None ∧
+      bits_of_valu addr = Some addr' ∧
+      bits_of_valu data = Some data' ∧
+      (* TODO: Possibly there should be a length constraint on data here.
+      Posibly fixed by indexed bitvectors *)
+      mem' = write_mem σ.(seq_mem) addr' data' len ∧
+      res = Val_Bool true ∧
+      σ' = σ <| seq_mem := mem' |> ∧
+      θ' = θ <| seq_trace := t' |>
+    | Some (LBranchAddress _) =>
+      κ' = None ∧
+      θ' = θ <| seq_trace := t'|> ∧
+      σ' = σ
     | Some (LDone es) =>
+      σ' = σ ∧
       ∃ pc regs', next_pc_regs θ.(seq_regs) = Some (pc, regs') ∧
       match σ.(seq_instrs) !! pc with
       | Some trcs => θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧ es ∈ trcs ∧ κ' = None
       | None => κ' = Some (SInstrTrap pc) ∧ θ' = θ <| seq_nb_state := true|> <| seq_regs := regs' |>
       end
      end →
-     seq_step θ σ (option_list κ') θ' σ []
+     seq_step θ σ (option_list κ') θ' σ' []
 .
 
 Definition seq_module_no_ub  : module seq_label := {|
@@ -263,12 +325,11 @@ Definition seq_to_val (e : seq_local_state) : option seq_val :=
     |})
   else None.
 
-
 Lemma seq_lang_mixin : LanguageMixin seq_of_val seq_to_val seq_step.
 Proof.
   split => //.
   - by case.
-  - move => [??[]] [??] //= [-> ->]. done.
+  - move => [??[]] [??] //= [ -> ->]. done.
   - move => [???] ?????. inversion 1; simplify_eq/=. done.
 Qed.
 Canonical Structure isla_lang := Language seq_lang_mixin.

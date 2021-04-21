@@ -166,7 +166,8 @@ Definition test_state_global := {|
     <[0x0000000010300004 := [trc_mov_OUT_x0]]> $ (* mov OUT, x0 *)
     <[0x0000000010300100 := [trc_mov_w0_0]]> $   (* mov w0, 0 *)
     <[0x0000000010300104 := [trc_ret]]> $        (* ret *)
-    ∅
+    ∅;
+    seq_mem := ∅
 |}.
 
 (* Ltac do_seq_step := *)
@@ -525,7 +526,8 @@ Definition test_state2_global  := {|
 
     <[0x0000000010300110 := [trc_mov_w0_0]]> $
     <[0x0000000010300114 := [trc_ret]]> $
-    ∅
+    ∅;
+  seq_mem := ∅
 |}.
 
 Definition test_state2_spec : list seq_label := [ SInstrTrap 0x0000000010300018 ].

@@ -13,6 +13,8 @@ Record bv := BV {
   - Makes constants annoying to write (needs tactics in terms which seems to break stuff in weird ways, e.g typeclass search)
   - n1 = n2 cannot be long solved by done
   *)
+  (* Potential for mistakes if we use these as gmap indexs and equivalence is
+  not eq? *)
 }.
 
 Global Instance bv_eq_dec : EqDecision bv.
@@ -90,3 +92,15 @@ Program Definition bv_shr (n1 n2 : bv) : bv := {|
   (* TODO: Is this the right way around? *)
   bv_val := (n1.(bv_val) ≫ n2.(bv_val));
 |}.
+
+Lemma bv_concat_split(m : Z) (n : bv) :
+  bv_concat (bv_extract (bv_len n - 1) (m+1) n) (bv_extract m 0 n) = n.
+Proof.
+  (* Proof probably using Z.ldff_ones_r*)
+Admitted.
+
+(* This isn't currently true, but hopefully will if we get normalised bv's *)
+Lemma bv_zero_len (n : bv) :
+  n.(bv_len) = 0 -> n.(bv_val) = 0.
+Proof.
+Admitted.
