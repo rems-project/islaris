@@ -1,4 +1,4 @@
-Require Export isla.isla_lang_ext.
+Require Export isla.isla_lang.
 From iris.program_logic Require Export language.
 Open Scope Z_scope.
 
