@@ -278,14 +278,14 @@ exp :: '' ::=                           {{ aux _ annot }}
   | ( ite exp1 exp2 exp3 )              :: :: Ite
 
 
-exp_val :: 'EV_' ::=                    {{ aux _ annot }}
-                                        {{ auxparam 'a }}
+%exp_val :: 'EV_' ::=                    {{ aux _ annot }}
+%                                        {{ auxparam 'a }}
 %                                        {{ menhir-start }}
 %                                        {{ menhir-start-type (Isla_lang_ast.lrng) Isla_lang_ast.exp }}
 %  | vvar                                :: :: Var
-  | bv                                  :: :: Bits
-  | bool                                :: :: Bool
-  | enum                                :: :: Enum
+%  | bv                                  :: :: Bits
+%  | bool                                :: :: Bool
+%  | enum                                :: :: Enum
 %  | ( unop exp_val )                        :: :: Unop
 %  | ( binop exp_val1 exp_val2 )                 :: :: Binop
 %  | ( manyop exp_val1 .. exp_valj )             :: :: Manyop
@@ -349,32 +349,32 @@ selem :: '' ::=                         {{ phantom }}
 %%% TODO: JP: Ideally, (1) remove the values that don't occur (struct, etc.)
 %%% TODO: JP: (2) add a `Val` ctor to `exp`, and
 %%% TODO: JP: (3) remove redundant `exp` constructors
-grammar
-valu_concrete :: 'CVal_' ::=
- | bool                                 :: :: Bool
- | (_ bvi int )                         :: :: I
- | bv                                   :: :: Bits
- | enum                                 :: :: Enum
- | str                                  :: :: String
- | (_ unit )                            :: :: Unit
- | ( name (_ unit))                     :: :: NamedUnit
- | (_ vec valu1  ..  valuk  )           :: :: Vector  % TODO: fix syntax
- | (_ list valu1 .. valuk )             :: :: List  % TODO: fix syntax
- | (_ struct  selem1 .. selemk )        :: :: Struct
- | (_ poison )                           :: :: Poison
+%grammar
+%valu_concrete :: 'CVal_' ::=
+% | bool                                 :: :: Bool
+% | (_ bvi int )                         :: :: I
+% | bv                                   :: :: Bits
+% | enum                                 :: :: Enum
+% | str                                  :: :: String
+% | (_ unit )                            :: :: Unit
+% | ( name (_ unit))                     :: :: NamedUnit
+% | (_ vec valu1  ..  valuk  )           :: :: Vector  % TODO: fix syntax
+% | (_ list valu1 .. valuk )             :: :: List  % TODO: fix syntax
+% | (_ struct  selem1 .. selemk )        :: :: Struct
+% | (_ poison )                           :: :: Poison
 
 
 grammar
 % structure element constructor: pair of field name and value
-selem_concrete :: 'C_' ::=                         {{ phantom }}
-                                        {{ ocaml string * valu_concrete }}
-					{{ coq register_name * valu }}
-                                        {{ pp se = let (n,v) = se in
-                                                   parens (pp_name n ^^ blank 1 ^^ pp_valu_concrete v) }}
-                                        {{ pp-raw se = let (n,v) = se in
-                                                       pp_raw_name n ^^ !^"," ^^ pp_raw_valu_concrete v }}
- | ( name valu_concrete )                        :: :: Struct_elem {{ ocaml (name,valu_concrete) }} {{ coq (name,valu) }}
-
+%selem_concrete :: 'C_' ::=                         {{ phantom }}
+%                                        {{ ocaml string * valu_concrete }}
+%					{{ coq register_name * valu }}
+%                                        {{ pp se = let (n,v) = se in
+%                                                   parens (pp_name n ^^ blank 1 ^^ pp_valu_concrete v) }}
+%                                        {{ pp-raw se = let (n,v) = se in
+%                                                       pp_raw_name n ^^ !^"," ^^ pp_raw_valu_concrete v }}
+% | ( name valu_concrete )                        :: :: Struct_elem {{ ocaml (name,valu_concrete) }} {{ coq (name,valu) }}
+%
 %subrules
 %valu_concrete <:: valu
 %selem_concrete <:: selem

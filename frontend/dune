@@ -11,9 +11,11 @@
    isla_lang_ast.ml isla_lang.v)
  (deps isla_lang.ott)
  (action
-  (run ott -show_sort false -quotient_rules false -aux_style_rules false -i
-    isla_lang.ott -o isla_lang_parser.mly -o isla_lang_lexer.mll -o
-    isla_lang_ast.ml -o isla_lang.v)))
+  (pipe-stdout
+    (run ott -show_sort false -quotient_rules false -aux_style_rules false -i
+      isla_lang.ott -o isla_lang_parser.mly -o isla_lang_lexer.mll -o
+      isla_lang_ast.ml -o isla_lang.v)
+    (run sed "s/Warning/warning/g"))))
 
 (rule
  (target ott.path)
