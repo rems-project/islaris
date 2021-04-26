@@ -1,3 +1,0 @@
-isla-lang:
-	@./update_isla_lang.sh
-.PHONY: isla-lang
