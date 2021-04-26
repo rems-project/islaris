@@ -6,18 +6,5 @@
 
 INSTALLDEFAULTROOT = isla # silence multiple roots warning
 
--Q theories isla
--Q refframe refframe
-
-refframe/base.v
-refframe/module.v
-
-theories/base.v
-theories/bitvector.v
-theories/isla_lang.v
-theories/opsem.v
-theories/example.v
-theories/ghost_state.v
-theories/lifting.v
-theories/adequacy.v
-theories/automation.v
+-Q _build/default/theories isla
+-Q _build/default/refframe refframe
