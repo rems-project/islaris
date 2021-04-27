@@ -2,12 +2,21 @@ all:
 	@dune build _build/default/coq-isla.install --display short
 .PHONY: all
 
-tests:
+frontend/tests/dune: frontend/tests/gen.sh $(wildcard frontend/tests/*.isla)
+	./$^ > $@
+
+tests: frontend/tests/dune
 	@dune runtest
 .PHONY: tests
 
 all_and_tests: all tests
 .PHONY: all_and_tests
+
+frontend/tests/%.v.expected: frontend/tests/%.isla
+	@dune exec -- isla-coq -o $@ $<
+
+promote: $(patsubst %.isla,%.v.expected,$(wildcard frontend/tests/*.isla))
+.PHONY: promote
 
 clean:
 	@dune clean
