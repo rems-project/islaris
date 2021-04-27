@@ -47,3 +47,7 @@ jobs:
         run: |
           git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
           ci/buildjob
+
+      - name: Run tests
+        run: |
+          make tests
