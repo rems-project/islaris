@@ -91,6 +91,7 @@ Section lifting.
     iSplit. {
       destruct ins => //.
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      split. {reflexivity. }
       eexists _, _. rewrite /next_pc_regs HPC Hchanged.
       cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc]. rewrite Hnext/=.
       split_and!; [done|]. rewrite Hi. split_and!; [done|by left| done].
@@ -127,6 +128,7 @@ Section lifting.
     iDestruct (instr_lookup with "Hictx Hi") as %Hi.
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      split. {reflexivity. }
       eexists _, _. rewrite /next_pc_regs HPC Hchanged.
       cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc]. rewrite Hnext/=.
       split_and!; [done|]. rewrite Hi. done.
@@ -211,12 +213,12 @@ Section lifting.
   Proof. by apply: wp_write_reg_acc. Qed.
 
   
-  Lemma wp_read_mem a a' v v' len es ann kind tag:
-    ⌜bits_of_valu a = Some a'⌝ -∗
-    ⌜bits_of_valu v = Some v'⌝ -∗
-    mem_mapsto_word a' len v' -∗
-    (⌜(bits_of_valu v) = Some v'⌝ -∗ mem_mapsto_word a' len v'-∗ WPasm es) -∗
-    WPasm (ReadMem v kind a len tag ann :: es).
+  Lemma wp_read_mem len a a' vread vread' vmem es ann kind tag:
+    ⌜a = Val_Bits (BVN 64 a')⌝ -∗
+    ⌜vread = Val_Bits (BVN (8*(N.of_nat len)) vread')⌝ -∗
+    mem_mapsto_word (N.of_nat len) a' vmem -∗
+    (⌜vread = Val_Bits (BVN (8 * (N.of_nat len)) vmem)⌝ -∗ mem_mapsto_word (N.of_nat len) a' vmem -∗ WPasm es) -∗
+    WPasm (ReadMem vread kind a len tag ann :: es).
   Proof.
     iIntros (??) "Hm Hcont".
     setoid_rewrite wp_asm_unfold.
@@ -245,17 +247,16 @@ Section lifting.
     iApply ("Hcont" with "[] [Hm]"); done.
   Qed.
 
-  Lemma wp_write_mem a a' v v' u u' len es ann kind tag:
-    ⌜bits_of_valu a = Some a'⌝ -∗
-    ⌜bits_of_valu v = Some v'⌝ -∗
-    ⌜bits_of_valu u = Some u'⌝ -∗
+  Lemma wp_write_mem len a a' v v' u u' es ann kind tag:
+    ⌜a = Val_Bits (BVN 64 a')⌝ -∗
+    ⌜v = Val_Bits (BVN (8 * N.of_nat len) v')⌝ -∗
+    ⌜u = Val_Bits (BVN (8 * N.of_nat len) u')⌝ -∗
     (* Hopefully this goes away once we have length indexed bitvectors*)
-    ⌜bv_len v' = bv_len u' ⌝ -∗
-    mem_mapsto_word a' len v' -∗
-    (mem_mapsto_word a' len u' -∗ WPasm es) -∗
+    mem_mapsto_word (N.of_nat len) a' v' -∗
+    (mem_mapsto_word (N.of_nat len) a' u' -∗ WPasm es) -∗
     WPasm (WriteMem (Val_Bool true) kind a u len tag ann :: es).
   Proof.
-    iIntros (???) "Hlen Hm Hcont".
+    iIntros (???) "Hm Hcont".
     setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
@@ -269,7 +270,7 @@ Section lifting.
       + exact H2. 
     }
     iIntros "!>" (????).
-    iMod (mem_mapsto_word_update with "Hlen Hmem Hm") as "[Hmem Hm]".
+    iMod (mem_mapsto_word_update with "Hmem Hm") as "[Hmem Hm]".
     iMod "Hmod".
     iModIntro.
     inv_seq_step.

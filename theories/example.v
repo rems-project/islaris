@@ -160,12 +160,18 @@ Definition test_state_local := {|
   seq_nb_state  := false;
 |}.
 
+(* [BV{64} x] notation doesn't work here or in gmap so...*)
+Definition i (x : Z) : addr.
+  refine (BV 64 (bv_wrap 64 x) _).
+  apply bv_wrap_ok.
+Defined.
+
 Definition test_state_global := {|
     seq_instrs :=
-    <[0x0000000010300000 := [trc_bl_0x100]]> $   (* bl 0x100: (at address 0x0000000010300000 *)
-    <[0x0000000010300004 := [trc_mov_OUT_x0]]> $ (* mov OUT, x0 *)
-    <[0x0000000010300100 := [trc_mov_w0_0]]> $   (* mov w0, 0 *)
-    <[0x0000000010300104 := [trc_ret]]> $        (* ret *)
+    <[ i 0x0000000010300000 := [trc_bl_0x100]]> $   (* bl 0x100: (at address 0x0000000010300000 *)
+    <[ i 0x0000000010300004 := [trc_mov_OUT_x0]]> $ (* mov OUT, x0 *)
+    <[ i 0x0000000010300100 := [trc_mov_w0_0]]> $   (* mov w0, 0 *)
+    <[ i 0x0000000010300104 := [trc_ret]]> $        (* ret *)
     ∅;
     seq_mem := ∅
 |}.
@@ -209,19 +215,21 @@ Definition test_state_global := {|
 (*   apply: TraceEnd. *)
 (* Qed. *)
 
-Definition test_state_spec : list seq_label := [ SInstrTrap 0x0000000010300008 ].
+Definition test_state_spec : list seq_label := [ SInstrTrap (i 0x0000000010300008) ].
 
 Global Instance simpl_normalize_valu_end v1 v2:
   SimplAndUnsafe true (normalize_valu v1 v2) (λ T, v1 = v2 ∧ T) | 1000.
 Proof. move => ?. done. Qed.
+Print instr.
 
+Definition instrZ `{!islaG Σ} z := instr (i z).
 
 Lemma test_state_iris `{!islaG Σ} `{!threadG} :
-  instr 0x0000000010300000 (Some [trc_bl_0x100]) -∗
-  instr 0x0000000010300004 (Some [trc_mov_OUT_x0]) -∗
-  instr 0x0000000010300008 None -∗
-  instr 0x0000000010300100 (Some [trc_mov_w0_0]) -∗
-  instr 0x0000000010300104 (Some [trc_ret]) -∗
+  instrZ 0x0000000010300000 (Some [trc_bl_0x100]) -∗
+  instrZ 0x0000000010300004 (Some [trc_mov_OUT_x0]) -∗
+  instrZ 0x0000000010300008 None -∗
+  instrZ 0x0000000010300100 (Some [trc_mov_w0_0]) -∗
+  instrZ 0x0000000010300104 (Some [trc_ret]) -∗
   "_PC" ↦ᵣ Val_Bits start_address -∗
   "__PC_changed" ↦ᵣ Val_Bool false -∗
   "R30" ↦ᵣ Val_Poison -∗
@@ -234,6 +242,7 @@ Proof.
   iStartProof.
   repeat liAStep; liShow.
   Unshelve.
+  (* This proof no longer goes through, presumably becuase of the changes to addr *)
   all: done.
 Qed.
 

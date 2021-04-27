@@ -56,6 +56,13 @@ Fixpoint Z_of_little (n : Z) (bs : list Z) : Z :=
   | b :: bs' => Z.lor (Z_of_little n bs' ≪ n) b
   end.
 
+Lemma Z_to_little_len (m : nat) (n z : Z) : length (Z_to_little m n z) = m.
+Proof.
+  revert z.
+  induction m; cbn; [done|].
+  intro z. rewrite IHm. reflexivity.
+Qed.
+
 Lemma Z_ones_spec n m:
   0 ≤ m → 0 ≤ n →
   Z.testbit (Z.ones n) m = if decide (m < n) then true else false.
@@ -286,6 +293,16 @@ Next Obligation. apply bv_wrap_ok. Qed.
 Lemma bv_of_Z_unsigned n z:
   bv_unsigned (bv_of_Z n z) = bv_wrap n z.
 Proof. done. Qed.
+
+Lemma bv_unsigned_bv_of_Z n b:
+  bv_of_Z n (bv_unsigned b) = b.
+Proof.
+  destruct b.
+  apply bv_eq.
+  cbn.
+  apply bv_wrap_small.
+  by apply bv_ok_in_range.
+Qed.
 
 Lemma bv_of_Z_signed n z:
   bv_signed (bv_of_Z n z) = bv_swrap n z.
@@ -550,6 +567,13 @@ Definition bv_to_little m n (z : Z) : list (bv n) :=
 Definition bv_of_little n (bs : list (bv n)) : Z :=
   Z_of_little (Z.of_N n) (bv_unsigned <$> bs).
 
+Lemma bv_to_little_len (m: nat) (n : N) (z : Z) : length (bv_to_little m n z) = m.
+Proof.
+  unfold bv_to_little.
+  rewrite fmap_length.
+  apply Z_to_little_len.
+Qed.
+
 (** * Lemmas about [bv n] operations *)
 
 (** ** Lemmas about [bv_opp], [bv_add], and [bv_sub] *)
@@ -562,6 +586,23 @@ Section add_sub.
   Proof.
     apply bv_eq. unfold bv_sub, bv_add, bv_opp.
     rewrite !bv_of_Z_unsigned. bv_wrap_simplify_solve.
+  Qed.
+
+  Lemma bv_add_0 b : bv_add b (bv_of_Z n 0) = b.
+  Proof.
+    unfold bv_add. rewrite bv_of_Z_unsigned. unfold bv_wrap.  rewrite Zmod_0_l.
+    rewrite Z.add_0_r.
+    apply bv_unsigned_bv_of_Z.
+  Qed.
+
+  Lemma bv_add_assoc b1 b2 b3: bv_add b1 (bv_add b2 b3) = bv_add (bv_add b1 b2) b3.
+  Proof.
+    unfold bv_add. apply bv_eq. repeat rewrite bv_of_Z_unsigned.
+    unfold bv_wrap.
+    pose (H:=bv_modulus_pos n).
+    rewrite Z.add_mod_idemp_r; [|lia].
+    rewrite Z.add_mod_idemp_l; [|lia].
+    by rewrite Z.add_assoc.
   Qed.
 
   Lemma bv_add_signed b1 b2 :

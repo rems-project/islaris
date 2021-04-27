@@ -148,16 +148,16 @@ Definition trace_module : module trace_label := {|
 |}.
 
 (* This should probably be a bitvector *)
-Definition addr := Z.
+Definition addr := bv 64.
 (* Seems like a case where we'd like indexed bitvector types *)
-Definition byte := bv. 
+Definition byte := bv 8.
 (* TODO: this should probably be a simpler type than valu:
 - take out poison and symbolic
 - take out list and (maybe) arbitrary integer and (maybe) enum
 - add unknown
  *)
 
-Definition bits_of_valu (v : valu) : option bv :=
+Definition bits_of_valu (v : valu) : option bvn :=
   if v is Val_Bits n then Some n else None.
 
 Definition reg_map := gmap string valu.
@@ -167,7 +167,7 @@ Definition instruction_size : Z := 0x4.
 
 Definition next_pc (nPC : bv 64) (changed : bool) : option (addr * valu * valu) :=
   new_pc ← (if changed then Some nPC else bv_of_Z_checked 64 (bv_unsigned nPC + instruction_size));
-  Some (bv_unsigned new_pc, Val_Bits new_pc, Val_Bool false).
+  Some ((new_pc : bv 64), Val_Bits new_pc, Val_Bool false).
 Arguments next_pc !_ !_ /.
 
 Definition next_pc_regs (regs : reg_map) : option (addr * reg_map) :=
@@ -219,26 +219,30 @@ Instance eta_seq_local_state : Settable _ := settable! Build_seq_local_state <se
 Inductive seq_label : Set :=
 | SInstrTrap (pc : addr)
 .
-  
-Fixpoint read_mem (mem : mem_map) (addr : bv) (len : nat) : bv :=
-  match len with
-  | 0%nat => [BV{0} 0]
-  | S n => 
-    let next := bv_add addr [BV{64} 1] in
-    (* TODO: Probably want to fail instead of reading 0 for bad reads here *)
-    let byte := match (mem !! addr.(bv_val)) with | Some b => b | None => [BV{64} 0] end in
-    bv_concat (read_mem mem next n) byte
-  end.
 
-Fixpoint write_mem (mem : mem_map) (addr : bv) (v : bv) (len : nat) : mem_map :=
+Fixpoint read_mem_list (mem : mem_map) (addr : bv 64) (len : nat) : list (bv 8) :=
   match len with
-  | 0%nat => mem
+  | 0%nat => []
   | S n =>
     let next := bv_add addr [BV{64} 1] in
-    let byte := (bv_extract 7 0 v) in
-    let rest := bv_extract (v.(bv_len) - 1) 8 v in
-    write_mem (<[addr.(bv_val):=byte]> mem) next rest n
+    (* Should fail rather than return 0 *)
+    let byte := match (mem !! addr) with | Some b => b | None => [BV{8} 0] end in
+    byte :: read_mem_list mem next n
   end.
+
+Definition read_mem (mem : mem_map) (addr : bv 64) (len : N) : bv (8 * len) :=
+  bv_of_Z (8 * len) (bv_of_little 8 (read_mem_list mem addr (N.to_nat len))).
+
+Fixpoint write_mem_list (mem : mem_map) (addr : bv 64) (v : list (bv 8)) : mem_map :=
+  match v with
+  | [] => mem
+  | b :: bs =>
+    let next := bv_add addr [BV{64} 1] in
+    write_mem_list (<[addr:=b]> mem) next bs
+  end.
+
+Definition write_mem (len : N) (mem : mem_map) (addr : bv 64) (v : bv (8*len)) : mem_map :=
+  write_mem_list mem addr (bv_to_little (N.to_nat len) 8 (bv_unsigned (bvn_val v))).
 
 (* TODO: Maybe refactor this into several constructors rather than a match *)
 Inductive seq_step : seq_local_state → seq_global_state → list seq_label → seq_local_state → seq_global_state → list seq_local_state → Prop :=
@@ -265,20 +269,19 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
     | Some (LReadMem data kind addr len tag) =>
       (* Ignoring tags and kinds for the time being *)
       ∃ addr' data',
-      bits_of_valu addr = Some addr' ∧
-      bits_of_valu data = Some data' ∧
+      (* Some tidying up to be done here *)
+      addr = Val_Bits (BVN 64 addr') ∧
+      data = Val_Bits (BVN (8*(N.of_nat len)) data') ∧
       κ' = None ∧
       σ' = σ ∧
-       ((θ' = θ <| seq_trace := t' |> ∧ read_mem σ.(seq_mem) addr' len = data') ∨ (θ' = θ <| seq_nb_state := true|>))
+       ((θ' = θ <| seq_trace := t' |> ∧ read_mem σ.(seq_mem) addr' (N.of_nat len) = data') ∨ (θ' = θ <| seq_nb_state := true|>))
     | Some (LWriteMem res kind addr data len tag) =>
       (* Ignoring tags and kinds. There are no cases were the write fails *)
       ∃ mem' addr' data',
       κ' = None ∧
-      bits_of_valu addr = Some addr' ∧
-      bits_of_valu data = Some data' ∧
-      (* TODO: Possibly there should be a length constraint on data here.
-      Posibly fixed by indexed bitvectors *)
-      mem' = write_mem σ.(seq_mem) addr' data' len ∧
+      addr = Val_Bits (BVN 64 addr') ∧
+      data = Val_Bits (BVN (8*(N.of_nat len)) data') ∧
+      mem' = write_mem (N.of_nat len) σ.(seq_mem) addr' data' ∧
       res = Val_Bool true ∧
       σ' = σ <| seq_mem := mem' |> ∧
       θ' = θ <| seq_trace := t' |>
