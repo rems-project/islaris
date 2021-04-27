@@ -6,6 +6,9 @@ tests:
 	@dune runtest
 .PHONY: tests
 
+all_and_tests: all tests
+.PHONY: all_and_tests
+
 clean:
 	@dune clean
 .PHONY: clean

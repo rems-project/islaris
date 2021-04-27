@@ -26,6 +26,7 @@ jobs:
       CPU_CORES: "1"
       DENY_WARNINGS: "1"
       CI_RUNNER: "dummy"
+      MAKE_TARGET: "all_and_tests"
 
     container:
       image: ralfjung/opam-ci:opam2
@@ -47,6 +48,3 @@ jobs:
         run: |
           git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
           ci/buildjob
-
-          eval $(opam env)
-          make tests
