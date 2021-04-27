@@ -50,4 +50,5 @@ jobs:
 
       - name: Run tests
         run: |
+          eval $(opam env)
           make tests
