@@ -25,6 +25,24 @@ let pp_var_name ff i =
 let pp_register_name ff r =
   Format.fprintf ff "%S" r
 
+let pp_bv ff s =
+  let pp fmt = Format.fprintf ff fmt in
+  let (n, z) =
+    try
+      let len = String.length s in
+      let z = int_of_string ("0" ^ String.sub s 1 (len - 1)) in
+      let n =
+        match s.[1] with
+        | 'b' -> len - 2
+        | 'x' -> 8 * (len - 2)
+        | _   -> failwith "not a valid bitvector"
+      in
+      (n, z)
+    with Invalid_argument(msg) | Failure(msg) ->
+      panic "Error while converting bitvector %S: %s." s msg
+  in
+  pp "(BV{%i%%N} %x%%Z)" n z
+
 let pp_accessor ff a =
   let pp fmt = Format.fprintf ff fmt in
   match a with
@@ -131,7 +149,7 @@ let rec pp_valu ff v =
   | Ast.Val_I(i,j)       ->
       pp "Val_I %i%%Z %i%%Z" i j
   | Ast.Val_Bits(s)      ->
-      pp "Val_Bits %S" s (* FIXME wrong type for s. *)
+      pp "Val_Bits %a" pp_bv s
   | Ast.Val_Enum(e)      ->
       pp "Val_Enum %a" pp_enum e
   | Ast.Val_String(s)    ->
