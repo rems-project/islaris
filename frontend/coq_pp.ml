@@ -1,6 +1,14 @@
 open Isla_lang
 open Extra
 
+let pp_N ff i =
+  assert (0 <= i);
+  Format.fprintf ff "%i%%N" i
+
+let pp_Z ff i =
+  let (l, r) = if i < 0 then ("(", ")") else ("", "") in
+  Format.fprintf ff "%s%i%s%%Z" l i r
+
 let pp_list pp_elt ff l =
   let pp fmt = Format.fprintf ff fmt in
   let first = ref true in
@@ -20,7 +28,7 @@ let pp_lrng ff _ =
   Format.fprintf ff "Mk_annot"
 
 let pp_var_name ff i =
-  Format.fprintf ff "%i%%Z" i
+  Format.fprintf ff "%a" pp_Z i
 
 let pp_register_name ff r =
   Format.fprintf ff "%S" r
@@ -41,7 +49,7 @@ let pp_bv ff s =
     with Invalid_argument(msg) | Failure(msg) ->
       panic "Error while converting bitvector %S: %s." s msg
   in
-  pp "[BV{%i%%N} 0x%x%%Z]" n z
+  pp "[BV{%a} 0x%x%%Z]" pp_N n z
 
 let pp_accessor ff a =
   let pp fmt = Format.fprintf ff fmt in
@@ -60,7 +68,7 @@ let rec pp_ty ff ty =
   | Ast.Ty_Bool           ->
       pp "Ty_Bool"
   | Ast.Ty_BitVec(n)      ->
-      pp "(Ty_BitVec %i%%N)" n
+      pp "(Ty_BitVec %a)" pp_N n
   | Ast.Ty_Enum(i)        ->
       pp "(Ty_Enum %a)" pp_enum_id i
   | Ast.Ty_Array(ty1,ty2) ->
@@ -74,9 +82,9 @@ let pp_unop ff o =
   | Ast.Bvredand      -> pp "Bvredand"
   | Ast.Bvredor       -> pp "Bvredor"
   | Ast.Bvneg         -> pp "Bvneg"
-  | Ast.Extract(i,j)  -> pp "Extract %i%%N %i%%N" i j
-  | Ast.ZeroExtend(i) -> pp "ZeroExtend %i%%N" i
-  | Ast.SignExtend(i) -> pp "SignExtend %i%%N" i
+  | Ast.Extract(i,j)  -> pp "Extract %a %a" pp_N i pp_N j
+  | Ast.ZeroExtend(i) -> pp "ZeroExtend %a" pp_N i
+  | Ast.SignExtend(i) -> pp "SignExtend %a" pp_N i
 
 let pp_bvarith ff o =
   let pp fmt = Format.fprintf ff fmt in
@@ -147,8 +155,7 @@ let rec pp_valu ff v =
   | Ast.Val_Bool(b)      ->
       pp "Val_Bool %b" b
   | Ast.Val_I(i,j)       ->
-     (* The parenthesis are necessary for negative numbers. *)
-      pp "Val_I (%i)%%Z (%i)%%Z" i j
+      pp "Val_I %a %a" pp_Z i pp_Z j
   | Ast.Val_Bits(s)      ->
       pp "Val_Bits %a" pp_bv s
   | Ast.Val_Enum(e)      ->
@@ -201,7 +208,7 @@ let pp_smt ff e =
   | Ast.Assert(e)          ->
       pp "Assert (%a)" pp_exp e
   | Ast.DefineEnum(i)      ->
-      pp "DefineEnum %i%%Z" i
+      pp "DefineEnum %a" pp_Z i
 
 let pp_event ff e =
   let pp fmt = Format.fprintf ff fmt in
@@ -209,7 +216,7 @@ let pp_event ff e =
   | Ast.Smt(s,a)                   ->
       pp "Smt (%a) %a" pp_smt s pp_lrng a
   | Ast.Branch(i,s,a)              ->
-      pp "Branch %i%%Z %S %a" i s pp_lrng a
+      pp "Branch %a %S %a" pp_Z i s pp_lrng a
   | Ast.ReadReg(r,l,v,a)           ->
       pp "ReadReg %a %a (%a) %a" pp_register_name r pp_accessor_list l
         pp_valu v pp_lrng a
@@ -217,11 +224,12 @@ let pp_event ff e =
       pp "WriteReg %a %a (%a) %a" pp_register_name r pp_accessor_list l
         pp_valu v pp_lrng a
   | Ast.ReadMem(v1,v2,v3,i,v,a)    ->
-      pp "ReadMem (%a) (%a) (%a) %i%%Z %a %a" pp_valu v1 pp_valu v2 pp_valu v3
-        i (pp_option (fun ff -> Format.fprintf ff "(%a)" pp_valu)) v pp_lrng a
+      pp "ReadMem (%a) (%a) (%a) %a %a %a"
+        pp_valu v1 pp_valu v2 pp_valu v3 pp_Z i
+        (pp_option (fun ff -> Format.fprintf ff "(%a)" pp_valu)) v pp_lrng a
   | Ast.WriteMem(i,v1,v2,v3,j,v,a) ->
-      pp "WriteMem (%a) (%a) (%a) (%a) %i%%Z %a %a"
-        pp_valu (Ast.Val_Symbolic(i)) pp_valu v1 pp_valu v2 pp_valu v3 j
+      pp "WriteMem (%a) (%a) (%a) (%a) %a %a %a"
+        pp_valu (Ast.Val_Symbolic(i)) pp_valu v1 pp_valu v2 pp_valu v3 pp_Z j
         (pp_option (fun ff -> Format.fprintf ff "(%a)" pp_valu)) v pp_lrng a
   | Ast.BranchAddress(v,a)         ->
       pp "BranchAddress (%a) %a" pp_valu v pp_lrng a
@@ -264,7 +272,7 @@ let pp_trace_file : trace Format.pp = fun ff tr ->
   pp "@[<v 0>From isla Require Import isla_lang.@;@;";
   pp "%a@]" (pp_trace_def "trace") tr
 
-let write_trace : trace -> string -> unit = fun tr fname ->
+let write_trace_to_file : trace -> string -> unit = fun tr fname ->
   let buffer = Buffer.create 4096 in
   Format.fprintf (Format.formatter_of_buffer buffer) "%a@." pp_trace_file tr;
   (* Check if we should write the file (inexistent / contents different). *)
@@ -273,3 +281,8 @@ let write_trace : trace -> string -> unit = fun tr fname ->
     with Sys_error(_) -> true
   in
   if must_write then Buffer.to_file fname buffer
+
+let write_trace : trace -> string option -> unit = fun tr fname ->
+  match fname with
+  | Some(fname) -> write_trace_to_file tr fname
+  | None        -> Format.printf "%a@." pp_trace_file tr

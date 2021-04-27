@@ -5,7 +5,7 @@ open Extra
 
 type config = {
   input_file  : string;
-  output_file : string;
+  output_file : string option;
 }
 
 let run : config -> unit = fun cfg ->
@@ -29,7 +29,12 @@ let isla_file =
 
 let opts : config Term.t =
   let build input_file output =
-    let output_file = Filename.remove_extension input_file ^ ".v" in
+    let output_file =
+      match output with
+      | Some("-"  ) -> None
+      | Some(fname) -> Some(fname)
+      | None        -> Some(Filename.remove_extension input_file ^ ".v")
+    in
     { input_file; output_file }
   in
   Term.(pure build $ isla_file $ output)

@@ -2,6 +2,10 @@ all:
 	@dune build _build/default/coq-isla.install --display short
 .PHONY: all
 
+tests:
+	@dune runtest
+.PHONY: tests
+
 clean:
 	@dune clean
 .PHONY: clean

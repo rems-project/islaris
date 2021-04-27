@@ -1,0 +1,17 @@
+(rule
+ (target example1.v)
+ (deps example1.isla)
+ (action (run isla-coq -o %{target} %{deps})))
+
+(rule
+ (target example2.v)
+ (deps example2.isla)
+ (action (run isla-coq -o %{target} %{deps})))
+
+(rule
+ (alias runtest)
+ (action (diff example1.v example1.v.expected)))
+
+(rule
+ (alias runtest)
+ (action (diff example2.v example2.v.expected)))
