@@ -41,7 +41,7 @@ let pp_bv ff s =
     with Invalid_argument(msg) | Failure(msg) ->
       panic "Error while converting bitvector %S: %s." s msg
   in
-  pp "(BV{%i%%N} %x%%Z)" n z
+  pp "[BV{%i%%N} 0x%x%%Z]" n z
 
 let pp_accessor ff a =
   let pp fmt = Format.fprintf ff fmt in
@@ -74,9 +74,9 @@ let pp_unop ff o =
   | Ast.Bvredand      -> pp "Bvredand"
   | Ast.Bvredor       -> pp "Bvredor"
   | Ast.Bvneg         -> pp "Bvneg"
-  | Ast.Extract(i,j)  -> pp "Extract %i%%nat %i%%nat" i j
-  | Ast.ZeroExtend(i) -> pp "ZeroExtend %i%%nat" i
-  | Ast.SignExtend(i) -> pp "SignExtend %i%%nat" i
+  | Ast.Extract(i,j)  -> pp "Extract %i%%N %i%%N" i j
+  | Ast.ZeroExtend(i) -> pp "ZeroExtend %i%%N" i
+  | Ast.SignExtend(i) -> pp "SignExtend %i%%N" i
 
 let pp_bvarith ff o =
   let pp fmt = Format.fprintf ff fmt in
@@ -147,7 +147,8 @@ let rec pp_valu ff v =
   | Ast.Val_Bool(b)      ->
       pp "Val_Bool %b" b
   | Ast.Val_I(i,j)       ->
-      pp "Val_I %i%%Z %i%%Z" i j
+     (* The parenthesis are necessary for negative numbers. *)
+      pp "Val_I (%i)%%Z (%i)%%Z" i j
   | Ast.Val_Bits(s)      ->
       pp "Val_Bits %a" pp_bv s
   | Ast.Val_Enum(e)      ->
@@ -182,9 +183,9 @@ let rec pp_exp ff e =
   | Ast.Enum(e,a)        ->
       pp "Val (%a) %a" pp_valu (Ast.Val_Enum(e)) pp_lrng a
   | Ast.Unop(o,e,a)      ->
-      pp "Unop %a (%a) %a" pp_unop o pp_exp e pp_lrng a
+      pp "Unop (%a) (%a) %a" pp_unop o pp_exp e pp_lrng a
   | Ast.Binop(o,e1,e2,a) ->
-      pp "Binop %a (%a) (%a) %a" pp_binop o pp_exp e1 pp_exp e2 pp_lrng a
+      pp "Binop (%a) (%a) (%a) %a" pp_binop o pp_exp e1 pp_exp e2 pp_lrng a
   | Ast.Manyop(o,l,a)    ->
       pp "Manyop %a %a %a" pp_manyop o (pp_list pp_exp) l pp_lrng a
   | Ast.Ite(i,t,e,a)     ->
@@ -210,10 +211,10 @@ let pp_event ff e =
   | Ast.Branch(i,s,a)              ->
       pp "Branch %i%%Z %S %a" i s pp_lrng a
   | Ast.ReadReg(r,l,v,a)           ->
-      pp "ReadReg %a %a %a %a" pp_register_name r pp_accessor_list l
+      pp "ReadReg %a %a (%a) %a" pp_register_name r pp_accessor_list l
         pp_valu v pp_lrng a
   | Ast.WriteReg(r,l,v,a)          ->
-      pp "WriteReg %a %a %a %a" pp_register_name r pp_accessor_list l
+      pp "WriteReg %a %a (%a) %a" pp_register_name r pp_accessor_list l
         pp_valu v pp_lrng a
   | Ast.ReadMem(v1,v2,v3,i,v,a)    ->
       pp "ReadMem (%a) (%a) (%a) %i%%Z %a %a" pp_valu v1 pp_valu v2 pp_valu v3
