@@ -162,11 +162,12 @@ Definition test_state_local := {|
 
 Definition test_state_global := {|
     seq_instrs :=
-    <[0x0000000010300000 := [trc_bl_0x100]]> $   (* bl 0x100: (at address 0x0000000010300000 *)
-    <[0x0000000010300004 := [trc_mov_OUT_x0]]> $ (* mov OUT, x0 *)
-    <[0x0000000010300100 := [trc_mov_w0_0]]> $   (* mov w0, 0 *)
-    <[0x0000000010300104 := [trc_ret]]> $        (* ret *)
-    ∅
+    <[ [BV{64} 0x0000000010300000] := [trc_bl_0x100]]> $   (* bl 0x100: (at address 0x0000000010300000 *)
+    <[ [BV{64} 0x0000000010300004] := [trc_mov_OUT_x0]]> $ (* mov OUT, x0 *)
+    <[ [BV{64} 0x0000000010300100] := [trc_mov_w0_0]]> $   (* mov w0, 0 *)
+    <[ [BV{64} 0x0000000010300104] := [trc_ret]]> $        (* ret *)
+    ∅;
+    seq_mem := ∅
 |}.
 
 (* Ltac do_seq_step := *)
@@ -208,12 +209,11 @@ Definition test_state_global := {|
 (*   apply: TraceEnd. *)
 (* Qed. *)
 
-Definition test_state_spec : list seq_label := [ SInstrTrap 0x0000000010300008 ].
+Definition test_state_spec : list seq_label := [ SInstrTrap ([BV{64} 0x0000000010300008]) ].
 
 Global Instance simpl_normalize_valu_end v1 v2:
   SimplAndUnsafe true (normalize_valu v1 v2) (λ T, v1 = v2 ∧ T) | 1000.
 Proof. move => ?. done. Qed.
-
 
 Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some [trc_bl_0x100]) -∗
@@ -249,7 +249,7 @@ Proof.
   do 6 rewrite big_sepM_insert //=.
   iIntros "(?&?&?&?&?&?&?)".
   iApply (test_state_iris with "[] [] [] [] [] [$] [$] [$] [$] [$] [$] [$]").
-  all: try by iApply (instr_intro with "Hi").
+  all: try by unshelve iApply (instr_intro with "Hi").
 Qed.
 
 
@@ -522,19 +522,20 @@ Definition test_state2_local (n1 : Z) Hin := {|
 |}.
 Definition test_state2_global  := {|
   seq_instrs :=
-    <[0x0000000010300000 := [trc_cmp_x1_0]]> $
-    <[0x0000000010300004 := trc_bne_0xc ]> $
-    <[0x0000000010300008 := [trc_mov_x0_1]]> $
-    <[0x000000001030000c := [trc_b_0x8]]> $
-    <[0x0000000010300010 := [trc_bl_0x100]]> $
-    <[0x0000000010300014 := [trc_mov_OUT_x0]]> $
+    <[[BV{64} 0x0000000010300000] := [trc_cmp_x1_0]]> $
+    <[[BV{64} 0x0000000010300004] := trc_bne_0xc ]> $
+    <[[BV{64} 0x0000000010300008] := [trc_mov_x0_1]]> $
+    <[[BV{64} 0x000000001030000c] := [trc_b_0x8]]> $
+    <[[BV{64} 0x0000000010300010] := [trc_bl_0x100]]> $
+    <[[BV{64} 0x0000000010300014] := [trc_mov_OUT_x0]]> $
 
-    <[0x0000000010300110 := [trc_mov_w0_0]]> $
-    <[0x0000000010300114 := [trc_ret]]> $
-    ∅
+    <[[BV{64} 0x0000000010300110] := [trc_mov_w0_0]]> $
+    <[[BV{64} 0x0000000010300114] := [trc_ret]]> $
+    ∅;
+  seq_mem := ∅
 |}.
 
-Definition test_state2_spec : list seq_label := [ SInstrTrap 0x0000000010300018 ].
+Definition test_state2_spec : list seq_label := [ SInstrTrap [BV{64} 0x0000000010300018] ].
 
 Lemma ite_bits b n1 n2 :
   ite b (Val_Bits n1) (Val_Bits n2) = Val_Bits (ite b n1 n2).

@@ -18,6 +18,8 @@ Class heapG Σ := HeapG {
   heap_instrs_inG :> inG Σ instrtblUR;
   heap_instrs_name : gname;
   heap_regs_inG :> ghost_mapG Σ string valu;
+  heap_mem_inG :> ghost_mapG Σ addr byte;
+  heap_mem_name : gname;
   heap_full_trace : list seq_label;
   heap_spec_trace : list seq_label;
   heap_spec_trace_inG :> ghost_varG Σ (list seq_label);
@@ -41,8 +43,8 @@ Section definitions.
   Definition instr_table_eq : @instr_table = @instr_table_def :=
     seal_eq instr_table_aux.
 
-  Definition instr_def (a : addr) (i: option (list trc)) : iProp Σ :=
-    ∃ instrs, ⌜instrs !! a = i⌝ ∗ instr_table instrs.
+  Definition instr_def (a : Z) (i: option (list trc)) : iProp Σ :=
+    ∃ instrs b, ⌜bv_of_Z_checked 64 a = Some b⌝ ∗ ⌜instrs !! b = i⌝ ∗ instr_table instrs.
   Definition instr_aux : seal (@instr_def). by eexists. Qed.
   Definition instr := unseal instr_aux.
   Definition instr_eq : @instr = @instr_def :=
@@ -61,6 +63,25 @@ Section definitions.
   Definition regs_ctx `{!threadG} (regs : reg_map) : iProp Σ :=
     ghost_map_auth thread_regs_name 1 regs.
 
+  Definition mem_mapsto_byte_def (γ : gname) (a : addr) (q : dfrac) (v : byte) : iProp Σ :=
+    a ↪[ γ ]{q} v.
+  Definition mem_mapsto_byte_aux : seal (@mem_mapsto_byte_def). by eexists. Qed.
+  Definition mem_mapsto_byte := unseal mem_mapsto_byte_aux.
+  Definition mem_mapsto_byte_eq : @mem_mapsto_byte = @mem_mapsto_byte_def :=
+    seal_eq mem_mapsto_byte_aux.
+
+  Definition mem_mapsto_def {n} (a : addr) (q : dfrac) (w : bv n) : iProp Σ :=
+    ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
+    let bytes := bv_to_little len 8 (bv_unsigned w) in
+    [∗ list] offset ↦ b ∈ bytes, mem_mapsto_byte heap_mem_name (bv_add_Z a (Z.of_nat offset)) q b.
+  Definition mem_mapsto_aux {n} : seal (@mem_mapsto_def n). by eexists. Qed.
+  Definition mem_mapsto {n} := unseal (@mem_mapsto_aux n).
+  Definition mem_mapsto_eq {n} : @mem_mapsto n = @mem_mapsto_def n :=
+    seal_eq mem_mapsto_aux.
+
+  Definition mem_ctx (mem : mem_map) : iProp Σ :=
+    ghost_map_auth heap_mem_name 1 mem.
+
   Definition spec_trace_def (κs: list seq_label) : iProp Σ :=
     ghost_var heap_spec_trace_name (1/2) κs.
   Definition spec_trace_aux : seal (@spec_trace_def). by eexists. Qed.
@@ -75,7 +96,8 @@ Section definitions.
 
   Definition state_ctx (σ : seq_global_state) (κs : list seq_label) : iProp Σ :=
     spec_ctx κs ∗
-    instr_ctx σ.(seq_instrs).
+    instr_ctx σ.(seq_instrs) ∗
+    mem_ctx σ.(seq_mem).
 
   Definition thread_ctx `{!threadG} (regs : reg_map) : iProp Σ :=
     regs_ctx regs.
@@ -85,6 +107,10 @@ End definitions.
 Notation "r ↦ᵣ{ q } v" := (reg_mapsto thread_regs_name r q v)
   (at level 20, q at level 50, format "r  ↦ᵣ{ q }  v") : bi_scope.
 Notation "r ↦ᵣ v" := (reg_mapsto thread_regs_name r 1 v) (at level 20) : bi_scope.
+
+Notation "a ↦ₘ{ q } v" := (mem_mapsto a q v)
+  (at level 20, q at level 50, format "a  ↦ₘ{ q }  v") : bi_scope.
+Notation "a ↦ₘ v" := (mem_mapsto a (DfracOwn 1) v) (at level 20) : bi_scope.
 
 Section instr.
   Context `{!heapG Σ}.
@@ -101,9 +127,15 @@ Section instr.
   Proof. rewrite instr_eq. by apply _. Qed.
 
   Lemma instr_intro ins a i :
-    ins !! a = i →
+    ∀ Hwf,
+    ins !! (BV _ a Hwf) = i →
     instr_table ins -∗ instr a i.
-  Proof. rewrite instr_eq. iIntros (?) "?". iExists _. by iFrame. Qed.
+  Proof.
+    rewrite instr_eq. iIntros (??) "?". iExists _, _. iFrame.
+    iPureIntro. split; [|done].
+    unfold bv_of_Z_checked. case_option_guard => //.
+    f_equal. by apply bv_eq.
+  Qed.
 
   Lemma instr_table_agree i1 i2 :
     instr_table i1 -∗ instr_table i2 -∗ ⌜i1 = i2⌝.
@@ -115,10 +147,10 @@ Section instr.
   Qed.
 
   Lemma instr_lookup instrs a i :
-    instr_ctx instrs -∗ instr a i -∗ ⌜instrs !! a = i⌝.
+    instr_ctx instrs -∗ instr a i -∗ ⌜∃ b, bv_of_Z_checked 64 a = Some b ∧ instrs !! b = i⌝.
   Proof.
     rewrite instr_eq. iIntros "Htbl Hf".
-    iDestruct "Hf" as (i2 ?) "Hf".
+    iDestruct "Hf" as (i2 ? ??) "Hf". iExists _.
     by iDestruct (instr_table_agree with "Htbl Hf") as %->.
   Qed.
 
@@ -147,6 +179,97 @@ Section reg.
     by iMod (ghost_map_update with "Hregs Hreg") as "[? $]".
   Qed.
 End reg.
+
+Section mem.
+  Context `{!heapG Σ}.
+
+  Global Instance mem_mapsto_byte_tl γ a q v : Timeless (mem_mapsto_byte γ a q v).
+  Proof. rewrite mem_mapsto_byte_eq. by apply _. Qed.
+
+  Global Instance mem_mapsto_tl n a q (v : bv n) : Timeless (a ↦ₘ{q} v).
+  Proof. rewrite mem_mapsto_eq /mem_mapsto_def. by apply _. Qed.
+
+  Lemma mem_mapsto_byte_lookup mem a q v :
+    mem_ctx mem -∗ mem_mapsto_byte heap_mem_name a q v -∗ ⌜mem !! a = Some v⌝.
+  Proof. rewrite mem_mapsto_byte_eq. apply ghost_map_lookup. Qed.
+
+  Lemma mem_mapsto_byte_lookup_big mem a q bs :
+    mem_ctx mem -∗ ([∗ list] i↦v∈ bs, mem_mapsto_byte heap_mem_name (bv_add_Z a i) q v) -∗
+          ⌜Forall2 (λ a v, mem !! a = Some v) (bv_seq a (length bs)) bs⌝.
+  Proof.
+    iIntros "Hmem Hl".
+    iInduction bs as [|b bs] "IH" forall (a); simpl. { iPureIntro. constructor. }
+    iDestruct "Hl" as "[Ha Hl]". rewrite bv_add_Z_0.
+    iDestruct (mem_mapsto_byte_lookup with "Hmem Ha") as %Ha.
+    setoid_rewrite Nat2Z.inj_succ. setoid_rewrite bv_add_Z_succ.
+    iDestruct ("IH" with "Hmem Hl") as %?.
+    iPureIntro. rewrite bv_seq_succ; [|lia]. by constructor.
+  Qed.
+
+  Lemma mem_mapsto_byte_update mem a v v' :
+    mem_ctx mem -∗ mem_mapsto_byte heap_mem_name a (DfracOwn 1) v ==∗
+      mem_ctx (<[a := v']> mem) ∗ mem_mapsto_byte heap_mem_name a (DfracOwn 1) v'.
+  Proof. rewrite mem_mapsto_byte_eq. apply ghost_map_update. Qed.
+
+  Lemma mem_mapsto_byte_update_big mem a bs bs' :
+    length bs = length bs' →
+    mem_ctx mem -∗
+    ([∗ list] i↦v∈ bs, mem_mapsto_byte heap_mem_name (bv_add_Z a i) (DfracOwn 1) v) ==∗
+    mem_ctx (write_mem_list mem a bs') ∗
+    ([∗ list] i↦v∈ bs', mem_mapsto_byte heap_mem_name (bv_add_Z a i) (DfracOwn 1) v).
+  Proof.
+    iIntros (Hlen) "Hmem Hbs".
+    iInduction bs as [|b bs] "IH" forall (a mem bs' Hlen); destruct bs' => //; csimpl in *. { by iFrame. }
+    iDestruct "Hbs" as "[Ha Hbs]". rewrite bv_add_Z_0.
+    iMod (mem_mapsto_byte_update with "Hmem Ha") as "[Hmem $]".
+    setoid_rewrite Nat2Z.inj_succ. setoid_rewrite bv_add_Z_succ.
+    iApply ("IH" with "[] Hmem Hbs"). iPureIntro. lia.
+  Qed.
+
+  Lemma mem_mapsto_lookup_list n mem a (w : bv n) q:
+    mem_ctx mem -∗ a ↦ₘ{q} w -∗
+    ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
+        ⌜read_mem_list mem a (N.of_nat len) = Some (bv_to_little len 8 (bv_unsigned w))⌝.
+  Proof.
+    rewrite mem_mapsto_eq. iIntros "Hmem". iDestruct 1 as (len Hlen) "Hlist". subst.
+    iExists _. iSplit; [done|].
+    iDestruct (mem_mapsto_byte_lookup_big with "Hmem Hlist") as %Hall.
+    iPureIntro. apply mapM_Some. rewrite bv_to_little_length in Hall.
+    by have ->: (Z.of_N (N.of_nat len) = len) by lia.
+  Qed.
+
+  Lemma mem_mapsto_lookup n mem a q (w : bv n) :
+    mem_ctx mem -∗ a ↦ₘ{q} w -∗
+      ⌜∃ len, n = (8 * len)%N ∧ read_mem mem a len = Some (BVN _ w)⌝.
+  Proof.
+    iIntros "Hmem Ha". rewrite /read_mem.
+    iDestruct (mem_mapsto_lookup_list with "Hmem Ha") as %[len [-> Hl]].
+    iPureIntro. eexists _. split; [done|]. rewrite Hl /=. f_equal. apply bvn_eq.
+    split; [ done|]. rewrite bv_of_to_little_bv //. lia.
+  Qed.
+
+  Lemma mem_mapsto_update_list n mem a (w w' : bv n) :
+    mem_ctx mem -∗ a ↦ₘ w ==∗
+     ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
+      mem_ctx (write_mem_list mem a (bv_to_little len 8 (bv_unsigned w'))) ∗ a ↦ₘ w'.
+  Proof.
+    rewrite mem_mapsto_eq. iIntros "Hmem". iDestruct 1 as (len Hlen) "Hlist". subst.
+    iExists _. iSplitR; [done|].
+    iMod (mem_mapsto_byte_update_big with "Hmem Hlist") as "[$ H]".
+    { by rewrite !bv_to_little_length. }
+    iExists _. by iFrame.
+  Qed.
+
+  Lemma mem_mapsto_update n mem a (w w' : bv n) :
+    mem_ctx mem -∗ a ↦ₘ w ==∗
+    ∃ len, ⌜n = (8 * len)%N⌝ ∗ mem_ctx (write_mem len mem a (bv_unsigned w')) ∗ a ↦ₘ w'.
+  Proof.
+    iIntros "Hmem Ha". unfold write_mem.
+    iMod (mem_mapsto_update_list with "Hmem Ha") as (len Hlen) "[Hmem Ha]".
+    iExists _. iSplitR; [done|]. iFrame.
+    by rewrite Nat2N.id.
+  Qed.
+End mem.
 
 Section spec.
   Context `{!heapG Σ}.

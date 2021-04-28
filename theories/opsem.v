@@ -110,6 +110,8 @@ Fixpoint eval_exp (e : exp) : option valu :=
 Inductive trace_label : Set :=
 | LReadReg (r : register_name) (al : accessor_list) (v : valu)
 | LWriteReg (r : register_name) (al : accessor_list) (v : valu)
+| LReadMem (data : valu) (kind : valu) (addr : valu) (len : N) (tag : valu_option)
+| LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : N) (tag : valu_option)
 | LBranchAddress (v : valu)
 | LDone (next : trc)
 .
@@ -129,6 +131,10 @@ Inductive trace_step : trc → option trace_label → trc → Prop :=
     trace_step (ReadReg r al v ann :: es) (Some (LReadReg r al v)) es
 | WriteRegS r al v ann es:
     trace_step (WriteReg r al v ann :: es) (Some (LWriteReg r al v)) es
+| ReadMemS data kind addr len tag ann es:
+    trace_step (ReadMem data kind addr len tag ann :: es) (Some (LReadMem data kind addr len tag)) es
+| WriteMemS res kind addr data len tag ann es:
+    trace_step (WriteMem res kind addr data len tag ann :: es) (Some (LWriteMem res kind addr data len tag)) es
 | BranchAddressS v ann es:
     trace_step (BranchAddress v ann :: es) (Some (LBranchAddress v)) es
 | DoneES es:
@@ -142,28 +148,27 @@ Definition trace_module : module trace_label := {|
 |}.
 
 
-Definition addr := Z.
+Definition addr := bv 64.
+Definition byte := bv 8.
 (* TODO: this should probably be a simpler type than valu:
 - take out poison and symbolic
 - take out list and (maybe) arbitrary integer and (maybe) enum
 - add unknown
  *)
+
 Definition reg_map := gmap string valu.
+Definition mem_map := gmap addr byte.
 
 Definition instruction_size : Z := 0x4.
 
-Definition next_pc (nPC : bv 64) (changed : bool) : option (addr * valu * valu) :=
-  new_pc ← (if changed then Some nPC else bv_of_Z_checked 64 (bv_unsigned nPC + instruction_size));
-  Some (bv_unsigned new_pc, Val_Bits new_pc, Val_Bool false).
-Arguments next_pc !_ !_ /.
-
-Definition next_pc_regs (regs : reg_map) : option (addr * reg_map) :=
+Definition next_pc (regs : reg_map) : option (addr * reg_map) :=
   a ← regs !! "_PC";
   an ← if a is Val_Bits n then bvn_to_bv 64 n else None;
   c ← regs !! "__PC_changed";
   cb ← if c is Val_Bool b then Some b else None;
-  n ← next_pc an cb;
-  Some (n.1.1, <["_PC" := n.1.2]> $ <["__PC_changed" := n.2]> regs).
+  let new_pc := if cb : bool then bv_unsigned an else bv_unsigned an + instruction_size in
+  n ← bv_of_Z_checked 64 new_pc;
+  Some (n, <["_PC" := Val_Bits (BVN _ n)]> $ <["__PC_changed" := Val_Bool false]> regs).
 
 Fixpoint read_accessor (al : accessor_list) (v : valu) : option valu :=
   match al with
@@ -193,7 +198,9 @@ Typeclasses Opaque read_accessor.
 
 Record seq_global_state := {
   seq_instrs : gmap addr (list trc);
+  seq_mem    : mem_map;
 }.
+Instance eta_seq_global_state : Settable _ := settable! Build_seq_global_state <seq_instrs; seq_mem>.
 Record seq_local_state := {
   seq_trace  : trc;
   seq_regs   : reg_map;
@@ -205,34 +212,76 @@ Inductive seq_label : Set :=
 | SInstrTrap (pc : addr)
 .
 
+Definition read_mem_list (mem : mem_map) (a : addr) (len : N) : option (list byte) :=
+  mapM (M := option) (mem !!.) (bv_seq a (Z.of_N len)).
+
+Definition read_mem (mem : mem_map) (a : addr) (len : N) : option bvn :=
+  (λ bs, BVN _ (bv_of_Z (8 * len) (bv_of_little 8 bs))) <$> read_mem_list mem a len.
+
+Fixpoint write_mem_list (mem : mem_map) (a : addr) (v : list byte) : mem_map :=
+  match v with
+  | [] => mem
+  | b :: bs => write_mem_list (<[a:=b]> mem) (bv_add_Z a 1) bs
+  end.
+
+Definition write_mem (len : N) (mem : mem_map) (a : addr) (v : Z) : mem_map :=
+  write_mem_list mem a (bv_to_little (N.to_nat len) 8 v).
+
+(* TODO: Maybe refactor this into several constructors rather than a match *)
 Inductive seq_step : seq_local_state → seq_global_state → list seq_label → seq_local_state → seq_global_state → list seq_local_state → Prop :=
-| SeqStep σ θ κ t' κ' θ':
+| SeqStep σ θ κ t' κ' θ' σ':
     θ.(seq_nb_state) = false →
     trace_step θ.(seq_trace) κ t' →
     match κ with
-    | None => κ' = None ∧ θ' = θ <| seq_trace := t'|>
+    | None => κ' = None ∧ θ' = θ <| seq_trace := t'|> ∧ σ' = σ
     | Some (LReadReg r al v) =>
       ∃ v' v'' vread,
         θ.(seq_regs) !! r = Some v' ∧
         κ' = None ∧
         read_accessor al v' = Some v'' ∧
         read_accessor al v = Some vread ∧
+        σ' = σ ∧
         ((θ' = θ <| seq_trace := t'|> ∧ vread = v'') ∨ (θ' = θ <| seq_nb_state := true|>))
     | Some (LWriteReg r al v) =>
       ∃ v' v'' vnew, θ.(seq_regs) !! r = Some v' ∧
       read_accessor al v = Some vnew ∧
       write_accessor al v' vnew = Some v'' ∧
+      σ' = σ ∧
       θ' = θ <| seq_trace := t'|> <| seq_regs := <[r := v'']> θ.(seq_regs)|> ∧
       κ' = None
-    | Some (LBranchAddress _) => κ' = None ∧ θ' = θ <| seq_trace := t'|>
+    | Some (LReadMem data kind addr len tag) =>
+      (* Ignoring tags and kinds for the time being *)
+      ∃ addr' data' data'',
+      addr = Val_Bits (BVN 64 addr') ∧
+      data = Val_Bits (BVN (8 * len) data') ∧
+      read_mem σ.(seq_mem) addr' len = Some (BVN (8 * len) data'') ∧
+      κ' = None ∧
+      σ' = σ ∧
+       ((θ' = θ <| seq_trace := t' |> ∧ data' = data'')
+        ∨ (θ' = θ <| seq_nb_state := true|>))
+    | Some (LWriteMem res kind addr data len tag) =>
+      (* Ignoring tags and kinds. There are no cases were the write fails *)
+      ∃ mem' addr' data',
+      κ' = None ∧
+      addr = Val_Bits (BVN 64 addr') ∧
+      data = Val_Bits (BVN (8 * len) data') ∧
+      mem' = write_mem len σ.(seq_mem) addr' (bv_unsigned data') ∧
+      res = Val_Bool true ∧
+      σ' = σ <| seq_mem := mem' |> ∧
+      θ' = θ <| seq_trace := t' |>
+    | Some (LBranchAddress _) =>
+      κ' = None ∧
+      θ' = θ <| seq_trace := t'|> ∧
+      σ' = σ
     | Some (LDone es) =>
-      ∃ pc regs', next_pc_regs θ.(seq_regs) = Some (pc, regs') ∧
+      σ' = σ ∧
+      ∃ pc regs', next_pc θ.(seq_regs) = Some (pc, regs') ∧
       match σ.(seq_instrs) !! pc with
       | Some trcs => θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧ es ∈ trcs ∧ κ' = None
       | None => κ' = Some (SInstrTrap pc) ∧ θ' = θ <| seq_nb_state := true|> <| seq_regs := regs' |>
       end
      end →
-     seq_step θ σ (option_list κ') θ' σ []
+     seq_step θ σ (option_list κ') θ' σ' []
 .
 
 Definition seq_module_no_ub  : module seq_label := {|
@@ -246,7 +295,7 @@ Definition seq_module  : module seq_label := {|
   m_step '(σ, θ) κ '(σ', θ') := seq_step θ σ (option_list κ) θ' σ' [];
   m_is_ub '(σ, θ) :=
     ∃ es t', trace_step θ.(seq_trace) (Some (LDone es)) t' ∧
-     ∃ θ' pc regs', next_pc_regs θ.(seq_regs) = Some (pc, regs') ∧
+     ∃ θ' pc regs', next_pc θ.(seq_regs) = Some (pc, regs') ∧
       θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
       match σ.(seq_instrs) !! pc with
       | Some trcs => ¬ ∃ es κs σ'', es ∈ trcs ∧ (σ, θ' <| seq_trace := es |>) ~{seq_module_no_ub, κs}~> σ'' ∧ σ''.2.(seq_trace) = []
@@ -272,12 +321,11 @@ Definition seq_to_val (e : seq_local_state) : option seq_val :=
     |})
   else None.
 
-
 Lemma seq_lang_mixin : LanguageMixin seq_of_val seq_to_val seq_step.
 Proof.
   split => //.
   - by case.
-  - move => [??[]] [??] //= [-> ->]. done.
+  - move => [??[]] [??] //= [ -> ->]. done.
   - move => [???] ?????. inversion 1; simplify_eq/=. done.
 Qed.
 Canonical Structure isla_lang := Language seq_lang_mixin.

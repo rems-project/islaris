@@ -70,37 +70,39 @@ Section lifting.
     WPexp e {{ Φ }} ⊣⊢ wp_exp_def e Φ.
   Proof. by rewrite wp_exp_eq. Qed.
 
-  Lemma wp_next_instr nPC bPC_changed a newPC newPC_changed ins :
-    next_pc nPC bPC_changed = Some (a, newPC, newPC_changed) →
+  Lemma wp_next_instr (nPC : addr) bPC_changed a newPC ins :
+    a = (if bPC_changed : bool then bv_unsigned nPC else bv_unsigned nPC + instruction_size) →
+    bv_of_Z_checked 64 a = Some newPC →
     ins ≠ [] →
     "_PC" ↦ᵣ Val_Bits nPC -∗
     "__PC_changed" ↦ᵣ Val_Bool bPC_changed -∗
     instr a (Some ins) -∗
     (* TODO: We want some receptiveness property here like ⌜∃ i, i ∈ ins ∧ i can execute to the end⌝ *)
-    (∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ newPC -∗ "__PC_changed" ↦ᵣ newPC_changed -∗ WPasm i) -∗
+    (∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm i) -∗
     WPasm [].
   Proof.
-    iIntros (Hnext ?) "HPC Hchanged Hi Hcont". setoid_rewrite wp_asm_unfold.
+    iIntros (-> Hchecked ?) "HPC Hchanged Hi Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(Hsctx&Hictx)".
+    iIntros (σ1 ??? ?) "(Hsctx&Hictx&?)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (reg_mapsto_lookup with "Hθ HPC") as %HPC.
     iDestruct (reg_mapsto_lookup with "Hθ Hchanged") as %Hchanged.
-    iDestruct (instr_lookup with "Hictx Hi") as %Hi.
+    iDestruct (instr_lookup with "Hictx Hi") as %[?[? Hi]]. simplify_eq.
     iSplit. {
       destruct ins => //.
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
-      eexists _, _. rewrite /next_pc_regs HPC Hchanged.
-      cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc]. rewrite Hnext/=.
+      split; [done|].
+      eexists _, _. rewrite /next_pc HPC Hchanged.
+      cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc]. rewrite Hchecked/=.
       split_and!; [done|]. rewrite Hi. split_and!; [done|by left| done].
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
     inv_seq_step.
     revert select (∃ _, _) => -[?[?]].
-    rewrite /next_pc_regs HPC Hchanged.
+    rewrite /next_pc HPC Hchanged.
     cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc].
-    rewrite Hnext/= => -[[<- <-] ]. rewrite Hi => -[? [??]]. simplify_eq.
+    rewrite Hchecked/= => -[[<- <-] ]. rewrite Hi => -[? [??]]. simplify_eq.
     iFrame. iSplitL; [|done].
     iMod (reg_mapsto_update with "Hθ Hchanged") as "[Hθ Hchanged]".
     iMod (reg_mapsto_update with "Hθ HPC") as "[Hθ HPC]".
@@ -108,35 +110,37 @@ Section lifting.
     iFrame.
   Qed.
 
-  Lemma wp_next_instr_extern nPC bPC_changed a newPC newPC_changed κs:
-    next_pc nPC bPC_changed = Some (a, newPC, newPC_changed) →
-    head κs = Some (SInstrTrap a) →
+  Lemma wp_next_instr_extern (nPC : addr) bPC_changed a newPC κs:
+    a = (if bPC_changed : bool then bv_unsigned nPC else bv_unsigned nPC + instruction_size) →
+    bv_of_Z_checked 64 a = Some newPC →
+    head κs = Some (SInstrTrap newPC) →
     "_PC" ↦ᵣ Val_Bits nPC -∗
     "__PC_changed" ↦ᵣ Val_Bool bPC_changed -∗
     instr a None -∗
     spec_trace κs -∗
     WPasm [].
   Proof.
-    iIntros (Hnext ?) "HPC Hchanged Hi Hspec". setoid_rewrite wp_asm_unfold.
+    iIntros (-> Hchecked ?) "HPC Hchanged Hi Hspec". setoid_rewrite wp_asm_unfold.
     iIntros ([? regs ?]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(Hsctx&Hictx)".
+    iIntros (σ1 ??? ?) "(Hsctx&Hictx&?)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (reg_mapsto_lookup with "Hθ HPC") as %HPC.
     iDestruct (reg_mapsto_lookup with "Hθ Hchanged") as %Hchanged.
-    iDestruct (instr_lookup with "Hictx Hi") as %Hi.
+    iDestruct (instr_lookup with "Hictx Hi") as %[?[? Hi]]. simplify_eq.
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
-      eexists _, _. rewrite /next_pc_regs HPC Hchanged.
-      cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc]. rewrite Hnext/=.
+      split; [done|].
+      eexists _, _. rewrite /next_pc HPC Hchanged.
+      cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc]. rewrite Hchecked/=.
       split_and!; [done|]. rewrite Hi. done.
     }
     iIntros "!>" (????). iMod "HE" as "_".
     inv_seq_step.
     revert select (∃ _, _) => -[?[?]].
-    rewrite /next_pc_regs HPC Hchanged.
+    rewrite /next_pc HPC Hchanged.
     cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc].
-    rewrite Hnext/= => -[[<- <-] ]. rewrite Hi => -[? ?].
+    rewrite Hchecked/= => -[[<- <-] ]. rewrite Hi => -[? ?].
     destruct regs, κs => //. simplify_eq/=.
     iMod (spec_ctx_cons with "Hsctx Hspec") as "[??]". iModIntro.
     iFrame. iSplitL; [|done].
@@ -154,7 +158,7 @@ Section lifting.
     iIntros (??) "Hr Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(?&Hictx)".
+    iIntros (σ1 ??? ?) "(?&Hictx&?)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (reg_mapsto_lookup with "Hθ Hr") as %Hr.
     iSplit. {
@@ -162,7 +166,7 @@ Section lifting.
       eexists _, _, _. split_and! => //. by right.
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
-    inv_seq_step. revert select (∃ x, _) => -[?[?[?[?[?[?[?[[??]|?]]]]]]]]; simplify_eq/=. 2: {
+    inv_seq_step. revert select (∃ x, _) => -[?[?[?[?[?[?[?[?[[??]|?]]]]]]]]]; simplify_eq/=. 2: {
       iFrame. iSplitL; [|done]. by iApply wp_value.
     }
     unfold register_name in *. simplify_eq/=.
@@ -187,7 +191,7 @@ Section lifting.
     iIntros (? ?) "Hr Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(?&Hictx)".
+    iIntros (σ1 ??? ?) "(?&Hictx&?)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (reg_mapsto_lookup with "Hθ Hr") as %Hr.
     iSplit. {
@@ -196,7 +200,7 @@ Section lifting.
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
     inv_seq_step.
-    revert select (∃ _, _) => -[?[?[?[?[?[?[??]]]]]]].
+    revert select (∃ _, _) => -[?[?[?[?[?[?[?[??]]]]]]]].
     unfold register_name in *. simplify_eq.
     iFrame; iSplitL; [|done].
     iMod (reg_mapsto_update with "Hθ Hr") as "[Hθ Hr]".
@@ -210,6 +214,59 @@ Section lifting.
     WPasm (WriteReg r [] v ann :: es).
   Proof. by apply: wp_write_reg_acc. Qed.
 
+
+  Lemma wp_read_mem n len a vread (vmem : bv n) es ann kind tag q:
+    n = (8 * len)%N →
+    a ↦ₘ{q} vmem -∗
+    (⌜vread = vmem⌝ -∗ a ↦ₘ{q} vmem -∗ WPasm es) -∗
+    WPasm (ReadMem (Val_Bits (BVN n vread)) kind (Val_Bits (BVN 64 a)) len tag ann :: es).
+  Proof.
+    iIntros (?) "Hm Hcont". setoid_rewrite wp_asm_unfold. subst.
+    iIntros ([???]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ????) "(Hctx&Hictx&Hmem)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iDestruct (mem_mapsto_lookup with "Hmem Hm") as %[len' [??]].
+    have ? : len' = len by lia. subst.
+    iSplit. {
+      iPureIntro. eexists _, _, _, _. simpl. econstructor; [done | by econstructor |].
+      naive_solver.
+    }
+    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
+    inv_seq_step.
+    revert select (∃ _, _) => -[?[?[?[?[?[?[?[?[[??]|?]]]]]]]]]; simplify_eq/=. 2:{
+      iFrame. iSplitL; [|done]. by iApply wp_value.
+    }
+    iFrame. iSplit; [|done].
+    iApply ("Hcont" with "[] [Hm]"); done.
+  Qed.
+
+  Lemma wp_write_mem n len a (vold vnew : bv n) es ann kind tag:
+    n = (8 * len)%N →
+    a ↦ₘ vold -∗
+    (a ↦ₘ vnew -∗ WPasm es) -∗
+    WPasm (WriteMem (Val_Bool true) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
+  Proof.
+    iIntros (?) "Hm Hcont". subst. setoid_rewrite wp_asm_unfold.
+    iIntros ([???]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ????) "(Hctx&Hictx&Hmem)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iDestruct (mem_mapsto_lookup with "Hmem Hm") as %[len' [??]].
+    have ? : len' = len by lia. subst.
+    iSplit. {
+      iPureIntro. eexists _, _, _, _. simpl. econstructor; [done | by econstructor |].
+      naive_solver.
+    }
+    iIntros "!>" (????). iMod "HE" as "_".
+    inv_seq_step.
+    revert select (∃ _, _) => -[?[?[?[?[?[?[?[?[??]]]]]]]]]; simplify_eq/=.
+    iMod (mem_mapsto_update with "Hmem Hm") as (len' ?) "[Hmem Hm]".
+    have ? : len' = len by lia. subst. iFrame.
+    iModIntro. iSplitL; [|done].
+    by iApply ("Hcont" with "Hm").
+  Qed.
+
   Lemma wp_branch_address v es ann:
     WPasm es -∗
     WPasm (BranchAddress v ann :: es).
@@ -217,7 +274,7 @@ Section lifting.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(?&Hictx)".
+    iIntros (σ1 ??? ?) "(?&Hictx&?)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
@@ -237,7 +294,7 @@ Section lifting.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(?&Hictx)".
+    iIntros (σ1 ??? ?) "(?&Hictx&?)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
