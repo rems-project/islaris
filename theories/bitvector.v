@@ -392,16 +392,15 @@ Qed.
 
 (** * Notation for [bv n] *)
 Ltac solve_bitvector_eq :=
-  try (vm_compute; done);
+  try (vm_compute; exact (conj eq_refl eq_refl));
   lazymatch goal with
-  | |- -1 < ?v < 2 ^ ?l =>
-    fail "Bitvector constant" v "does not fit into" l "bits"
+    |- bv_wf ?n ?v =>
+    fail "Bitvector constant" v "does not fit into" n "bits"
   end.
 
 Notation "'[BV{' l }  v ]" := (BV l v _) (at level 9, only printing) : stdpp_scope.
 (* TODO: Somehow the following version creates a warning. *)
 (* Notation "'[BV{' l } v ]" := (BV l v _) (at level 9, format "[BV{ l }  v ]", only printing) : stdpp_scope. *)
-(* TODO: This notation breaks when used in gmap notations. Why? *)
 Notation "'[BV{' l }  v ]" := (BV l v ltac:(solve_bitvector_eq)) (at level 9, only parsing) : stdpp_scope.
 
 (** * Automation *)
@@ -839,6 +838,34 @@ Section properties.
     intros ???. unfold bv_mul. apply bv_eq. rewrite !bv_of_Z_unsigned.
     bv_wrap_simplify_solve.
   Qed.
+
+  Lemma bv_add_Z_0 b : bv_add_Z b 0 = b.
+  Proof.
+    unfold bv_add_Z. rewrite Z.add_0_r.
+    apply bv_eq. apply bv_of_Z_small. apply bv_unsigned_in_range.
+  Qed.
+
+  Lemma bv_add_Z_add_r b m o:
+    bv_add_Z b (m + o) = bv_add_Z (bv_add_Z b o) m.
+  Proof.
+    apply bv_eq. unfold bv_add_Z. rewrite !bv_of_Z_unsigned.
+     bv_wrap_simplify_solve.
+  Qed.
+
+  Lemma bv_add_Z_add_l b m o:
+    bv_add_Z b (m + o) = bv_add_Z (bv_add_Z b m) o.
+  Proof.
+    apply bv_eq. unfold bv_add_Z. rewrite !bv_of_Z_unsigned.
+     bv_wrap_simplify_solve.
+  Qed.
+
+  Lemma bv_add_Z_succ b m:
+    bv_add_Z b (Z.succ m) = bv_add_Z (bv_add_Z b 1) m.
+  Proof.
+    apply bv_eq. unfold bv_add_Z. rewrite !bv_of_Z_unsigned.
+      bv_wrap_simplify_solve.
+  Qed.
+
 End properties.
 
 (** ** Lemmas about [bv_to_little] and [bv_of_little] *)
@@ -870,7 +897,34 @@ Section little.
 
   Lemma bv_to_little_length m n z : length (bv_to_little m n z) = m.
   Proof. unfold bv_to_little. rewrite fmap_length. apply Z_to_little_length. Qed.
+
+  Lemma bv_of_to_little_bv x m n (b : bv x):
+    x = (N.of_nat m * n)%N →
+    bv_of_Z x (bv_of_little n (bv_to_little m n (bv_unsigned b))) = b.
+  Proof.
+    intros ->. rewrite bv_of_to_little, Z.mod_small.
+    2: { pose proof bv_unsigned_in_range _ b. unfold bv_modulus in *. lia. }
+     apply bv_eq. rewrite bv_of_Z_small; [done|]. apply bv_unsigned_in_range.
+  Qed.
 End little.
+
+(** ** Lemmas about [bv_seq] *)
+Section bv_seq.
+  Context {n : N}.
+  Implicit Types (b : bv n).
+
+  Lemma bv_seq_succ b m:
+    0 ≤ m →
+    bv_seq b (Z.succ m) = b :: bv_seq (bv_add_Z b 1) m.
+  Proof.
+    intros. unfold bv_seq. rewrite seqZ_cons by lia. csimpl.
+    rewrite bv_add_Z_0. f_equal.
+    assert (Z.succ 0 = 1 + 0) as -> by lia.
+    rewrite <-fmap_add_seqZ, <-list_fmap_compose. apply list_fmap_ext.
+    - intros x. simpl. by rewrite bv_add_Z_add_l.
+    - f_equal. lia.
+  Qed.
+End bv_seq.
 
 (** * [bvn] *)
 Record bvn := BVN {

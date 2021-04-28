@@ -43,8 +43,8 @@ Section definitions.
   Definition instr_table_eq : @instr_table = @instr_table_def :=
     seal_eq instr_table_aux.
 
-  Definition instr_def (a : addr) (i: option (list trc)) : iProp Σ :=
-    ∃ instrs, ⌜instrs !! a = i⌝ ∗ instr_table instrs.
+  Definition instr_def (a : Z) (i: option (list trc)) : iProp Σ :=
+    ∃ instrs b, ⌜bv_of_Z_checked 64 a = Some b⌝ ∗ ⌜instrs !! b = i⌝ ∗ instr_table instrs.
   Definition instr_aux : seal (@instr_def). by eexists. Qed.
   Definition instr := unseal instr_aux.
   Definition instr_eq : @instr = @instr_def :=
@@ -63,20 +63,24 @@ Section definitions.
   Definition regs_ctx `{!threadG} (regs : reg_map) : iProp Σ :=
     ghost_map_auth thread_regs_name 1 regs.
 
-  Definition mem_mapsto_def (γ : gname) (a : addr) (q : frac) (v : byte) : iProp Σ :=
-    a ↪[ γ ]{# q} v.
-  Definition mem_mapsto_aux : seal (@mem_mapsto_def). by eexists. Qed.
-  Definition mem_mapsto := unseal mem_mapsto_aux.
-  Definition mem_mapsto_eq : @mem_mapsto = @mem_mapsto_def :=
+  Definition mem_mapsto_byte_def (γ : gname) (a : addr) (q : dfrac) (v : byte) : iProp Σ :=
+    a ↪[ γ ]{q} v.
+  Definition mem_mapsto_byte_aux : seal (@mem_mapsto_byte_def). by eexists. Qed.
+  Definition mem_mapsto_byte := unseal mem_mapsto_byte_aux.
+  Definition mem_mapsto_byte_eq : @mem_mapsto_byte = @mem_mapsto_byte_def :=
+    seal_eq mem_mapsto_byte_aux.
+
+  Definition mem_mapsto_def {n} (a : addr) (q : dfrac) (w : bv n) : iProp Σ :=
+    ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
+    let bytes := bv_to_little len 8 (bv_unsigned w) in
+    [∗ list] offset ↦ b ∈ bytes, mem_mapsto_byte heap_mem_name (bv_add_Z a (Z.of_nat offset)) q b.
+  Definition mem_mapsto_aux {n} : seal (@mem_mapsto_def n). by eexists. Qed.
+  Definition mem_mapsto {n} := unseal (@mem_mapsto_aux n).
+  Definition mem_mapsto_eq {n} : @mem_mapsto n = @mem_mapsto_def n :=
     seal_eq mem_mapsto_aux.
 
   Definition mem_ctx (mem : mem_map) : iProp Σ :=
     ghost_map_auth heap_mem_name 1 mem.
-
-  Definition mem_mapsto_word (len : N) (a : bv 64) (w : bv (8*len)) : iProp Σ :=
-    let nat_len := N.to_nat len in
-    let bytes := bv_to_little nat_len 8 (bv_unsigned w) in
-    [∗ list] offset ↦ b ∈ bytes, mem_mapsto heap_mem_name (bv_add a (bv_of_Z 64 (Z.of_nat offset))) 1 b.
 
   Definition spec_trace_def (κs: list seq_label) : iProp Σ :=
     ghost_var heap_spec_trace_name (1/2) κs.
@@ -104,10 +108,9 @@ Notation "r ↦ᵣ{ q } v" := (reg_mapsto thread_regs_name r q v)
   (at level 20, q at level 50, format "r  ↦ᵣ{ q }  v") : bi_scope.
 Notation "r ↦ᵣ v" := (reg_mapsto thread_regs_name r 1 v) (at level 20) : bi_scope.
 
-
-Notation "a ↦ₘ{ q } v" := (mem_mapsto heap_mem_name a q v)
+Notation "a ↦ₘ{ q } v" := (mem_mapsto a q v)
   (at level 20, q at level 50, format "a  ↦ₘ{ q }  v") : bi_scope.
-Notation "a ↦ₘ v" := (mem_mapsto heap_mem_name a 1 v) (at level 20) : bi_scope.
+Notation "a ↦ₘ v" := (mem_mapsto a (DfracOwn 1) v) (at level 20) : bi_scope.
 
 Section instr.
   Context `{!heapG Σ}.
@@ -124,9 +127,15 @@ Section instr.
   Proof. rewrite instr_eq. by apply _. Qed.
 
   Lemma instr_intro ins a i :
-    ins !! a = i →
+    ∀ Hwf,
+    ins !! (BV _ a Hwf) = i →
     instr_table ins -∗ instr a i.
-  Proof. rewrite instr_eq. iIntros (?) "?". iExists _. by iFrame. Qed.
+  Proof.
+    rewrite instr_eq. iIntros (??) "?". iExists _, _. iFrame.
+    iPureIntro. split; [|done].
+    unfold bv_of_Z_checked. case_option_guard => //.
+    f_equal. by apply bv_eq.
+  Qed.
 
   Lemma instr_table_agree i1 i2 :
     instr_table i1 -∗ instr_table i2 -∗ ⌜i1 = i2⌝.
@@ -138,10 +147,10 @@ Section instr.
   Qed.
 
   Lemma instr_lookup instrs a i :
-    instr_ctx instrs -∗ instr a i -∗ ⌜instrs !! a = i⌝.
+    instr_ctx instrs -∗ instr a i -∗ ⌜∃ b, bv_of_Z_checked 64 a = Some b ∧ instrs !! b = i⌝.
   Proof.
     rewrite instr_eq. iIntros "Htbl Hf".
-    iDestruct "Hf" as (i2 ?) "Hf".
+    iDestruct "Hf" as (i2 ? ??) "Hf". iExists _.
     by iDestruct (instr_table_agree with "Htbl Hf") as %->.
   Qed.
 
@@ -174,138 +183,91 @@ End reg.
 Section mem.
   Context `{!heapG Σ}.
 
-  Global Instance mem_mapsto_tl γ a q v : Timeless (mem_mapsto γ a q v).
-  Proof. rewrite mem_mapsto_eq. by apply _. Qed.
+  Global Instance mem_mapsto_byte_tl γ a q v : Timeless (mem_mapsto_byte γ a q v).
+  Proof. rewrite mem_mapsto_byte_eq. by apply _. Qed.
 
-  Lemma mem_mapsto_lookup mem a q v :
-    mem_ctx mem -∗ a ↦ₘ{q} v -∗ ⌜mem !! a = Some v⌝.
+  Global Instance mem_mapsto_tl n a q (v : bv n) : Timeless (a ↦ₘ{q} v).
+  Proof. rewrite mem_mapsto_eq /mem_mapsto_def. by apply _. Qed.
+
+  Lemma mem_mapsto_byte_lookup mem a q v :
+    mem_ctx mem -∗ mem_mapsto_byte heap_mem_name a q v -∗ ⌜mem !! a = Some v⌝.
+  Proof. rewrite mem_mapsto_byte_eq. apply ghost_map_lookup. Qed.
+
+  Lemma mem_mapsto_byte_lookup_big mem a q bs :
+    mem_ctx mem -∗ ([∗ list] i↦v∈ bs, mem_mapsto_byte heap_mem_name (bv_add_Z a i) q v) -∗
+          ⌜Forall2 (λ a v, mem !! a = Some v) (bv_seq a (length bs)) bs⌝.
   Proof.
-    rewrite mem_mapsto_eq.
-    iIntros "Hmem Ha".
-    by iDestruct (ghost_map_lookup with "Hmem Ha") as %?.    
+    iIntros "Hmem Hl".
+    iInduction bs as [|b bs] "IH" forall (a); simpl. { iPureIntro. constructor. }
+    iDestruct "Hl" as "[Ha Hl]". rewrite bv_add_Z_0.
+    iDestruct (mem_mapsto_byte_lookup with "Hmem Ha") as %Ha.
+    setoid_rewrite Nat2Z.inj_succ. setoid_rewrite bv_add_Z_succ.
+    iDestruct ("IH" with "Hmem Hl") as %?.
+    iPureIntro. rewrite bv_seq_succ; [|lia]. by constructor.
   Qed.
 
-  Lemma mem_mapsto_update mem a v v' :
-    mem_ctx mem -∗ a ↦ₘ v ==∗ mem_ctx (<[a := v']> mem) ∗ a ↦ₘ v'.
+  Lemma mem_mapsto_byte_update mem a v v' :
+    mem_ctx mem -∗ mem_mapsto_byte heap_mem_name a (DfracOwn 1) v ==∗
+      mem_ctx (<[a := v']> mem) ∗ mem_mapsto_byte heap_mem_name a (DfracOwn 1) v'.
+  Proof. rewrite mem_mapsto_byte_eq. apply ghost_map_update. Qed.
+
+  Lemma mem_mapsto_byte_update_big mem a bs bs' :
+    length bs = length bs' →
+    mem_ctx mem -∗
+    ([∗ list] i↦v∈ bs, mem_mapsto_byte heap_mem_name (bv_add_Z a i) (DfracOwn 1) v) ==∗
+    mem_ctx (write_mem_list mem a bs') ∗
+    ([∗ list] i↦v∈ bs', mem_mapsto_byte heap_mem_name (bv_add_Z a i) (DfracOwn 1) v).
   Proof.
-    iIntros "Hmem Ha".
-    iDestruct (mem_mapsto_lookup with "Hmem Ha") as %?.
-    rewrite mem_mapsto_eq.
-    by iMod (ghost_map_update with "Hmem Ha") as "[? $]".
+    iIntros (Hlen) "Hmem Hbs".
+    iInduction bs as [|b bs] "IH" forall (a mem bs' Hlen); destruct bs' => //; csimpl in *. { by iFrame. }
+    iDestruct "Hbs" as "[Ha Hbs]". rewrite bv_add_Z_0.
+    iMod (mem_mapsto_byte_update with "Hmem Ha") as "[Hmem $]".
+    setoid_rewrite Nat2Z.inj_succ. setoid_rewrite bv_add_Z_succ.
+    iApply ("IH" with "[] Hmem Hbs"). iPureIntro. lia.
   Qed.
 
-  (* This isn't true for bv of length 0, so the general form is a mild pain to
-  write, so not moving this to bitvector.v for now *)
-  Lemma bv_add_Sn z : bv_of_Z 64 (S z) = bv_add [BV{64} 1] (bv_of_Z 64 z).
+  Lemma mem_mapsto_lookup_list n mem a (w : bv n) q:
+    mem_ctx mem -∗ a ↦ₘ{q} w -∗
+    ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
+        ⌜read_mem_list mem a (N.of_nat len) = Some (bv_to_little len 8 (bv_unsigned w))⌝.
   Proof.
-    unfold bv_add. cbn.
-    apply bv_eq.
-    repeat rewrite bv_of_Z_unsigned.
-    unfold bv_wrap.
-    rewrite Z.add_mod_idemp_r.
-    + f_equal. lia.
-    + done.
+    rewrite mem_mapsto_eq. iIntros "Hmem". iDestruct 1 as (len Hlen) "Hlist". subst.
+    iExists _. iSplit; [done|].
+    iDestruct (mem_mapsto_byte_lookup_big with "Hmem Hlist") as %Hall.
+    iPureIntro. apply mapM_Some. rewrite bv_to_little_length in Hall.
+    by have ->: (Z.of_N (N.of_nat len) = len) by lia.
   Qed.
 
-  Lemma mem_mapsto_word_lookup_list mem a len w :
-    mem_ctx mem -∗ mem_mapsto_word len a w -∗ ⌜read_mem_list mem a (N.to_nat len) = bv_to_little (N.to_nat len) 8 (bv_unsigned w)⌝.
+  Lemma mem_mapsto_lookup n mem a q (w : bv n) :
+    mem_ctx mem -∗ a ↦ₘ{q} w -∗
+      ⌜∃ len, n = (8 * len)%N ∧ read_mem mem a len = Some (BVN _ w)⌝.
   Proof.
-    iIntros "Hmem Ha".
-    unfold mem_mapsto_word.
-    set (l:= bv_to_little (N.to_nat len) 8 (bv_unsigned w)).
-    assert (Hlen : length l = N.to_nat len). {unfold l. apply bv_to_little_len. }
-    clearbody l.
-    clear w.
-    iInduction l as [ | b' bs ] "IH" forall (len a Hlen).
-    + cbn in Hlen. rewrite <- Hlen. iPureIntro. reflexivity.
-    + cbn in Hlen. rewrite <- Hlen. cbn.
-      rewrite bv_add_0.
-      iDestruct "Ha" as "[Ha Ha']".
-      iDestruct (mem_mapsto_lookup with "Hmem Ha") as %?.
-      rewrite H.
-      set (a0':=N.of_nat (length bs)).
-      set (a1':=bv_add a [BV{64} 1]).
-      iAssert (⌜length bs = N.to_nat a0'⌝)%I as "Hlen'".
-      { unfold a0'. by rewrite Nat2N.id. }
-      iAssert ([∗ list] offset↦b ∈ bs, bv_add a1' (bv_of_Z 64 offset) ↦ₘ b)%I with "[Ha']" as "Hbs".
-      { unfold a1'. setoid_rewrite bv_add_Sn. setoid_rewrite bv_add_assoc. iAssumption. }
-      iDestruct ("IH" with "Hlen' Hmem Hbs") as "IH'".
-      iDestruct "Hlen'" as %Hlen'.
-      rewrite Hlen'.
-      (* iRewrite doesn't seem to work for me here? *)
-      iDestruct "IH'" as %IH'.
-      by rewrite IH'.
+    iIntros "Hmem Ha". rewrite /read_mem.
+    iDestruct (mem_mapsto_lookup_list with "Hmem Ha") as %[len [-> Hl]].
+    iPureIntro. eexists _. split; [done|]. rewrite Hl /=. f_equal. apply bvn_eq.
+    split; [ done|]. rewrite bv_of_to_little_bv //. lia.
   Qed.
 
-  Lemma mem_mapsto_word_lookup mem a len w :
-    mem_ctx mem -∗ mem_mapsto_word len a w -∗ ⌜read_mem mem a len = w⌝.
+  Lemma mem_mapsto_update_list n mem a (w w' : bv n) :
+    mem_ctx mem -∗ a ↦ₘ w ==∗
+     ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
+      mem_ctx (write_mem_list mem a (bv_to_little len 8 (bv_unsigned w'))) ∗ a ↦ₘ w'.
   Proof.
-    iIntros "Hmem Ha".
-    unfold read_mem.
-    iDestruct (mem_mapsto_word_lookup_list with "Hmem Ha") as %Ha.
-    rewrite Ha.
-    rewrite bv_of_to_little.
-    rewrite Z.mul_comm.
-    assert (H : bv_unsigned w `mod` 2 ^ (Z.of_N 8 * N.to_nat len) = bv_unsigned w).
-    + rewrite N_nat_Z. rewrite <- N2Z.inj_mul. apply Zmod_small. apply bv_ok_in_range. exact (bv_is_ok w).
-    + rewrite H. by rewrite bv_unsigned_bv_of_Z.
+    rewrite mem_mapsto_eq. iIntros "Hmem". iDestruct 1 as (len Hlen) "Hlist". subst.
+    iExists _. iSplitR; [done|].
+    iMod (mem_mapsto_byte_update_big with "Hmem Hlist") as "[$ H]".
+    { by rewrite !bv_to_little_length. }
+    iExists _. by iFrame.
   Qed.
 
-  Lemma bv_to_little_Sn m n w : ∃ x w', bv_to_little (S m) n w = x::(bv_to_little m n w').
+  Lemma mem_mapsto_update n mem a (w w' : bv n) :
+    mem_ctx mem -∗ a ↦ₘ w ==∗
+    ∃ len, ⌜n = (8 * len)%N⌝ ∗ mem_ctx (write_mem len mem a (bv_unsigned w')) ∗ a ↦ₘ w'.
   Proof.
-    eexists _, _.
-    reflexivity.
-  Qed.
-
-  Lemma mem_mapsto_word_update_list mem a len w w' :
-    mem_ctx mem -∗ mem_mapsto_word len a w ==∗
-    mem_ctx (write_mem_list mem a (bv_to_little (N.to_nat len) 8 (bv_unsigned w'))) ∗ mem_mapsto_word len a w'.
-  Proof.
-    iIntros "Hmem Ha".
-    unfold mem_mapsto_word.
-    set (l:=bv_to_little (N.to_nat len) 8 (bv_unsigned w')).
-    assert (Hlen : length l = N.to_nat len). {unfold l. apply bv_to_little_len. }
-    clearbody l.
-    clear w'.
-    set (w_unsigned := bv_unsigned w).
-    clearbody w_unsigned.
-    clear w.
-    iInduction l as [ | b' bs ] "IH" forall (len mem a w_unsigned Hlen).
-    + cbn. iFrame. unfold mem_mapsto_word. rewrite <- Hlen. cbn. iAssumption.
-    + cbn.
-      cbn in Hlen. rewrite <- Hlen.
-      destruct (bv_to_little_Sn (length bs) 8 w_unsigned) as [? [a3' Hlittle]].
-      setoid_rewrite Hlittle.
-      cbn.
-      iDestruct "Ha" as "[Hbyte Hrest]".
-      iMod (mem_mapsto_update with "Hmem Hbyte") as "[Hmem Hbyte]".
-      rewrite bv_add_0.
-      iFrame.
-      setoid_rewrite bv_add_Sn.
-      setoid_rewrite bv_add_assoc.
-      set (a0' := N.of_nat (length bs)).
-      set (a1' := <[a:=b']> mem).
-      set (a2' := bv_add a [BV{64} 1]).
-      assert (Hlen' : length bs = N.to_nat a0').
-      { unfold a0'. by rewrite Nat2N.id. }
-      rewrite Hlen'.
-      (* Shouldn't need this, it's a) trivial and b) exactly Hlen', but I
-      couldn't figure out how to rewrite with Hlen' and keep it in the Iris
-      context *)
-      iAssert (⌜N.to_nat a0' = N.to_nat a0'⌝)%I as "Htriv".
-      { by iPureIntro. }
-      iDestruct ("IH" with "Htriv Hmem Hrest") as "G".
-      iFrame.
-  Qed.
-
-  Lemma mem_mapsto_word_update mem a len w w' :
-    mem_ctx mem -∗ mem_mapsto_word len a w ==∗
-    mem_ctx (write_mem len mem a w') ∗ mem_mapsto_word len a w'.
-  Proof.
-    iIntros "Hmem Ha".
-    unfold write_mem.
-    iMod (mem_mapsto_word_update_list with "Hmem Ha") as "[Hmem Ha]".
-    by iFrame.
+    iIntros "Hmem Ha". unfold write_mem.
+    iMod (mem_mapsto_update_list with "Hmem Ha") as (len Hlen) "[Hmem Ha]".
+    iExists _. iSplitR; [done|]. iFrame.
+    by rewrite Nat2N.id.
   Qed.
 End mem.
 

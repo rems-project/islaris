@@ -110,8 +110,8 @@ Fixpoint eval_exp (e : exp) : option valu :=
 Inductive trace_label : Set :=
 | LReadReg (r : register_name) (al : accessor_list) (v : valu)
 | LWriteReg (r : register_name) (al : accessor_list) (v : valu)
-| LReadMem (data : valu) (kind : valu) (addr : valu) (len : nat) (tag : valu_option)
-| LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : nat) (tag : valu_option)
+| LReadMem (data : valu) (kind : valu) (addr : valu) (len : N) (tag : valu_option)
+| LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : N) (tag : valu_option)
 | LBranchAddress (v : valu)
 | LDone (next : trc)
 .
@@ -147,9 +147,8 @@ Definition trace_module : module trace_label := {|
   m_is_ub _ := False;
 |}.
 
-(* This should probably be a bitvector *)
+
 Definition addr := bv 64.
-(* Seems like a case where we'd like indexed bitvector types *)
 Definition byte := bv 8.
 (* TODO: this should probably be a simpler type than valu:
 - take out poison and symbolic
@@ -157,26 +156,19 @@ Definition byte := bv 8.
 - add unknown
  *)
 
-Definition bits_of_valu (v : valu) : option bvn :=
-  if v is Val_Bits n then Some n else None.
-
 Definition reg_map := gmap string valu.
 Definition mem_map := gmap addr byte.
 
 Definition instruction_size : Z := 0x4.
 
-Definition next_pc (nPC : bv 64) (changed : bool) : option (addr * valu * valu) :=
-  new_pc ← (if changed then Some nPC else bv_of_Z_checked 64 (bv_unsigned nPC + instruction_size));
-  Some ((new_pc : bv 64), Val_Bits new_pc, Val_Bool false).
-Arguments next_pc !_ !_ /.
-
-Definition next_pc_regs (regs : reg_map) : option (addr * reg_map) :=
+Definition next_pc (regs : reg_map) : option (addr * reg_map) :=
   a ← regs !! "_PC";
   an ← if a is Val_Bits n then bvn_to_bv 64 n else None;
   c ← regs !! "__PC_changed";
   cb ← if c is Val_Bool b then Some b else None;
-  n ← next_pc an cb;
-  Some (n.1.1, <["_PC" := n.1.2]> $ <["__PC_changed" := n.2]> regs).
+  let new_pc := if cb : bool then bv_unsigned an else bv_unsigned an + instruction_size in
+  n ← bv_of_Z_checked 64 new_pc;
+  Some (n, <["_PC" := Val_Bits (BVN _ n)]> $ <["__PC_changed" := Val_Bool false]> regs).
 
 Fixpoint read_accessor (al : accessor_list) (v : valu) : option valu :=
   match al with
@@ -220,29 +212,20 @@ Inductive seq_label : Set :=
 | SInstrTrap (pc : addr)
 .
 
-Fixpoint read_mem_list (mem : mem_map) (addr : bv 64) (len : nat) : list (bv 8) :=
-  match len with
-  | 0%nat => []
-  | S n =>
-    let next := bv_add addr [BV{64} 1] in
-    (* Should fail rather than return 0 *)
-    let byte := match (mem !! addr) with | Some b => b | None => [BV{8} 0] end in
-    byte :: read_mem_list mem next n
-  end.
+Definition read_mem_list (mem : mem_map) (a : addr) (len : N) : option (list byte) :=
+  mapM (M := option) (mem !!.) (bv_seq a (Z.of_N len)).
 
-Definition read_mem (mem : mem_map) (addr : bv 64) (len : N) : bv (8 * len) :=
-  bv_of_Z (8 * len) (bv_of_little 8 (read_mem_list mem addr (N.to_nat len))).
+Definition read_mem (mem : mem_map) (a : addr) (len : N) : option bvn :=
+  (λ bs, BVN _ (bv_of_Z (8 * len) (bv_of_little 8 bs))) <$> read_mem_list mem a len.
 
-Fixpoint write_mem_list (mem : mem_map) (addr : bv 64) (v : list (bv 8)) : mem_map :=
+Fixpoint write_mem_list (mem : mem_map) (a : addr) (v : list byte) : mem_map :=
   match v with
   | [] => mem
-  | b :: bs =>
-    let next := bv_add addr [BV{64} 1] in
-    write_mem_list (<[addr:=b]> mem) next bs
+  | b :: bs => write_mem_list (<[a:=b]> mem) (bv_add_Z a 1) bs
   end.
 
-Definition write_mem (len : N) (mem : mem_map) (addr : bv 64) (v : bv (8*len)) : mem_map :=
-  write_mem_list mem addr (bv_to_little (N.to_nat len) 8 (bv_unsigned (bvn_val v))).
+Definition write_mem (len : N) (mem : mem_map) (a : addr) (v : Z) : mem_map :=
+  write_mem_list mem a (bv_to_little (N.to_nat len) 8 v).
 
 (* TODO: Maybe refactor this into several constructors rather than a match *)
 Inductive seq_step : seq_local_state → seq_global_state → list seq_label → seq_local_state → seq_global_state → list seq_local_state → Prop :=
@@ -268,20 +251,21 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       κ' = None
     | Some (LReadMem data kind addr len tag) =>
       (* Ignoring tags and kinds for the time being *)
-      ∃ addr' data',
-      (* Some tidying up to be done here *)
+      ∃ addr' data' data'',
       addr = Val_Bits (BVN 64 addr') ∧
-      data = Val_Bits (BVN (8*(N.of_nat len)) data') ∧
+      data = Val_Bits (BVN (8 * len) data') ∧
+      read_mem σ.(seq_mem) addr' len = Some (BVN (8 * len) data'') ∧
       κ' = None ∧
       σ' = σ ∧
-       ((θ' = θ <| seq_trace := t' |> ∧ read_mem σ.(seq_mem) addr' (N.of_nat len) = data') ∨ (θ' = θ <| seq_nb_state := true|>))
+       ((θ' = θ <| seq_trace := t' |> ∧ data' = data'')
+        ∨ (θ' = θ <| seq_nb_state := true|>))
     | Some (LWriteMem res kind addr data len tag) =>
       (* Ignoring tags and kinds. There are no cases were the write fails *)
       ∃ mem' addr' data',
       κ' = None ∧
       addr = Val_Bits (BVN 64 addr') ∧
-      data = Val_Bits (BVN (8*(N.of_nat len)) data') ∧
-      mem' = write_mem (N.of_nat len) σ.(seq_mem) addr' data' ∧
+      data = Val_Bits (BVN (8 * len) data') ∧
+      mem' = write_mem len σ.(seq_mem) addr' (bv_unsigned data') ∧
       res = Val_Bool true ∧
       σ' = σ <| seq_mem := mem' |> ∧
       θ' = θ <| seq_trace := t' |>
@@ -291,7 +275,7 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       σ' = σ
     | Some (LDone es) =>
       σ' = σ ∧
-      ∃ pc regs', next_pc_regs θ.(seq_regs) = Some (pc, regs') ∧
+      ∃ pc regs', next_pc θ.(seq_regs) = Some (pc, regs') ∧
       match σ.(seq_instrs) !! pc with
       | Some trcs => θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧ es ∈ trcs ∧ κ' = None
       | None => κ' = Some (SInstrTrap pc) ∧ θ' = θ <| seq_nb_state := true|> <| seq_regs := regs' |>
@@ -311,7 +295,7 @@ Definition seq_module  : module seq_label := {|
   m_step '(σ, θ) κ '(σ', θ') := seq_step θ σ (option_list κ) θ' σ' [];
   m_is_ub '(σ, θ) :=
     ∃ es t', trace_step θ.(seq_trace) (Some (LDone es)) t' ∧
-     ∃ θ' pc regs', next_pc_regs θ.(seq_regs) = Some (pc, regs') ∧
+     ∃ θ' pc regs', next_pc θ.(seq_regs) = Some (pc, regs') ∧
       θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
       match σ.(seq_instrs) !! pc with
       | Some trcs => ¬ ∃ es κs σ'', es ∈ trcs ∧ (σ, θ' <| seq_trace := es |>) ~{seq_module_no_ub, κs}~> σ'' ∧ σ''.2.(seq_trace) = []

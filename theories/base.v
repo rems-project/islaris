@@ -14,6 +14,8 @@ Global Set Default Goal Selector "!".
 
 Arguments set _ _ _ _ _ !_ /.
 
+Arguments N.mul : simpl never.
+
 (* This has as better performance characteristic wrt. simpl compared
 to list_find since list_find_idx does not contain prod_map. *)
 Definition list_find_idx {A} P `{∀ x, Decision (P x)} : list A → option nat :=

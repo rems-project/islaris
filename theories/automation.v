@@ -58,22 +58,25 @@ Section instances.
 
 
   Lemma li_wp_next_instr:
-    (∃ (nPC : bv 64) bPC_changed, "_PC" ↦ᵣ Val_Bits nPC ∗ "__PC_changed" ↦ᵣ Val_Bool bPC_changed ∗
-     ∃ a newPC newPC_changed, ⌜next_pc nPC bPC_changed = Some (a, newPC, newPC_changed)⌝ ∗
+    (∃ (nPC : addr) bPC_changed,
+        "_PC" ↦ᵣ Val_Bits nPC ∗ "__PC_changed" ↦ᵣ Val_Bool bPC_changed ∗
+     ∃ a newPC,
+       ⌜a = (if bPC_changed : bool then (bv_unsigned nPC) else (bv_unsigned nPC + instruction_size)%Z)⌝ ∗
+       ⌜bv_of_Z_checked 64 a = Some newPC⌝ ∗
      ∃ ins, instr a ins ∗
      match ins with
      | Some ts =>
-       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, "_PC" ↦ᵣ newPC -∗ "__PC_changed" ↦ᵣ newPC_changed -∗ WPasm t
+       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm t
      | None =>
-       ∃ κs, spec_trace κs ∗ ⌜hd_error κs = Some (SInstrTrap a)⌝
+       ∃ κs, spec_trace κs ∗ ⌜hd_error κs = Some (SInstrTrap newPC)⌝
                               ∗ True
      end
     ) -∗
     WPasm [].
   Proof.
     iDestruct 1 as (??) "(?&?&Hwp)".
-    iDestruct "Hwp" as (???? ins) "[Hi Hwp]".
-    case_match.
+    iDestruct "Hwp" as (???? ins) "[Hi Hwp]". subst.
+    destruct ins.
     - iDestruct "Hwp" as (?) "Hl".
       iApply (wp_next_instr with "[$] [$] [$]") => //.
       iIntros (i Hi) "? ?".
