@@ -129,6 +129,8 @@ Proof.
     + nia.
 Qed.
 
+Lemma Z_to_little_length m n z : length (Z_to_little m n z) = m.
+Proof. revert z. induction m; naive_solver. Qed.
 
 (** * Preliminary definitions *)
 Definition bv_modulus (n : N) : Z := 2 ^ (Z.of_N n).
@@ -825,6 +827,18 @@ Section properties.
     apply bv_eq. unfold bv_sub, bv_add, bv_opp. rewrite !bv_of_Z_unsigned.
     bv_wrap_simplify_solve.
   Qed.
+
+  Global Instance bv_add_assoc : Assoc (=) (@bv_add n).
+  Proof.
+    intros ???. unfold bv_add. apply bv_eq. rewrite !bv_of_Z_unsigned.
+    bv_wrap_simplify_solve.
+  Qed.
+
+  Global Instance bv_mul_assoc : Assoc (=) (@bv_mul n).
+  Proof.
+    intros ???. unfold bv_mul. apply bv_eq. rewrite !bv_of_Z_unsigned.
+    bv_wrap_simplify_solve.
+  Qed.
 End properties.
 
 (** ** Lemmas about [bv_to_little] and [bv_of_little] *)
@@ -853,6 +867,9 @@ Section little.
   Lemma bv_of_to_little m n z:
     bv_of_little n (bv_to_little m n z) = z `mod` 2 ^ (m * Z.of_N n).
   Proof. unfold bv_of_little. rewrite bv_to_litte_unsigned. apply Z_of_to_little. lia. Qed.
+
+  Lemma bv_to_little_length m n z : length (bv_to_little m n z) = m.
+  Proof. unfold bv_to_little. rewrite fmap_length. apply Z_to_little_length. Qed.
 End little.
 
 (** * [bvn] *)
