@@ -26,6 +26,7 @@ jobs:
       CPU_CORES: "1"
       DENY_WARNINGS: "1"
       CI_RUNNER: "dummy"
+      MAKE_TARGET: "all_and_tests"
 
     container:
       image: ralfjung/opam-ci:opam2
@@ -33,15 +34,15 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
       - name: Cache opam
         uses: actions/cache@v2
         with:
           path: |
             _opam
-          key: coq
-
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+          key: coq-${{ hashFiles('**/coq-isla.opam') }}
 
       - name: Run CI
         run: |

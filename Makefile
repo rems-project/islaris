@@ -1,55 +1,53 @@
-# Default target
-all: Makefile.coq
-	+@$(MAKE) -f Makefile.coq all
+all:
+	@dune build _build/default/coq-isla.install --display short
 .PHONY: all
 
-# Permit local customization
--include Makefile.local
+frontend/tests/dune: frontend/tests/gen.sh $(wildcard frontend/tests/*.isla)
+	./$^ > $@
 
-# Forward most targets to Coq makefile (with some trick to make this phony)
-%: Makefile.coq phony
-	@#echo "Forwarding $@"
-	+@$(MAKE) -f Makefile.coq $@
-phony: ;
-.PHONY: phony
+tests: frontend/tests/dune
+	@dune runtest
+.PHONY: tests
 
-clean: Makefile.coq
-	+@$(MAKE) -f Makefile.coq clean
-	@# Make sure not to enter the `_opam` folder.
-	find [a-z]*/ \( -name "*.d" -o -name "*.vo" -o -name "*.vo[sk]" -o -name "*.aux" -o -name "*.cache" -o -name "*.glob" -o -name "*.vio" \) -print -delete || true
-	rm -f Makefile.coq .lia.cache builddep/*
+all_and_tests: all tests
+.PHONY: all_and_tests
+
+frontend/tests/%.v.expected: frontend/tests/%.isla
+	@dune exec -- isla-coq -o $@ $<
+
+promote: $(patsubst %.isla,%.v.expected,$(wildcard frontend/tests/*.isla))
+.PHONY: promote
+
+clean:
+	@dune clean
 .PHONY: clean
 
-# Create Coq Makefile.
-Makefile.coq: _CoqProject Makefile
-	"$(COQBIN)coq_makefile" -f _CoqProject -o Makefile.coq $(EXTRA_COQFILES)
+install:
+	@dune install
+.PHONY: install
 
-# Install build-dependencies
-OPAMFILES=$(wildcard *.opam)
-BUILDDEPFILES=$(addsuffix -builddep.opam, $(addprefix builddep/,$(basename $(OPAMFILES))))
+uninstall:
+	@dune uninstall
+.PHONY: uninstall
 
-builddep/%-builddep.opam: %.opam Makefile
-	@echo "# Creating builddep package for $<."
-	@mkdir -p builddep
-	@sed <$< -E 's/^(build|install|remove):.*/\1: []/; s/"(.*)"(.*= *version.*)$$/"\1-builddep"\2/;' >$@
-
-builddep-opamfiles: $(BUILDDEPFILES)
+builddep-opamfiles: builddep/coq-isla-builddep.opam
+	@true
 .PHONY: builddep-opamfiles
 
-builddep: builddep-opamfiles
-	@# We want opam to not just install the build-deps now, but to also keep satisfying these
-	@# constraints.  Otherwise, `opam upgrade` may well update some packages to versions
-	@# that are incompatible with our build requirements.
-	@# To achieve this, we create a fake opam package that has our build-dependencies as
-	@# dependencies, but does not actually install anything itself.
-	@echo "# Installing builddep packages."
-	@opam install $(OPAMFLAGS) $(BUILDDEPFILES)
+# Create a virtual Opam package with the same deps as RefinedC, but no
+# build. Uses a very ugly hack to use sed for removing the last 4
+# lines since head -n -4 does not work on MacOS
+# (https://stackoverflow.com/a/24298204)
+builddep/coq-isla-builddep.opam: coq-isla.opam Makefile
+	@echo "# Creating builddep package."
+	@mkdir -p builddep
+	@sed '$$d' $< | sed '$$d' | sed '$$d' | sed '$$d' | sed -E 's/^name: *"(.*)" */name: "\1-builddep"/' > $@
+
+# Install the virtual Opam package to ensure that:
+#  1) dependencies of RefinedC are installed,
+#  2) they will remain satisfied even if other packages are updated/installed,
+#  3) we do not have to pin the RefinedC package itself (which takes time).
+builddep: builddep/coq-isla-builddep.opam
+	@echo "# Installing package $^."
+	@opam install $(OPAMFLAGS) $^
 .PHONY: builddep
-
-# Backwards compatibility target
-build-dep: builddep
-.PHONY: build-dep
-
-# Some files that do *not* need to be forwarded to Makefile.coq.
-# ("::" lets Makefile.local overwrite this.)
-Makefile Makefile.local _CoqProject $(OPAMFILES):: ;

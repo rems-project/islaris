@@ -1,0 +1,429 @@
+% Ott grammar for the symbolic output of isla-footprint, based on the Rust isla-lib/srf/smt.rs types
+
+% Warning: section delimited by "%%%%% NAME %%%%%" are used by non-ott tools to split the file
+% in dependent projects like read-dwarf. If you change them, check dependent project still build
+% In particular, all sections must be able to be independent ott files.
+
+
+embed {{ coq
+
+Require Import String.
+Require Import ZArith.
+
+Definition var_name : Set := Z.
+
+Definition register_name : Set := string.
+
+Inductive enum_id : Type :=
+| Mk_enum_id : nat -> enum_id.
+
+Inductive enum_ctor : Type :=
+| Mk_enum_ctor : nat -> enum_ctor.
+
+Inductive annot : Type :=
+| Mk_annot : annot.
+}}
+
+%%%%% terminals %%%%%
+
+% SMT symbolic variables
+metavar vvar ::=    {{ ocaml int }}
+                    {{ coq var_name }}
+                    {{ phantom }}
+                    {{ lex numeric }}
+                    {{ ocamllex 'v'['0'-'9']+ }}
+                    {{ ocamllex-of-string (function s -> int_of_string (String.sub s 1 (String.length s -1))) }}
+                    {{ pp-raw x = string (string_of_int x) }}
+                    {{ pp x = string ("v"^string_of_int x) }}
+
+
+% sail identifiers
+% register and field names, lexed with surrounding | | but represented without
+% (do we want to represent these as strings, or as indices into a symbol table?  the former is simpler for now)
+metavar name ::=    {{ ocaml string }}
+                    {{ coq register_name }}
+                    {{ phantom }}
+                    {{ lex alphanum }}
+                    {{ ocamllex '|'[^'|''\\']+'|' }}
+                    {{ ocamllex-of-string (function s -> String.sub s 1 (String.length s -2)) }}
+                    {{ pp x = !^(Printf.sprintf "|%s|" x) }}
+
+% enum type names of the form Enum  (can we later add the Sail string?)
+metavar enum_ty ::= {{ ocaml int  }}
+                    {{ coq enum_id }}
+                    {{ phantom }}
+                    {{ lex alphanum }}
+                    {{ ocamllex 'E''n''u''m'['0'-'9']+ }}
+                    {{ ocamllex-of-string (function s -> Scanf.sscanf s "Enum%d" (fun x -> x)) }}
+                    {{ pp-raw x = !^(Printf.sprintf "Enum(%d)" x) }}
+                    {{ pp x = !^(Printf.sprintf "Enum%d" x) }}
+
+% enum names of the form en_m   (can we later add the Sail string?)
+metavar enum ::=    {{ ocaml int * int }}
+                    {{ coq (enum_id*enum_ctor) }}
+                    {{ lex alphanum }}
+                    {{ ocamllex 'e'['0'-'9']+'_'['0'-'9']+ }}
+                    {{ ocamllex-of-string (function s -> Scanf.sscanf s "e%[0-9]_%[0-9]" (fun a b -> (int_of_string a, int_of_string b))) }}
+                    {{ pp-raw x = let (a,b) = x in !^(Printf.sprintf "%d/%d" b a) }}
+                    {{ pp x = let (a,b) = x in !^(Printf.sprintf "e%d_%d" a b) }}
+
+
+% % Just a plain natural - not currently distinguished from int because the
+% lexing of traces goes wrong
+% metavar nat, num_bytes ::=     {{ ocaml int }}
+%                     {{ coq nat }}
+%                     {{ phantom }}
+%                     {{ lex numeric }}
+%                     {{ ocamllex ['0'-'9']+ }}
+%                     {{ ocamllex-of-string int_of_string }}
+%                     {{ pp x = string (string_of_int x) }}
+%                     {{ pp-raw x = string (string_of_int x) }}
+
+
+% Just a plain integer
+metavar int, num_bytes ::=     {{ ocaml int }}
+                    {{ coq Z }}
+                    {{ phantom }}
+                    {{ lex numeric }}
+                    {{ ocamllex '-'?['0'-'9']+ }}
+                    {{ ocamllex-of-string int_of_string }}
+                    {{ pp x = string (string_of_int x) }}
+                    {{ pp-raw x = string (string_of_int x) }}
+
+
+% integer bitvectors. "bv-24" is the bitvector that represents 24  (the bitvector size comes from the type of the expression; it's not part of the value)
+metavar bvi ::=     {{ ocaml int }}
+                    {{ coq Z }}
+                    {{ phantom }}
+                    {{ lex numeric }}
+                    {{ ocamllex ('b''v''-'?['0'-'9']+) }}
+                    {{ ocamllex-of-string (function s -> int_of_string (String.sub s 2 (String.length s -2))) }}
+                    {{ pp-raw x = string (string_of_int x) }}
+                    {{ pp x = string ("bv"^string_of_int x) }}
+
+% bitvector literal
+% for Coq, leave as string for now so see in Coq what you see in the
+% trace; later turn into whatever choice of bitvector repr type
+metavar bv ::=      {{ ocaml string }}
+                    {{ coq string }}
+                    {{ phantom }}
+                    {{ lex numeric }}
+                    {{ ocamllex ('#''b'['0'-'1']+)|('#''x'['0'-'9''a'-'f''A'-'F']+) }}
+                    {{ pp x = string (x) }}
+                    {{ pp-raw x = string (x) }}
+
+% String literal
+metavar str ::=     {{ ocaml string }}
+                    {{ coq string }}
+                    {{ phantom }}
+                    {{ lex alphanum }}
+                    {{ ocamllex '\"'[^'\"']*'\"' }}
+                    {{ pp x = string (x) }}
+                    {{ pp-raw x = string (x) }}
+
+indexvar j,k ::=    {{ ocaml int }}
+                    {{ coq nat }}
+                    {{ phantom }}
+
+%%%%% parser locations %%%%%
+embed
+{{ ocaml
+
+type lrng =
+  | UnknownRng
+ (* | Int of string * lrng option *)
+  | Generated of lrng
+  | Range of Lexing.position * Lexing.position
+
+(* TODO figure out how to use that *)
+exception Parse_error_locn of lrng * string
+
+let pp_lpos p =
+  PPrint.string
+    Lexing.(
+      Printf.sprintf "File \"%s\", line %d, character %d" p.pos_fname p.pos_lnum
+        (p.pos_cnum - p.pos_bol))
+
+let rec pp_lrng l =
+  match l with
+  | UnknownRng -> PPrint.string "Unknown position"
+  | Generated l -> PPrint.prefix 2 1 (PPrint.string "Generated:") (pp_lrng l)
+  | Range (p1, p2) ->
+      Lexing.(
+        assert (p1.pos_fname = p2.pos_fname);
+        if p1.pos_lnum = p2.pos_lnum then begin
+          assert (p1.pos_bol == p2.pos_bol);
+          PPrint.string
+          @@ Printf.sprintf "File \"%s\", line %d, character %d-%d" p1.pos_fname p1.pos_lnum
+               (p1.pos_cnum - p1.pos_bol) (p2.pos_cnum - p2.pos_bol)
+        end
+        else
+          PPrint.string
+          @@ Printf.sprintf "File \"%s\", line %d-%d" p1.pos_fname p1.pos_lnum p2.pos_lnum)
+   (* | Int(s,lo) -> Printf.sprintf "Int: %s %s" s (match lo with Some l -> pp_lrng l | None -> "none") *)
+
+}}
+
+%%%%% annotations %%%%%
+
+% annotation are lrng by default can be something else. They are not pretty-printed
+
+grammar
+% TODO handle pretty printing of annotations
+annot :: '' ::=                         {{ phantom }}
+                                        {{ ocaml 'a }}
+                                        {{ coq annot }}
+                                        {{ com Annotation }}
+                                        {{ pp l = PPrint.empty }}
+                                        {{ pp-raw l = PPrint.empty }}
+
+
+%%%%% types %%%%%
+grammar
+ty :: 'Ty_' ::=
+  | Bool                                :: :: Bool
+  | (_ BitVec int )                     :: :: BitVec
+  | enum_ty                             :: :: Enum
+  | ( Array ty1 ty2 )                   :: :: Array
+
+
+%%%%% bool %%%%%
+grammar
+bool :: '' ::=                          {{ ocaml bool }} {{ coq bool }}
+                                        {{ phantom }}
+                                        {{ pp b = if b then string "true" else string "false" }}
+                                        {{ pp-raw b = if b then string "true" else string "false" }}
+  | true                                :: :: True {{ ocaml true }}   {{ coq true }}
+  | false                               :: :: False {{ ocaml false }} {{ coq false }}
+
+%%%%% operations %%%%%
+grammar
+
+% Operations that must be applied to exactly one element
+unop :: '' ::=
+  | not                                 :: :: Not
+  | bvnot                               :: :: Bvnot
+  | bvredand                            :: :: Bvredand
+  | bvredor                             :: :: Bvredor
+  | bvneg                               :: :: Bvneg
+  | (_ extract int int' )               :: :: Extract
+  | (_ zero_extend int )                :: :: ZeroExtend
+  | (_ sign_extend int )                :: :: SignExtend
+
+% Arithmetic operations that must be applied to exactly two elements of the same size
+bvarith :: '' ::=
+  | bvnand                              :: :: Bvnand
+  | bvnor                               :: :: Bvnor
+  | bvxnor                              :: :: Bvxnor
+  | bvsub                               :: :: Bvsub
+  | bvudiv                              :: :: Bvudiv
+  | bvudiv_i                            :: :: Bvudivi
+  | bvsdiv                              :: :: Bvsdiv
+  | bvsdiv_i                            :: :: Bvsdivi
+  | bvurem                              :: :: Bvurem
+  | bvsrem                              :: :: Bvsrem
+  | bvsmod                              :: :: Bvsmod
+  | bvshl                               :: :: Bvshl
+  | bvlshr                              :: :: Bvlshr
+  | bvashr                              :: :: Bvashr
+
+
+% Comparison operations, they must be applied to exactly two elements of the same size
+bvcomp :: '' ::=
+  | bvult                               :: :: Bvult
+  | bvslt                               :: :: Bvslt
+  | bvule                               :: :: Bvule
+  | bvsle                               :: :: Bvsle
+  | bvuge                               :: :: Bvuge
+  | bvsge                               :: :: Bvsge
+  | bvugt                               :: :: Bvugt
+  | bvsgt                               :: :: Bvsgt
+
+
+% Operations that must be applied to exactly two elements
+binop :: '' ::=
+  | =                                   :: :: Eq
+  | bvarith                             :: :: Bvarith
+  | bvcomp                              :: :: Bvcomp
+
+% Arithmetic operations that can be applied to 2 or more elements of the same size
+bvmanyarith :: '' ::=
+  | bvand                               :: :: Bvand
+  | bvor                                :: :: Bvor
+  | bvxor                               :: :: Bvxor
+  | bvadd                               :: :: Bvadd
+  | bvmul                               :: :: Bvmul
+
+% Operations that can be applied to 2 or more elements
+manyop :: '' ::=
+  | and                                 :: :: And
+  | or                                  :: :: Or
+  | bvmanyarith                         :: :: Bvmanyarith
+  | concat                              :: :: Concat
+
+
+%%%%% exp %%%%%
+grammar
+exp :: '' ::=                           {{ aux _ annot }}
+                                        {{ auxparam 'a }}
+                                        {{ menhir-start }}
+                                        {{ menhir-start-type (Isla_lang_ast.lrng) Isla_lang_ast.exp }}
+  | vvar                                :: :: Var
+  | bv                                  :: :: Bits
+  | bool                                :: :: Bool
+  | enum                                :: :: Enum
+  | ( unop exp )                        :: :: Unop
+  | ( binop exp1 exp2 )                 :: :: Binop
+  | ( manyop exp1 .. expj )             :: :: Manyop
+  | ( ite exp1 exp2 exp3 )              :: :: Ite
+
+
+%exp_val :: 'EV_' ::=                    {{ aux _ annot }}
+%                                        {{ auxparam 'a }}
+%                                        {{ menhir-start }}
+%                                        {{ menhir-start-type (Isla_lang_ast.lrng) Isla_lang_ast.exp }}
+%  | vvar                                :: :: Var
+%  | bv                                  :: :: Bits
+%  | bool                                :: :: Bool
+%  | enum                                :: :: Enum
+%  | ( unop exp_val )                        :: :: Unop
+%  | ( binop exp_val1 exp_val2 )                 :: :: Binop
+%  | ( manyop exp_val1 .. exp_valj )             :: :: Manyop
+%  | ( ite exp_val1 exp_val2 exp_val3 )              :: :: Ite
+
+%subrules
+%exp_val <:: exp
+%
+%substitutions
+%single exp vvar :: subst_exp
+
+
+
+
+
+%%%%% smt %%%%%
+grammar
+smt :: '' ::= {{auxparam 'a }}
+  | ( declare-const vvar ty )           :: :: DeclareConst
+  | ( define-const vvar exp )           :: :: DefineConst
+  | ( assert exp )                      :: :: Assert
+     % (define-enum n) is a sugar for
+     % (declare-datatypes () ((Enum_n en_0 en_1 ... en_(n-1) ))) but
+     % it can appear multiple times and the type must be declared only once
+  |  ( define-enum int )                :: :: DefineEnum
+
+
+
+%%%%% register values %%%%%
+
+% Those are the value stored inside isla symbolic value.
+% Those can contain value of type that can't appears in expressions like unit
+% or string.
+
+%%% TODO: JP: these are *patterns* ==> rename to avoid utter confusion?
+grammar
+valu, addr, data, rkind, wkind, bkind, ckind, opcode :: 'Val_' ::=
+ | vvar                                 :: :: Symbolic
+ | bool                                 :: :: Bool
+ | (_ bvi int )                         :: :: I
+ | bv                                   :: :: Bits
+ | enum                                 :: :: Enum
+ | str                                  :: :: String
+ | (_ unit )                            :: :: Unit
+ | ( name (_ unit))                     :: :: NamedUnit
+ | (_ vec valu1  ..  valuk  )           :: :: Vector  % TODO: fix syntax
+ | (_ list valu1 .. valuk )             :: :: List  % TODO: fix syntax
+ | (_ struct  selem1 .. selemk )        :: :: Struct
+ | (_ poison )                          :: :: Poison
+
+% structure element constructor: pair of field name and value
+selem :: '' ::=                         {{ phantom }}
+                                        {{ ocaml string * valu }}
+					{{ coq register_name * valu }}
+                                        {{ pp se = let (n,v) = se in
+                                                   parens (pp_name n ^^ blank 1 ^^ pp_valu v) }}
+                                        {{ pp-raw se = let (n,v) = se in
+                                                       pp_raw_name n ^^ !^"," ^^ pp_raw_valu v }}
+ | ( name valu )                        :: :: Struct_elem {{ ocaml (name,valu) }} {{ coq (name,valu) }}
+
+%%% TODO: JP: Ideally, (1) remove the values that don't occur (struct, etc.)
+%%% TODO: JP: (2) add a `Val` ctor to `exp`, and
+%%% TODO: JP: (3) remove redundant `exp` constructors
+%grammar
+%valu_concrete :: 'CVal_' ::=
+% | bool                                 :: :: Bool
+% | (_ bvi int )                         :: :: I
+% | bv                                   :: :: Bits
+% | enum                                 :: :: Enum
+% | str                                  :: :: String
+% | (_ unit )                            :: :: Unit
+% | ( name (_ unit))                     :: :: NamedUnit
+% | (_ vec valu1  ..  valuk  )           :: :: Vector  % TODO: fix syntax
+% | (_ list valu1 .. valuk )             :: :: List  % TODO: fix syntax
+% | (_ struct  selem1 .. selemk )        :: :: Struct
+% | (_ poison )                           :: :: Poison
+
+
+grammar
+% structure element constructor: pair of field name and value
+%selem_concrete :: 'C_' ::=                         {{ phantom }}
+%                                        {{ ocaml string * valu_concrete }}
+%					{{ coq register_name * valu }}
+%                                        {{ pp se = let (n,v) = se in
+%                                                   parens (pp_name n ^^ blank 1 ^^ pp_valu_concrete v) }}
+%                                        {{ pp-raw se = let (n,v) = se in
+%                                                       pp_raw_name n ^^ !^"," ^^ pp_raw_valu_concrete v }}
+% | ( name valu_concrete )                        :: :: Struct_elem {{ ocaml (name,valu_concrete) }} {{ coq (name,valu) }}
+%
+%subrules
+%valu_concrete <:: valu
+%selem_concrete <:: selem
+
+
+%%%%% events %%%%%
+grammar
+
+% TODO support vector register access.
+accessor :: '' ::=
+  | (_ field name )                                                             :: :: Field
+
+% TODO: change this to use lists explicitly in the event type, and change read-dwarf to match
+accessor_list :: '' ::=  {{ coq list accessor }}
+  | nil                                                                         :: :: Nil
+  | ( accessor1 .. accessork )                                                  :: :: Cons
+
+valu_option, tag_value :: '' ::= {{ ocaml valu option }} {{ coq option valu }}
+  | None                                                                        :: :: None
+  | Some valu                                                                   :: :: Some
+
+% The matching data type is `Event` in `isla-lib/src/smt.rs`
+% The order of constructors should match the one of the `Event` definition.
+% The pretty printing function that need to be parsed by this is
+% `write_events_with_opts` in `isla-lib/src/simplify.rs`
+event :: '' ::=  {{ aux _ annot }} {{auxparam 'a }}
+  |  smt                                                                        :: :: Smt
+  |  ( branch int str )                                                         :: :: Branch  {{ com Sail trace fork }}
+  |  ( read-reg name accessor_list valu )                                       :: :: ReadReg {{ com read value `valu` from register `name` }}
+  |  ( write-reg name accessor_list valu )                                      :: :: WriteReg {{ com write value `valu` to register `name` }}
+  |  ( read-mem valu rkind addr num_bytes tag_value )                                 :: :: ReadMem {{ com read value `valu` from memory address `addr`, with read kind `rkind`, byte width `byte_width`, and `tag_value` is the optional capability tag }}
+  |  ( write-mem vvar wkind addr data num_bytes tag_value )                           :: :: WriteMem {{ com write value `valu` to memory address `addr`, with write kind `wkind`, byte width `byte_width`, `tag_value` is the optional capability tag, and success flag `vvar` }}
+  |  ( branch-address addr )                                                    :: :: BranchAddress {{ com announce branch address `addr`, to induce ctrl dependency in the concurrency model }}
+  |  ( barrier bkind )                                                          :: :: Barrier {{ com memory barrier of kind `bkind` }}
+  |  ( cache-op ckind addr )                                                    :: :: CacheOp {{ com cache maintenance effect of kind `ckind`, at address `addr`, for data-cache clean etc. }}
+  |  ( mark-reg name str )                                                      :: :: MarkReg {{ com instrumentation to tell concurrency model to ignore certain dependencies (TODO: support marking multiple registers). Currently the str is ignore-edge or ignore-write }}
+  |  ( cycle )                                                                  :: :: Cycle {{ com instruction boundary }}
+  |  ( instr opcode )                                                           :: :: Instr {{ com records the instruction `opcode` that was fetched }}
+% we're not yet handling the semantics of sleeping etc.
+  |  ( sleeping vvar )                                                          :: :: Sleeping {{ com Arm sleeping predicate }}
+  |  ( wake-request )                                                           :: :: WakeRequest {{ com Arm wake request }}
+  |  ( sleep-request )                                                          :: :: SleepRequest {{ com Arm sleep request }}
+
+%%%%% traces %%%%%
+
+grammar
+
+trc :: '' ::=                 {{ menhir-start }}
+                              {{ auxparam 'a }}
+                              {{ menhir-start-type Isla_lang_ast.lrng Isla_lang_ast.trc }}
+                              {{ coq list event }}
+ | ( trace event1 .. eventj )                                                   :: :: Trace

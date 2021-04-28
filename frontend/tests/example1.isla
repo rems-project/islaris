@@ -1,0 +1,10 @@
+(trace
+  (declare-const v3428 (_ BitVec 64))
+  (define-const v3429 v3428)
+  (read-reg |R30| nil v3429)
+  (define-const v3435 v3429)
+  (define-const v3436 v3435)
+  (branch-address v3436)
+  (define-const v3437 v3435)
+  (write-reg |_PC| nil v3437)
+  (write-reg |__PC_changed| nil true))

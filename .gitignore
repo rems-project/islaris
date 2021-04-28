@@ -1,12 +1,4 @@
-*.vo
-*.vos
-*.vok
-*.vio
-*.v.d
-.coqdeps.d
-*.glob
 *.cache
-*.aux
 \#*\#
 .\#*
 *~
@@ -17,9 +9,6 @@
 .env
 builddep/
 _CoqProject.*
-Makefile.coq
-Makefile.coq.conf
-.Makefile.coq.d
-Makefile.package.*
-.Makefile.package.*
 _opam/
+_build/
+.merlin

@@ -13,7 +13,15 @@ depends: [
   "coq" { (>= "8.12.2" & < "8.13~") | (= "dev") }
   "refinedc" { (= "dev.2021-03-31.0.079c2b54") | (= "dev") }
   "coq-record-update" { (= "0.2.0") }
+  "cmdliner" {>= "1.0.4"}
+  "pprint"
+  "dune" {>= "2.7.0"}
+  "pprint" {>= "20171003"}
+  "menhir" {build}
+  "ott" {>= "0.31" & build}
 ]
 
-build: [make "-j%{jobs}%"]
-install: [make "install"]
+build: [
+  ["dune" "subst"] {pinned}
+  ["dune" "build" "-p" name "-j" jobs]
+]
