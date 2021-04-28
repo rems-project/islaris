@@ -621,6 +621,17 @@ Definition bv_to_little m n (z : Z) : list (bv n) :=
 Definition bv_of_little n (bs : list (bv n)) : Z :=
   Z_of_little (Z.of_N n) (bv_unsigned <$> bs).
 
+(** * Operations on [bv n] and Z *)
+Definition bv_add_Z {n} (x : bv n) (y : Z) : bv n :=
+  bv_of_Z n (Z.add (bv_unsigned x) y).
+Definition bv_sub_Z {n} (x : bv n) (y : Z) : bv n :=
+  bv_of_Z n (Z.sub (bv_unsigned x) y).
+Definition bv_mul_Z {n} (x : bv n) (y : Z) : bv n :=
+  bv_of_Z n (Z.mul (bv_unsigned x) y).
+
+Definition bv_seq {n} (x : bv n) (len : Z) : list (bv n) :=
+  (bv_add_Z x) <$> seqZ 0 len.
+
 (** * Lemmas about [bv n] operations *)
 
 (** ** Unfolding lemmas for the operations. *)
@@ -781,6 +792,26 @@ Section unfolding.
     pose proof bv_half_modulus_le_mono n (n + z). lia.
   Qed.
 
+  Lemma bv_add_Z_unsigned b z :
+    bv_unsigned (bv_add_Z b z) = bv_wrap n (bv_unsigned b + z).
+  Proof. done. Qed.
+  Lemma bv_add_Z_signed b z :
+    bv_signed (bv_add_Z b z) = bv_swrap n (bv_signed b + z).
+  Proof. unfold bv_add_Z. rewrite bv_of_Z_signed. bv_wrap_simplify_solve. Qed.
+
+  Lemma bv_sub_Z_unsigned b z :
+    bv_unsigned (bv_sub_Z b z) = bv_wrap n (bv_unsigned b - z).
+  Proof. done. Qed.
+  Lemma bv_sub_Z_signed b z :
+    bv_signed (bv_sub_Z b z) = bv_swrap n (bv_signed b - z).
+  Proof. unfold bv_sub_Z. rewrite bv_of_Z_signed. bv_wrap_simplify_solve. Qed.
+
+  Lemma bv_mul_Z_unsigned b z:
+    bv_unsigned (bv_mul_Z b z) = bv_wrap n (bv_unsigned b * z).
+  Proof. done. Qed.
+  Lemma bv_mul_Z_signed b z :
+    bv_signed (bv_mul_Z b z) = bv_swrap n (bv_signed b * z).
+  Proof. unfold bv_mul_Z. rewrite bv_of_Z_signed. bv_wrap_simplify_solve. Qed.
 End unfolding.
 
 (** ** Properties of bv operations *)
