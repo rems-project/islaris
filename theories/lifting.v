@@ -330,6 +330,27 @@ Section lifting.
     iFrame.
   Qed.
 
+  Lemma wp_assert es ann e:
+    WPexp e {{ v, ∃ b, ⌜v = Val_Bool b⌝ ∗ (⌜b = true⌝ -∗ WPasm es) }} -∗
+    WPasm (Smt (Assert e) ann :: es).
+  Proof.
+    rewrite wp_exp_unfold. iDestruct 1 as (v Hv b ?) "Hcont". subst v.
+    rewrite !wp_asm_unfold.
+    iIntros ([???]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "Hctx".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iSplit. {
+      iPureIntro. destruct b.
+      all: eexists _, _, _, _; econstructor; [done |by econstructor| done].
+    }
+    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
+    inv_seq_step.
+    iFrame; iSplit; [|done].
+    destruct b => /=; last by iApply wp_value.
+    iApply "Hcont"; [done|done|done|iFrame].
+  Qed.
+
 End lifting.
 
 Section exp_lifting.

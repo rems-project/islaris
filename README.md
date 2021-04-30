@@ -37,7 +37,7 @@ CPU cores.
   - How to do this:
     - Add a new flag to isla to disable the reset (Brian)
     - Play around with different default values for the registers with reset disabled (Angus)
-- [ ] Add assert instruction to program logic (Rodolphe)
+- [X] Add assert instruction to program logic (Rodolphe)
 - [ ] More work on bitvectors (Michael)
   - Performance improvements
 - [ ] Try stating and proving the receptiveness property for instructions (Michael)
