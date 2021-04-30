@@ -288,7 +288,7 @@ Section lifting.
   Qed.
 
   Lemma wp_declare_const_bv v es ann b:
-    (∀ n Heq, WPasm ((subst_event v (Val_Bits (BV b n Heq))) <$> es)) -∗
+    (∀ (n : bv b), WPasm ((subst_event v (Val_Bits n)) <$> es)) -∗
     WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
   Proof.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.

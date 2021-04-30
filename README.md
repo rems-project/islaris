@@ -22,9 +22,25 @@ CPU cores.
 
 # TODOs
 
-- [ ] Write frontend that generates isla traces in Coq (Rodolphe)
-- [ ] Add memory model and try out memory instructions (Angus)
+- [ ] Look at exception vectors (Angus / Peter)
+  - Looking at the code
+    - https://github.com/rems-project/linux-pkvm-verif/blob/pkvm/arch/arm64/kernel/hyp-stub.S
+      - trivial, good for starting?!
+    - https://github.com/rems-project/linux-pkvm-verif/blob/pkvm/arch/arm64/kvm/hyp/nvhe/hyp-init.S
+    - https://github.com/rems-project/linux-pkvm-verif/blob/pkvm/arch/arm64/kvm/hyp/nvhe/host.S
+      - more complex than the ones that Wedson looked at
+  - Looking at Wedson's thesis
+- [ ] Look at traces generated for memory instructions (e.g. str, ldr)
+      and try to prove a handwritten spec for a single str / ldr (Angus)
+      - as part of this: figure out precondition for "normal" usage
+- [ ] Figure out a sensible replacement for the default reset
+  - How to do this:
+    - Add a new flag to isla to disable the reset (Brian)
+    - Play around with different default values for the registers with reset disabled (Angus)
+- [ ] Add assert instruction to program logic (Rodolphe)
 - [ ] More work on bitvectors (Michael)
+  - Performance improvements
 - [ ] Try stating and proving the receptiveness property for instructions (Michael)
 - [ ] Tree-shaped traces (???)
-- [ ] Look at exception vectors (currently blocked on other pieces)
+- [X] Write frontend that generates isla traces in Coq (Rodolphe)
+- [X] Add memory model and try out memory instructions (Angus)

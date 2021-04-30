@@ -3,16 +3,24 @@ From isla Require Export lifting.
 From refinedc.lithium Require Export lithium tactics.
 Set Default Proof Using "Type".
 
+(** * Simplification and normalization hints *)
+Global Instance simpl_val_bits_bv_to_bvn n (b1 b2 : bv n) :
+  SimplBoth (Val_Bits b1 = Val_Bits b2) (b1 = b2).
+Proof. split; naive_solver. Qed.
+
+Lemma ite_bits n b (n1 n2 : bv n) :
+  ite b (Val_Bits n1) (Val_Bits n2) = Val_Bits (ite b n1 n2).
+Proof. by destruct b. Qed.
+Hint Rewrite ite_bits : lithium_rewrite.
+
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
 Ltac normalize_tac ::= normalize_autorewrite.
 
-Definition normalize_valu (v v' : valu) : Prop :=
-  v = v'.
-Typeclasses Opaque normalize_valu.
-Arguments normalize_valu : simpl never.
+Definition let_bind_hint {A B} (x : A) (f : A → B) : B :=
+  f x.
 
 Section instances.
   Context `{!islaG Σ} `{!threadG}.
@@ -109,17 +117,16 @@ Section instances.
   Proof. apply: wp_branch_address. Qed.
 
   Lemma li_wp_declare_const_bv v es ann b:
-    (∀ n Heq, WPasm ((subst_event v (Val_Bits (BV b n Heq))) <$> es)) -∗
+    (∀ (n : bv b), WPasm ((subst_event v (Val_Bits n)) <$> es)) -∗
     WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
   Proof. apply: wp_declare_const_bv. Qed.
 
   Lemma li_wp_define_const n es ann e:
-    WPexp e {{ v, ∃ v', ⌜normalize_valu v v'⌝ ∗ WPasm ((subst_event n v') <$> es) }} -∗
+    WPexp e {{ v, let_bind_hint v (λ v, WPasm ((subst_event n v) <$> es)) }} -∗
     WPasm (Smt (DefineConst n e) ann :: es).
   Proof.
-    iIntros "Hexp". iApply wp_define_const.
-    iApply (wpe_wand with "Hexp"). rewrite /normalize_valu.
-    iIntros (?). by iDestruct 1 as (? ->) "?".
+    iIntros "Hexp". iApply wp_define_const. unfold let_bind_hint.
+    iApply (wpe_wand with "Hexp"). iIntros (?) "$".
   Qed.
 
   Lemma li_wpe_val v Φ ann:
@@ -148,6 +155,32 @@ Section instances.
     WPexp (Ite e1 e2 e3 ann) {{ Φ }}.
   Proof. apply: wpe_ite. Qed.
 End instances.
+
+(* TODO: upstream? *)
+Ltac liLetBindHint :=
+  idtac;
+  match goal with
+  | |- envs_entails ?Δ (let_bind_hint ?x ?f) =>
+    let H := fresh "LET" in
+    lazymatch x with
+    | Val_Bits (bv_to_bvn ?y) =>
+      lazymatch y with
+      | _ _ =>
+        pose (H := y);
+        change (envs_entails Δ (f (Val_Bits (bv_to_bvn H)))); cbn beta
+      | _ => (* No application, probably just another let binding. Don't create a new one.  *)
+        change (envs_entails Δ (f x)); cbn beta
+      end
+    | Val_Bool ?y =>
+      lazymatch y with
+      | _ _ =>
+        pose (H := y);
+        change (envs_entails Δ (f (Val_Bool H))); cbn beta
+      | _ => (* No application, probably just another let binding. Don't create a new one.  *)
+        change (envs_entails Δ (f x)); cbn beta
+      end
+    end
+  end.
 
 Ltac liAAsm :=
   lazymatch goal with
@@ -189,4 +222,5 @@ Ltac liAStep :=
     liAAsm
   | liAExp
   | liStep
+  | liLetBindHint
 ]; liSimpl.
