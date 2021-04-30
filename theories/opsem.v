@@ -114,6 +114,7 @@ Inductive trace_label : Set :=
 | LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : N) (tag : valu_option)
 | LBranchAddress (v : valu)
 | LDone (next : trc)
+| LAssert (b : bool)
 .
 
 Inductive trace_step : trc → option trace_label → trc → Prop :=
@@ -124,9 +125,9 @@ Inductive trace_step : trc → option trace_label → trc → Prop :=
 | DefineConstS x e v ann es:
     eval_exp e = Some v ->
     trace_step (Smt (DefineConst x e) ann :: es) None (subst_event x v <$> es)
-| AssertS e ann es:
-    eval_exp e = Some (Val_Bool true) ->
-    trace_step (Smt (Assert e) ann :: es) None es
+| AssertS e b ann es:
+    eval_exp e = Some (Val_Bool b) ->
+    trace_step (Smt (Assert e) ann :: es) (Some (LAssert b)) es
 | ReadRegS r al v ann es:
     trace_step (ReadReg r al v ann :: es) (Some (LReadReg r al v)) es
 | WriteRegS r al v ann es:
@@ -280,8 +281,12 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       | Some trcs => θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧ es ∈ trcs ∧ κ' = None
       | None => κ' = Some (SInstrTrap pc) ∧ θ' = θ <| seq_nb_state := true|> <| seq_regs := regs' |>
       end
-     end →
-     seq_step θ σ (option_list κ') θ' σ' []
+    | Some (LAssert b) =>
+      σ' = σ ∧
+      κ' = None ∧
+      θ' = θ <| seq_trace := t' |> <| seq_nb_state := negb b|>
+    end →
+    seq_step θ σ (option_list κ') θ' σ' []
 .
 
 Definition seq_module_no_ub  : module seq_label := {|

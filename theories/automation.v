@@ -129,6 +129,11 @@ Section instances.
     iApply (wpe_wand with "Hexp"). iIntros (?) "$".
   Qed.
 
+  Lemma li_wp_assert es ann e:
+    WPexp e {{ v, ∃ b, ⌜v = Val_Bool b⌝ ∗ (⌜b = true⌝ -∗ WPasm es) }} -∗
+    WPasm (Smt (Assert e) ann :: es).
+  Proof. apply: wp_assert. Qed.
+
   Lemma li_wpe_val v Φ ann:
     Φ v -∗
     WPexp (Val v ann) {{ Φ }}.
@@ -194,6 +199,7 @@ Ltac liAAsm :=
       | BranchAddress _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch_address _ _ _) _)
       | Smt (DeclareConst _ (Ty_BitVec _)) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bv _ _ _ _) _)
       | Smt (DefineConst _ _) _ => notypeclasses refine (tac_fast_apply (li_wp_define_const _ _ _ _) _)
+      | Smt (Assert _) _ => notypeclasses refine (tac_fast_apply (li_wp_assert _ _ _) _)
       end
     | ?def => first [
                  iEval (unfold def)
