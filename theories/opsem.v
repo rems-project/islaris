@@ -9,7 +9,7 @@ Typeclasses Opaque ite.
 
 Fixpoint subst_valu (n : var_name) (z : valu) (v : valu) {struct v} : valu :=
   match v with
-  | Val_Symbolic x => if bool_decide (n = x) then z else Val_Symbolic x
+  | Val_Symbolic x => if Z.eq_dec n x then z else Val_Symbolic x
   | Val_Bool b => Val_Bool b
   | Val_I x i => Val_I x i
   | Val_Bits bs => Val_Bits bs

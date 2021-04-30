@@ -9,11 +9,6 @@ Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
 Ltac normalize_tac ::= normalize_autorewrite.
 
-Definition normalize_valu (v v' : valu) : Prop :=
-  v = v'.
-Typeclasses Opaque normalize_valu.
-Arguments normalize_valu : simpl never.
-
 Section instances.
   Context `{!islaG Σ} `{!threadG}.
 
@@ -114,12 +109,10 @@ Section instances.
   Proof. apply: wp_declare_const_bv. Qed.
 
   Lemma li_wp_define_const n es ann e:
-    WPexp e {{ v, ∃ v', ⌜normalize_valu v v'⌝ ∗ WPasm ((subst_event n v') <$> es) }} -∗
+    WPexp e {{ v, WPasm ((subst_event n v) <$> es) }} -∗
     WPasm (Smt (DefineConst n e) ann :: es).
   Proof.
-    iIntros "Hexp". iApply wp_define_const.
-    iApply (wpe_wand with "Hexp"). rewrite /normalize_valu.
-    iIntros (?). by iDestruct 1 as (? ->) "?".
+    iIntros "Hexp". iApply wp_define_const. done.
   Qed.
 
   Lemma li_wpe_val v Φ ann:
@@ -147,7 +140,40 @@ Section instances.
        ∃ b, ⌜v1 = Val_Bool b⌝ ∗ Φ (ite b v2 v3)}} }} }} -∗
     WPexp (Ite e1 e2 e3 ann) {{ Φ }}.
   Proof. apply: wpe_ite. Qed.
+
+  Lemma tac_subst_event `{!islaG Σ} `{!threadG} Δ n v es es':
+    subst_event n v <$> es = es' →
+    envs_entails Δ (WPasm es') →
+    envs_entails Δ (WPasm (subst_event n v <$> es)).
+  Proof. move => ->. done. Qed.
+
 End instances.
+
+(* TODO: upstream this to Lithium *)
+Ltac unfold_i2p_P :=
+  match goal with
+  | |- envs_entails _ (i2p_P ?P) =>
+    let e := get_head P in
+    unfold i2p_P, e
+  end.
+
+Ltac extensible_judgment_hook ::= unfold_i2p_P.
+
+(* TODO: upstream *)
+Ltac liAnd ::=
+  lazymatch goal with
+  | |- envs_entails _ (bi_and ?P _) =>
+    notypeclasses refine (tac_do_split _ _ _ _ _)
+  | |- envs_entails ?Δ ([∧ list] t∈?x::?xs, @?Φ t) =>
+    change (envs_entails Δ (Φ x ∧ [∧ list] t∈xs, Φ t))
+  | |- envs_entails ?Δ ([∧ list] t∈[], _) =>
+    change (envs_entails Δ True)
+  | |- envs_entails _ ([∧ map] _↦_∈<[_:=_]>_, _) =>
+    notypeclasses refine (tac_fast_apply (tac_big_andM_insert _ _ _ _) _)
+  | |- envs_entails _ ([∧ map] _↦_∈∅, _) =>
+    notypeclasses refine (tac_fast_apply (tac_big_andM_empty _) _)
+  end.
+
 
 Ltac liAAsm :=
   lazymatch goal with
@@ -162,6 +188,8 @@ Ltac liAAsm :=
       | Smt (DeclareConst _ (Ty_BitVec _)) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bv _ _ _ _) _)
       | Smt (DefineConst _ _) _ => notypeclasses refine (tac_fast_apply (li_wp_define_const _ _ _ _) _)
       end
+    | (subst_event _ _ <$> _) =>
+      notypeclasses refine (tac_subst_event _ _ _ _ _ _ _); [vm_compute; exact eq_refl|]
     | ?def => first [
                  iEval (unfold def)
                | fail "liAAsm: unknown asm" es
@@ -182,6 +210,7 @@ Ltac liAExp :=
     end
   end.
 
+Ltac liASimpl := idtac.
 
 Ltac liAStep :=
  liEnforceInvariantAndUnfoldInstantiatedEvars;
@@ -189,4 +218,4 @@ Ltac liAStep :=
     liAAsm
   | liAExp
   | liStep
-]; liSimpl.
+]; liASimpl.

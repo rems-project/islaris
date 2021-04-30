@@ -211,9 +211,9 @@ Definition test_state_global := {|
 
 Definition test_state_spec : list seq_label := [ SInstrTrap ([BV{64} 0x0000000010300008]) ].
 
-Global Instance simpl_normalize_valu_end v1 v2:
-  SimplAndUnsafe true (normalize_valu v1 v2) (λ T, v1 = v2 ∧ T) | 1000.
-Proof. move => ?. done. Qed.
+(* Global Instance simpl_normalize_valu_end v1 v2: *)
+  (* SimplAndUnsafe true (normalize_valu v1 v2) (λ T, v1 = v2 ∧ T) | 1000. *)
+(* Proof. move => ?. done. Qed. *)
 
 Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some [trc_bl_0x100]) -∗
@@ -232,9 +232,15 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
 Proof.
   iStartProof.
   repeat liAStep; liShow.
+  simpl.
+  repeat liAStep; liShow.
+  (*
+  repeat liAStep; liShow.
   Unshelve.
   all: done.
 Qed.
+   *)
+  Admitted.
 
 Lemma test_state_adequate κs t2 σ2 n:
   nsteps n (initial_local_state <$> [test_state_local.(seq_regs)],
@@ -574,6 +580,174 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   WPasm [].
 Proof.
   iStartProof.
+  Ltac liASimpl ::= unfold foldr.
+  (* cbn [subst_event list_fmap fmap subst_smt subst_valu subst_exp Z.eq_dec Z_rec Z_rect sumbool_rec sumbool_rect Pos.eq_dec positive_rec positive_rect foldr]. *)
+  Ltac liSideCond ::=
+    idtac;
+  lazymatch goal with
+  | |- ?P ∧ ?Q => first [
+    let P' := eval simpl in P in
+    progress change_no_check (P' ∧ Q)
+    |
+    lazymatch P with
+    | shelve_hint _ => split; [ unfold shelve_hint; shelve |]
+    | _ => first [ progress normalize_goal_and |
+    lazymatch P with
+    | context [protected _] => first [
+        split; [ solve_protected_eq |]; unfold_instantiated_evars
+      | notypeclasses refine (apply_simpl_and _ _ _ _ _); [ solve [refine _] |]; simpl;
+        lazymatch goal with
+        | |- true = true -> _ => move => _
+        | _ => fail "could not simplify goal with evar"
+        end
+      ]
+    | _ => split; [ first [ fast_done | shelve ] | ]
+    end ] end ]
+  | _ => fail "do_side_cond: unknown goal"
+  end.
+  do 100 liAStep; liShow.
+  Set Ltac Profiling.
+  Reset Ltac Profile.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   (* TODO: VM compute here is not a good idea as it probably unfolds bv_add. *)
+
+   set H := ((bv_add (bv_add (bv_zero_extend 64 [BV{64} n1]) [BV{128} 18446744073709551615]) [BV{128} 1])).
+
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+   liAStep; liShow.
+.
+  Show Ltac Profile.
+  liAStep; liShow.
+  liAStep; liShow.
+
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+ Ltac Profile.
+  unfold foldr.
+  repeat liAStep; liShow.
+  unfold foldr.
+  repeat liAStep; liShow.
+  unfold foldr.
+  Set Nested Proofs Allowed.
+  Import environments.
+  Lemma tac_subst_event `{!islaG Σ} `{!threadG} Δ n v es es':
+    subst_event n v <$> es = es' →
+    envs_entails Δ (WPasm es') →
+    envs_entails Δ (WPasm (subst_event n v <$> es)).
+  Proof. move => ->. done. Qed.
+
+  lazymatch goal with
+  | |- envs_entails ?Δ (WPasm ?es) =>
+    lazymatch es with
+    | (subst_event _ _ <$> _) =>
+      notypeclasses refine (tac_subst_event _ _ _ _ _ _ _); [vm_compute; exact eq_refl|]
+    end
+  end.
+
+
+    do 100 liAStep; liShow.
+  Show Ltac Profile.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  cbn [foldr].
+  | |- context =>
+  unfold bool_decide, decide_rel, Z_eq_dec, Z.eq_dec, Z_rec, Z_rect, sumbool_rec, sumbool_rect, Pos.eq_dec, positive_rec, positive_rect.
+  cbn [sumbool_rec sumbool_rect Pos.eq_dec positive_rec positive_rect].
+  unfold bool_decide, decide_rel, Z_eq_dec, Z.eq_dec, Z_rec, Z_rect, sumbool_rec, sumbool_rect, Pos.eq_dec, positive_rec, positive_rect.
+  Set Printing Implicit.
+  simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
+  repeat liAStep; liShow. simpl.
   do 100 liAStep; liShow.
   do 100 liAStep; liShow.
   liAStep; liShow.
@@ -581,7 +755,11 @@ Proof.
   liAStep; liShow.
   liAStep; liShow.
   liAStep; liShow.
-  liAStep; liShow.
+  Set Ltac Profiling.
+  Reset Ltac Profile.
+  liAStep.
+  Show Ltac Profile.
+  simpl.
   liAStep; liShow.
   liAStep; liShow.
   liAStep; liShow.
