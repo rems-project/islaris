@@ -419,6 +419,24 @@ Definition trc_b_0x8 : trc := [
   WriteReg "__PC_changed" nil (Val_Bool true) Mk_annot
 ].
 
+(* trace of bl 0x100: (at address 0x0000000010300010)
+(trace
+  (read-reg |_PC| nil #x0000000010300010)
+  (write-reg |R30| nil #x0000000010300014)
+  (read-reg |_PC| nil #x0000000010300010)
+  (branch-address #x0000000010300110)
+  (write-reg |_PC| nil #x0000000010300110)
+  (write-reg |__PC_changed| nil true))
+*)
+Definition trc_bl_0x100' : trc := [
+  ReadReg "_PC" nil (Val_Bits [BV{64} 0x0000000010300010]) Mk_annot;
+  WriteReg "R30" nil (Val_Bits [BV{64} 0x0000000010300014]) Mk_annot;
+  ReadReg "_PC" nil (Val_Bits [BV{64} 0x0000000010300010]) Mk_annot;
+  BranchAddress (Val_Bits [BV{64} 0x0000000010300110]) Mk_annot;
+  WriteReg "_PC" nil (Val_Bits [BV{64} 0x0000000010300110]) Mk_annot;
+  WriteReg "__PC_changed" nil (Val_Bool true) Mk_annot
+].
+
 (*
 0x0000000010300000: cmp x1, 0
 0x0000000010300004: bne 0xc  --\
@@ -459,7 +477,7 @@ Definition test_state2_global  := {|
     <[[BV{64} 0x0000000010300004] := trc_bne_0xc ]> $
     <[[BV{64} 0x0000000010300008] := [trc_mov_x0_1]]> $
     <[[BV{64} 0x000000001030000c] := [trc_b_0x8]]> $
-    <[[BV{64} 0x0000000010300010] := [trc_bl_0x100]]> $
+    <[[BV{64} 0x0000000010300010] := [trc_bl_0x100']]> $
     <[[BV{64} 0x0000000010300014] := [trc_mov_OUT_x0]]> $
 
     <[[BV{64} 0x0000000010300110] := [trc_mov_w0_0]]> $
@@ -475,8 +493,9 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   instr 0x0000000010300004 (Some trc_bne_0xc ) -∗
   instr 0x0000000010300008 (Some [trc_mov_x0_1]) -∗
   instr 0x000000001030000c (Some [trc_b_0x8]) -∗
-  instr 0x0000000010300010 (Some [trc_bl_0x100]) -∗
+  instr 0x0000000010300010 (Some [trc_bl_0x100']) -∗
   instr 0x0000000010300014 (Some [trc_mov_OUT_x0]) -∗
+  instr 0x0000000010300018 None -∗
   instr 0x0000000010300110 (Some [trc_mov_w0_0]) -∗
   instr 0x0000000010300114 (Some [trc_ret]) -∗
 
@@ -498,14 +517,14 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
           ("Z", Val_Bits [BV{1} 0]); ("BTYPE", Val_Poison);
           ("SSBS", Val_Poison); ("T", Val_Poison); ("J", Val_Poison);
           ("V", Val_Bits [BV{1} 0]); ("DIT", Val_Bits [BV{1} 0])]) -∗
-  spec_trace test_state_spec -∗
+  spec_trace test_state2_spec -∗
   WPasm [].
 Proof.
   iStartProof.
   repeat liAStep; liShow.
-
-
-Abort.
+  Unshelve.
+  all: done.
+Qed.
 
 
 (* Lemma test_state2_trace x1 : *)
