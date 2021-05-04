@@ -9,6 +9,9 @@ let pp_Z ff i =
   let (l, r) = if i < 0 then ("(", ")") else ("", "") in
   Format.fprintf ff "%s%i%s%%Z" l i r
 
+let pp_str ff s =
+  Format.fprintf ff "%S" (String.sub s 1 (String.length s - 2))
+
 let pp_list pp_elt ff l =
   let pp fmt = Format.fprintf ff fmt in
   let first = ref true in
@@ -33,23 +36,38 @@ let pp_var_name ff i =
 let pp_register_name ff r =
   Format.fprintf ff "%S" r
 
+let remove_zeroes digits =
+  let len = String.length digits in
+  let rec first_non_zero i =
+    if i < len && digits.[i] = '0' then first_non_zero (i+1) else i
+  in
+  let i = first_non_zero 0 in
+  if i < len then String.sub digits i (len - i) else "0"
+
+let bin_to_hex digits =
+  let len = String.length digits in
+  let digits = String.make (4 - len mod 4) '0' ^ digits in
+  let build i =
+    let binary = "0b" ^ String.sub digits (i * 4) 4 in
+    let n = int_of_string binary in
+    (Printf.sprintf "%x" n).[0]
+  in
+  String.init (String.length digits / 4) build
+
 let pp_bv ff s =
   let pp fmt = Format.fprintf ff fmt in
-  let (n, z) =
+  let (nb_bits, hex_digits) =
     try
       let len = String.length s in
-      let z = int_of_string ("0" ^ String.sub s 1 (len - 1)) in
-      let n =
-        match s.[1] with
-        | 'b' -> len - 2
-        | 'x' -> 8 * (len - 2)
-        | _   -> failwith "not a valid bitvector"
-      in
-      (n, z)
+      let digits = String.sub s 2 (len - 2) in
+      match s.[1] with
+      | 'b' -> (len - 2      , bin_to_hex digits)
+      | 'x' -> (4 * (len - 2), digits           )
+      | _   -> failwith "not a valid bitvector"
     with Invalid_argument(msg) | Failure(msg) ->
       panic "Error while converting bitvector %S: %s." s msg
   in
-  pp "[BV{%a} 0x%x%%Z]" pp_N n z
+  pp "[BV{%a} 0x%s%%Z]" pp_N nb_bits (remove_zeroes hex_digits)
 
 let pp_accessor ff a =
   let pp fmt = Format.fprintf ff fmt in
@@ -161,7 +179,7 @@ let rec pp_valu ff v =
   | Ast.Val_Enum(e)      ->
       pp "Val_Enum %a" pp_enum e
   | Ast.Val_String(s)    ->
-      pp "Val_String %S" s
+      pp "Val_String %a" pp_str s
   | Ast.Val_Unit         ->
       pp "Val_Unit"
   | Ast.Val_NamedUnit(r) ->
@@ -216,7 +234,7 @@ let pp_event ff e =
   | Ast.Smt(s,a)                   ->
       pp "Smt (%a) %a" pp_smt s pp_lrng a
   | Ast.Branch(i,s,a)              ->
-      pp "Branch %a %S %a" pp_Z i s pp_lrng a
+      pp "Branch %a %a %a" pp_Z i pp_str s pp_lrng a
   | Ast.ReadReg(r,l,v,a)           ->
       pp "ReadReg %a %a (%a) %a" pp_register_name r pp_accessor_list l
         pp_valu v pp_lrng a
@@ -238,7 +256,7 @@ let pp_event ff e =
   | Ast.CacheOp(v1,v2,a)           ->
       pp "CacheOp (%a) (%a) %a" pp_valu v1 pp_valu v2 pp_lrng a
   | Ast.MarkReg(s1,s2,a)           ->
-      pp "MarkReg %S %S %a" s1 s2 pp_lrng a
+      pp "MarkReg %S %a %a" s1 pp_str s2 pp_lrng a
   | Ast.Cycle(a)                   ->
       pp "Cycle %a" pp_lrng a
   | Ast.Instr(v,a)                 ->

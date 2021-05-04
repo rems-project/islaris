@@ -1,0 +1,12 @@
+(trace
+  (read-reg |R| nil #x0)
+  (read-reg |R| nil #x00000000)
+  (read-reg |R| nil #x1)
+  (read-reg |R| nil #xdeadbeef)
+  (read-reg |R| nil #x0000beef)
+  (read-reg |R| nil #b0)
+  (read-reg |R| nil #b1)
+  (read-reg |R| nil #b01001001)
+  (read-reg |R| nil #b01001001001001)
+  (read-reg |R| nil #b010)
+)
