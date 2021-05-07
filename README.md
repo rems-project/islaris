@@ -22,6 +22,7 @@ CPU cores.
 
 # TODOs
 
+- [ ] Figure out how to talk about post condition of some asm code (Michael)
 - [ ] Look at exception vectors (Angus / Peter)
   - Looking at the code
     - https://github.com/rems-project/linux-pkvm-verif/blob/pkvm/arch/arm64/kernel/hyp-stub.S
