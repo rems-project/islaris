@@ -194,6 +194,22 @@ Section instances.
     WPasm (Smt (Assert e) ann :: es).
   Proof. apply: wp_assert. Qed.
 
+  Lemma li_wp_write_mem len n kind a (vnew : bv n) tag ann es:
+    (∃ (vold : bv n),
+    ⌜n = (8*len)%N⌝ ∗
+    a ↦ₘ vold ∗
+    (a ↦ₘ vnew -∗ WPasm es)) -∗
+    WPasm (WriteMem (Val_Bool true) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
+  Proof. iDestruct 1 as (?) "[% [Hvold Hcont]]". by iApply (wp_write_mem with "Hvold Hcont"). Qed.
+  
+  Lemma li_wp_read_mem len n kind a vread tag ann es:
+    (∃ vmem,
+    ⌜n = (8 * len)%N⌝ ∗
+    a ↦ₘ vmem ∗
+    (⌜vread = vmem⌝ -∗ a ↦ₘ vmem -∗ WPasm es)) -∗
+    WPasm (ReadMem (Val_Bits (BVN n vread)) kind (Val_Bits (BVN 64 a)) len tag ann :: es).
+  Proof. iDestruct 1 as (?) "[% [Hmem Hcont]]". by iApply (wp_read_mem with "Hmem Hcont"). Qed.
+  
   Lemma li_wpe_val v Φ ann:
     Φ v -∗
     WPexp (Val v ann) {{ Φ }}.
@@ -257,6 +273,8 @@ Ltac liAAsm :=
       | ReadReg _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg _ _ _ _ _) _)
       | WriteReg _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg _ _ _ _ _) _)
       | BranchAddress _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch_address _ _ _) _)
+      | ReadMem _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_mem _ _ _ _ _ _ _ _) _)
+      | WriteMem _ _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_mem _ _ _ _ _ _ _ _) _)
       | Smt (DeclareConst _ (Ty_BitVec _)) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bv _ _ _ _) _)
       | Smt (DefineConst _ _) _ => notypeclasses refine (tac_fast_apply (li_wp_define_const _ _ _ _) _)
       | Smt (Assert _) _ => notypeclasses refine (tac_fast_apply (li_wp_assert _ _ _) _)

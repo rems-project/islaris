@@ -733,3 +733,143 @@ trace of ldr x0, [x1]: (trace of str x0, [x1] is similar, only with write-mem)
   (define-const v4829 v4808)
   (write-reg |R0| nil v4829))
 *)
+
+Definition test_state3_spec : list seq_label := [ SInstrTrap [BV{64} 0x0000000010300004] ].
+
+From isla Require Import load.
+
+Lemma test_state3_iris `{!islaG Σ} `{!threadG} :
+  instr 0x0000000010300000 (Some [load_trace]) -∗
+  instr 0x0000000010300004 None -∗
+  "_PC" ↦ᵣ Val_Bits start_address -∗
+  "__PC_changed" ↦ᵣ Val_Bool false -∗
+  "R1" ↦ᵣ Val_Bits [BV{64} 0x0000000000000004] -∗
+  "SCTLR_EL2" ↦ᵣ Val_Bits [BV{64} 0x0000000004000002] -∗
+  "SCR_EL3" ↦ᵣ Val_Bits [BV{32} 0] -∗
+  "CFG_ID_AA64PFR0_EL1_EL0" ↦ᵣ Val_Bits [BV{1} 1] -∗
+  "CFG_ID_AA64PFR0_EL1_EL1" ↦ᵣ Val_Bits [BV{1} 1] -∗
+  "CFG_ID_AA64PFR0_EL1_EL2" ↦ᵣ Val_Bits [BV{1} 1] -∗
+  "CFG_ID_AA64PFR0_EL1_EL3" ↦ᵣ Val_Bits [BV{1} 1] -∗
+  "R0" ↦ᵣ Val_Poison -∗
+  "OUT" ↦ᵣ Val_Poison -∗
+  "PSTATE" ↦ᵣ (Val_Struct
+          [("GE", Val_Poison); ("F", Val_Bits [BV{1} 1]);
+          ("UAO", Val_Poison); ("C", Val_Bits [BV{1} 0]);
+          ("SP", Val_Poison); ("N", Val_Bits [BV{1} 0]);
+          ("Q", Val_Poison); ("A", Val_Bits [BV{1} 1]); ("SS", Val_Bits [BV{1} 0]);
+          ("E", Val_Poison); ("TCO", Val_Poison); ("I", Val_Bits [BV{1} 1]);
+          ("PAN", Val_Poison); ("M", Val_Poison); ("D", Val_Bits [BV{1} 1]);
+          ("nRW", Val_Bits [BV{1} 0]); ("EL", Val_Bits [BV{2} 2]);
+          ("IT", Val_Poison); ("IL", Val_Bits [BV{1} 0]);
+          ("Z", Val_Bits [BV{1} 0]); ("BTYPE", Val_Poison);
+          ("SSBS", Val_Poison); ("T", Val_Poison); ("J", Val_Poison);
+          ("V", Val_Bits [BV{1} 0]); ("DIT", Val_Bits [BV{1} 0])]) -∗
+  spec_trace test_state3_spec -∗
+  WPasm [].
+Proof.
+  iStartProof.
+  do 20 liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  (* All these side conditions are true, would be nice to get rid of them *)
+  + 
+  liAStep; liShow.
+  - 
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  * 
+  liAStep; liShow.
+  ++
+  liAStep; liShow.
+
+  do 10 liAStep; liShow.
+  do 30 liAStep; liShow.
+  do 8 liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  do 10 liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  do 15 liAStep; liShow.
+  do 5 liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  do 5 liAStep; liShow.
+
+  do 15 liAStep; liShow.
+  do 30 liAStep; liShow.
+  do 5 liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  do 5 liAStep; liShow.
+
+  do 15 liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  do 30 liAStep; liShow.
+
+  repeat liAStep; liShow.
+
+  (* Why do we get false in the context here? *)
+  Qed.
+  liAStep; liShow.
+  liAStep; liShow.
+  do 5 liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  do 30 liAStep; liShow.
+  do 30 liAStep; liShow.
+
+
+
+  do 5 liAStep; liShow.
+  repeat liAStep; liShow.
+  Unshelve.
+  all: done.
+Qed.
