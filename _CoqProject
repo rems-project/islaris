@@ -6,5 +6,6 @@
 
 INSTALLDEFAULTROOT = isla # silence multiple roots warning
 
+-I _build/default/gc-plugin
 -Q _build/default/theories isla
 -Q _build/default/refframe refframe

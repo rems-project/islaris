@@ -1,3 +1,5 @@
+Declare ML Module "gc_plugin".
+
 From Coq Require Export ssreflect.
 From stdpp Require Export prelude strings gmap.
 From RecordUpdate Require Export RecordSet.

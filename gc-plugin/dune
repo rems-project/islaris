@@ -1,0 +1,7 @@
+(library
+ (name gc_plugin)
+ (flags :standard -rectypes)
+ (public_name coq-isla.gc_plugin)
+ (libraries coq.stm))
+
+(coq.pp (modules gc_plugin_syntax))
