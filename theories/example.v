@@ -594,10 +594,11 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   WPasm [].
 Proof.
   iStartProof.
-  repeat liAStep; liShow.
-  Unshelve.
-  all: done.
-Qed.
+Abort.
+  (* repeat liAStep; liShow. *)
+  (* Unshelve. *)
+  (* all: done. *)
+(* Qed. *)
 
 
 (* Lemma test_state2_trace x1 : *)
@@ -800,8 +801,13 @@ Proof.
   liAStep; liShow.
   liAStep; liShow.
   liAStep; liShow.
-  + 
-  do 10 liAStep; liShow.
+  +
+    do 10 liAStep; liShow.
+
+    idtac.
+    idtac.
+    idtac.
+
 
   do 100 liAStep; liShow.
   do 100 liAStep; liShow.
@@ -838,7 +844,80 @@ Proof.
   do 100 liAStep; liShow.
   do 100 liAStep; liShow.
   do 100 liAStep; liShow.
+
+
+
   repeat liAStep; liShow.
+
+
+
+
+  idtac.
+  idtac.
+  idtac.
+  idtac.
+  idtac.
+  unfold LET14, LET.
+
+
+  Set Nested Proofs Allowed.
+
+  iAssert ([BV{64} 100] ↦ₘ [BV{64} 3735928559])%I as "-#?". { admit. }
+
+  Definition FindMapsto `{!islaG Σ} (a : addr) (n : N) := {|
+    fic_A := bv n; fic_Prop v := a ↦ₘ v;
+  |}%I.
+
+  Global Instance mem_related `{!islaG Σ} a n (v : bv n) : RelatedTo (a ↦ₘ v) := {|
+    rt_fic := FindMapsto a n;
+  |}.
+
+  Lemma find_in_context_mapsto_id `{!islaG Σ} a n T:
+    (∃ v : bv n, a ↦ₘ v ∗ T v) -∗
+    find_in_context (FindMapsto a n) T.
+  Proof. iDestruct 1 as (v) "[Hl HT]". iExists _ => /=. iFrame. Qed.
+  Global Instance find_in_context_mapsto_id_inst `{!islaG Σ} a n :
+    FindInContext (FindMapsto a n) 0%nat FICSyntactic :=
+    λ T, i2p (find_in_context_mapsto_id a n T).
+  Inductive FICMapstoSemantic : Set :=.
+  Global Instance find_in_context_mapsto_semantic_inst `{!islaG Σ} a n :
+    FindInContext (FindMapsto a n) 1%nat FICMapstoSemantic :=
+    λ T, i2p (find_in_context_mapsto_id a n T).
+
+  Lemma tac_mapsto_eq `{!islaG Σ} l1 n (v1 v2 : bv n) l2:
+    l1 = l2 →
+    FindHypEqual FICMapstoSemantic (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
+  Proof. by move => ->. Qed.
+
+  (* Set Typeclasses Debug. *)
+  Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) =>
+  ( apply tac_mapsto_eq; done) : typeclass_instances.
+
+
+  liAStep.
+
+
+
+  (* have ->: (bv_zero_extend 8 *)
+  (*   (bv_concat [BV{4} 0] (bv_extract 0 (51 + 1) (bv_add [BV{64} 8] [BV{64} 0]))) = [BV{64} 8]). { done. } *)
+
+  (* liAStep. *)
+
+  Lemma subsume_mem `{!islaG Σ} a n (v1 v2 : bv n) G:
+    ⌜v1 = v2⌝ ∗ G -∗
+    subsume (a ↦ₘ v1) (a ↦ₘ v2) G.
+  Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
+  Global Instance subsume_mem_inst  `{!islaG Σ} a n (v1 v2 : bv n) :
+    Subsume (a ↦ₘ v1) (a ↦ₘ v2) :=
+    λ G, i2p (subsume_mem a n v1 v2 G).
+
+  clear H2.
+  liAStep; liShow.
+  repeat liAStep; liShow.
+  GC Compact.
+
+
+
   do 100 liAStep; liShow.
   do 100 liAStep; liShow.
   do 100 liAStep; liShow.
