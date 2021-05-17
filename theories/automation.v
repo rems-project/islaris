@@ -92,6 +92,20 @@ Section instances.
     Subsume (spec_trace κs1) (spec_trace κs2) :=
     λ G, i2p (subsume_spec_trace κs1 κs2 G).
 
+  Lemma subsume_mem n a1 a2 (v : bv n) G:
+    ⌜bv_unsigned a1 = bv_unsigned a2⌝ ∗ G -∗
+    subsume (a1 ↦ₘ v) (a2 ↦ₘ v) G.
+  Proof.
+    (* TODO: This proof is pretty ugly... *)
+    iIntros "[Ha HG] Ha1".
+    iDestruct "Ha" as %Ha.
+    assert (Ha' : a1 = a2); [by apply bv_eq|].
+    iFrame.
+    by rewrite Ha'.
+  Qed.
+  Global Instance subsume_mem_inst n a1 a2 v:
+    Subsume (a1 ↦ₘ v) (a2 ↦ₘ v) :=
+    λ G, i2p (subsume_mem n a1 a2 v G).
 
   Lemma li_wp_next_instr:
     (∃ (nPC : addr) bPC_changed,

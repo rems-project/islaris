@@ -743,13 +743,18 @@ Lemma test_state3_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300004 None -∗
   "_PC" ↦ᵣ Val_Bits start_address -∗
   "__PC_changed" ↦ᵣ Val_Bool false -∗
-  "R1" ↦ᵣ Val_Bits [BV{64} 0x0000000000000004] -∗
+  "R1" ↦ᵣ Val_Bits [BV{64} 0x0000000000000008] -∗
+  [BV{64} 0x0000000000000008] ↦ₘ [BV{64} 0x00000000deadbeef] -∗
   "SCTLR_EL2" ↦ᵣ Val_Bits [BV{64} 0x0000000004000002] -∗
   "SCR_EL3" ↦ᵣ Val_Bits [BV{32} 0] -∗
+  "TCR_EL2" ↦ᵣ Val_Bits [BV{64} 0] -∗
   "CFG_ID_AA64PFR0_EL1_EL0" ↦ᵣ Val_Bits [BV{1} 1] -∗
   "CFG_ID_AA64PFR0_EL1_EL1" ↦ᵣ Val_Bits [BV{1} 1] -∗
   "CFG_ID_AA64PFR0_EL1_EL2" ↦ᵣ Val_Bits [BV{1} 1] -∗
   "CFG_ID_AA64PFR0_EL1_EL3" ↦ᵣ Val_Bits [BV{1} 1] -∗
+  "OSLSR_EL1" ↦ᵣ Val_Bits [BV{32} 0] -∗
+  "OSDLR_EL1" ↦ᵣ Val_Bits [BV{32} 0] -∗
+  "EDSCR" ↦ᵣ Val_Bits [BV{32} 0] -∗
   "R0" ↦ᵣ Val_Poison -∗
   "OUT" ↦ᵣ Val_Poison -∗
   "PSTATE" ↦ᵣ (Val_Struct
@@ -767,6 +772,9 @@ Lemma test_state3_iris `{!islaG Σ} `{!threadG} :
   spec_trace test_state3_spec -∗
   WPasm [].
 Proof.
+  Locate liShow.
+  Locate liStep.
+  GC Compact.
   iStartProof.
   do 20 liAStep; liShow.
   liAStep; liShow.
@@ -785,71 +793,85 @@ Proof.
   liAStep; liShow.
   liAStep; liShow.
   (* All these side conditions are true, would be nice to get rid of them *)
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
+  liAStep; liShow.
   + 
-  liAStep; liShow.
-  - 
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  * 
-  liAStep; liShow.
-  ++
-  liAStep; liShow.
-
   do 10 liAStep; liShow.
-  do 30 liAStep; liShow.
-  do 8 liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  do 10 liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  do 15 liAStep; liShow.
-  do 5 liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  do 5 liAStep; liShow.
 
-  do 15 liAStep; liShow.
-  do 30 liAStep; liShow.
-  do 5 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 400 liAStep; liShow.
   liAStep; liShow.
   liAStep; liShow.
   liAStep; liShow.
   liAStep; liShow.
   liAStep; liShow.
-  do 5 liAStep; liShow.
+  liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  repeat liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  repeat liAStep; liShow.
+  unfold LET in LET14.
+  simpl in LET14.
+  unfold bv_add in LET14.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
 
-  do 15 liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  do 30 liAStep; liShow.
+  Optimize Proof.
+  GC Compact.
+  repeat liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+
+
+  Optimize Proof.
+
+  repeat liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+
+
 
   repeat liAStep; liShow.
 
