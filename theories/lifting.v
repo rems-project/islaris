@@ -34,6 +34,32 @@ Definition wp_asm_eq `{!islaG Σ} `{!threadG} : wp_asm = @wp_asm_def Σ _ _ := (
 
 Notation WPasm := wp_asm.
 
+Definition next_instruction `{!islaG Σ} `{!threadG} (i : Z) : iProp Σ :=
+  ∃ (bPC_changed : bool) (nPC : addr) a,
+  ⌜i = (if bPC_changed : bool then bv_unsigned nPC else bv_unsigned nPC + instruction_size)%Z⌝ ∗
+  ⌜bv_of_Z_checked 64 i = Some a⌝ ∗
+  "_PC" ↦ᵣ Val_Bits nPC ∗
+  "__PC_changed" ↦ᵣ Val_Bool bPC_changed.
+
+Definition instr_pre'_def `{!islaG Σ} `{!threadG} (is_later : bool) (i : Z) (P : iProp Σ) : iProp Σ :=
+  ▷?is_later (
+  P -∗
+  ∃ ins newPC,
+    ⌜bv_of_Z_checked 64 i = Some newPC⌝ ∗
+    instr i ins ∗
+    match ins with
+    | Some ins => ⌜ins ≠ []⌝ ∗
+        ∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm i
+    | None => ∃ κs, ⌜head κs = Some (SInstrTrap newPC)⌝ ∗ spec_trace κs
+    end
+   ).
+Definition instr_pre'_aux `{!islaG Σ} `{!threadG} : seal (@instr_pre'_def Σ _ _). by eexists. Qed.
+Definition instr_pre' `{!islaG Σ} `{!threadG} : bool → Z → iProp Σ → iProp Σ := (instr_pre'_aux).(unseal).
+Definition instr_pre'_eq `{!islaG Σ} `{!threadG} : instr_pre' = @instr_pre'_def Σ _ _ := (instr_pre'_aux).(seal_eq).
+
+Notation instr_pre := (instr_pre' true).
+Notation instr_body := (instr_pre' false).
+
 Definition wp_exp_def `{!islaG Σ} (e : exp) (Φ : valu → iProp Σ) : iProp Σ :=
   (∃ v, ⌜eval_exp e = Some v⌝ ∗ Φ v).
 Definition wp_exp_aux `{!islaG Σ} : seal (@wp_exp_def Σ _). by eexists. Qed.
@@ -70,18 +96,41 @@ Section lifting.
     WPexp e {{ Φ }} ⊣⊢ wp_exp_def e Φ.
   Proof. by rewrite wp_exp_eq. Qed.
 
-  Lemma wp_next_instr (nPC : addr) bPC_changed a newPC ins :
-    a = (if bPC_changed : bool then bv_unsigned nPC else bv_unsigned nPC + instruction_size) →
-    bv_of_Z_checked 64 a = Some newPC →
+  Global Instance elim_modal_bupd_wp_asm p P es :
+    ElimModal True p false (|==> P) P (WPasm es) (WPasm es).
+  Proof.
+    rewrite /ElimModal bi.intuitionistically_if_elim (bupd_fupd ⊤) fupd_frame_r bi.wand_elim_r.
+    rewrite wp_asm_eq.
+    iIntros "_ Hs" (???) "?". iMod "Hs". by iApply "Hs".
+  Qed.
+
+  Global Instance elim_modal_fupd_wp_asm p P es :
+    ElimModal True p false (|={⊤}=> P) P (WPasm es) (WPasm es).
+  Proof.
+    rewrite /ElimModal bi.intuitionistically_if_elim fupd_frame_r bi.wand_elim_r.
+    rewrite wp_asm_eq.
+    iIntros "_ Hs" (???) "?". iMod "Hs". by iApply "Hs".
+  Qed.
+
+  Global Instance is_except_0_wp_asm es:
+    IsExcept0 (WPasm es).
+  Proof.
+    rewrite /IsExcept0. iIntros "Hwp".
+    iAssert (|={⊤}=> WPasm es)%I with "[Hwp]" as ">$".
+    by iMod "Hwp" as "$".
+  Qed.
+
+  Lemma wp_next_instr i newPC ins :
     ins ≠ [] →
-    "_PC" ↦ᵣ Val_Bits nPC -∗
-    "__PC_changed" ↦ᵣ Val_Bool bPC_changed -∗
-    instr a (Some ins) -∗
+    bv_of_Z_checked 64 i = Some newPC →
+    next_instruction i -∗
+    instr i (Some ins) -∗
     (* TODO: We want some receptiveness property here like ⌜∃ i, i ∈ ins ∧ i can execute to the end⌝ *)
-    (∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm i) -∗
+    ▷ (∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm i) -∗
     WPasm [].
   Proof.
-    iIntros (-> Hchecked ?) "HPC Hchanged Hi Hcont". setoid_rewrite wp_asm_unfold.
+    iIntros (? Hchecked). iDestruct 1 as (??? -> ?) "[HPC Hchanged]".
+    iIntros "Hi Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
     iIntros (σ1 ??? ?) "(Hsctx&Hictx&?)".
@@ -110,17 +159,16 @@ Section lifting.
     iFrame.
   Qed.
 
-  Lemma wp_next_instr_extern (nPC : addr) bPC_changed a newPC κs:
-    a = (if bPC_changed : bool then bv_unsigned nPC else bv_unsigned nPC + instruction_size) →
+  Lemma wp_next_instr_extern a newPC κs:
     bv_of_Z_checked 64 a = Some newPC →
     head κs = Some (SInstrTrap newPC) →
-    "_PC" ↦ᵣ Val_Bits nPC -∗
-    "__PC_changed" ↦ᵣ Val_Bool bPC_changed -∗
+    next_instruction a -∗
     instr a None -∗
-    spec_trace κs -∗
+    ▷ spec_trace κs -∗
     WPasm [].
   Proof.
-    iIntros (-> Hchecked ?) "HPC Hchanged Hi Hspec". setoid_rewrite wp_asm_unfold.
+    iIntros (Hchecked ?). iDestruct 1 as (??? -> ?) "[HPC Hchanged]".
+    iIntros "Hi Hspec". setoid_rewrite wp_asm_unfold.
     iIntros ([? regs ?]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
     iIntros (σ1 ??? ?) "(Hsctx&Hictx&?)".
@@ -147,6 +195,65 @@ Section lifting.
     by iApply wp_value.
     Unshelve. apply: [].
   Qed.
+
+  Lemma wp_next_instr_pre a P l:
+    instr_pre' l a P -∗
+    next_instruction a -∗
+    P -∗
+    WPasm [].
+  Proof.
+    rewrite instr_pre'_eq. iIntros "Hpre Hnext HP".
+    iDestruct ("Hpre" with "[$HP]") as (ins ?) "(>% & >Hinstr & Hwp)".
+    iDestruct (laterN_le _ 1 with "Hwp") as "Hwp". { destruct l => /=; lia. }
+    destruct ins.
+    - iDestruct "Hwp" as "[>% Hwp]".
+      by iApply (wp_next_instr with "Hnext Hinstr"); [done..|].
+    - iDestruct "Hwp" as (?) "[>% Hwp]".
+      by iApply (wp_next_instr_extern with "[$] [$] [$]").
+  Qed.
+
+  Lemma instr_pre_wand a l1 l2 P Q:
+    implb l1 l2 →
+    instr_pre' l1 a P -∗
+    (Q -∗ P) -∗
+    instr_pre' l2 a Q.
+  Proof.
+    rewrite instr_pre'_eq => Himpl.
+    iIntros "Hinstr Hwand".
+    iApply (laterN_le (Nat.b2n l1)). { destruct l1, l2 => //=. lia. }
+    iIntros "!> HQ". iApply ("Hinstr" with "[HQ Hwand]"). by iApply "Hwand".
+  Qed.
+
+  Lemma instr_pre_to_body a P:
+    ▷ instr_body a P -∗
+    instr_pre a P.
+  Proof. rewrite instr_pre'_eq. done. Qed.
+
+  Lemma instr_pre_intro_Some l a P ins newPC:
+    ins ≠ [] →
+    bv_of_Z_checked 64 a = Some newPC →
+    instr a (Some ins) -∗
+    (∀ i, ⌜i ∈ ins⌝ -∗ P -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm i) -∗
+    instr_pre' l a P.
+  Proof.
+    rewrite instr_pre'_eq.
+    iIntros (??) "Hinstr Hwp !> HP".
+    iExists _, _. iFrame. repeat iSplit; [done|done|].
+    iIntros (??) "HPC Hchanged". iApply ("Hwp" with "[//] [$] [$] [$]").
+  Qed.
+
+  Lemma instr_pre_intro_None a P newPC l:
+    bv_of_Z_checked 64 a = Some newPC →
+    instr a None -∗
+    (P -∗ ∃ κs, ⌜head κs = Some (SInstrTrap newPC)⌝ ∗ spec_trace κs) -∗
+    instr_pre' l a P.
+  Proof.
+    rewrite instr_pre'_eq.
+    iIntros (?) "Hinstr Hspec !> HP".
+    iDestruct ("Hspec" with "HP") as (??) "Hspec".
+    iExists _, _. iFrame. iSplit; [done|]. iExists _. by iFrame.
+  Qed.
+
 
   Lemma wp_read_reg_acc r v v' v'' vread ann es q al:
     read_accessor al v' = Some v'' →

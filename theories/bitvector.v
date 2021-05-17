@@ -354,6 +354,13 @@ Qed.
 Lemma bv_signed_N_0 (b : bv 0):
   bv_signed b = 0.
 Proof. unfold bv_signed. by rewrite bv_unsigned_N_0, bv_swrap_0. Qed.
+Lemma bv_of_Z_checked_bv_unsigned n (b : bv n):
+  bv_of_Z_checked n (bv_unsigned b) = Some b.
+Proof.
+  unfold bv_of_Z_checked. case_option_guard.
+  - f_equal. by apply bv_eq.
+  - by pose proof bv_is_wf b.
+Qed.
 
 
 Global Program Instance bv_eq_dec n : EqDecision (bv n) := λ '(BV _ v1 p1) '(BV _ v2 p2),
@@ -364,13 +371,8 @@ Global Program Instance bv_eq_dec n : EqDecision (bv n) := λ '(BV _ v1 p1) '(BV
 Next Obligation. intros. subst. rewrite (proof_irrel p1 p2). exact eq_refl. Defined.
 Next Obligation. intros. by injection. Qed.
 
-Global Program Instance bv_countable n : Countable (bv n) :=
-  inj_countable bv_unsigned (bv_of_Z_checked n) _.
-Next Obligation.
-  intros n x. pose proof bv_is_wf x.
-  unfold bv_of_Z_checked. case_option_guard; [|done].
-  f_equal. by apply bv_eq.
-Qed.
+Global Instance bv_countable n : Countable (bv n) :=
+  inj_countable bv_unsigned (bv_of_Z_checked n) (bv_of_Z_checked_bv_unsigned n).
 
 Global Program Instance bv_finite n : Finite (bv n) :=
   {| enum := bv_of_Z n <$> (seqZ 0 (bv_modulus n)) |}.
@@ -500,6 +502,7 @@ Program Definition bv_0 (n : N) :=
 Next Obligation.
   intros n. apply bv_wf_in_range. split; [done| apply bv_modulus_pos].
 Qed.
+Global Instance bv_inhabited n : Inhabited (bv n) := populate (bv_0 n).
 
 Definition bv_succ {n} (x : bv n) : bv n :=
   bv_of_Z n (Z.succ (bv_unsigned x)).

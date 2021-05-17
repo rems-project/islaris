@@ -188,6 +188,79 @@ Proof.
   all: try by unshelve iApply (instr_intro with "Hi").
 Qed.
 
+Definition test_state_fn1_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
+  ∃ (r : addr) v0,
+    "R0" ↦ᵣ v0 ∗
+    "R30" ↦ᵣ Val_Bits r ∗
+    instr_pre (bv_unsigned r) (
+      "R30" ↦ᵣ Val_Bits r ∗
+      "R0" ↦ᵣ Val_Bits [BV{64} 0] ∗ True
+    ).
+Arguments test_state_fn1_spec /.
+
+Lemma test_state_iris_fn1 `{!islaG Σ} `{!threadG} :
+  instr 0x0000000010300100 (Some [trc_mov_w0_0]) -∗
+  instr 0x0000000010300104 (Some [trc_ret]) -∗
+  instr_body 0x0000000010300100 test_state_fn1_spec.
+Proof.
+  iStartProof.
+  repeat liAStep; liShow.
+  Unshelve.
+  all: done.
+Qed.
+
+Definition test_state_fn2_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
+  "R30" ↦ᵣ Val_Poison ∗
+  "R1" ↦ᵣ Val_Poison ∗
+  "R0" ↦ᵣ Val_Poison ∗
+  "OUT" ↦ᵣ Val_Poison ∗
+  spec_trace test_state_spec.
+Arguments test_state_fn2_spec /.
+
+Lemma test_state_iris_fn2 `{!islaG Σ} `{!threadG} :
+  instr 0x0000000010300000 (Some [trc_bl_0x100]) -∗
+  instr 0x0000000010300004 (Some [trc_mov_OUT_x0]) -∗
+  instr 0x0000000010300008 None -∗
+  □ instr_pre 0x0000000010300100 test_state_fn1_spec -∗
+  instr_body 0x0000000010300000 test_state_fn2_spec.
+Proof.
+  iStartProof.
+  repeat liAStep; liShow.
+  Unshelve.
+  all: done.
+Qed.
+
+Lemma test_state_adequate' κs t2 σ2 n:
+  nsteps n (initial_local_state <$> [test_state_local.(seq_regs)],
+            test_state_global) κs (t2, σ2) →
+  (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧
+  κs `prefix_of` test_state_spec.
+Proof.
+  set Σ : gFunctors := #[islaΣ].
+  apply: (isla_adequacy Σ) => //.
+  iIntros (?) "#Hi Hspec /= !>". iSplitL => //.
+  iIntros (?) "/=".
+  do 6 rewrite big_sepM_insert //=.
+  iIntros "(HPC&Hchanged&?&?&?&?&?)".
+
+  iAssert (
+      □ instr_body 0x0000000010300000 test_state_fn2_spec ∗
+      □ instr_body 0x0000000010300100 test_state_fn1_spec
+    )%I as "(Hmain & _)". {
+    iLöb as "IH". iDestruct "IH" as "(?&?)".
+    (repeat iSplit); iModIntro.
+    - iApply test_state_iris_fn2.
+      all: try by unshelve iApply (instr_intro with "Hi").
+      iModIntro.
+      iApply instr_pre_to_body. by iModIntro.
+    - iApply test_state_iris_fn1.
+      all: try by unshelve iApply (instr_intro with "Hi").
+  }
+  iApply (wp_next_instr_pre with "Hmain [HPC Hchanged]").
+  - iExists _, _, _. by iFrame.
+  - iFrame.
+Qed.
+
 
 (* trace of cmp x1, 0:
   (declare-const v3370 (_ BitVec 64))

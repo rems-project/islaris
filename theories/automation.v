@@ -13,6 +13,8 @@ Lemma ite_bits n b (n1 n2 : bv n) :
 Proof. by destruct b. Qed.
 Hint Rewrite ite_bits : lithium_rewrite.
 
+Hint Rewrite bv_of_Z_checked_bv_unsigned : lithium_rewrite.
+
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
@@ -22,11 +24,37 @@ Ltac normalize_tac ::= normalize_autorewrite.
 Definition let_bind_hint {A B} (x : A) (f : A → B) : B :=
   f x.
 
+Inductive instr_kind {Σ} : Type :=
+| IKInstr (ins : option (list trc)) | IKPre (l : bool) (P : iProp Σ).
+Definition FindInstrKind {Σ} `{!islaG Σ} `{!threadG} (a : Z) := {| fic_A := @instr_kind Σ; fic_Prop ik :=
+  match ik with
+  | IKInstr ins => instr a ins
+  | IKPre l P => instr_pre' l a P
+  end
+|}.
+Typeclasses Opaque FindInstrKind.
+
 Section instances.
   Context `{!islaG Σ} `{!threadG}.
 
   Global Instance instr_intro_pers i a : IntroPersistent (instr a i) (instr a i).
   Proof. constructor. iIntros "#$". Qed.
+
+  Lemma find_in_context_instr_kind_pre a T:
+    (∃ l P, instr_pre' l a P ∗ T (IKPre l P)) -∗
+    find_in_context (FindInstrKind a) T.
+  Proof. iDestruct 1 as (??) "[??]". iExists _. by iFrame. Qed.
+  Global Instance find_in_context_instr_kind_pre_inst a :
+    FindInContext (FindInstrKind a) 0%nat FICSyntactic :=
+    λ T, i2p (find_in_context_instr_kind_pre a T).
+
+  Lemma find_in_context_instr_kind_instr a T:
+    (∃ ins, instr a ins ∗ T (IKInstr ins)) -∗
+    find_in_context (FindInstrKind a) T.
+  Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
+  Global Instance find_in_context_instr_kind_instr_inst a :
+    FindInContext (FindInstrKind a) 1%nat FICSyntactic :=
+    λ T, i2p (find_in_context_instr_kind_instr a T).
 
   Global Instance reg_related r v : RelatedTo (r ↦ᵣ v) := {|
     rt_fic := FindDirect (λ v, r ↦ᵣ v)%I;
@@ -71,27 +99,59 @@ Section instances.
      ∃ a newPC,
        ⌜a = (if bPC_changed : bool then (bv_unsigned nPC) else (bv_unsigned nPC + instruction_size)%Z)⌝ ∗
        ⌜bv_of_Z_checked 64 a = Some newPC⌝ ∗
-     ∃ ins, instr a ins ∗
-     match ins with
-     | Some ts =>
+     find_in_context (FindInstrKind a) (λ ik,
+     match ik with
+     | IKInstr (Some ts) =>
        ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm t
-     | None =>
-       ∃ κs, spec_trace κs ∗ ⌜hd_error κs = Some (SInstrTrap newPC)⌝
-                              ∗ True
+     | IKInstr (None) =>
+       ∃ κs, spec_trace κs ∗ ⌜hd_error κs = Some (SInstrTrap newPC)⌝ ∗ True
+     | IKPre l P => P
      end
-    ) -∗
+    )) -∗
     WPasm [].
   Proof.
-    iDestruct 1 as (??) "(?&?&Hwp)".
+    iDestruct 1 as (??) "(HPC&Hchanged&Hwp)".
     iDestruct "Hwp" as (???? ins) "[Hi Hwp]". subst.
-    destruct ins.
+    destruct ins as [[?|]|?] => /=.
     - iDestruct "Hwp" as (?) "Hl".
-      iApply (wp_next_instr with "[$] [$] [$]") => //.
-      iIntros (i Hi) "? ?".
-      iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
-      iApply ("Hwp" with "[$] [$]").
+      iApply (wp_next_instr with "[HPC Hchanged] Hi [Hl]") => //.
+      + iExists _, _, _. by iFrame.
+      + iIntros "!>" (i Hi) "? ?".
+        iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
+        iApply ("Hwp" with "[$] [$]").
     - iDestruct "Hwp" as (?) "(?&%&?)".
-      iApply (wp_next_instr_extern with "[$] [$] [$] [$]") => //.
+      iApply (wp_next_instr_extern with "[HPC Hchanged] [$] [$]") => //.
+      iExists _, _, _. by iFrame.
+    - iApply (wp_next_instr_pre with "[$] [HPC Hchanged] [$]").
+      iExists _, _, _. by iFrame.
+  Qed.
+
+  Lemma li_instr_pre l a P:
+    (∃ newPC, ⌜bv_of_Z_checked 64 a = Some newPC⌝ ∗
+     find_in_context (FindInstrKind a) (λ ik,
+     match ik with
+     | IKInstr (Some ts) =>
+       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, P -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm t
+     | IKInstr None =>
+       P -∗ ∃ κs, spec_trace κs ∗ ⌜hd_error κs = Some (SInstrTrap newPC)⌝ ∗ True
+     | IKPre l' Q => ⌜implb l' l⌝ ∗ (P -∗ Q)
+     end
+    )) -∗
+    instr_pre' l a P.
+  Proof.
+    iDestruct 1 as (?? ins) "[Hinstr Hwp]".
+    destruct ins as [[?|]|?] => /=.
+    - iDestruct "Hwp" as (?) "Hl".
+      iApply (instr_pre_intro_Some with "[$]"); [done..|].
+      iIntros (i Hi) "???".
+      iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
+      iApply ("Hwp" with "[$] [$] [$]").
+    - iApply (instr_pre_intro_None with "[$]"); [done..|].
+      iIntros "HP".
+      iDestruct ("Hwp" with "HP") as (?) "[? [% _]]".
+      iExists _. by iFrame.
+    - iDestruct "Hwp" as (?) "Hwand".
+      by iApply (instr_pre_wand with "Hinstr").
   Qed.
 
   Lemma li_wp_read_reg r v ann es al:
@@ -206,6 +266,8 @@ Ltac liAAsm :=
                | fail "liAAsm: unknown asm" es
                ]
     end
+  | |- envs_entails ?Δ (instr_pre' _ _ _) =>
+    notypeclasses refine (tac_fast_apply (li_instr_pre _ _ _) _)
   end.
 
 Ltac liAExp :=
