@@ -19,14 +19,31 @@ Inductive memory_action :=
 | Fetch (a:addr) (v:valu). (* TODO: for now... *)
 
 Record pre_execution := {
+  (* The number of threads in the pre-execution *)
   pe_threads : nat; (* TODO: make the memory model ignore events over that tid *)
-  pe_lab : event_id -> memory_action; (* or option? *)
+  (* the labelling function, labelling each event with its memory actions *)
+  pe_lab : event_id -> memory_action; (* TODO: or option? *)
+  (* The fetch-to-execute order relates a fetch to the event it fetches for:
+    F x v --fe--> R x v', where decode(v) = R x
+  *)
   pe_fe : event_id -> event_id -> Prop;
+  (* The transitive reduction of `fpo`, the analogue pf program-order for `Fetch` events
+  Instead of a primitive `po` between `b` and `d`, we have
+    a:F x1 v1 -------> b:A1
+       |               .
+       | fpo           . po as a derived edge
+       |               .
+       v               v
+    c:F x2 v2 -------> d:A2
+  *)
   pe_fpo1 : event_id -> event_id -> Prop;
+  (* data dependencies `[[r = R x; W y r]] = { R x v --data--> W y v | v \in Val } *)
   pe_data : event_id -> event_id -> Prop;
+  (* control dependencies *)
   pe_ctrl : event_id -> event_id -> Prop;
 }.
 
+(* TODO: not clear how to deal with this *)
 Axiom decode : valu -> list trc.
 
 Definition instr_reg_map := gmap string (valu * list thread_internal_event_id).
@@ -48,25 +65,23 @@ Definition agree_regs (iregs : instr_reg_map) (regs : reg_map) : Prop :=
 
 Record info := mk_info {
   info_tr : trc;
+  info_regs : instr_reg_map;
   info_cur_eid : thread_internal_event_id;
   info_fe_src : thread_internal_event_id;
   info_ctrl_srcs : thread_internal_event_id -> Prop;
-  info_regs : instr_reg_map;
   info_data_srcs : thread_internal_event_id -> Prop;
   (* TODO: iio? *)
 }.
 
 Instance eta_info : Settable _ :=
-  settable! mk_info <info_tr; info_cur_eid; info_fe_src; info_ctrl_srcs; info_regs; info_data_srcs>.
+  settable! mk_info <info_tr; info_regs; info_cur_eid; info_fe_src; info_ctrl_srcs; info_data_srcs>.
 
 Definition info_agrees (info1 info2 : info) : Prop :=
   info1 = info2. (* TODO: should probably require equal extensions *)
 
-Definition my_insert (r : string) v (iregs : instr_reg_map) :=
-  <[ r := v ]> iregs.
-
-(* TODO: data, ctrl, ...; but how to separate addr from data? *)
+(* TODO: how to separate addr from data? *)
 (* TODO: this assumes that each instruction generates at most one explicit memory action *)
+(* TODO: this uses `nat`s as event IDs, in order. Not convinced this is very usable... *)
 Definition pre_execution_of_thread (tid : thread_id) (regs : reg_map) (pe : pre_execution) : Prop :=
   exists (X : nat -> info),
   (X (0%nat)).(info_tr) = [] /\
@@ -76,8 +91,8 @@ Definition pre_execution_of_thread (tid : thread_id) (regs : reg_map) (pe : pre_
   let Xnow := X n in
   match Xnow.(info_tr) with
   | [] =>
-    match next_pc regs with
-    | None => False (* what does this correspond to? *)
+    match next_pc regs (* TODO: does this function do what I think it does? *) with
+    | None => False (* TODO: what does this correspond to? *)
     | Some (addr, _) =>
       let e := (tid, Xnow.(info_cur_eid)) in
       exists v tr',
@@ -86,7 +101,7 @@ Definition pre_execution_of_thread (tid : thread_id) (regs : reg_map) (pe : pre_
         let Xnext := Xnow <| info_tr := tr' |>
           <| info_cur_eid := (Xnow.(info_cur_eid) + 1)%nat |>
           <| info_fe_src := Xnow.(info_cur_eid) |>
-          <| info_ctrl_srcs := Xnow.(info_ctrl_srcs) |> in
+          <| info_data_srcs := (fun _ => False) |> in
         (n > 0 -> pe.(pe_fpo1) (tid, (X (n-1)%nat).(info_fe_src)) e) /\
         (forall e', pe.(pe_fpo1) e' (tid, Xnow.(info_cur_eid)) -> e' = (tid, (X (n-1)%nat).(info_fe_src) )) /\
         (~ (exists e', pe.(pe_ctrl) e' e)) /\
@@ -100,8 +115,7 @@ Definition pre_execution_of_thread (tid : thread_id) (regs : reg_map) (pe : pre_
         let Xnext := Xnow <| info_tr := tr' |> in
         info_agrees Xnext (X (n+1)%nat)
       | Some (LBranchAddress _) =>
-        let e := (tid, Xnow.(info_cur_eid)) in
-        let Xnext := Xnow <| info_ctrl_srcs := (fun e' => snd e = e' \/ Xnow.(info_ctrl_srcs) e') |> in
+        let Xnext := Xnow <| info_ctrl_srcs := (fun e' => Xnow.(info_data_srcs) e' \/ Xnow.(info_ctrl_srcs) e') |> in
         info_agrees Xnext (X (n+1)%nat)
       | Some (LReadReg r _ v) =>
         exists s, Xnow.(info_regs) !! r = Some s /\ v = fst s /\
@@ -119,14 +133,14 @@ Definition pre_execution_of_thread (tid : thread_id) (regs : reg_map) (pe : pre_
         let Xnext := Xnow <| info_tr := tr' |>
           <| info_cur_eid := (Xnow.(info_cur_eid) + 1)%nat |> in
         pe.(pe_fe) (tid, Xnow.(info_fe_src)) e /\
-        (forall e', pe.(pe_fe) e' e -> e' = (tid, Xnow.(info_fe_src))) /\
+        (forall e', pe.(pe_fe) e' e -> e' = (tid, Xnow.(info_fe_src) )) /\
         (forall e', Xnow.(info_ctrl_srcs) e' -> pe.(pe_ctrl) (tid, e') e) /\
-        (forall e', pe.(pe_ctrl) e' e -> exists e'', Xnow.(info_ctrl_srcs) e'' /\ e' = (tid, e'')) /\
+        (forall e', pe.(pe_ctrl) e' e -> exists le', Xnow.(info_ctrl_srcs) le' /\ e' = (tid, le')) /\
         (forall e', Xnow.(info_data_srcs) e' -> (tid, e') <> e -> pe.(pe_data) (tid, e') e) /\
-        (forall e', pe.(pe_data) e' e -> exists e'', Xnow.(info_data_srcs) e'' /\ e' = (tid, e'') /\ e' <> e) /\
+        (forall e', pe.(pe_data) e' e -> exists le', Xnow.(info_data_srcs) le' /\ e' = (tid, le') /\ e' <> e) /\
         info_agrees Xnext (X (n+1)%nat)
-      | Some (LDone _) => False (* right? *)
-      | Some (LAssert b) => b = true
+      | Some (LDone _) => False (* TODO: right? *)
+      | Some (LAssert b) => b = true /\ info_agrees Xnow (X (n+1)%nat)
       end
   end
 .
@@ -149,7 +163,8 @@ Definition acyclic (r : event_id -> event_id -> Prop) : Prop :=
   Irreflexive (clos_trans _ r).
 
 Definition wf_rf (pe : pre_execution) (rf : event_id -> event_id -> Prop) :=
-  (forall e,
+  (forall e e', rf e e' -> fst e <> 0 /\ fst e' <> 0)%nat ->
+  (forall e, (fst e <= pe.(pe_threads))%nat ->
     match pe.(pe_lab) e with
     | Act (LReadMem v _ addr _ _) =>
       (exists w, rf w e /\
@@ -162,16 +177,34 @@ Definition wf_rf (pe : pre_execution) (rf : event_id -> event_id -> Prop) :=
     end).
 
 Definition wf_irf (pe : pre_execution) (irf : event_id -> event_id -> Prop) : Prop :=
-  True (* TODO *).
+  (forall e e', irf e e' -> fst e <> 0 /\ fst e' <> 0)%nat ->
+  (forall e, (fst e <= pe.(pe_threads))%nat ->
+  match pe.(pe_lab) e with
+  | Fetch addr v =>
+    (exists w, irf w e /\
+      match pe.(pe_lab) e with
+      | Act (LWriteMem _ _ addr' v' _ _) => (* TODO: addr = addr' /\ *) v = v'
+      | _ => False
+      end) /\
+    (forall w1 w2, irf w1 e -> irf w2 e -> w1 = w2)
+  | _ => ~ (exists e', irf e' e)
+  end).
 
 
 Definition wf_co (pe : pre_execution) (co : event_id -> event_id -> Prop) : Prop :=
-  (forall e e',
+  (forall e e', co e e' -> fst e <> 0 /\ fst e' <> 0)%nat ->
+  (forall e e', (fst e <= pe.(pe_threads))%nat -> (fst e' <= pe.(pe_threads))%nat ->
     match pe.(pe_lab) e, pe.(pe_lab) e' with
     | Act (LWriteMem _ _ addr1 _ _ _), Act (LWriteMem _ _ addr2 _ _ _) =>
       addr1 = addr2 -> co e e' \/ co e' e
     | _, _ => False
     end) /\
+  (forall e e',
+     co e e' ->
+     match pe.(pe_lab) e, pe.(pe_lab) e' with
+     | Act (LWriteMem _ _ addr1 _ _ _), Act (LWriteMem _ _ addr2 _ _ _) => addr1 = addr2
+     | _, _ => False
+     end) /\
   Transitive co /\
   Irreflexive co /\
   (forall e tid e', co e (tid, e') -> tid <> 0%nat).
@@ -191,8 +224,21 @@ Definition sc : memory_model := {|
   )
 |}.
 
-(* TODO: allow for initial state? *)
-Definition valid_execution_of (regss : list reg_map) (pe0 : pre_execution) (pe : pre_execution) (mm : memory_model) : Prop :=
-  (* TODO: pe0 included in pe *)
+Definition initial_pre_execution_in (pe_initial_state pe : pre_execution) : Prop :=
+  (* all events by the initial thread (thread 0) are the same *)
+  (forall le,
+    let e := (0%nat, le) in
+    pe_initial_state.(pe_lab) e = pe.(pe_lab) e) /\
+  (* no extraneous edges *)
+  ~ (exists le e',
+      let e := (0%nat, le) in
+      pe.(pe_fe) e e' \/ pe.(pe_fe) e' e \/
+      pe.(pe_fpo1) e e' \/ pe.(pe_fpo1) e' e \/
+      pe.(pe_data) e e' \/ pe.(pe_data) e' e \/
+      pe.(pe_ctrl) e e' \/ pe.(pe_ctrl) e' e
+  ).
+
+Definition valid_execution_of (regss : list reg_map) (pe_initial_state : pre_execution) (pe : pre_execution) (mm : memory_model) : Prop :=
+  initial_pre_execution_in pe_initial_state pe /\
   pre_execution_of_threads regss pe /\
   mm.(mm_validity) pe.
