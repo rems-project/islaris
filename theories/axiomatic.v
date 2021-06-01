@@ -75,6 +75,10 @@ Record info := mk_info {
   info_fe_src : thread_internal_event_id;
   info_ctrl_srcs : thread_internal_event_id -> Prop;
   info_data_srcs : thread_internal_event_id -> Prop;
+  (* TODO:
+  info_address_announced : bool;
+  info_addr_srcs : thread_internal_event_id -> Prop;
+  *)
   (* TODO: iio? *)
 }.
 
@@ -84,9 +88,10 @@ Instance eta_info : Settable _ :=
 Definition info_agrees (info1 info2 : info) : Prop :=
   info1 = info2. (* TODO: should probably require equal extensions *)
 
-(* TODO: how to separate addr from data? *)
+(* TODO: how to separate addr from data? if we have an ``announce address'' event, then it's easy *)
 (* TODO: this assumes that each instruction generates at most one explicit memory action *)
 (* TODO: this uses `nat`s as event IDs, in order. Not convinced this is very usable... *)
+(* TODO: this assumes that LBranchAddress exactly characterises how `ctrl` edges are generated - is that true? *)
 Definition pre_execution_of_thread (tid : thread_id) (regs : reg_map) (pe : pre_execution) : Prop :=
   exists (X : nat -> info),
   (X (0%nat)).(info_tr) = [] /\
