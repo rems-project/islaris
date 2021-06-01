@@ -1,8 +1,10 @@
 (* a rough sketch of a glueing of the thread-local semantics of isla with an axiomatic memory model *)
-(* has fetching, but no mixed-size, no page tables *)
+(* has fetching, but no mixed-size, no page tables, and does not treat system registers properly *)
 
 (* TODO: how to test this given that it produces infinite things, and is very not computing?
 Maybe make an "up to n steps" version and prove some relation? *)
+
+(* TODO: there is a bug with our encoding that forces having infinitely many initial events  *)
 
 Require Import isla.base.
 Require Import isla.opsem.
@@ -15,8 +17,8 @@ Definition thread_id := nat.
 Definition event_id := (thread_id * thread_internal_event_id)%type.
 
 Inductive memory_action :=
-| Act (a:trace_label)
-| Fetch (a:addr) (v:valu). (* TODO: for now... *)
+| Act (a:trace_label) (* TODO: we use these for now, but (1) they have to change, and (2) the interface between isla-coq and the memory model itself has to change, e.g. for `data` vs. `addr` *)
+| Fetch (a:addr) (v:valu). 
 
 Record pre_execution := {
   (* The number of threads in the pre-execution *)
@@ -46,8 +48,10 @@ Record pre_execution := {
 (* TODO: not clear how to deal with this *)
 Axiom decode : valu -> list trc.
 
+(* instrumented register map, where a register is mapped to the pair of a value and a set of events that it data-depends on *)
 Definition instr_reg_map := gmap string (valu * list thread_internal_event_id).
 
+(* agreement on values between an instrumented register map and a (plain) register map *)
 Definition agree_regs (iregs : instr_reg_map) (regs : reg_map) : Prop :=
   forall (r : string),
     match regs !! r with
@@ -63,6 +67,7 @@ Definition agree_regs (iregs : instr_reg_map) (regs : reg_map) : Prop :=
       end
     end.
 
+(* accumulator to build a pre-execution *)
 Record info := mk_info {
   info_tr : trc;
   info_regs : instr_reg_map;
@@ -154,7 +159,7 @@ Definition pre_execution_of_threads (regss : list reg_map) (pe : pre_execution) 
 
 Record memory_model := {
   mm_validity : pre_execution -> Prop;
-  (* TODO: or should it build execution witnesses explicitly? *)
+  (* TODO: or should it build execution witnesses explicitly, like Mark Batty's cmm.lem? *)
 }.
 
 Require Import Coq.Relations.Relation_Operators.
@@ -162,8 +167,12 @@ Require Import Coq.Relations.Relation_Operators.
 Definition acyclic (r : event_id -> event_id -> Prop) : Prop :=
   Irreflexive (clos_trans _ r).
 
+Definition does_not_involve_initial_events (pe : pre_execution) (R : event_id -> event_id -> Prop) : Prop :=
+  (forall e e', R e e' -> fst e <> 0 /\ fst e' <> 0)%nat.
+
+(** `rf` is right-total on reads, and relates a write to a read when the read reads from the write, in which case they are at the same location and of the same value*)
 Definition wf_rf (pe : pre_execution) (rf : event_id -> event_id -> Prop) :=
-  (forall e e', rf e e' -> fst e <> 0 /\ fst e' <> 0)%nat ->
+  does_not_involve_initial_events pe rf /\
   (forall e, (fst e <= pe.(pe_threads))%nat ->
     match pe.(pe_lab) e with
     | Act (LReadMem v _ addr _ _) =>
@@ -176,29 +185,33 @@ Definition wf_rf (pe : pre_execution) (rf : event_id -> event_id -> Prop) :=
     | _ => ~ (exists e', rf e' e)
     end).
 
+(** `irf` is right-total on fetches, and relates a write to a fetch when the fetch reads from the write, in which case they are at the same location and of the same value*)
 Definition wf_irf (pe : pre_execution) (irf : event_id -> event_id -> Prop) : Prop :=
-  (forall e e', irf e e' -> fst e <> 0 /\ fst e' <> 0)%nat ->
+  does_not_involve_initial_events pe irf /\
   (forall e, (fst e <= pe.(pe_threads))%nat ->
-  match pe.(pe_lab) e with
-  | Fetch addr v =>
-    (exists w, irf w e /\
-      match pe.(pe_lab) e with
-      | Act (LWriteMem _ _ addr' v' _ _) => (* TODO: addr = addr' /\ *) v = v'
-      | _ => False
-      end) /\
-    (forall w1 w2, irf w1 e -> irf w2 e -> w1 = w2)
-  | _ => ~ (exists e', irf e' e)
-  end).
+    match pe.(pe_lab) e with
+    | Fetch addr v =>
+      (exists w, irf w e /\
+        match pe.(pe_lab) e with
+        | Act (LWriteMem _ _ addr' v' _ _) => addr' = Val_Bits (BVN 64 addr) /\ v = v'
+        | _ => False
+        end) /\
+      (forall w1 w2, irf w1 e -> irf w2 e -> w1 = w2)
+    | _ => ~ (exists e', irf e' e)
+    end).
 
-
+(** `co` is a per-location-total order over writes *)
 Definition wf_co (pe : pre_execution) (co : event_id -> event_id -> Prop) : Prop :=
-  (forall e e', co e e' -> fst e <> 0 /\ fst e' <> 0)%nat ->
-  (forall e e', (fst e <= pe.(pe_threads))%nat -> (fst e' <= pe.(pe_threads))%nat ->
+  (* initial events are always at the start of `co` *)
+  (forall e tid e', co e (tid, e') -> tid <> 0%nat) /\
+  (* writes at the same location are `co`-related *)
+  (forall e e', (fst e <= pe.(pe_threads))%nat -> (fst e' <= pe.(pe_threads))%nat -> e <> e' ->
     match pe.(pe_lab) e, pe.(pe_lab) e' with
     | Act (LWriteMem _ _ addr1 _ _ _), Act (LWriteMem _ _ addr2 _ _ _) =>
       addr1 = addr2 -> co e e' \/ co e' e
     | _, _ => False
     end) /\
+  (* and `co` relates only those writes *)
   (forall e e',
      co e e' ->
      match pe.(pe_lab) e, pe.(pe_lab) e' with
@@ -206,9 +219,9 @@ Definition wf_co (pe : pre_execution) (co : event_id -> event_id -> Prop) : Prop
      | _, _ => False
      end) /\
   Transitive co /\
-  Irreflexive co /\
-  (forall e tid e', co e (tid, e') -> tid <> 0%nat).
+  Irreflexive co.
 
+(*** Sequential Consistency with Fetches, axiomatically *)
 Definition sc : memory_model := {|
   mm_validity := (fun pe =>
   exists co rf irf,
