@@ -17,19 +17,19 @@ Definition thread_id := nat.
 Definition event_id := (thread_id * thread_internal_event_id)%type.
 
 Inductive memory_action :=
-| Act (a:trace_label) (* TODO: we use these for now, but (1) they have to change, and (2) the interface between isla-coq and the memory model itself has to change, e.g. for `data` vs. `addr` *)
-| Fetch (a:addr) (v:valu). 
+| Act (a:trace_label) (* TODO: we use these for now, but (1) they have to change, e.g. they don't currently have barriers, and (2) the interface between isla-coq and the memory model itself has to change, e.g. for `data` vs. `addr` *)
+| Fetch (a:addr) (v:valu).
 
 Record pre_execution := {
   (* The number of threads in the pre-execution *)
   pe_threads : nat; (* TODO: make the memory model ignore events over that tid *)
   (* the labelling function, labelling each event with its memory actions *)
-  pe_lab : event_id -> memory_action; (* TODO: or option? *)
+  pe_label : event_id -> memory_action; (* TODO: or option? *)
   (* The fetch-to-execute order relates a fetch to the event it fetches for:
     F x v --fe--> R x v', where decode(v) = R x
   *)
   pe_fe : event_id -> event_id -> Prop;
-  (* The transitive reduction of `fpo`, the analogue pf program-order for `Fetch` events
+  (* The transitive reduction (because it's easier to compute) of `fpo`, the analogue pf program-order for `Fetch` events
   Instead of a primitive `po` between `b` and `d`, we have
     a:F x1 v1 -------> b:A1
        |               .
@@ -41,6 +41,8 @@ Record pre_execution := {
   pe_fpo1 : event_id -> event_id -> Prop;
   (* data dependencies `[[r = R x; W y r]] = { R x v --data--> W y v | v \in Val } *)
   pe_data : event_id -> event_id -> Prop;
+  (* TODO: address dependencies
+  pe_addr : event_id -> event_id -> Prop; *)
   (* control dependencies *)
   pe_ctrl : event_id -> event_id -> Prop;
 }.
@@ -48,11 +50,11 @@ Record pre_execution := {
 (* TODO: not clear how to deal with this *)
 Axiom decode : valu -> list trc.
 
-(* instrumented register map, where a register is mapped to the pair of a value and a set of events that it data-depends on *)
-Definition instr_reg_map := gmap string (valu * list thread_internal_event_id).
+(** instrumented register map, where a register is mapped to the pair of a value and a set of events that it data-depends on *)
+Definition instrumented_reg_map := gmap string (valu * list thread_internal_event_id).
 
-(* agreement on values between an instrumented register map and a (plain) register map *)
-Definition agree_regs (iregs : instr_reg_map) (regs : reg_map) : Prop :=
+(** agreement on values between an instrumented register map and a (plain) register map *)
+Definition agree_regs (iregs : instrumented_reg_map) (regs : reg_map) : Prop :=
   forall (r : string),
     match regs !! r with
     | None =>
@@ -67,10 +69,10 @@ Definition agree_regs (iregs : instr_reg_map) (regs : reg_map) : Prop :=
       end
     end.
 
-(* accumulator to build a pre-execution *)
+(** accumulator to build a pre-execution *)
 Record info := mk_info {
   info_tr : trc;
-  info_regs : instr_reg_map;
+  info_regs : instrumented_reg_map;
   info_cur_eid : thread_internal_event_id;
   info_fe_src : thread_internal_event_id;
   info_ctrl_srcs : thread_internal_event_id -> Prop;
@@ -106,7 +108,7 @@ Definition pre_execution_of_thread (tid : thread_id) (regs : reg_map) (pe : pre_
     | Some (addr, _) =>
       let e := (tid, Xnow.(info_cur_eid)) in
       exists v tr',
-        pe.(pe_lab) e = Fetch addr v /\
+        pe.(pe_label) e = Fetch addr v /\
         List.In tr' (decode v) /\
         let Xnext := Xnow <| info_tr := tr' |>
           <| info_cur_eid := (Xnow.(info_cur_eid) + 1)%nat |>
@@ -139,7 +141,7 @@ Definition pre_execution_of_thread (tid : thread_id) (regs : reg_map) (pe : pre_
         info_agrees Xnext (X (n+1)%nat)
       | Some (LReadMem _ _ _ _ _ as a | LWriteMem _ _ _ _ _ _ as a) =>
         let e := (tid, Xnow.(info_cur_eid)) in
-        pe.(pe_lab) e = Act a /\
+        pe.(pe_label) e = Act a /\
         let Xnext := Xnow <| info_tr := tr' |>
           <| info_cur_eid := (Xnow.(info_cur_eid) + 1)%nat |> in
         pe.(pe_fe) (tid, Xnow.(info_fe_src)) e /\
@@ -179,10 +181,10 @@ Definition does_not_involve_initial_events (pe : pre_execution) (R : event_id ->
 Definition wf_rf (pe : pre_execution) (rf : event_id -> event_id -> Prop) :=
   does_not_involve_initial_events pe rf /\
   (forall e, (fst e <= pe.(pe_threads))%nat ->
-    match pe.(pe_lab) e with
+    match pe.(pe_label) e with
     | Act (LReadMem v _ addr _ _) =>
       (exists w, rf w e /\
-        match pe.(pe_lab) e with
+        match pe.(pe_label) e with
         | Act (LWriteMem _ _ addr' v' _ _) => addr = addr' /\ v = v'
         | _ => False
         end) /\
@@ -194,10 +196,10 @@ Definition wf_rf (pe : pre_execution) (rf : event_id -> event_id -> Prop) :=
 Definition wf_irf (pe : pre_execution) (irf : event_id -> event_id -> Prop) : Prop :=
   does_not_involve_initial_events pe irf /\
   (forall e, (fst e <= pe.(pe_threads))%nat ->
-    match pe.(pe_lab) e with
+    match pe.(pe_label) e with
     | Fetch addr v =>
       (exists w, irf w e /\
-        match pe.(pe_lab) e with
+        match pe.(pe_label) e with
         | Act (LWriteMem _ _ addr' v' _ _) => addr' = Val_Bits (BVN 64 addr) /\ v = v'
         | _ => False
         end) /\
@@ -211,7 +213,7 @@ Definition wf_co (pe : pre_execution) (co : event_id -> event_id -> Prop) : Prop
   (forall e tid e', co e (tid, e') -> tid <> 0%nat) /\
   (* writes at the same location are `co`-related *)
   (forall e e', (fst e <= pe.(pe_threads))%nat -> (fst e' <= pe.(pe_threads))%nat -> e <> e' ->
-    match pe.(pe_lab) e, pe.(pe_lab) e' with
+    match pe.(pe_label) e, pe.(pe_label) e' with
     | Act (LWriteMem _ _ addr1 _ _ _), Act (LWriteMem _ _ addr2 _ _ _) =>
       addr1 = addr2 -> co e e' \/ co e' e
     | _, _ => False
@@ -219,7 +221,7 @@ Definition wf_co (pe : pre_execution) (co : event_id -> event_id -> Prop) : Prop
   (* and `co` relates only those writes *)
   (forall e e',
      co e e' ->
-     match pe.(pe_lab) e, pe.(pe_lab) e' with
+     match pe.(pe_label) e, pe.(pe_label) e' with
      | Act (LWriteMem _ _ addr1 _ _ _), Act (LWriteMem _ _ addr2 _ _ _) => addr1 = addr2
      | _, _ => False
      end) /\
@@ -246,7 +248,7 @@ Definition initial_pre_execution_in (pe_initial_state pe : pre_execution) : Prop
   (* all events by the initial thread (thread 0) are the same *)
   (forall le,
     let e := (0%nat, le) in
-    pe_initial_state.(pe_lab) e = pe.(pe_lab) e) /\
+    pe_initial_state.(pe_label) e = pe.(pe_label) e) /\
   (* no extraneous edges *)
   ~ (exists le e',
       let e := (0%nat, le) in
