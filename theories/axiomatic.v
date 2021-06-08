@@ -46,9 +46,12 @@ Record pre_execution := {
     c:F x2 v2 -------> d:A2
   *)
   pe_fpo1 : event_id -> event_id -> Prop;
-  (* data dependencies `[[r = R x; W y r]] = { R x v --data--> W y v | v \in Val } *)
+  (* data dependencies.
+    `r = R x; W y r` leads to
+       R x v --data--> W y v
+  *)
   pe_data : event_id -> event_id -> Prop;
-  (* TODO: address dependencies *)
+  (* address dependencies *)
   pe_addr : event_id -> event_id -> Prop;
   (* translation data dependencies (correspond to address dependencies) *)
   pe_tdata : event_id -> event_id -> Prop;
@@ -74,7 +77,8 @@ Definition instrumented_reg_map := gmap string (thread_internal_event_id -> Prop
 
 Inductive translation_level : Type :=
 (* TODO: it's probably more complicated *)
-| Trlvl_no_translation
+| Trlvl_plain_address
+| Trlvl_translation_off
 | Trlvl_stage_one_only (** VA to IPA *)
 | Trlvl_stage_one_and_two (** VA to IPA + IPA to PA *).
 
@@ -181,15 +185,26 @@ Definition pre_execution_of_memory_action tid pe a tr' Xnow Xfuture : Prop :=
   match addr_of a with
   | None => False
   | Some addr =>
-  let k := (match Xnow.(info_translation_level) with | Trlvl_no_translation => 0 | Trlvl_stage_one_only => 1 | Trlvl_stage_one_and_two => 2 end)%nat in
+  let k := (match Xnow.(info_translation_level) with | Trlvl_plain_address => 0 | Trlvl_translation_off => 0 | Trlvl_stage_one_only => 1 | Trlvl_stage_one_and_two => 2 end)%nat in
   let e := (tid, Xnow.(info_cur_eid) + k)%nat in
   (match Xnow.(info_translation_level) with
-  | Trlvl_no_translation =>
+  | Trlvl_plain_address =>
     pe.(pe_label) e = Act a /\
     (forall e', Xnow.(info_addr_srcs) e' -> (tid, e') <> e -> pe.(pe_addr) (tid, e') e) /\
-    (* addr; TODO: maybe this should be off-switchable *)
-    (forall e', Xnow.(info_addr_srcs) e' -> (tid, e') <> e -> pe.(pe_tdata) (tid, e') e) /\
-    (forall e', pe.(pe_tdata) e' e -> exists le', Xnow.(info_addr_srcs) le' /\ e' = (tid, le') /\ e' <> e) /\
+    (* addr *)
+    (forall e', Xnow.(info_addr_srcs) e' -> (tid, e') <> e -> pe.(pe_addr) (tid, e') e) /\
+    (forall e', pe.(pe_addr) e' e -> exists le', Xnow.(info_addr_srcs) le' /\ e' = (tid, le') /\ e' <> e) /\
+    (* tdata *)
+    (forall e', ~ pe.(pe_tdata) e' e) /\
+    (* iio *)
+    (forall e', ~ pe.(pe_iio) e' e) /\
+    (* TODO: ??? *)
+    True
+  | Trlvl_translation_off =>
+    pe.(pe_label) e = Act a /\
+    (forall e', Xnow.(info_addr_srcs) e' -> (tid, e') <> e -> pe.(pe_addr) (tid, e') e) /\
+    (* addr *)
+    (forall e', ~ pe.(pe_addr) e' e) /\
     (* tdata *)
     (forall e', ~ pe.(pe_tdata) e' e) /\
     (* iio *)
