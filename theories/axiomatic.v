@@ -23,46 +23,33 @@ Inductive translation_stage : Type :=
 Inductive memory_action : Type :=
 | MA_act (a:trace_label)
   (* TODO: we use these for now, but
-  (1) they have to change, e.g. they don't currently have barriers, and
+  (1) they have to change, e.g. they don't currently have barriers, translate vs. read distinction, faults, etc., and
   (2) the interface between isla-coq and the memory model itself feels wrong
   *)
 | MA_fetch (a:addr) (v:valu)
-| MA_translate (stg:translation_stage) (hi:addr) (lo_opt:option addr).
+| MA_translate (stg:translation_stage) (hi:addr) (lo:valu).
 
 Definition rel := event_id -> event_id -> Prop.
 
 Record pre_execution := {
-  (* The number of threads in the pre-execution *)
+  (** number of threads in the pre-execution *)
   pe_threads : nat; (* TODO: make the memory model ignore events over that tid *)
-  (* the labelling function, labelling each event with its memory actions *)
+  (** labelling function, labelling each event with its memory actions *)
   pe_label : event_id -> memory_action; (* TODO: or option? *)
-  (* Fetch program order, the analogue of program-order for `Fetch` events
-  Instead of a primitive `po` between `b` and `d`, we have
-    a:F x1 v1 -------> b:A1
-       |               .
-       | fpo           . po as a derived edge
-       |               .
-       v               v
-    c:F x2 v2 -------> d:A2
-  *)
-  pe_fpo : rel;
-  (** data dependencies.
-    `r = R x; W y r` leads to
-    R x v --data--> W y v
-  *)
-  pe_data : rel;
-  (** address dependencies *)
-  pe_addr : rel;
-  (** translation data dependencies (correspond to address dependencies) *)
-  pe_tdata : rel;
-  (** control dependencies *)
-  pe_ctrl : rel;
   (** intra-instruction order: F --iio--> T1 --iio--> T2 --iio--> [R|W] *)
   pe_iio : rel;
+  (** fetch program order, the analogue of program-order for `Fetch` events *)
+  pe_fpo : rel;
+  (** control dependencies *)
+  pe_ctrl : rel;
+  (** translation data dependencies (correspond to address dependencies) *)
+  pe_tdata : rel;
+  (** data dependencies *)
+  pe_data : rel;
   (* TODO: others??? *)
 }.
 
-(** TODO: *)
+(** TODO: isla-axiomatic computes this internally; how do we get it? *)
 Record dependency_info := {
   depinfo_is_ctrl : bool;
   depinfo_regs_in_data : string -> Prop;
@@ -76,13 +63,6 @@ Axiom decode : valu -> (dependency_info * list trc).
 (** dependency_reg_map register map, where a register is mapped to the events that it "depends" on *)
 Definition dependency_reg_map := gmap string (thread_internal_event_id -> Prop).
 
-Inductive translation_level : Type :=
-(* TODO: it's probably more complicated *)
-| Trlvl_plain_address
-| Trlvl_translation_off
-| Trlvl_stage_one_only (** VA to IPA *)
-| Trlvl_stage_one_and_two (** VA to IPA + IPA to PA *).
-
 (** accumulator to build a pre-execution *)
 Record info := mk_info {
   info_tr : trc;
@@ -94,7 +74,8 @@ Record info := mk_info {
   info_ctrl_srcs : thread_internal_event_id -> Prop;
   info_data_srcs : thread_internal_event_id -> Prop;
   info_addr_srcs : thread_internal_event_id -> Prop;
-  info_translation_level : translation_level;
+  info_iio_srcs : thread_internal_event_id -> Prop;
+  info_is_ctrl : bool;
   (* TODO: ???
   info_address_announced : bool;
   *)
@@ -111,7 +92,9 @@ Instance eta_info : Settable _ :=
     info_ctrl_srcs;
     info_data_srcs;
     info_addr_srcs;
-    info_translation_level>.
+    info_iio_srcs;
+    info_is_ctrl
+    >.
 
 Definition info_agrees (info1 info2 : info) : Prop :=
   (* TODO: should probably require equal extensions *)
@@ -145,8 +128,19 @@ Definition regs_empty (iregs : dependency_reg_map) : Prop :=
     | Some s => forall le, ~ s le
     end.
 
+Definition generated_by_local tid (srcs : thread_internal_event_id -> Prop) e (r : rel) : Prop :=
+  (forall le', srcs le' -> r (tid, le') e) /\
+  (forall e', r e' e -> exists le', srcs le' /\ e' = (tid, le')).
+
+(** TODO: probably need to extend isla-coq? *)
+Axiom is_translate : trace_label -> bool.
+
+Definition is_not_target (r : rel) (e : event_id) : Prop :=
+  forall e', ~ r e' e.
+
 Definition pre_execution_of_fetch addr tid pe Xnow Xfuture : Prop :=
-  let e := (tid, Xnow.(info_current_eid)) in
+  let le := Xnow.(info_current_eid) in
+  let e := (tid, le) in
   exists v tr' regs',
     pe.(pe_label) e = MA_fetch addr v /\
     let (depinfo, trs) := decode v in
@@ -154,23 +148,25 @@ Definition pre_execution_of_fetch addr tid pe Xnow Xfuture : Prop :=
     update_regs depinfo.(depinfo_regs_out) Xnow.(info_current_eid) Xnow.(info_register_dependencies) regs' /\
     let Xnext := Xnow <| info_tr := tr' |>
       <| info_current_eid := (Xnow.(info_current_eid) + 1)%nat |>
-      <| info_current_fetch := Xnow.(info_current_eid) |>
-      <| info_fe_srcs := (fun le => Xnow.(info_fe_srcs) le \/ le = Xnow.(info_current_eid)) |>
-      <| info_ctrl_srcs := (fun le => Xnow.(info_ctrl_srcs) le \/ (depinfo.(depinfo_is_ctrl) /\ le = Xnow.(info_current_eid))) |>
+      <| info_current_fetch := le |>
+      <| info_fe_srcs := (fun le' => Xnow.(info_fe_srcs) le' \/ le' = le) |>
+      <| info_is_ctrl := depinfo.(depinfo_is_ctrl) |>
+      <| info_ctrl_srcs := (fun le' => Xnow.(info_ctrl_srcs) le' \/ (depinfo.(depinfo_is_ctrl) /\ le' = le)) |>
       <| info_data_srcs := event_deps_of_reg_deps depinfo.(depinfo_regs_in_data) Xnow.(info_register_dependencies) |>
       <| info_addr_srcs := event_deps_of_reg_deps depinfo.(depinfo_regs_in_addr) Xnow.(info_register_dependencies) |>
+      <| info_iio_srcs := (fun le' => le' = le) |>
       <| info_register_dependencies := regs' |> in
+    (* iio *)
+    is_not_target pe.(pe_iio) e /\
     (* fpo *)
     (forall le', Xnow.(info_fe_srcs) le' -> pe.(pe_fpo) (tid, le') e) /\
     (forall e', pe.(pe_fpo) e' (tid, Xnow.(info_current_eid)) -> exists le', e' = (tid, le') /\ Xnow.(info_fe_srcs) le') /\
     (* ctrl *)
-    (~ (exists e', pe.(pe_ctrl) e' e)) /\
-    (* addr *)
-    (~ (exists e', pe.(pe_addr) e' e)) /\
-    (* data *)
-    (~ (exists e', pe.(pe_data) e' e)) /\
+    generated_by_local tid Xnow.(info_ctrl_srcs) e pe.(pe_ctrl) /\
     (* tdata *)
-    (~ (exists e', pe.(pe_tdata) e' e)) /\
+    is_not_target pe.(pe_tdata) e /\
+    (* data *)
+    is_not_target pe.(pe_data) e (* TODO: is that correct? *) /\
     (* TODO: others? *)
     info_agrees Xnext Xfuture.
 
@@ -199,113 +195,35 @@ Definition pre_execution_of_memory_action tid pe a tr' Xnow Xfuture : Prop :=
   match addr_of a with
   | None => False
   | Some addr =>
-  let k := (match Xnow.(info_translation_level) with | Trlvl_plain_address => 0 | Trlvl_translation_off => 0 | Trlvl_stage_one_only => 1 | Trlvl_stage_one_and_two => 2 end)%nat in
-  let e := (tid, Xnow.(info_current_eid) + k)%nat in
-  (match Xnow.(info_translation_level) with
-  | Trlvl_plain_address =>
+    let le := Xnow.(info_current_eid) in
+    let e := (tid, le) in
+    let Xnext :=
+      Xnow
+      <| info_tr := tr' |>
+      <| info_current_eid := (Xnow.(info_current_eid) + 1)%nat |>
+      <| info_ctrl_srcs := (fun le' => Xnow.(info_ctrl_srcs) le' \/ (Xnow.(info_is_ctrl) /\ le' = le)) |>
+      <| info_iio_srcs := (fun le' => Xnow.(info_iio_srcs) le' \/ if is_translate a then le' = le else False) |> in
     pe.(pe_label) e = MA_act a /\
-    (forall e', Xnow.(info_addr_srcs) e' -> (tid, e') <> e -> pe.(pe_addr) (tid, e') e) /\
-    (* addr *)
-    (forall e', Xnow.(info_addr_srcs) e' -> (tid, e') <> e -> pe.(pe_addr) (tid, e') e) /\
-    (forall e', pe.(pe_addr) e' e -> exists le', Xnow.(info_addr_srcs) le' /\ e' = (tid, le') /\ e' <> e) /\
-    (* tdata *)
-    (forall e', ~ pe.(pe_tdata) e' e) /\
     (* iio *)
-    pe.(pe_iio) (tid, Xnow.(info_current_fetch)) e /\
-    (forall e', pe.(pe_iio) e' e -> e' = (tid, Xnow.(info_current_fetch))) /\
+    generated_by_local tid Xnow.(info_iio_srcs) e pe.(pe_iio) /\
     (* fpo *)
-    (forall e', ~ pe.(pe_fpo) e' e) /\
-    (* TODO: ??? *)
-    True
-  | Trlvl_translation_off =>
-    pe.(pe_label) e = MA_act a /\
-    (forall e', Xnow.(info_addr_srcs) e' -> (tid, e') <> e -> pe.(pe_addr) (tid, e') e) /\
-    (* addr *)
-    (forall e', ~ pe.(pe_addr) e' e) /\
+    is_not_target pe.(pe_fpo) e /\
+    (* ctrl *)
+    generated_by_local tid Xnow.(info_ctrl_srcs) e pe.(pe_ctrl) /\
     (* tdata *)
-    (forall e', ~ pe.(pe_tdata) e' e) /\
-    (* iio *)
-    pe.(pe_iio) (tid, Xnow.(info_current_fetch)) e /\
-    (forall e', pe.(pe_iio) e' e -> e' = (tid, Xnow.(info_current_fetch))) /\
-    (* fpo *)
-    (forall e', ~ pe.(pe_fpo) e' e) /\
-    (* TODO *)
-    True
-  | Trlvl_stage_one_only =>
-    let etr := (tid, Xnow.(info_current_eid)) in
-    exists ipa,
-    pe.(pe_label) e = MA_act (replace_addr a ipa) /\
-    pe.(pe_label) etr = MA_translate Tstg_stage1 addr (Some ipa) /\
-    (* addr *)
-    (forall e', ~ pe.(pe_addr) e' e) /\
-    (forall e', ~ pe.(pe_addr) e' etr) /\
-    (* tdata *)
-    (forall e', Xnow.(info_addr_srcs) e' -> (tid, e') <> etr -> pe.(pe_tdata) (tid, e') e) /\
-    (forall e', pe.(pe_tdata) e' etr -> exists le', Xnow.(info_addr_srcs) le' /\ e' = (tid, le') /\ e' <> etr) /\
-    (forall e', ~ pe.(pe_tdata) e' e) /\
-    (* iio *)
-    pe.(pe_iio) (tid, Xnow.(info_current_fetch)) etr /\
-    pe.(pe_iio) (tid, Xnow.(info_current_fetch)) e /\
-    pe.(pe_iio) etr e /\
-    (forall e', pe.(pe_iio) e' etr -> e' = (tid, Xnow.(info_current_fetch))) /\
-    (forall e', pe.(pe_iio) e' e -> e' = (tid, Xnow.(info_current_fetch)) \/ e' = etr) /\
-    (* fpo *)
-    (forall e', ~ pe.(pe_fpo) e' e) /\
-    True (* TODO: tpo, ... *)
-  | Trlvl_stage_one_and_two =>
-    let etr1 := (tid, Xnow.(info_current_eid)) in
-    let etr2 := (tid, Xnow.(info_current_eid) + 1)%nat in
-    exists ipa pa,
-    pe.(pe_label) e = MA_act (replace_addr a pa) /\
-    pe.(pe_label) etr1 = MA_translate Tstg_stage1 addr (Some ipa) /\
-    pe.(pe_label) etr2 = MA_translate Tstg_stage2 ipa (Some pa) /\
-    (* addr *)
-    (forall e', ~ pe.(pe_addr) e' e) /\
-    (forall e', ~ pe.(pe_addr) e' etr1) /\
-    (forall e', ~ pe.(pe_addr) e' etr2) /\
-    (* tdata *)
-    (forall e', Xnow.(info_addr_srcs) e' -> (tid, e') <> etr1 -> pe.(pe_tdata) (tid, e') e) /\
-    (forall e', pe.(pe_tdata) e' etr1 -> exists le', Xnow.(info_addr_srcs) le' /\ e' = (tid, le') /\ e' <> etr1) /\
-    (forall e', ~ pe.(pe_tdata) e' etr2) /\
-    (forall e', ~ pe.(pe_tdata) e' e) /\
-    (* iio *)
-    pe.(pe_iio) (tid, Xnow.(info_current_fetch)) etr1 /\
-    pe.(pe_iio) (tid, Xnow.(info_current_fetch)) etr2 /\
-    pe.(pe_iio) (tid, Xnow.(info_current_fetch)) e /\
-    pe.(pe_iio) etr1 etr2 /\
-    pe.(pe_iio) etr1 e /\
-    pe.(pe_iio) etr2 e /\
-    (forall e', pe.(pe_iio) e' etr1 -> e' = (tid, Xnow.(info_current_fetch))) /\
-    (forall e', pe.(pe_iio) e' etr2 -> e' = etr1 \/ e' = (tid, Xnow.(info_current_fetch))) /\
-    (forall e', pe.(pe_iio) e' e -> e' = (tid, Xnow.(info_current_fetch)) \/ e' = etr1 \/ e' = etr2) /\
-    (* fpo *)
-    (forall e', ~ pe.(pe_fpo) e' e) /\
-    True (* TODO: ??? *)
-  end) /\
-  let Xnext := Xnow <| info_tr := tr' |>
-    <| info_current_eid := (Xnow.(info_current_eid) + 1 + k)%nat |> in
-  (* ctrl *)
-  (forall e', Xnow.(info_ctrl_srcs) e' -> (tid, e') <> e -> pe.(pe_ctrl) (tid, e') e) /\
-  (forall e', pe.(pe_ctrl) e' e -> e' <> e /\ exists le', Xnow.(info_ctrl_srcs) le' /\ e' = (tid, le')) /\
-  (* data *)
-  (forall e', Xnow.(info_data_srcs) e' -> (tid, e') <> e -> pe.(pe_data) (tid, e') e) /\
-  (forall e', pe.(pe_data) e' e -> exists le', Xnow.(info_data_srcs) le' /\ e' = (tid, le') /\ e' <> e) /\
-  info_agrees Xnext Xfuture
+    if is_translate a then (generated_by_local tid Xnow.(info_addr_srcs) e pe.(pe_tdata)) else (is_not_target pe.(pe_tdata) e) /\
+    (* data *)
+    generated_by_local tid Xnow.(info_data_srcs) e pe.(pe_data) /\
+    info_agrees Xnext Xfuture
   end.
-
-Record thread_state := {
-  ts_regs: reg_map;
-  ts_translation_level : translation_level;
-}.
 
 (* TODO: this assumes that each instruction generates at most one explicit memory action *)
 (* TODO: this uses `nat`s as event IDs, in order. Not convinced this is very usable. Not sure allowing a renumbering is going to be super usable either... *)
-Definition pre_execution_of_thread (tid : thread_id) (regs : thread_state) (pe : pre_execution) : Prop :=
+Definition pre_execution_of_thread (tid : thread_id) (regs : reg_map) (pe : pre_execution) : Prop :=
   exists (X : nat -> info),
   (X (0%nat)).(info_tr) = [] /\
   regs_empty (X (0%nat)).(info_register_dependencies) /\
-  (X (0%nat)).(info_registers) = regs.(ts_regs) /\
-  (X (0%nat)).(info_translation_level) = regs.(ts_translation_level) /\
+  (X (0%nat)).(info_registers) = regs /\
   (forall e, ~ (X (0%nat)).(info_ctrl_srcs) e) /\
   (forall e, ~ (X (0%nat)).(info_fe_srcs) e) /\
   forall (n : nat),
@@ -346,7 +264,7 @@ Definition pre_execution_of_thread (tid : thread_id) (regs : thread_state) (pe :
   end
 .
 
-Definition pre_execution_of_threads (regss : list thread_state) (pe : pre_execution) : Prop :=
+Definition pre_execution_of_threads (regss : list reg_map) (pe : pre_execution) : Prop :=
   pe.(pe_threads) = List.length regss /\
   forall (n : nat) regs,
     List.nth_error regss n = Some regs ->
@@ -462,13 +380,12 @@ Definition initial_pre_execution_in (pe_initial_state pe : pre_execution) : Prop
       either_way pe.(pe_fpo) e e' \/
       either_way pe.(pe_data) e e' \/
       either_way pe.(pe_ctrl) e e' \/
-      either_way pe.(pe_addr) e e' \/
       either_way pe.(pe_tdata) e e' \/
       either_way pe.(pe_iio) e e'
   ).
 
 (** Top-level definition of the semantics of running a machine from a starting state `regss` *)
-Definition valid_execution_of (regss : list thread_state) (pe_initial_state : pre_execution) (pe : pre_execution) (mm : memory_model) : Prop :=
+Definition valid_execution_of (regss : list reg_map) (pe_initial_state : pre_execution) (pe : pre_execution) (mm : memory_model) : Prop :=
   initial_pre_execution_in pe_initial_state pe /\
   pre_execution_of_threads regss pe /\
   mm.(mm_validity) pe.
