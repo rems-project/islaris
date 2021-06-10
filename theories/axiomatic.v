@@ -1,5 +1,5 @@
 (* a rough sketch of a glueing of the thread-local semantics of isla with an axiomatic memory model *)
-(* has fetching, partial page tables (single level, no faults), but no mixed-size, and does not treat system registers properly *)
+(* has fetching, partial page tables (no faults), but no mixed-size, and does not treat system registers properly *)
 (* TODO: this really needs proof-reading *)
 
 (* TODO: how to test this given that it produces infinite things, and is very not computing?
@@ -12,14 +12,148 @@ Require Import isla.base isla.opsem.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
+Require Import Coq.Relations.Relation_Operators.
+
 Definition thread_internal_event_id := nat.
 Definition thread_id := nat.
 Definition event_id := (thread_id * thread_internal_event_id)%type.
 
-Inductive translation_stage : Type :=
-| Tstg_stage1
-| Tstg_stage2.
+Definition bit := bool.
 
+Inductive translation_regime :=
+| Translation_regime_EL10 (el2_disabled: bit)
+| Translation_regime_EL2
+| Translation_regime_EL20
+| Translation_regime_EL3.
+
+Inductive translation_stage :=
+| Stage_1
+| Stage_2.
+
+Inductive translation_level :=
+| Translation_level_0
+| Translation_level_1
+| Translation_level_2
+| Translation_level_3
+| Translation_level_4.
+
+Inductive exception_level :=
+| EL0
+| EL1
+| EL2
+| EL3.
+
+Inductive read_kind :=
+| RK_plain
+| RK_acquire
+| RK_weak_acquire
+(* TODO: others *).
+
+Inductive write_kind :=
+| WK_plain
+| WK_release
+(* TODO: others *)
+.
+
+Record tlbi_info := {
+  (* TODO *)
+}.
+
+Record dc_info := {
+  (* TODO *)
+}.
+
+Inductive barrier_kind :=
+| DMB
+| DSB
+| TLBI (i:tlbi_info)
+| DC (i:dc_info).
+
+Definition vmid := bv 16.  (* actually 8 or 16, implementation-defined with FEAT_VMID16 *)
+
+Definition asid := bv 16.
+
+Inductive asid_or_global :=
+| AG_asid (asid:asid)
+| AG_global.
+
+Record write_address := {
+  wa_kind : write_kind;
+  wa_input_address : addr;
+  wa_physical_address : addr;
+  wa_num_bytes : N;
+}.
+
+Record write_info := {
+  w_kind : write_kind;
+  w_input_address : addr;
+  w_physical_address : addr;
+  w_num_bytes : N;
+  w_data: list byte;
+  w_tag_value: option bit;  (* an optional capability tag *)
+  w_success: bit;
+}.
+
+Record read_info := {
+  r_kind : read_kind;
+  r_input_address : addr;
+  r_physical_address : addr;
+  r_num_bytes : N;
+  r_data: list byte;
+  r_tag_value: option bit;  (* an optional capability tag *)
+}.
+
+Record translate_info := {
+  t_input_address : addr;
+  t_intermediate_physical_address : option addr;
+  t_physical_address : option addr;
+  t_translation_regime : translation_regime;
+  t_vmid : vmid;
+  t_asid : asid_or_global;
+  t_el : exception_level;
+  t_stage : translation_stage;
+  t_level : translation_level;
+  (* TODO: system register values used for the translation *)
+  t_invalidated_for_stage_1_2 : bit * bit;
+}.
+
+Record fetch_info := {
+  f_input_address : addr;
+  f_physical_address : addr;
+  f_num_bytes : N;
+  f_opcode : list byte;  (* to accommodate Armv8-A thumb or RISC-V compressed instructions *)
+}.
+
+(** announce branch address `addr`, to induce ctrl dependency *)
+Record branch_address_announce_info := {
+ ba_input_address : addr;
+ ba_physical_address : addr;  (* not sure whether this record should have a PA field *)
+}.
+
+(** currently memory barriers, icache&dcache, and TLBIs all here. not sure*)
+Record barrier_info := {
+ b_kind : barrier_kind;
+}.
+
+Inductive memory_action : Set :=
+| MA_write_announce (x:write_info)
+| MA_write (x:write_info)
+| MA_read (x:read_info)
+| MA_translate (x:translate_info)
+| MA_fetch (x:fetch_info)
+| MA_branch_address_announce (x:branch_address_announce_info)
+| MA_barrier (x:barrier_info).
+
+(** TODO *)
+Definition instruction := unit.
+
+Record event_info := {
+  e_thread_identifier : N;
+  e_label: memory_action;
+  e_inst: instruction;
+}.
+
+(*
 Inductive memory_action : Type :=
 | MA_act (a:trace_label)
   (* TODO: we use these for now, but
@@ -28,6 +162,7 @@ Inductive memory_action : Type :=
   *)
 | MA_fetch (a:addr) (v:valu)
 | MA_translate (stg:translation_stage) (hi:addr) (lo:valu).
+*)
 
 Definition rel := event_id -> event_id -> Prop.
 
@@ -35,7 +170,7 @@ Record pre_execution := {
   (** number of threads in the pre-execution *)
   pe_threads : nat; (* TODO: make the memory model ignore events over that tid *)
   (** labelling function, labelling each event with its memory actions *)
-  pe_label : event_id -> memory_action; (* TODO: or option? *)
+  pe_label : event_id -> memory_action; (* TODO: use event_info *)
   (** intra-instruction order: F --iio--> T1 --iio--> T2 --iio--> [R|W] *)
   pe_iio : rel;
   (** fetch program order, the analogue of program-order for `Fetch` events *)
@@ -58,7 +193,7 @@ Record dependency_info := {
 }.
 
 (* TODO: not clear how to deal with this *)
-Axiom decode : valu -> (dependency_info * list trc).
+Axiom decode : list byte -> (dependency_info * list trc).
 
 (** dependency_reg_map register map, where a register is mapped to the events that it "depends" on *)
 Definition dependency_reg_map := gmap string (thread_internal_event_id -> Prop).
@@ -142,7 +277,7 @@ Definition pre_execution_of_fetch addr tid pe Xnow Xfuture : Prop :=
   let le := Xnow.(info_current_eid) in
   let e := (tid, le) in
   exists v tr' regs',
-    pe.(pe_label) e = MA_fetch addr v /\
+    pe.(pe_label) e = MA_fetch {| f_input_address := addr; f_physical_address := addr (* TODO: ??? *); f_num_bytes := 4 (* TODO *); f_opcode := v |} /\
     let (depinfo, trs) := decode v in
     List.In tr' trs /\
     update_regs depinfo.(depinfo_regs_out) Xnow.(info_current_eid) Xnow.(info_register_dependencies) regs' /\
@@ -191,6 +326,43 @@ Definition addr_of (a:trace_label) : option addr :=
   | _ => None
   end.
 
+(* TODO: ??? *)
+Definition read_kind_of_valu (v : valu) : read_kind :=
+  RK_plain.
+
+(* TODO: ??? *)
+Definition write_kind_of_valu (v : valu) : write_kind :=
+  WK_plain.
+
+Definition tag_value_of_valu_option (vo : valu_option) :=
+  match vo with
+  | None => None
+  | Some x => Some true (* TODO: this is wrong! *)
+  end.
+
+Definition bit_of_res (x : valu) : bit :=
+  true (* TODO *).
+
+Definition action_of_read_or_write (a : trace_label) : memory_action :=
+  match a with
+  | LReadMem data kind (Val_Bits (BVN 64 addr)) len tag =>
+    MA_read {| r_kind := read_kind_of_valu kind;
+      r_input_address := addr (* TODO: ??? *);
+      r_physical_address := addr;
+      r_num_bytes := len;
+      r_data := [] (* TODO: ??? *);
+      r_tag_value := tag_value_of_valu_option tag |}
+  | LWriteMem res kind (Val_Bits (BVN 64 addr)) data len tag =>
+    MA_write {| w_kind := write_kind_of_valu kind;
+    w_input_address := addr (* TODO: ??? *);
+    w_physical_address := addr;
+    w_num_bytes := len;
+    w_data := [] (* TODO: ??? *);
+    w_tag_value := tag_value_of_valu_option tag;
+    w_success := bit_of_res res |}
+  | _ => MA_barrier {| b_kind := DMB |} (* TODO: this is silly *)
+  end.
+
 Definition pre_execution_of_memory_action tid pe a tr' Xnow Xfuture : Prop :=
   match addr_of a with
   | None => False
@@ -203,7 +375,7 @@ Definition pre_execution_of_memory_action tid pe a tr' Xnow Xfuture : Prop :=
       <| info_current_eid := (Xnow.(info_current_eid) + 1)%nat |>
       <| info_ctrl_srcs := (fun le' => Xnow.(info_ctrl_srcs) le' \/ (Xnow.(info_is_ctrl) /\ le' = le)) |>
       <| info_iio_srcs := (fun le' => Xnow.(info_iio_srcs) le' \/ if is_translate a then le' = le else False) |> in
-    pe.(pe_label) e = MA_act a /\
+    pe.(pe_label) e = action_of_read_or_write a /\
     (* iio *)
     generated_by_local tid Xnow.(info_iio_srcs) e pe.(pe_iio) /\
     (* fpo *)
@@ -211,7 +383,7 @@ Definition pre_execution_of_memory_action tid pe a tr' Xnow Xfuture : Prop :=
     (* ctrl *)
     generated_by_local tid Xnow.(info_ctrl_srcs) e pe.(pe_ctrl) /\
     (* tdata *)
-    if is_translate a then (generated_by_local tid Xnow.(info_addr_srcs) e pe.(pe_tdata)) else (is_not_target pe.(pe_tdata) e) /\
+    (if is_translate a then generated_by_local tid Xnow.(info_addr_srcs) e pe.(pe_tdata) else is_not_target pe.(pe_tdata) e) /\
     (* data *)
     generated_by_local tid Xnow.(info_data_srcs) e pe.(pe_data) /\
     info_agrees Xnext Xfuture
@@ -276,8 +448,6 @@ Record memory_model := {
   (* TODO: or should it build execution witnesses explicitly, like Mark Batty's cmm.lem? *)
 }.
 
-Require Import Coq.Relations.Relation_Operators.
-
 Definition acyclic (r : rel) : Prop :=
   Irreflexive (clos_trans _ r).
 
@@ -289,10 +459,10 @@ Definition wf_rf (pe : pre_execution) (rf : rel) :=
   does_not_involve_initial_events pe rf /\
   (forall e, (fst e <= pe.(pe_threads))%nat ->
     match pe.(pe_label) e with
-    | MA_act (LReadMem v _ addr _ _) =>
+    | MA_read ri =>
       (exists w, rf w e /\
         match pe.(pe_label) e with
-        | MA_act (LWriteMem _ _ addr' v' _ _) => addr = addr' /\ v = v'
+        | MA_write wi => ri.(r_physical_address) = wi.(w_physical_address) /\ ri.(r_data) = wi.(w_data)
         | _ => False
         end) /\
       (forall w1 w2, rf w1 e -> rf w2 e -> w1 = w2)
@@ -304,10 +474,10 @@ Definition wf_irf (pe : pre_execution) (irf : rel) : Prop :=
   does_not_involve_initial_events pe irf /\
   (forall e, (fst e <= pe.(pe_threads))%nat ->
     match pe.(pe_label) e with
-    | MA_fetch addr v =>
+    | MA_fetch fi =>
       (exists w, irf w e /\
         match pe.(pe_label) e with
-        | MA_act (LWriteMem _ _ addr' v' _ _) => addr' = Val_Bits (BVN 64 addr) /\ v = v'
+        | MA_write wi => fi.(f_physical_address) = wi.(w_physical_address) /\ fi.(f_opcode) = wi.(w_data)
         | _ => False
         end) /\
       (forall w1 w2, irf w1 e -> irf w2 e -> w1 = w2)
@@ -321,15 +491,15 @@ Definition wf_co (pe : pre_execution) (co : rel) : Prop :=
   (* writes at the same location are `co`-related *)
   (forall e e', (fst e <= pe.(pe_threads))%nat -> (fst e' <= pe.(pe_threads))%nat -> e <> e' ->
     match pe.(pe_label) e, pe.(pe_label) e' with
-    | MA_act (LWriteMem _ _ addr1 _ _ _), MA_act (LWriteMem _ _ addr2 _ _ _) =>
-      addr1 = addr2 -> co e e' \/ co e' e
+    | MA_write wi1, MA_write wi2 =>
+      wi1.(w_physical_address) = wi2.(w_physical_address) -> co e e' \/ co e' e
     | _, _ => False
     end) /\
   (* and `co` relates only those writes *)
   (forall e e',
      co e e' ->
      match pe.(pe_label) e, pe.(pe_label) e' with
-     | MA_act (LWriteMem _ _ addr1 _ _ _), MA_act (LWriteMem _ _ addr2 _ _ _) => addr1 = addr2
+     | MA_write wi1, MA_write wi2 => wi1.(w_physical_address) = wi2.(w_physical_address)
      | _, _ => False
      end) /\
   Transitive co /\
@@ -337,16 +507,20 @@ Definition wf_co (pe : pre_execution) (co : rel) : Prop :=
 
 Definition is_fetch (pe : pre_execution) (e : event_id) : bool :=
   match pe.(pe_label) e with
-  | MA_act _ => false
-  | MA_fetch _ _ => true
-  | MA_translate _ _ _ => false
+  | MA_fetch _ => true
+  | _ => false
   end.
 
+(* TODO: ??? *)
 Definition is_explicit_event (pe : pre_execution) (e : event_id) : bool :=
   match pe.(pe_label) e with
-  | MA_act _ => true
-  | MA_fetch _ _ => false
-  | MA_translate _ _ _ => false
+  | MA_read _ => true
+  | MA_write _ => true
+  | MA_barrier _ => true
+  | MA_fetch _ => false
+  | MA_translate _ => false
+  | MA_write_announce _ => true (* ??? *)
+  | MA_branch_address_announce _ => true (* ??? *)
   end.
 
 (** Sequential Consistency with Fetches, axiomatically
