@@ -70,6 +70,7 @@ Definition eval_binop (b : binop) (v1 v2 : valu) : option valu :=
   | Eq, Val_Bool b1, Val_Bool b2 => Some (Val_Bool (eqb b1 b2))
   | Eq, Val_Bits n1, Val_Bits n2 => mguard (n1.(bvn_n) = n2.(bvn_n)) (λ _, Some (Val_Bool (bool_decide (n1 = n2))))
   | Bvarith Bvlshr, Val_Bits n1, Val_Bits n2 => n2' ← bvn_to_bv n1.(bvn_n) n2; Some (Val_Bits (bv_shiftr n1.(bvn_val) n2'))
+  | Bvcomp Bvugt, Val_Bits n1, Val_Bits n2 => n2' ← bvn_to_bv n1.(bvn_n) n2; Some (Val_Bool (bv_ugt n1.(bvn_val) n2'))
   | _, _, _ => (* TODO: other cases *) None
   end.
 
@@ -261,15 +262,17 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
        ((θ' = θ <| seq_trace := t' |> ∧ data' = data'')
         ∨ (θ' = θ <| seq_nb_state := true|>))
     | Some (LWriteMem res kind addr data len tag) =>
-      (* Ignoring tags and kinds. There are no cases were the write fails *)
-      ∃ mem' addr' data',
+      (* Ignoring tags and kinds. *)
       κ' = None ∧
+      ((∃ mem' addr' data',
       addr = Val_Bits (BVN 64 addr') ∧
       data = Val_Bits (BVN (8 * len) data') ∧
       mem' = write_mem len σ.(seq_mem) addr' (bv_unsigned data') ∧
-      res = Val_Bool true ∧
       σ' = σ <| seq_mem := mem' |> ∧
-      θ' = θ <| seq_trace := t' |>
+      (θ' = θ <| seq_trace := t' |> ∧ res = Val_Bool true))
+      (* Currently, we use an SC memory model where writes never fail so we see
+      NB when res = false *)
+      ∨ (σ' = σ ∧ θ' = θ <| seq_nb_state := true |>))
     | Some (LBranchAddress _) =>
       κ' = None ∧
       θ' = θ <| seq_trace := t'|> ∧

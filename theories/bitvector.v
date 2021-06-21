@@ -580,6 +580,9 @@ Qed.
 Program Definition bv_not {n} (x : bv n) : bv n := (* SMT: bvnot *)
   bv_of_Z n (Z.lnot (bv_unsigned x)).
 
+Program Definition bv_ugt {n} (x y : bv n) : bool :=
+  (bv_unsigned x) >? (bv_unsigned y).
+
 Program Definition bv_zero_extend {n} (z : N) (b : bv n) : bv (n + z) := (* SMT: zero_extend *)
   BV _ (bv_unsigned b) _.
 Next Obligation.

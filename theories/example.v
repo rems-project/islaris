@@ -739,6 +739,7 @@ Definition test_state3_spec : list seq_label := [ SInstrTrap [BV{64} 0x000000001
 
 From isla Require Import load.
 
+(*
 Lemma test_state3_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some [load_trace]) -∗
   instr 0x0000000010300004 None -∗
@@ -773,204 +774,50 @@ Lemma test_state3_iris `{!islaG Σ} `{!threadG} :
   spec_trace test_state3_spec -∗
   WPasm [].
 Proof.
-  Locate liShow.
-  Locate liStep.
   GC Compact.
   iStartProof.
-  do 20 liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  (* All these side conditions are true, would be nice to get rid of them *)
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  +
-    do 10 liAStep; liShow.
-
-    idtac.
-    idtac.
-    idtac.
-
-
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 400 liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-
-
-
-  repeat liAStep; liShow.
-
-
-
-
-  idtac.
-  idtac.
-  idtac.
-  idtac.
-  idtac.
-  unfold LET14, LET.
-
-
-  Set Nested Proofs Allowed.
-
-  iAssert ([BV{64} 100] ↦ₘ [BV{64} 3735928559])%I as "-#?". { admit. }
-
-  Definition FindMapsto `{!islaG Σ} (a : addr) (n : N) := {|
-    fic_A := bv n; fic_Prop v := a ↦ₘ v;
-  |}%I.
-
-  Global Instance mem_related `{!islaG Σ} a n (v : bv n) : RelatedTo (a ↦ₘ v) := {|
-    rt_fic := FindMapsto a n;
-  |}.
-
-  Lemma find_in_context_mapsto_id `{!islaG Σ} a n T:
-    (∃ v : bv n, a ↦ₘ v ∗ T v) -∗
-    find_in_context (FindMapsto a n) T.
-  Proof. iDestruct 1 as (v) "[Hl HT]". iExists _ => /=. iFrame. Qed.
-  Global Instance find_in_context_mapsto_id_inst `{!islaG Σ} a n :
-    FindInContext (FindMapsto a n) 0%nat FICSyntactic :=
-    λ T, i2p (find_in_context_mapsto_id a n T).
-  Inductive FICMapstoSemantic : Set :=.
-  Global Instance find_in_context_mapsto_semantic_inst `{!islaG Σ} a n :
-    FindInContext (FindMapsto a n) 1%nat FICMapstoSemantic :=
-    λ T, i2p (find_in_context_mapsto_id a n T).
-
-  Lemma tac_mapsto_eq `{!islaG Σ} l1 n (v1 v2 : bv n) l2:
-    l1 = l2 →
-    FindHypEqual FICMapstoSemantic (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
-  Proof. by move => ->. Qed.
-
-  (* Set Typeclasses Debug. *)
-  Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) =>
-  ( apply tac_mapsto_eq; done) : typeclass_instances.
-
-
-  liAStep.
-
-
-
-  (* have ->: (bv_zero_extend 8 *)
-  (*   (bv_concat [BV{4} 0] (bv_extract 0 (51 + 1) (bv_add [BV{64} 8] [BV{64} 0]))) = [BV{64} 8]). { done. } *)
-
-  (* liAStep. *)
-
-  Lemma subsume_mem `{!islaG Σ} a n (v1 v2 : bv n) G:
-    ⌜v1 = v2⌝ ∗ G -∗
-    subsume (a ↦ₘ v1) (a ↦ₘ v2) G.
-  Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
-  Global Instance subsume_mem_inst  `{!islaG Σ} a n (v1 v2 : bv n) :
-    Subsume (a ↦ₘ v1) (a ↦ₘ v2) :=
-    λ G, i2p (subsume_mem a n v1 v2 G).
-
-  clear H2.
-  liAStep; liShow.
-  repeat liAStep; liShow.
-  GC Compact.
-
-
-
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  repeat liAStep; liShow.
-  unfold LET in LET14.
-  simpl in LET14.
-  unfold bv_add in LET14.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-
-  Optimize Proof.
-  GC Compact.
-  repeat liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-
-
-  Optimize Proof.
-
-  repeat liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-
-
-
-  repeat liAStep; liShow.
-
-  (* Why do we get false in the context here? *)
-  Qed.
-  liAStep; liShow.
-  liAStep; liShow.
-  do 5 liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  liAStep; liShow.
-  do 30 liAStep; liShow.
-  do 30 liAStep; liShow.
-
-
-
-  do 5 liAStep; liShow.
   repeat liAStep; liShow.
   Unshelve.
-  all: done.
+  done.
+Qed.
+*)
+
+Lemma test_state4_iris `{!islaG Σ} `{!threadG} :
+  instr 0x0000000010300000 (Some [load_trace_reduced]) -∗
+  instr 0x0000000010300004 None -∗
+  "_PC" ↦ᵣ Val_Bits start_address -∗
+  "__PC_changed" ↦ᵣ Val_Bool false -∗
+  "R1" ↦ᵣ Val_Bits [BV{64} 0x0000000000000008] -∗
+  [BV{64} 0x0000000000000008] ↦ₘ [BV{64} 0x00000000deadbeef] -∗
+  "SCTLR_EL2" ↦ᵣ Val_Bits [BV{64} 0x0000000004000002] -∗
+  "SCR_EL3" ↦ᵣ Val_Bits [BV{32} 0] -∗
+  "TCR_EL2" ↦ᵣ Val_Bits [BV{64} 0] -∗
+  "CFG_ID_AA64PFR0_EL1_EL0" ↦ᵣ Val_Bits [BV{1} 1] -∗
+  "CFG_ID_AA64PFR0_EL1_EL1" ↦ᵣ Val_Bits [BV{1} 1] -∗
+  "CFG_ID_AA64PFR0_EL1_EL2" ↦ᵣ Val_Bits [BV{1} 1] -∗
+  "CFG_ID_AA64PFR0_EL1_EL3" ↦ᵣ Val_Bits [BV{1} 1] -∗
+  "OSLSR_EL1" ↦ᵣ Val_Bits [BV{32} 0] -∗
+  "OSDLR_EL1" ↦ᵣ Val_Bits [BV{32} 0] -∗
+  "EDSCR" ↦ᵣ Val_Bits [BV{32} 0] -∗
+  "R0" ↦ᵣ Val_Poison -∗
+  "OUT" ↦ᵣ Val_Poison -∗
+  "PSTATE" ↦ᵣ (Val_Struct
+          [("GE", Val_Poison); ("F", Val_Bits [BV{1} 1]);
+          ("UAO", Val_Poison); ("C", Val_Bits [BV{1} 0]);
+          ("SP", Val_Poison); ("N", Val_Bits [BV{1} 0]);
+          ("Q", Val_Poison); ("A", Val_Bits [BV{1} 1]); ("SS", Val_Bits [BV{1} 0]);
+          ("E", Val_Poison); ("TCO", Val_Poison); ("I", Val_Bits [BV{1} 1]);
+          ("PAN", Val_Poison); ("M", Val_Poison); ("D", Val_Bits [BV{1} 1]);
+          ("nRW", Val_Bits [BV{1} 0]); ("EL", Val_Bits [BV{2} 2]);
+          ("IT", Val_Poison); ("IL", Val_Bits [BV{1} 0]);
+          ("Z", Val_Bits [BV{1} 0]); ("BTYPE", Val_Poison);
+          ("SSBS", Val_Poison); ("T", Val_Poison); ("J", Val_Poison);
+          ("V", Val_Bits [BV{1} 0]); ("DIT", Val_Bits [BV{1} 0])]) -∗
+  spec_trace test_state3_spec -∗
+  WPasm [].
+Proof.
+  iStartProof.
+  repeat liAStep; liShow.
+  Unshelve.
+  done.
 Qed.
