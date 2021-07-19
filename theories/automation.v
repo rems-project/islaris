@@ -278,6 +278,10 @@ End instances.
 #[ global ] Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) =>
 ( apply tac_mapsto_eq; done) : typeclass_instances.
 
+Ltac unLET := repeat match goal with L := _ |- _ => (match goal with |- context [L] => unfold L end) end.
+#[ global ] Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) =>
+  ( apply tac_mapsto_eq; unLET; bv_solve) : typeclass_instances.
+
 (* TODO: upstream? *)
 Ltac liLetBindHint :=
   idtac;

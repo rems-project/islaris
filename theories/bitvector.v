@@ -583,14 +583,14 @@ Program Definition bv_not {n} (x : bv n) : bv n := (* SMT: bvnot *)
 Program Definition bv_ugt {n} (x y : bv n) : bool :=
   (bv_unsigned x) >? (bv_unsigned y).
 
-Program Definition bv_zero_extend {n} (z : N) (b : bv n) : bv (n + z) := (* SMT: zero_extend *)
+Program Definition bv_zero_extend {n} (z : N) (b : bv n) : bv (z + n) := (* SMT: zero_extend *)
   BV _ (bv_unsigned b) _.
 Next Obligation.
   intros. apply bv_wf_in_range. rewrite bv_modulus_add. bv_saturate.
   pose proof (bv_modulus_pos z). nia.
 Qed.
 
-Program Definition bv_sign_extend {n} (z : N) (b : bv n) : bv (n + z) := (* SMT: sign_extend *)
+Program Definition bv_sign_extend {n} (z : N) (b : bv n) : bv (z + n) := (* SMT: sign_extend *)
   bv_of_Z _ (bv_signed b).
 
 (* s is start index and l is length. Note that this is different from
@@ -783,11 +783,11 @@ Section unfolding.
     bv_unsigned (bv_zero_extend z b) = bv_unsigned b.
   Proof. done. Qed.
   Lemma bv_zero_extend_signed z b :
-    bv_signed (bv_zero_extend z b) = bv_swrap (n + z) (bv_unsigned b).
+    bv_signed (bv_zero_extend z b) = bv_swrap (z + n) (bv_unsigned b).
   Proof. done. Qed.
 
   Lemma bv_sign_extend_unsigned z b :
-    bv_unsigned (bv_sign_extend z b) = bv_wrap (n + z) (bv_signed b).
+    bv_unsigned (bv_sign_extend z b) = bv_wrap (z + n) (bv_signed b).
   Proof. done. Qed.
   Lemma bv_sign_extend_signed z b :
     bv_signed (bv_sign_extend z b) = bv_signed b.
@@ -796,7 +796,7 @@ Section unfolding.
     destruct (decide (n = 0%N)); subst.
     { by rewrite bv_signed_N_0, bv_swrap_0. }
     apply bv_swrap_small. bv_saturate.
-    pose proof bv_half_modulus_le_mono n (n + z). lia.
+    pose proof bv_half_modulus_le_mono n (z + n). lia.
   Qed.
 
   Lemma bv_add_Z_unsigned b z :
@@ -932,6 +932,73 @@ Section bv_seq.
   Qed.
 End bv_seq.
 
+Section bv_zero_extend.
+  Context {n m l : N}.
+  Implicit Types (b : bv n).
+
+
+  Lemma bv_concat_zero_extend b (b1 : bv m) : bv_unsigned b1 = 0 → bv_concat b1 b = bv_zero_extend m b. 
+  Proof.
+    intros z.
+    apply bv_eq.
+    unfold bv_concat, bv_zero_extend.
+    unfold bv_unsigned at 1.
+    unfold bv_unsigned at 3.
+    rewrite z.
+    rewrite Z.shiftl_0_l.
+    by rewrite Z.lor_0_l.
+  Qed.
+  
+  Lemma bv_zero_extend_compose b : bv_unsigned (bv_zero_extend l (bv_zero_extend m b)) = bv_unsigned (bv_zero_extend (l + m) b).
+  Proof.
+    f_equal.
+  Qed.
+End bv_zero_extend.
+
+Section topbits.
+  Definition top_bits_mask (n m : Z) : Z := Z.shiftl (n-m) (Z.ones m). 
+  Definition top_bits {n} m (b : bv n) := bv_and b (bv_of_Z n (top_bits_mask (Z.of_N n) (Z.of_N m))).
+  Definition top_bits_zero {n} m (b : bv n) := bv_unsigned (top_bits m b) = 0.
+End topbits.
+
+Section unproven.
+  (* Some useful lemmas I believe to be true but haven't had time to prove *)
+  Lemma top_bits_zero_lt {n} m (b : bv n) : (top_bits_zero m b) ↔ (bv_unsigned b <  bv_modulus (n - m)).
+  Admitted.
+
+  Lemma extract_non_zero_bits {n} m (b : bv n) (H : top_bits_zero (n - m) b) : bv_unsigned (bv_extract 0 m b) = bv_unsigned b.
+  Admitted.
+
+  Lemma bv_ugt_unsigned {n} (b b' : bv n) : bv_ugt b b' = true ↔ bv_unsigned b > bv_unsigned b'.
+  Admitted.
+End unproven.
+
+(* Some automation for discharging a subset of bv goals that are equivalent to integer goals that can be handled by lia *)
+(* This is currently all very ad hoc *)
+
+Ltac erase_top_bits :=
+  (match goal with 
+  | Q:top_bits_zero _ _ |- _ => apply top_bits_zero_lt in Q
+  end).
+
+Ltac bv_simplify_step :=
+  match goal with
+  | |- context [bv_concat ?b] => rewrite bv_concat_zero_extend; [|done]
+  (* This used to match [@eq (bv _)], but that stops it matching addr which is [bv 64], this seems to work *)
+  | |- (?b1 = _) => match type of b1 with (bv _) => apply bv_eq end
+  | |- context [bv_unsigned (@bv_zero_extend ?n ?z _)] => rewrite (@bv_zero_extend_unsigned n z)
+  | |- context [bv_unsigned (bv_extract _ _ _)] => rewrite extract_non_zero_bits; [|apply top_bits_zero_lt; erase_top_bits; bv_solve]
+  | |- context [bv_unsigned (bv_add _ _ )] => rewrite bv_add_unsigned
+  | |- context [bv_unsigned (bv_sub _ _ )] => rewrite bv_sub_unsigned
+  | Q : bv_ugt _ _ = true |- _ => apply bv_ugt_unsigned in Q (* apply not rewrite because this seems to hit an obscure ssreflect bug *)
+  end
+with bv_solve :=
+  repeat bv_simplify_step;
+  repeat unfold bv_modulus, bv_wrap, bv_unsigned in *;
+  repeat (match goal with Q:bv _ |- _ => destruct Q end);
+  simpl in *;
+  lia.
+  
 (** * [bvn] *)
 Record bvn := BVN {
   bvn_n : N;
