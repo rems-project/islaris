@@ -9,9 +9,6 @@ let pp_Z ff i =
   let (l, r) = if i < 0 then ("(", ")") else ("", "") in
   Format.fprintf ff "%s%i%s%%Z" l i r
 
-let pp_N ff i =
-  Format.fprintf ff "%i%%N" i
-
 let pp_str ff s =
   Format.fprintf ff "%S" (String.sub s 1 (String.length s - 2))
 
