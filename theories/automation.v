@@ -55,6 +55,31 @@ Section instances.
   Global Instance find_in_context_instr_kind_instr_inst a :
     FindInContext (FindInstrKind a) 1%nat FICSyntactic :=
     λ T, i2p (find_in_context_instr_kind_instr a T).
+  Definition FindMapsto `{!islaG Σ} (a : addr) (n : N) := {|
+    fic_A := bv n; fic_Prop v := a ↦ₘ v;
+  |}%I.
+
+  Global Instance mem_related `{!islaG Σ} a n (v : bv n) : RelatedTo (a ↦ₘ v) := {|
+    rt_fic := FindMapsto a n;
+  |}.
+
+  Lemma find_in_context_mapsto_id `{!islaG Σ} a n T:
+    (∃ v : bv n, a ↦ₘ v ∗ T v) -∗
+    find_in_context (FindMapsto a n) T.
+  Proof. iDestruct 1 as (v) "[Hl HT]". iExists _ => /=. iFrame. Qed.
+  Global Instance find_in_context_mapsto_id_inst `{!islaG Σ} a n :
+    FindInContext (FindMapsto a n) 0%nat FICSyntactic :=
+    λ T, i2p (find_in_context_mapsto_id a n T).
+
+  Inductive FICMapstoSemantic : Set :=.
+  Global Instance find_in_context_mapsto_semantic_inst `{!islaG Σ} a n :
+    FindInContext (FindMapsto a n) 1%nat FICMapstoSemantic :=
+    λ T, i2p (find_in_context_mapsto_id a n T).
+
+  Lemma tac_mapsto_eq `{!islaG Σ} l1 n (v1 v2 : bv n) l2:
+    l1 = l2 →
+    FindHypEqual FICMapstoSemantic (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
+  Proof. by move => ->. Qed.
 
   Global Instance reg_related r v : RelatedTo (r ↦ᵣ v) := {|
     rt_fic := FindDirect (λ v, r ↦ᵣ v)%I;
@@ -92,6 +117,13 @@ Section instances.
     Subsume (spec_trace κs1) (spec_trace κs2) :=
     λ G, i2p (subsume_spec_trace κs1 κs2 G).
 
+  Lemma subsume_mem `{!islaG Σ} a n (v1 v2 : bv n) G:
+    ⌜v1 = v2⌝ ∗ G -∗
+    subsume (a ↦ₘ v1) (a ↦ₘ v2) G.
+  Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
+  Global Instance subsume_mem_inst  `{!islaG Σ} a n (v1 v2 : bv n) :
+    Subsume (a ↦ₘ v1) (a ↦ₘ v2) :=
+    λ G, i2p (subsume_mem a n v1 v2 G).
 
   Lemma li_wp_next_instr:
     (∃ (nPC : addr) bPC_changed,
@@ -181,6 +213,11 @@ Section instances.
     WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
   Proof. apply: wp_declare_const_bv. Qed.
 
+  Lemma li_wp_declare_const_bool v es ann:
+    (∀ b : bool, WPasm ((subst_event v (Val_Bool b)) <$> es)) -∗
+    WPasm (Smt (DeclareConst v Ty_Bool) ann :: es).
+  Proof. apply: wp_declare_const_bool. Qed.
+
   Lemma li_wp_define_const n es ann e:
     WPexp e {{ v, let_bind_hint v (λ v, WPasm ((subst_event n v) <$> es)) }} -∗
     WPasm (Smt (DefineConst n e) ann :: es).
@@ -194,6 +231,22 @@ Section instances.
     WPasm (Smt (Assert e) ann :: es).
   Proof. apply: wp_assert. Qed.
 
+  Lemma li_wp_write_mem len n success kind a (vnew : bv n) tag ann es:
+    (∃ (vold : bv n),
+    ⌜n = (8*len)%N⌝ ∗
+    a ↦ₘ vold ∗
+    (⌜success = true ⌝ -∗ a ↦ₘ vnew -∗ WPasm es)) -∗
+    WPasm (WriteMem (Val_Bool success) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
+  Proof. iDestruct 1 as (?) "[% [Hvold Hcont]]". by iApply (wp_write_mem with "Hvold Hcont"). Qed.
+  
+  Lemma li_wp_read_mem len n kind a vread tag ann es:
+    (∃ vmem,
+    ⌜n = (8 * len)%N⌝ ∗
+    a ↦ₘ vmem ∗
+    (⌜vread = vmem⌝ -∗ a ↦ₘ vmem -∗ WPasm es)) -∗
+    WPasm (ReadMem (Val_Bits (BVN n vread)) kind (Val_Bits (BVN 64 a)) len tag ann :: es).
+  Proof. iDestruct 1 as (?) "[% [Hmem Hcont]]". by iApply (wp_read_mem with "Hmem Hcont"). Qed.
+  
   Lemma li_wpe_val v Φ ann:
     Φ v -∗
     WPexp (Val v ann) {{ Φ }}.
@@ -220,6 +273,14 @@ Section instances.
     WPexp (Ite e1 e2 e3 ann) {{ Φ }}.
   Proof. apply: wpe_ite. Qed.
 End instances.
+
+(* This seems to have to live outside of the section because of hint lifetimes? *)
+#[ global ] Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) =>
+( apply tac_mapsto_eq; done) : typeclass_instances.
+
+Ltac unLET := repeat match goal with L := _ |- _ => (match goal with |- context [L] => unfold L end) end.
+#[ global ] Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) =>
+  ( apply tac_mapsto_eq; unLET; bv_solve) : typeclass_instances.
 
 (* TODO: upstream? *)
 Ltac liLetBindHint :=
@@ -257,7 +318,10 @@ Ltac liAAsm :=
       | ReadReg _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg _ _ _ _ _) _)
       | WriteReg _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg _ _ _ _ _) _)
       | BranchAddress _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch_address _ _ _) _)
+      | ReadMem _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_mem _ _ _ _ _ _ _ _) _)
+      | WriteMem _ _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_mem _ _ _ _ _ _ _ _ _) _)
       | Smt (DeclareConst _ (Ty_BitVec _)) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bv _ _ _ _) _)
+      | Smt (DeclareConst _ Ty_Bool) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bool _ _ _) _)
       | Smt (DefineConst _ _) _ => notypeclasses refine (tac_fast_apply (li_wp_define_const _ _ _ _) _)
       | Smt (Assert _) _ => notypeclasses refine (tac_fast_apply (li_wp_assert _ _ _) _)
       end

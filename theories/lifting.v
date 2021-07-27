@@ -348,11 +348,11 @@ Section lifting.
     iApply ("Hcont" with "[] [Hm]"); done.
   Qed.
 
-  Lemma wp_write_mem n len a (vold vnew : bv n) es ann kind tag:
+  Lemma wp_write_mem n len a (vold vnew : bv n) es ann res kind tag:
     n = (8 * len)%N →
     a ↦ₘ vold -∗
-    (a ↦ₘ vnew -∗ WPasm es) -∗
-    WPasm (WriteMem (Val_Bool true) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
+    (⌜res = true⌝ -∗ a ↦ₘ vnew -∗ WPasm es) -∗
+    WPasm (WriteMem (Val_Bool res) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
   Proof.
     iIntros (?) "Hm Hcont". subst. setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
@@ -362,16 +362,19 @@ Section lifting.
     iDestruct (mem_mapsto_lookup with "Hmem Hm") as %[len' [??]].
     have ? : len' = len by lia. subst.
     iSplit. {
-      iPureIntro. eexists _, _, _, _. simpl. econstructor; [done | by econstructor |].
+      iPureIntro. eexists _, _, _, _. simpl. econstructor; [done | by econstructor |]. simpl.
       naive_solver.
     }
     iIntros "!>" (????). iMod "HE" as "_".
     inv_seq_step.
-    revert select (∃ _, _) => -[?[?[?[?[?[?[?[?[??]]]]]]]]]; simplify_eq/=.
+    revert select ((∃ _, _) ∨ _) => -[[?[?[?[?[?[?[?[??]]]]]]]]|[??]]; simplify_eq/=.
+    2:{
+      iFrame. iSplitL; [|done]. by iApply wp_value. 
+    }
     iMod (mem_mapsto_update with "Hmem Hm") as (len' ?) "[Hmem Hm]".
     have ? : len' = len by lia. subst. iFrame.
     iModIntro. iSplitL; [|done].
-    by iApply ("Hcont" with "Hm").
+    by iApply ("Hcont" with "[% //] Hm").
   Qed.
 
   Lemma wp_branch_address v es ann:
@@ -414,6 +417,27 @@ Section lifting.
     iFrame.
     Unshelve. 1: exact 0.
     split; [done|]. apply: Z.pow_pos_nonneg; lia.
+  Qed.
+
+  Lemma wp_declare_const_bool v es ann:
+    (∀ (b : bool), WPasm ((subst_event v (Val_Bool b)) <$> es)) -∗
+    WPasm (Smt (DeclareConst v Ty_Bool) ann :: es).
+  Proof.
+    iIntros "Hcont". setoid_rewrite wp_asm_unfold.
+    iIntros ([???]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "(?&Hictx&?)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iSplit. {
+      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      done.
+    }
+    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
+    inv_seq_step.
+    iFrame; iSplitL; [|done].
+    iApply ("Hcont"); [done|done|].
+    iFrame.
+    Unshelve. exact true.
   Qed.
 
   Lemma wp_define_const n es ann e:
