@@ -594,11 +594,8 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   WPasm [].
 Proof.
   iStartProof.
-Abort.
-  (* repeat liAStep; liShow. *)
-  (* Unshelve. *)
-  (* all: done. *)
-(* Qed. *)
+  repeat liAStep; liShow.
+Qed.
 
 
 (* Lemma test_state2_trace x1 : *)

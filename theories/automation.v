@@ -8,6 +8,14 @@ Global Instance simpl_val_bits_bv_to_bvn n (b1 b2 : bv n) :
   SimplBoth (Val_Bits b1 = Val_Bits b2) (b1 = b2).
 Proof. split; naive_solver. Qed.
 
+Global Instance simpl_bvn_eq (b1 b2 : bvn) {Heq : TCEq b2.(bvn_n) b1.(bvn_n)}:
+  SimplBoth (b1 = b2) (b1.(bvn_val) = TCEq_rect _ _ (λ x, bv x) b2.(bvn_val) _ Heq).
+Proof.
+  split.
+  - move => ?. subst. apply bv_eq. by destruct Heq => /=.
+  - move => Hb. apply bvn_eq. move: Hb => /bv_eq. by destruct Heq => /= ?.
+Qed.
+
 Lemma ite_bits n b (n1 n2 : bv n) :
   ite b (Val_Bits n1) (Val_Bits n2) = Val_Bits (ite b n1 n2).
 Proof. by destruct b. Qed.
@@ -20,6 +28,13 @@ Hint Rewrite Z_to_bv_checked_bv_unsigned : lithium_rewrite.
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
 Ltac normalize_tac ::= normalize_autorewrite.
+
+(* injection on bitvectors sometimes creates weird matches, so we disable it. *)
+Ltac li_impl_check_injection_tac ::=
+  lazymatch goal with
+  | |- @eq (bv _) _ _ → _ => fail
+  | |- _ => idtac
+  end.
 
 Definition let_bind_hint {A B} (x : A) (f : A → B) : B :=
   f x.
