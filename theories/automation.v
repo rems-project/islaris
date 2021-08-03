@@ -1,6 +1,6 @@
 From iris.proofmode Require Import coq_tactics reduction.
-From isla Require Export lifting.
 From refinedc.lithium Require Export lithium tactics.
+From isla Require Export lifting bitvector_auto.
 Set Default Proof Using "Type".
 
 (** * Simplification and normalization hints *)
@@ -13,7 +13,7 @@ Lemma ite_bits n b (n1 n2 : bv n) :
 Proof. by destruct b. Qed.
 Hint Rewrite ite_bits : lithium_rewrite.
 
-Hint Rewrite bv_of_Z_checked_bv_unsigned : lithium_rewrite.
+Hint Rewrite Z_to_bv_checked_bv_unsigned : lithium_rewrite.
 
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
@@ -130,7 +130,7 @@ Section instances.
         "_PC" ↦ᵣ Val_Bits nPC ∗ "__PC_changed" ↦ᵣ Val_Bool bPC_changed ∗
      ∃ a newPC,
        ⌜a = (if bPC_changed : bool then (bv_unsigned nPC) else (bv_unsigned nPC + instruction_size)%Z)⌝ ∗
-       ⌜bv_of_Z_checked 64 a = Some newPC⌝ ∗
+       ⌜Z_to_bv_checked 64 a = Some newPC⌝ ∗
      find_in_context (FindInstrKind a) (λ ik,
      match ik with
      | IKInstr (Some ts) =>
@@ -159,7 +159,7 @@ Section instances.
   Qed.
 
   Lemma li_instr_pre l a P:
-    (∃ newPC, ⌜bv_of_Z_checked 64 a = Some newPC⌝ ∗
+    (∃ newPC, ⌜Z_to_bv_checked 64 a = Some newPC⌝ ∗
      find_in_context (FindInstrKind a) (λ ik,
      match ik with
      | IKInstr (Some ts) =>
@@ -238,7 +238,7 @@ Section instances.
     (⌜success = true ⌝ -∗ a ↦ₘ vnew -∗ WPasm es)) -∗
     WPasm (WriteMem (Val_Bool success) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
   Proof. iDestruct 1 as (?) "[% [Hvold Hcont]]". by iApply (wp_write_mem with "Hvold Hcont"). Qed.
-  
+
   Lemma li_wp_read_mem len n kind a vread tag ann es:
     (∃ vmem,
     ⌜n = (8 * len)%N⌝ ∗
@@ -246,7 +246,7 @@ Section instances.
     (⌜vread = vmem⌝ -∗ a ↦ₘ vmem -∗ WPasm es)) -∗
     WPasm (ReadMem (Val_Bits (BVN n vread)) kind (Val_Bits (BVN 64 a)) len tag ann :: es).
   Proof. iDestruct 1 as (?) "[% [Hmem Hcont]]". by iApply (wp_read_mem with "Hmem Hcont"). Qed.
-  
+
   Lemma li_wpe_val v Φ ann:
     Φ v -∗
     WPexp (Val v ann) {{ Φ }}.
@@ -275,12 +275,11 @@ Section instances.
 End instances.
 
 (* This seems to have to live outside of the section because of hint lifetimes? *)
-#[ global ] Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) =>
-( apply tac_mapsto_eq; done) : typeclass_instances.
+(* #[ global ] Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) => *)
+(* ( apply tac_mapsto_eq; done) : typeclass_instances. *)
 
-Ltac unLET := repeat match goal with L := _ |- _ => (match goal with |- context [L] => unfold L end) end.
 #[ global ] Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) =>
-  ( apply tac_mapsto_eq; unLET; bv_solve) : typeclass_instances.
+  ( apply tac_mapsto_eq; bv_solve) : typeclass_instances.
 
 (* TODO: upstream? *)
 Ltac liLetBindHint :=

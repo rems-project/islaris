@@ -6,11 +6,11 @@ Set Default Proof Using "Type".
 Import uPred.
 
 Class islaG Σ := IslaG {
-  islaG_invG : invG Σ;
+  islaG_invG : invGS Σ;
   islaG_gen_heapG :> heapG Σ
 }.
 
-Instance isla_irisG `{!islaG Σ} : irisG isla_lang Σ := {
+Instance isla_irisG `{!islaG Σ} : irisGS isla_lang Σ := {
   iris_invG := islaG_invG;
   state_interp σ _ κs _ := state_ctx σ κs;
   fork_post _ := True%I;
@@ -37,7 +37,7 @@ Notation WPasm := wp_asm.
 Definition next_instruction `{!islaG Σ} `{!threadG} (i : Z) : iProp Σ :=
   ∃ (bPC_changed : bool) (nPC : addr) a,
   ⌜i = (if bPC_changed : bool then bv_unsigned nPC else bv_unsigned nPC + instruction_size)%Z⌝ ∗
-  ⌜bv_of_Z_checked 64 i = Some a⌝ ∗
+  ⌜Z_to_bv_checked 64 i = Some a⌝ ∗
   "_PC" ↦ᵣ Val_Bits nPC ∗
   "__PC_changed" ↦ᵣ Val_Bool bPC_changed.
 
@@ -45,7 +45,7 @@ Definition instr_pre'_def `{!islaG Σ} `{!threadG} (is_later : bool) (i : Z) (P 
   ▷?is_later (
   P -∗
   ∃ ins newPC,
-    ⌜bv_of_Z_checked 64 i = Some newPC⌝ ∗
+    ⌜Z_to_bv_checked 64 i = Some newPC⌝ ∗
     instr i ins ∗
     match ins with
     | Some ins => ⌜ins ≠ []⌝ ∗
@@ -122,7 +122,7 @@ Section lifting.
 
   Lemma wp_next_instr i newPC ins :
     ins ≠ [] →
-    bv_of_Z_checked 64 i = Some newPC →
+    Z_to_bv_checked 64 i = Some newPC →
     next_instruction i -∗
     instr i (Some ins) -∗
     (* TODO: We want some receptiveness property here like ⌜∃ i, i ∈ ins ∧ i can execute to the end⌝ *)
@@ -143,14 +143,14 @@ Section lifting.
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
       split; [done|].
       eexists _, _. rewrite /next_pc HPC Hchanged.
-      cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc]. rewrite Hchecked/=.
+      cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_True_pi. cbn -[next_pc]. rewrite Hchecked/=.
       split_and!; [done|]. rewrite Hi. split_and!; [done|by left| done].
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
     inv_seq_step.
     revert select (∃ _, _) => -[?[?]].
     rewrite /next_pc HPC Hchanged.
-    cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc].
+    cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_True_pi. cbn -[next_pc].
     rewrite Hchecked/= => -[[<- <-] ]. rewrite Hi => -[? [??]]. simplify_eq.
     iFrame. iSplitL; [|done].
     iMod (reg_mapsto_update with "Hθ Hchanged") as "[Hθ Hchanged]".
@@ -160,7 +160,7 @@ Section lifting.
   Qed.
 
   Lemma wp_next_instr_extern a newPC κs:
-    bv_of_Z_checked 64 a = Some newPC →
+    Z_to_bv_checked 64 a = Some newPC →
     head κs = Some (SInstrTrap newPC) →
     next_instruction a -∗
     instr a None -∗
@@ -180,14 +180,14 @@ Section lifting.
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
       split; [done|].
       eexists _, _. rewrite /next_pc HPC Hchanged.
-      cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc]. rewrite Hchecked/=.
+      cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_True_pi. cbn -[next_pc]. rewrite Hchecked/=.
       split_and!; [done|]. rewrite Hi. done.
     }
     iIntros "!>" (????). iMod "HE" as "_".
     inv_seq_step.
     revert select (∃ _, _) => -[?[?]].
     rewrite /next_pc HPC Hchanged.
-    cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_left. cbn -[next_pc].
+    cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_True_pi. cbn -[next_pc].
     rewrite Hchecked/= => -[[<- <-] ]. rewrite Hi => -[? ?].
     destruct regs, κs => //. simplify_eq/=.
     iMod (spec_ctx_cons with "Hsctx Hspec") as "[??]". iModIntro.
@@ -231,7 +231,7 @@ Section lifting.
 
   Lemma instr_pre_intro_Some l a P ins newPC:
     ins ≠ [] →
-    bv_of_Z_checked 64 a = Some newPC →
+    Z_to_bv_checked 64 a = Some newPC →
     instr a (Some ins) -∗
     (∀ i, ⌜i ∈ ins⌝ -∗ P -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm i) -∗
     instr_pre' l a P.
@@ -243,7 +243,7 @@ Section lifting.
   Qed.
 
   Lemma instr_pre_intro_None a P newPC l:
-    bv_of_Z_checked 64 a = Some newPC →
+    Z_to_bv_checked 64 a = Some newPC →
     instr a None -∗
     (P -∗ ∃ κs, ⌜head κs = Some (SInstrTrap newPC)⌝ ∗ spec_trace κs) -∗
     instr_pre' l a P.
@@ -369,7 +369,7 @@ Section lifting.
     inv_seq_step.
     revert select ((∃ _, _) ∨ _) => -[[?[?[?[?[?[?[?[??]]]]]]]]|[??]]; simplify_eq/=.
     2:{
-      iFrame. iSplitL; [|done]. by iApply wp_value. 
+      iFrame. iSplitL; [|done]. by iApply wp_value.
     }
     iMod (mem_mapsto_update with "Hmem Hm") as (len' ?) "[Hmem Hm]".
     have ? : len' = len by lia. subst. iFrame.

@@ -1,5 +1,0 @@
-(coq.theory
- (name refframe)
- (package coq-isla)
- (flags -w -notation-overridden -w -redundant-canonical-projection)
- (synopsis "???"))

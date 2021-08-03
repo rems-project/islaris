@@ -59,8 +59,8 @@ Definition eval_unop (u : unop) (v : valu) : option valu :=
   match u, v with
   | Not, Val_Bool b => Some (Val_Bool (negb b))
   | Bvnot, Val_Bits n => Some (Val_Bits (bv_not n.(bvn_val)))
-  | ZeroExtend z, Val_Bits n => Some (Val_Bits (bv_zero_extend z n.(bvn_val)))
-  | SignExtend z, Val_Bits n => Some (Val_Bits (bv_sign_extend z n.(bvn_val)))
+  | ZeroExtend z, Val_Bits n => Some (Val_Bits (bv_zero_extend (z + n.(bvn_n)) n.(bvn_val)))
+  | SignExtend z, Val_Bits n => Some (Val_Bits (bv_sign_extend (z + n.(bvn_n)) n.(bvn_val)))
   | Extract u l, Val_Bits n => Some (Val_Bits (bv_extract l (u + 1 - l) n.(bvn_val)))
   | _, _ => (* TODO: other cases *) None
   end.
@@ -68,9 +68,12 @@ Definition eval_unop (u : unop) (v : valu) : option valu :=
 Definition eval_binop (b : binop) (v1 v2 : valu) : option valu :=
   match b, v1, v2 with
   | Eq, Val_Bool b1, Val_Bool b2 => Some (Val_Bool (eqb b1 b2))
-  | Eq, Val_Bits n1, Val_Bits n2 => mguard (n1.(bvn_n) = n2.(bvn_n)) (λ _, Some (Val_Bool (bool_decide (n1 = n2))))
-  | Bvarith Bvlshr, Val_Bits n1, Val_Bits n2 => n2' ← bvn_to_bv n1.(bvn_n) n2; Some (Val_Bits (bv_shiftr n1.(bvn_val) n2'))
-  | Bvcomp Bvugt, Val_Bits n1, Val_Bits n2 => n2' ← bvn_to_bv n1.(bvn_n) n2; Some (Val_Bool (bv_ugt n1.(bvn_val) n2'))
+  | Eq, Val_Bits n1, Val_Bits n2 =>
+    guard (n1.(bvn_n) = n2.(bvn_n)); Some (Val_Bool (bool_decide (n1 = n2)))
+  | Bvarith Bvlshr, Val_Bits n1, Val_Bits n2 =>
+    n2' ← bvn_to_bv n1.(bvn_n) n2; Some (Val_Bits (bv_shiftr n1.(bvn_val) n2'))
+  | Bvcomp Bvugt, Val_Bits n1, Val_Bits n2 =>
+    guard (n1.(bvn_n) = n2.(bvn_n)); Some (Val_Bool (bool_decide (bv_unsigned n1.(bvn_val) > bv_unsigned n2.(bvn_val))))
   | _, _, _ => (* TODO: other cases *) None
   end.
 
@@ -143,13 +146,6 @@ Inductive trace_step : trc → option trace_label → trc → Prop :=
     trace_step [] (Some (LDone es)) es
 .
 
-Definition trace_module : module trace_label := {|
-  m_state := trc;
-  m_step := trace_step;
-  m_is_ub _ := False;
-|}.
-
-
 Definition addr := bv 64.
 Definition byte := bv 8.
 (* TODO: this should probably be a simpler type than valu:
@@ -169,7 +165,7 @@ Definition next_pc (regs : reg_map) : option (addr * reg_map) :=
   c ← regs !! "__PC_changed";
   cb ← if c is Val_Bool b then Some b else None;
   let new_pc := if cb : bool then bv_unsigned an else bv_unsigned an + instruction_size in
-  n ← bv_of_Z_checked 64 new_pc;
+  n ← Z_to_bv_checked 64 new_pc;
   Some (n, <["_PC" := Val_Bits (BVN _ n)]> $ <["__PC_changed" := Val_Bool false]> regs).
 
 Fixpoint read_accessor (al : accessor_list) (v : valu) : option valu :=
@@ -218,7 +214,7 @@ Definition read_mem_list (mem : mem_map) (a : addr) (len : N) : option (list byt
   mapM (M := option) (mem !!.) (bv_seq a (Z.of_N len)).
 
 Definition read_mem (mem : mem_map) (a : addr) (len : N) : option bvn :=
-  (λ bs, BVN _ (bv_of_Z (8 * len) (bv_of_little 8 bs))) <$> read_mem_list mem a len.
+  (λ bs, BVN _ (Z_to_bv (8 * len) (little_endian_to_bv 8 bs))) <$> read_mem_list mem a len.
 
 Fixpoint write_mem_list (mem : mem_map) (a : addr) (v : list byte) : mem_map :=
   match v with
@@ -227,7 +223,7 @@ Fixpoint write_mem_list (mem : mem_map) (a : addr) (v : list byte) : mem_map :=
   end.
 
 Definition write_mem (len : N) (mem : mem_map) (a : addr) (v : Z) : mem_map :=
-  write_mem_list mem a (bv_to_little (N.to_nat len) 8 v).
+  write_mem_list mem a (bv_to_little_endian (N.to_nat len) 8 v).
 
 (* TODO: Maybe refactor this into several constructors rather than a match *)
 Inductive seq_step : seq_local_state → seq_global_state → list seq_label → seq_local_state → seq_global_state → list seq_local_state → Prop :=
@@ -291,26 +287,6 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
     end →
     seq_step θ σ (option_list κ') θ' σ' []
 .
-
-Definition seq_module_no_ub  : module seq_label := {|
-  m_state := _;
-  m_step '(σ, θ) κ '(σ', θ') := seq_step θ σ (option_list κ) θ' σ' [];
-  m_is_ub σ := False
-|}.
-
-Definition seq_module  : module seq_label := {|
-  m_state := _;
-  m_step '(σ, θ) κ '(σ', θ') := seq_step θ σ (option_list κ) θ' σ' [];
-  m_is_ub '(σ, θ) :=
-    ∃ es t', trace_step θ.(seq_trace) (Some (LDone es)) t' ∧
-     ∃ θ' pc regs', next_pc θ.(seq_regs) = Some (pc, regs') ∧
-      θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧
-      match σ.(seq_instrs) !! pc with
-      | Some trcs => ¬ ∃ es κs σ'', es ∈ trcs ∧ (σ, θ' <| seq_trace := es |>) ~{seq_module_no_ub, κs}~> σ'' ∧ σ''.2.(seq_trace) = []
-      | None => False
-      end
-  ;
-|}.
 
 Record seq_val := {
   seq_val_trace  : trc;

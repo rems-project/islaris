@@ -37,8 +37,7 @@ Definition cont_spec `{!islaG Σ} `{!threadG} a sp (v1 v2 : bv 64) : iProp Σ :=
   "R1" ↦ᵣ Val_Bits v2 ∗
   (bv_sub sp [BV{64} 16]) ↦ₘ vold1 ∗
   (bv_sub sp [BV{64} 8]) ↦ₘ vold2 ∗
-  (*⌜(bv_and sp [BV{64} 0xFFF0000000000000]) = [BV{64} 0]⌝ ∗ *)
-  ⌜top_bits_zero 12 sp⌝ ∗
+  ⌜bv_unsigned sp < 2 ^ 52⌝ ∗
   "SP_EL2" ↦ᵣ Val_Bits sp ∗
   sys_regs ∗
   instr_pre a (
@@ -50,24 +49,13 @@ Definition cont_spec `{!islaG Σ} `{!threadG} a sp (v1 v2 : bv 64) : iProp Σ :=
     (bv_sub sp [BV{64} 8]) ↦ₘ v2 ∗
     True).
 
-Lemma mod_inj a b c d n (P1: a `mod` n = c `mod` n) (P2 : b `mod` n = d `mod` n) : (a + b) `mod` n = (c + d) `mod` n.
-Proof.
-  destruct (Z.eq_dec 0 n).
-  + destruct e.
-    by repeat rewrite Zmod_0_r.
-  + rewrite (Z.add_mod a b); [|done].
-    rewrite (Z.add_mod c d); [|done].
-    by rewrite P1 P2.
-Qed.
-
 Lemma stp_wp `{!islaG Σ} `{!threadG} (sp v1 v2: bv 64):
   instr 0x0000000010300000 (Some [stp_trace]) -∗
   instr_body 0x0000000010300000 (cont_spec 0x0000000010300004 sp v1 v2).
 Proof.
-    iStartProof.
-    unfold cont_spec, sys_regs.
-    repeat liAStep; liShow.
-    Unshelve.
-    all: try done.
-    all: try (repeat f_equal; unLET; bv_solve).
+  iStartProof.
+  unfold cont_spec, sys_regs.
+  repeat liAStep; liShow.
+  Unshelve.
+  all: try (repeat f_equal; unLET; bv_solve).
 Qed.

@@ -44,7 +44,7 @@ Section definitions.
     seal_eq instr_table_aux.
 
   Definition instr_def (a : Z) (i: option (list trc)) : iProp Σ :=
-    ∃ instrs b, ⌜bv_of_Z_checked 64 a = Some b⌝ ∗ ⌜instrs !! b = i⌝ ∗ instr_table instrs.
+    ∃ instrs b, ⌜Z_to_bv_checked 64 a = Some b⌝ ∗ ⌜instrs !! b = i⌝ ∗ instr_table instrs.
   Definition instr_aux : seal (@instr_def). by eexists. Qed.
   Definition instr := unseal instr_aux.
   Definition instr_eq : @instr = @instr_def :=
@@ -72,7 +72,7 @@ Section definitions.
 
   Definition mem_mapsto_def {n} (a : addr) (q : dfrac) (w : bv n) : iProp Σ :=
     ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
-    let bytes := bv_to_little len 8 (bv_unsigned w) in
+    let bytes := bv_to_little_endian len 8 (bv_unsigned w) in
     [∗ list] offset ↦ b ∈ bytes, mem_mapsto_byte heap_mem_name (bv_add_Z a (Z.of_nat offset)) q b.
   Definition mem_mapsto_aux {n} : seal (@mem_mapsto_def n). by eexists. Qed.
   Definition mem_mapsto {n} := unseal (@mem_mapsto_aux n).
@@ -133,7 +133,7 @@ Section instr.
   Proof.
     rewrite instr_eq. iIntros (??) "?". iExists _, _. iFrame.
     iPureIntro. split; [|done].
-    unfold bv_of_Z_checked. case_option_guard => //.
+    unfold Z_to_bv_checked. case_option_guard => //.
     f_equal. by apply bv_eq.
   Qed.
 
@@ -147,7 +147,7 @@ Section instr.
   Qed.
 
   Lemma instr_lookup instrs a i :
-    instr_ctx instrs -∗ instr a i -∗ ⌜∃ b, bv_of_Z_checked 64 a = Some b ∧ instrs !! b = i⌝.
+    instr_ctx instrs -∗ instr a i -∗ ⌜∃ b, Z_to_bv_checked 64 a = Some b ∧ instrs !! b = i⌝.
   Proof.
     rewrite instr_eq. iIntros "Htbl Hf".
     iDestruct "Hf" as (i2 ? ??) "Hf". iExists _.
@@ -229,12 +229,12 @@ Section mem.
   Lemma mem_mapsto_lookup_list n mem a (w : bv n) q:
     mem_ctx mem -∗ a ↦ₘ{q} w -∗
     ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
-        ⌜read_mem_list mem a (N.of_nat len) = Some (bv_to_little len 8 (bv_unsigned w))⌝.
+        ⌜read_mem_list mem a (N.of_nat len) = Some (bv_to_little_endian len 8 (bv_unsigned w))⌝.
   Proof.
     rewrite mem_mapsto_eq. iIntros "Hmem". iDestruct 1 as (len Hlen) "Hlist". subst.
     iExists _. iSplit; [done|].
     iDestruct (mem_mapsto_byte_lookup_big with "Hmem Hlist") as %Hall.
-    iPureIntro. apply mapM_Some. rewrite bv_to_little_length in Hall.
+    iPureIntro. apply mapM_Some. rewrite bv_to_little_endian_length ?Z2Nat.id in Hall; [|lia..].
     by have ->: (Z.of_N (N.of_nat len) = len) by lia.
   Qed.
 
@@ -245,18 +245,18 @@ Section mem.
     iIntros "Hmem Ha". rewrite /read_mem.
     iDestruct (mem_mapsto_lookup_list with "Hmem Ha") as %[len [-> Hl]].
     iPureIntro. eexists _. split; [done|]. rewrite Hl /=. f_equal. apply bvn_eq.
-    split; [ done|]. rewrite bv_of_to_little_bv //. lia.
+    split; [ done|]. rewrite bv_of_to_little_bv //; lia.
   Qed.
 
   Lemma mem_mapsto_update_list n mem a (w w' : bv n) :
     mem_ctx mem -∗ a ↦ₘ w ==∗
      ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
-      mem_ctx (write_mem_list mem a (bv_to_little len 8 (bv_unsigned w'))) ∗ a ↦ₘ w'.
+      mem_ctx (write_mem_list mem a (bv_to_little_endian len 8 (bv_unsigned w'))) ∗ a ↦ₘ w'.
   Proof.
     rewrite mem_mapsto_eq. iIntros "Hmem". iDestruct 1 as (len Hlen) "Hlist". subst.
     iExists _. iSplitR; [done|].
     iMod (mem_mapsto_byte_update_big with "Hmem Hlist") as "[$ H]".
-    { by rewrite !bv_to_little_length. }
+    { rewrite !bv_to_little_endian_length; lia. }
     iExists _. by iFrame.
   Qed.
 

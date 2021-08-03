@@ -22,7 +22,7 @@ jobs:
 
     env:
       OCAML: "ocaml-base-compiler.4.07.1"
-      OPAM_PINS: "coq version 8.12.2   cerberus git git+https://github.com/rems-project/cerberus.git#9f3a825a5f32a8245101a57105a5598a1adf6879"
+      OPAM_PINS: "coq version 8.12.2   cerberus git git+https://github.com/rems-project/cerberus.git##7eb94d628845555cb5425f4f4b48890b345efdc5   z3 version 4.8.9-1"
       CPU_CORES: "1"
       DENY_WARNINGS: "1"
       CI_RUNNER: "dummy"

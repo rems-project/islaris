@@ -818,6 +818,4 @@ Lemma test_state4_iris `{!islaG Σ} `{!threadG} :
 Proof.
   iStartProof.
   repeat liAStep; liShow.
-  Unshelve.
-  done.
 Qed.

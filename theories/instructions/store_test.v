@@ -42,6 +42,4 @@ Lemma store_wp `{!islaG Σ} `{!threadG} :
 Proof.
     iStartProof.
     repeat liAStep; liShow.
-    Unshelve.
-    done.
 Qed.

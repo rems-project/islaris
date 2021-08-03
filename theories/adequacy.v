@@ -6,7 +6,7 @@ From isla Require Export ghost_state lifting.
 Set Default Proof Using "Type".
 
 Class islaPreG Σ := PreIslaG {
-  isla_pre_invG :> invPreG Σ;
+  isla_pre_invG :> invGpreS Σ;
   heap_pre_instrs_inG :> inG Σ (instrtblUR);
   heap_pre_regs_inG :> ghost_mapG Σ string valu;
   heap_pre_mem_ingG :> ghost_mapG Σ addr byte;
