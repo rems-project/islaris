@@ -18,18 +18,11 @@ Definition sys_regs `{!islaG Σ} `{!threadG} : iProp Σ :=
   "OSDLR_EL1" ↦ᵣ Val_Bits [BV{32} 0] ∗
   "EDSCR" ↦ᵣ Val_Bits [BV{32} 0] ∗
   "MPIDR_EL1" ↦ᵣ Val_Bits [BV{64} 0] ∗
-  "PSTATE" ↦ᵣ (Val_Struct
-          [("GE", Val_Poison); ("F", Val_Bits [BV{1} 1]);
-          ("UAO", Val_Poison); ("C", Val_Bits [BV{1} 0]);
-          ("SP", Val_Bits [BV{1} 1]); ("N", Val_Bits [BV{1} 0]);
-          ("Q", Val_Poison); ("A", Val_Bits [BV{1} 1]); ("SS", Val_Bits [BV{1} 0]);
-          ("E", Val_Poison); ("TCO", Val_Poison); ("I", Val_Bits [BV{1} 1]);
-          ("PAN", Val_Poison); ("M", Val_Poison); ("D", Val_Bits [BV{1} 1]);
-          ("nRW", Val_Bits [BV{1} 0]); ("EL", Val_Bits [BV{2} 2]);
-          ("IT", Val_Poison); ("IL", Val_Bits [BV{1} 0]);
-          ("Z", Val_Bits [BV{1} 0]); ("BTYPE", Val_Poison);
-          ("SSBS", Val_Poison); ("T", Val_Poison); ("J", Val_Poison);
-          ("V", Val_Bits [BV{1} 0]); ("DIT", Val_Bits [BV{1} 0])]))%I.
+  "PSTATE" @ "SP" ↦ᵣ Val_Bits [BV{1} 1] ∗
+  "PSTATE" @ "EL" ↦ᵣ Val_Bits [BV{2} 2] ∗
+  "PSTATE" @ "nRW" ↦ᵣ Val_Bits [BV{1} 0] ∗
+  "PSTATE" @ "D" ↦ᵣ Val_Bits [BV{1} 1]
+)%I.
 
 Definition cont_spec `{!islaG Σ} `{!threadG} a sp (v1 v2 : bv 64) : iProp Σ :=
   ∃ (vold1 vold2 : bv 64),

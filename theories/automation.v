@@ -100,6 +100,10 @@ Section instances.
     rt_fic := FindDirect (λ v, r ↦ᵣ v)%I;
   |}.
 
+  Global Instance struct_reg_related r f v : RelatedTo (r @ f ↦ᵣ v) := {|
+    rt_fic := FindDirect (λ v, r @ f ↦ᵣ v)%I;
+  |}.
+
   Global Instance instr_related a i : RelatedTo (instr a i) := {|
     rt_fic := FindDirect (λ i, instr a i)%I;
   |}.
@@ -115,6 +119,14 @@ Section instances.
   Global Instance subsume_reg_inst r v1 v2 :
     Subsume (r ↦ᵣ v1) (r ↦ᵣ v2) :=
     λ G, i2p (subsume_reg r v1 v2 G).
+
+  Lemma subsume_struct_reg r f v1 v2 G:
+    ⌜v1 = v2⌝ ∗ G -∗
+    subsume (r @ f ↦ᵣ v1) (r @ f ↦ᵣ v2) G.
+  Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
+  Global Instance subsume_struct_reg_inst r f v1 v2 :
+    Subsume (r @ f ↦ᵣ v1) (r @ f ↦ᵣ v2) :=
+    λ G, i2p (subsume_struct_reg r f v1 v2 G).
 
   Lemma subsume_instr a i1 i2 G:
     ⌜i1 = i2⌝ ∗ G -∗
@@ -201,22 +213,29 @@ Section instances.
       by iApply (instr_pre_wand with "Hinstr").
   Qed.
 
-  Lemma li_wp_read_reg r v ann es al:
-    (∃ v' v'' vread, r ↦ᵣ v' ∗ ⌜read_accessor al v' = Some v''⌝ ∗
-        ⌜read_accessor al v = Some vread⌝ ∗
-       (⌜vread = v''⌝ -∗ r ↦ᵣ v' -∗ WPasm es)) -∗
-    WPasm (ReadReg r al v ann :: es).
-  Proof. iDestruct 1 as (???) "[Hr [% [% Hwp]]]". by iApply (wp_read_reg_acc with "Hr"). Qed.
+  Lemma li_wp_read_reg r v ann es :
+    (∃ v', r ↦ᵣ v' ∗
+       (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)) -∗
+    WPasm (ReadReg r [] v ann :: es).
+  Proof. iDestruct 1 as (?) "[Hr Hwp]". by iApply (wp_read_reg with "Hr"). Qed.
 
-  Lemma li_wp_write_reg r al v ann es:
-    (∃ v' v'' vnew, r ↦ᵣ v' ∗
-     ⌜read_accessor al v = Some vnew⌝ ∗ ⌜write_accessor al v' vnew = Some v''⌝ ∗
-     (r ↦ᵣ v'' -∗ WPasm es)) -∗
-    WPasm (WriteReg r al v ann :: es).
-  Proof.
-    iDestruct 1 as (???) "[Hr [% [% Hwp]]]"; simplify_eq/=.
-      by iApply (wp_write_reg_acc with "Hr").
-  Qed.
+  Lemma li_wp_read_reg_struct r f v ann es :
+    (∃ v' vread, r @ f ↦ᵣ v' ∗ ⌜read_accessor [Field f] v = Some vread⌝ ∗
+       (⌜vread = v'⌝ -∗ r @ f ↦ᵣ v' -∗ WPasm es)) -∗
+    WPasm (ReadReg r [Field f] v ann :: es).
+  Proof. iDestruct 1 as (??) "[Hr [% Hwp]]". by iApply (wp_read_reg_struct with "Hr"). Qed.
+
+  Lemma li_wp_write_reg r v ann es:
+    (∃ v', r ↦ᵣ v' ∗ (r ↦ᵣ v -∗ WPasm es)) -∗
+    WPasm (WriteReg r [] v ann :: es).
+  Proof. iDestruct 1 as (?) "[Hr Hwp]". by iApply (wp_write_reg with "Hr"). Qed.
+
+  Lemma li_wp_write_reg_struct r f v ann es:
+    (∃ v' vnew, r @ f ↦ᵣ v' ∗
+     ⌜read_accessor [Field f] v = Some vnew⌝ ∗
+     (r @ f ↦ᵣ vnew -∗ WPasm es)) -∗
+    WPasm (WriteReg r [Field f] v ann :: es).
+  Proof. iDestruct 1 as (??) "[Hr [% Hwp]]". by iApply (wp_write_reg_struct with "Hr"). Qed.
 
   Lemma li_wp_branch_address v ann es:
     WPasm es -∗
@@ -329,8 +348,10 @@ Ltac liAAsm :=
     | [] => notypeclasses refine (tac_fast_apply (li_wp_next_instr) _)
     | ?e :: _ =>
       lazymatch e with
-      | ReadReg _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg _ _ _ _ _) _)
-      | WriteReg _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg _ _ _ _ _) _)
+      | ReadReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg _ _ _ _) _)
+      | ReadReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg_struct _ _ _ _ _) _)
+      | WriteReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg _ _ _ _) _)
+      | WriteReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg_struct _ _ _ _ _) _)
       | BranchAddress _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch_address _ _ _) _)
       | ReadMem _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_mem _ _ _ _ _ _ _ _) _)
       | WriteMem _ _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_mem _ _ _ _ _ _ _ _ _) _)

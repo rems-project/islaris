@@ -9,12 +9,17 @@ Class islaPreG Σ := PreIslaG {
   isla_pre_invG :> invGpreS Σ;
   heap_pre_instrs_inG :> inG Σ (instrtblUR);
   heap_pre_regs_inG :> ghost_mapG Σ string valu;
+  heap_pre_struct_regs_inG :> ghost_mapG Σ (string * string) valu;
   heap_pre_mem_ingG :> ghost_mapG Σ addr byte;
   heap_pre_spec_inG :> ghost_varG Σ (list seq_label);
 }.
 
 Definition islaΣ : gFunctors :=
-  #[invΣ; GFunctor (constRF instrtblUR); ghost_mapΣ string valu; ghost_mapΣ addr byte; ghost_varΣ (list seq_label)].
+  #[invΣ; GFunctor (constRF instrtblUR);
+   ghost_mapΣ string valu;
+   ghost_mapΣ (string * string) valu;
+   ghost_mapΣ addr byte;
+   ghost_varΣ (list seq_label)].
 
 Instance subG_islaPreG {Σ} : subG islaΣ Σ → islaPreG Σ.
 Proof. solve_inG. Qed.
@@ -40,7 +45,7 @@ Proof.
   iMod (ghost_var_alloc κsspec) as (γs) "[Hs1 Hs2]".
   iMod (ghost_map_alloc mem) as (γm) "[Hm1 Hm2]".
 
-  set (HheapG := HeapG _ _ γi _ _ γm κs κsspec _ γs).
+  set (HheapG := HeapG _ _ γi _ _ _ γm κs κsspec _ γs).
   set (HislaG := IslaG _ _ HheapG).
   iAssert (instr_table instrs) as "#His". { by rewrite instr_table_eq. }
 
@@ -55,12 +60,15 @@ Proof.
     iApply (big_sepL_impl with "Hwp").
     iIntros "!>" (? rs ?) "Hwp".
     iMod (ghost_map_alloc (rs)) as (γr) "[Hr1 Hr2]".
-    set (HthreadG := ThreadG γr).
+    iMod (ghost_map_alloc (∅ : gmap (string * string) valu)) as (γsr) "[Hsr1 Hsr2]".
+    set (HthreadG := ThreadG γr γsr).
     setoid_rewrite wp_asm_unfold.
-    iApply ("Hwp" with "[Hr2]"); [|done|done|done].
-    iApply (big_sepM_impl with "Hr2").
-    iIntros "!>" (???) "?".
-      by rewrite reg_mapsto_eq.
+    iApply ("Hwp" with "[Hr2]"); [|done|done|].
+    + iApply (big_sepM_impl with "Hr2").
+      iIntros "!>" (???) "?". by rewrite reg_mapsto_eq.
+    + iExists _, _. iFrame. iPureIntro. split_and! => //.
+      * move => /=. naive_solver.
+      * move => ?? [?[??]]. simplify_map_eq.
   - iIntros (?????) "(Hspec&?) ? ?".
     iApply fupd_mask_intro; [done|]. iIntros "_".
     iDestruct "Hspec" as (? ? Hκs Hspec) "?".

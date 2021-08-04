@@ -254,7 +254,6 @@ Section lifting.
     iExists _, _. iFrame. iSplit; [done|]. iExists _. by iFrame.
   Qed.
 
-
   Lemma wp_read_reg_acc r v v' v'' vread ann es q al:
     read_accessor al v' = Some v'' →
     read_accessor al v = Some vread →
@@ -277,6 +276,33 @@ Section lifting.
       iFrame. iSplitL; [|done]. by iApply wp_value.
     }
     unfold register_name in *. simplify_eq/=.
+    iFrame; iSplitL; [|done].
+    iApply ("Hcont" with "[//] Hr"); [done|done|].
+    iFrame.
+  Qed.
+
+  Lemma wp_read_reg_struct r v v' vread ann es q f:
+    read_accessor [Field f] v = Some vread →
+    r @ f ↦ᵣ{q} v' -∗
+    (⌜vread = v'⌝ -∗ r @ f ↦ᵣ{q} v' -∗ WPasm es) -∗
+    WPasm (ReadReg r [Field f] v ann :: es).
+  Proof.
+    iIntros (?) "Hr Hcont". setoid_rewrite wp_asm_unfold.
+    iIntros ([???]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "(?&Hictx&?)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iDestruct (struct_reg_mapsto_lookup with "Hθ Hr") as %(?&?&?&?&?).
+    iSplit. {
+      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      eexists _, _, _. split_and! => //=. 2: by right.
+      rewrite /read_accessor/=. by simplify_option_eq.
+    }
+    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
+    inv_seq_step. revert select (∃ x, _) => -[?[?[?[?[?[?[?[?[[??]|?]]]]]]]]]; simplify_eq/=. 2: {
+      iFrame. iSplitL; [|done]. by iApply wp_value.
+    }
+    unfold register_name, read_accessor in *. simplify_option_eq.
     iFrame; iSplitL; [|done].
     iApply ("Hcont" with "[//] Hr"); [done|done|].
     iFrame.
@@ -311,6 +337,32 @@ Section lifting.
     unfold register_name in *. simplify_eq.
     iFrame; iSplitL; [|done].
     iMod (reg_mapsto_update with "Hθ Hr") as "[Hθ Hr]".
+    iApply ("Hcont" with "Hr"); [done|done|].
+    iFrame.
+  Qed.
+
+  Lemma wp_write_reg_struct r v v' vnew ann es f:
+    read_accessor [Field f] v = Some vnew →
+    r @ f ↦ᵣ v' -∗
+    (r @ f ↦ᵣ vnew -∗ WPasm es) -∗
+    WPasm (WriteReg r [Field f] v ann :: es).
+  Proof.
+    iIntros (?) "Hr Hcont". setoid_rewrite wp_asm_unfold.
+    iIntros ([???]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "(?&Hictx&?)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iDestruct (struct_reg_mapsto_lookup with "Hθ Hr") as %(?&?&?&?&?).
+    iSplit. {
+      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      eexists _, _, _. split_and! => //. rewrite /write_accessor/=. by simplify_option_eq.
+    }
+    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
+    inv_seq_step.
+    revert select (∃ _, _) => -[?[?[?[?[?[?[?[??]]]]]]]].
+    unfold register_name, write_accessor in *. simplify_option_eq.
+    iFrame; iSplitL; [|done].
+    iMod (struct_reg_mapsto_update with "Hθ Hr") as "[Hθ Hr]"; [done..|].
     iApply ("Hcont" with "Hr"); [done|done|].
     iFrame.
   Qed.

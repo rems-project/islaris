@@ -18,6 +18,7 @@ Class heapG Σ := HeapG {
   heap_instrs_inG :> inG Σ instrtblUR;
   heap_instrs_name : gname;
   heap_regs_inG :> ghost_mapG Σ string valu;
+  heap_struct_regs_inG :> ghost_mapG Σ (string * string) valu;
   heap_mem_inG :> ghost_mapG Σ addr byte;
   heap_mem_name : gname;
   heap_full_trace : list seq_label;
@@ -28,6 +29,7 @@ Class heapG Σ := HeapG {
 
 Class threadG := ThreadG {
   thread_regs_name : gname;
+  thread_struct_regs_name : gname;
 }.
 
 Definition to_instrtbl : gmap addr (list trc) → instrtblUR :=
@@ -60,8 +62,22 @@ Section definitions.
   Definition reg_mapsto_eq : @reg_mapsto = @reg_mapsto_def :=
     seal_eq reg_mapsto_aux.
 
+  Definition struct_reg_mapsto_def (γ : gname) (r f : string) (q : frac) (v: valu) : iProp Σ :=
+    (r, f) ↪[ γ ]{# q} v.
+  Definition struct_reg_mapsto_aux : seal (@struct_reg_mapsto_def). by eexists. Qed.
+  Definition struct_reg_mapsto := unseal struct_reg_mapsto_aux.
+  Definition struct_reg_mapsto_eq : @struct_reg_mapsto = @struct_reg_mapsto_def :=
+    seal_eq struct_reg_mapsto_aux.
+
   Definition regs_ctx `{!threadG} (regs : reg_map) : iProp Σ :=
-    ghost_map_auth thread_regs_name 1 regs.
+    ∃ rs (srs : gmap (string * string) valu),
+      ⌜map_Forall (λ r v, regs !! r = Some v) rs⌝ ∗
+      ⌜map_Forall (λ r v, ∃ l i, regs !! r.1 = Some (Val_Struct l) ∧
+         list_find_idx (λ x, x.1 = r.2) l = Some i ∧ l !! i = Some (r.2, v)) srs⌝ ∗
+      ⌜∀ i, is_Some (rs !! i) → (∃ f, is_Some (srs !! (i, f))) → False⌝ ∗
+      ghost_map_auth thread_regs_name 1 rs ∗
+      ghost_map_auth thread_struct_regs_name 1 srs
+  .
 
   Definition mem_mapsto_byte_def (γ : gname) (a : addr) (q : dfrac) (v : byte) : iProp Σ :=
     a ↪[ γ ]{q} v.
@@ -108,12 +124,18 @@ Notation "r ↦ᵣ{ q } v" := (reg_mapsto thread_regs_name r q v)
   (at level 20, q at level 50, format "r  ↦ᵣ{ q }  v") : bi_scope.
 Notation "r ↦ᵣ v" := (reg_mapsto thread_regs_name r 1 v) (at level 20) : bi_scope.
 
+Notation "r @ f ↦ᵣ{ q } v" := (struct_reg_mapsto thread_struct_regs_name r f q v)
+  (at level 20, f at level 10, q at level 50, format "r  @  f  ↦ᵣ{ q }  v") : bi_scope.
+Notation "r  @  f  ↦ᵣ v" := (struct_reg_mapsto thread_struct_regs_name r f 1 v)
+  (at level 20, f at level 10) : bi_scope.
+
 Notation "a ↦ₘ{ q } v" := (mem_mapsto a q v)
   (at level 20, q at level 50, format "a  ↦ₘ{ q }  v") : bi_scope.
 Notation "a ↦ₘ v" := (mem_mapsto a (DfracOwn 1) v) (at level 20) : bi_scope.
 
 Section instr.
   Context `{!heapG Σ}.
+
   Global Instance instr_table_pers i : Persistent (instr_table i).
   Proof. rewrite instr_table_eq. by apply _. Qed.
 
@@ -157,26 +179,96 @@ Section instr.
 End instr.
 
 Section reg.
-  Context `{!heapG Σ}.
+  Context `{!heapG Σ} `{!threadG}.
 
   Global Instance reg_mapsto_tl γ r q v : Timeless (reg_mapsto γ r q v).
   Proof. rewrite reg_mapsto_eq. by apply _. Qed.
 
-  Lemma reg_mapsto_lookup `{!threadG} regs r q v :
+  Global Instance struct_reg_mapsto_tl γ r f q v : Timeless (struct_reg_mapsto γ r f q v).
+  Proof. rewrite struct_reg_mapsto_eq. by apply _. Qed.
+
+  Lemma reg_mapsto_to_struct_reg_mapsto regs r l:
+    NoDup l.*1 →
+    regs_ctx regs -∗ r ↦ᵣ Val_Struct l ==∗ regs_ctx regs ∗ [∗ list] v∈l, r @ v.1 ↦ᵣ v.2.
+  Proof.
+    rewrite reg_mapsto_eq struct_reg_mapsto_eq.
+    iIntros (?) "(%rs&%srs&%Hrs&%Hsrs&%Hdisj&Hregs&Hsregs) Hreg".
+    iDestruct (ghost_map_lookup with "Hregs Hreg") as %?.
+    iMod (ghost_map_delete with "Hregs Hreg") as "Hregs".
+    iMod (ghost_map_insert_big (kmap (λ x, (r, x)) (list_to_map l)) with "Hsregs") as "[Hsregs Hl]".
+    { apply map_disjoint_spec => -[??]?? /lookup_kmap_Some. naive_solver. }
+    iModIntro. iSplitR "Hl".
+    - iExists _, _. iFrame. iPureIntro. split_and!.
+      + by apply: map_Forall_delete.
+      + apply map_Forall_union; [| split; [|done]].
+        { apply map_disjoint_spec => -[??]?? /lookup_kmap_Some. naive_solver. }
+        move => [??] /=? /lookup_kmap_Some[?[? /elem_of_list_to_map/(elem_of_list_lookup_1 _ _)[//|i ?]]]; simplify_map_eq.
+        eexists _, _. split_and! => //.
+        apply list_find_idx_Some. eexists _. split_and!; [done..|] => j[??]/=???; simplify_eq.
+        efeed pose proof (NoDup_lookup l.*1 i j); [done| rewrite list_lookup_fmap fmap_Some.. | lia].
+        all: naive_solver.
+      + move => ? [? /lookup_delete_Some[??]] [?[?/lookup_union_Some[| |]]]; [| |naive_solver].
+        { apply map_disjoint_spec => -[??]?? /lookup_kmap_Some. naive_solver. }
+        move => /lookup_kmap_Some. naive_solver.
+    - by rewrite big_sepM_kmap big_sepM_list_to_map.
+  Qed.
+
+  Lemma reg_mapsto_lookup regs r q v :
     regs_ctx regs -∗ r ↦ᵣ{q} v -∗ ⌜regs !! r = Some v⌝.
   Proof.
     rewrite reg_mapsto_eq.
-    iIntros "Hregs Hreg".
-    by iDestruct (ghost_map_lookup with "Hregs Hreg") as %?.
+    iIntros "(%rs&%srs&%Hall&%&%&Hregs&?) Hreg".
+    iDestruct (ghost_map_lookup with "Hregs Hreg") as %?. iPureIntro.
+    by apply: Hall.
   Qed.
 
-  Lemma reg_mapsto_update `{!threadG} regs r v v' :
+  Lemma reg_mapsto_update regs r v v' :
     regs_ctx regs -∗ r ↦ᵣ v ==∗ regs_ctx (<[r := v']>regs) ∗ r ↦ᵣ v'.
   Proof.
-    iIntros "Hregs Hreg".
-    iDestruct (reg_mapsto_lookup with "Hregs Hreg") as %?.
-    rewrite reg_mapsto_eq.
-    by iMod (ghost_map_update with "Hregs Hreg") as "[? $]".
+    iIntros "(%rs&%srs&%Hrs&%Hsrs&%Hdisj&Hregs&?) Hreg". rewrite reg_mapsto_eq.
+    iDestruct (ghost_map_lookup with "Hregs Hreg") as %?.
+    iMod (ghost_map_update with "Hregs Hreg") as "[Hregs $]". iModIntro.
+    iExists _, _. iFrame. iPureIntro. split_and!.
+    - apply: map_Forall_insert_2'; simplify_map_eq; [done|].
+      apply: map_Forall_impl; [done|] => /= *; by simplify_map_eq.
+    - apply: map_Forall_impl'; [done|] => -[n ?]/= ? ? [?[?[?[??]]]]. eexists _, _. split_and!; [|done..].
+      destruct (decide (n = r)); simplify_map_eq => //. naive_solver.
+    - move => ? /lookup_insert_is_Some'?. naive_solver.
+  Qed.
+
+  Lemma struct_reg_mapsto_lookup regs r q v f:
+    regs_ctx regs -∗
+    r @ f ↦ᵣ{q} v -∗
+    ⌜∃ l i, regs !! r = Some (Val_Struct l) ∧ list_find_idx (λ x, x.1 = f) l = Some i ∧ l !! i = Some (f, v)⌝.
+  Proof.
+    rewrite struct_reg_mapsto_eq.
+    iIntros "(%rs&%srs&%Hrs&%Hsrs&%&Hregs&Hsregs) Hreg".
+    iDestruct (ghost_map_lookup with "Hsregs Hreg") as %?. iPureIntro.
+    by apply: (Hsrs (_, _)).
+  Qed.
+
+  Lemma struct_reg_mapsto_update regs r f v v' l i :
+    regs !! r = Some (Val_Struct l) →
+    list_find_idx (λ x, x.1 = f) l = Some i →
+    regs_ctx regs -∗ r @ f ↦ᵣ v ==∗ regs_ctx (<[r:=Val_Struct (<[i:=(f, v')]> l)]>regs) ∗ r @ f ↦ᵣ v'.
+  Proof.
+    iIntros (? Hl) "(%rs&%srs&%Hrs&%Hsrs&%Hdisj&Hregs&Hsregs) Hreg". rewrite struct_reg_mapsto_eq.
+    iDestruct (ghost_map_lookup with "Hsregs Hreg") as %?.
+    iMod (ghost_map_update with "Hsregs Hreg") as "[Hsregs $]". iModIntro.
+    iExists _, _. iFrame. iPureIntro. split_and!.
+    - apply: map_Forall_impl'; [done|] => n ?? /=?.
+      destruct (decide (n = r)); simplify_map_eq => //. naive_solver.
+    - apply: map_Forall_insert_2'; simplify_map_eq. {
+        eexists _, _. split_and! => //.
+        - by apply: list_find_idx_insert_eq.
+        - rewrite list_lookup_insert //. by apply: list_find_idx_lt. }
+      apply: map_Forall_impl; [done|] => -[r' f']/= ? [?[?[?[??]]]] ?; simplify_map_eq.
+      destruct (decide (r = r')); simplify_map_eq. 2: naive_solver.
+      move: Hl => /list_find_idx_Some[[??]/=[?[??]]].
+      eexists _, _. split_and! => //.
+      + apply: list_find_idx_insert_neq; [done|naive_solver|done| naive_solver].
+      + apply list_lookup_insert_Some. right. naive_solver.
+    - move => ?? [? /lookup_insert_is_Some'?]. naive_solver.
   Qed.
 End reg.
 
