@@ -69,6 +69,17 @@ Section definitions.
   Definition struct_reg_mapsto_eq : @struct_reg_mapsto = @struct_reg_mapsto_def :=
     seal_eq struct_reg_mapsto_aux.
 
+  Inductive reg_col_entry :=
+  | RegColDirect (r : string) | RegColStruct (r f : string).
+  Global Instance reg_col_entry_eq_decision : EqDecision reg_col_entry.
+  Proof. solve_decision. Defined.
+
+  Definition reg_col `{!threadG} (regs : list (reg_col_entry * valu)) : iProp Σ :=
+    [∗ list] v ∈ regs, match v.1 with
+                       | RegColDirect r => reg_mapsto thread_regs_name r 1 v.2
+                       | RegColStruct r f => struct_reg_mapsto thread_struct_regs_name r f 1 v.2
+                       end.
+
   Definition regs_ctx `{!threadG} (regs : reg_map) : iProp Σ :=
     ∃ rs (srs : gmap (string * string) valu),
       ⌜map_Forall (λ r v, regs !! r = Some v) rs⌝ ∗

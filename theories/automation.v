@@ -49,6 +49,29 @@ Definition FindInstrKind {Σ} `{!islaG Σ} `{!threadG} (a : Z) := {| fic_A := @i
 |}.
 Typeclasses Opaque FindInstrKind.
 
+(* If we ever need to support more than one reg_col, we can use
+a solver for finding the collection with the right r. *)
+Inductive reg_mapsto_kind : Type :=
+| RKMapsTo (v : valu) | RKCol (regs : list (reg_col_entry * valu)).
+Definition FindRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r : string) := {|
+  fic_A := reg_mapsto_kind;
+  fic_Prop rk :=
+  match rk with
+  | RKMapsTo v => (r ↦ᵣ v)%I
+  | RKCol regs => reg_col regs
+  end
+|}.
+Typeclasses Opaque FindRegMapsTo.
+Definition FindStructRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r f : string) := {|
+  fic_A := reg_mapsto_kind;
+  fic_Prop rk :=
+  match rk with
+  | RKMapsTo v => (r @ f ↦ᵣ v)%I
+  | RKCol regs => reg_col regs
+  end
+|}.
+Typeclasses Opaque FindStructRegMapsTo.
+
 Section instances.
   Context `{!islaG Σ} `{!threadG}.
 
@@ -70,6 +93,7 @@ Section instances.
   Global Instance find_in_context_instr_kind_instr_inst a :
     FindInContext (FindInstrKind a) 1%nat FICSyntactic :=
     λ T, i2p (find_in_context_instr_kind_instr a T).
+
   Definition FindMapsto `{!islaG Σ} (a : addr) (n : N) := {|
     fic_A := bv n; fic_Prop v := a ↦ₘ v;
   |}%I.
@@ -103,6 +127,38 @@ Section instances.
   Global Instance struct_reg_related r f v : RelatedTo (r @ f ↦ᵣ v) := {|
     rt_fic := FindDirect (λ v, r @ f ↦ᵣ v)%I;
   |}.
+
+  Lemma find_in_context_reg_mapsto r T:
+    (∃ v, r ↦ᵣ v ∗ T (RKMapsTo v)) -∗
+    find_in_context (FindRegMapsTo r) T.
+  Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
+  Global Instance find_in_context_reg_mapsto_inst r :
+    FindInContext (FindRegMapsTo r) 0%nat FICSyntactic :=
+    λ T, i2p (find_in_context_reg_mapsto r T).
+
+  Lemma find_in_context_reg_mapsto_col r T:
+    (∃ regs, reg_col regs ∗ T (RKCol regs)) -∗
+    find_in_context (FindRegMapsTo r) T.
+  Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
+  Global Instance find_in_context_reg_mapsto_col_inst r :
+    FindInContext (FindRegMapsTo r) 1%nat FICSyntactic :=
+    λ T, i2p (find_in_context_reg_mapsto_col r T).
+
+  Lemma find_in_context_struct_reg_mapsto r f T:
+    (∃ v, r @ f ↦ᵣ v ∗ T (RKMapsTo v)) -∗
+    find_in_context (FindStructRegMapsTo r f) T.
+  Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
+  Global Instance find_in_context_struct_reg_mapsto_inst r f :
+    FindInContext (FindStructRegMapsTo r f) 0%nat FICSyntactic :=
+    λ T, i2p (find_in_context_struct_reg_mapsto r f T).
+
+  Lemma find_in_context_struct_reg_mapsto_col r f T:
+    (∃ regs, reg_col regs ∗ T (RKCol regs)) -∗
+    find_in_context (FindStructRegMapsTo r f) T.
+  Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
+  Global Instance find_in_context_struct_reg_mapsto_col_inst r f:
+    FindInContext (FindStructRegMapsTo r f) 1%nat FICSyntactic :=
+    λ T, i2p (find_in_context_struct_reg_mapsto_col r f T).
 
   Global Instance instr_related a i : RelatedTo (instr a i) := {|
     rt_fic := FindDirect (λ i, instr a i)%I;
@@ -214,16 +270,39 @@ Section instances.
   Qed.
 
   Lemma li_wp_read_reg r v ann es :
-    (∃ v', r ↦ᵣ v' ∗
-       (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)) -∗
+    (find_in_context (FindRegMapsTo r) (λ rk,
+      match rk with
+      | RKMapsTo v' => (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)
+      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = RegColDirect r)) regs)⌝ ∗
+                      (reg_col regs -∗ WPasm es)
+      end)) -∗
     WPasm (ReadReg r [] v ann :: es).
-  Proof. iDestruct 1 as (?) "[Hr Hwp]". by iApply (wp_read_reg with "Hr"). Qed.
+  Proof.
+    iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
+    - by iApply (wp_read_reg with "Hr").
+    - rewrite via_vm_compute_eq.
+      iDestruct "Hwp" as ([? [[??][?[??]]]%list_find_idx_Some]) "Hwp"; simplify_eq/=.
+      iDestruct (big_sepL_lookup_acc with "Hr") as "[Hr Hregs]"; [done|] => /=.
+      iApply (wp_read_reg with "Hr"). iIntros "_ Hr". iApply "Hwp". by iApply "Hregs".
+  Qed.
 
   Lemma li_wp_read_reg_struct r f v ann es :
-    (∃ v' vread, r @ f ↦ᵣ v' ∗ ⌜read_accessor [Field f] v = Some vread⌝ ∗
-       (⌜vread = v'⌝ -∗ r @ f ↦ᵣ v' -∗ WPasm es)) -∗
+    (∃ vread, ⌜read_accessor [Field f] v = Some vread⌝ ∗
+     (find_in_context (FindStructRegMapsTo r f) (λ rk,
+      match rk with
+      | RKMapsTo v' => (⌜vread = v'⌝ -∗ r @ f ↦ᵣ v' -∗ WPasm es)
+      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = RegColStruct r f)) regs)⌝ ∗
+                      (reg_col regs -∗ WPasm es)
+      end))) -∗
     WPasm (ReadReg r [Field f] v ann :: es).
-  Proof. iDestruct 1 as (??) "[Hr [% Hwp]]". by iApply (wp_read_reg_struct with "Hr"). Qed.
+  Proof.
+    iDestruct 1 as (???) "[Hr Hwp]" => /=. case_match; simplify_eq.
+    - by iApply (wp_read_reg_struct with "Hr").
+    - rewrite via_vm_compute_eq.
+      iDestruct "Hwp" as ([? [[??][?[??]]]%list_find_idx_Some]) "Hwp"; simplify_eq/=.
+      iDestruct (big_sepL_lookup_acc with "Hr") as "[Hr Hregs]"; [done|] => /=.
+      iApply (wp_read_reg_struct with "Hr"); [done|]. iIntros "_ Hr". iApply "Hwp". by iApply "Hregs".
+  Qed.
 
   Lemma li_wp_write_reg r v ann es:
     (∃ v', r ↦ᵣ v' ∗ (r ↦ᵣ v -∗ WPasm es)) -∗
@@ -307,10 +386,6 @@ Section instances.
     WPexp (Ite e1 e2 e3 ann) {{ Φ }}.
   Proof. apply: wpe_ite. Qed.
 End instances.
-
-(* This seems to have to live outside of the section because of hint lifetimes? *)
-(* #[ global ] Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) => *)
-(* ( apply tac_mapsto_eq; done) : typeclass_instances. *)
 
 #[ global ] Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) =>
   ( apply tac_mapsto_eq; bv_solve) : typeclass_instances.

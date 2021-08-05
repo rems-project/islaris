@@ -168,8 +168,6 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
 Proof.
   iStartProof.
   repeat liAStep; liShow.
-  Unshelve.
-  all: done.
 Qed.
 
 Lemma test_state_adequate κs t2 σ2 n:
