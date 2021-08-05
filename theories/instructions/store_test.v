@@ -25,9 +25,9 @@ Lemma store_wp `{!islaG Σ} `{!threadG} :
   "OSDLR_EL1" ↦ᵣ Val_Bits [BV{32} 0] -∗
   "EDSCR" ↦ᵣ Val_Bits [BV{32} 0] -∗
   "MPIDR_EL1" ↦ᵣ Val_Bits [BV{64} 0] -∗
-  "PSTATE" @ "EL" ↦ᵣ Val_Bits [BV{2} 2] -∗
-  "PSTATE" @ "nRW" ↦ᵣ Val_Bits [BV{1} 0] -∗
-  "PSTATE" @ "D" ↦ᵣ Val_Bits [BV{1} 1] -∗
+  "PSTATE" # "EL" ↦ᵣ Val_Bits [BV{2} 2] -∗
+  "PSTATE" # "nRW" ↦ᵣ Val_Bits [BV{1} 0] -∗
+  "PSTATE" # "D" ↦ᵣ Val_Bits [BV{1} 1] -∗
   spec_trace spec -∗
   WPasm [].
 Proof.

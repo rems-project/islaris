@@ -506,10 +506,10 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   "R1" ↦ᵣ Val_Bits (BV 64 n1 Hin) -∗
   "R0" ↦ᵣ Val_Poison -∗
   "OUT" ↦ᵣ Val_Poison -∗
-  "PSTATE" @ "N" ↦ᵣ Val_Bits [BV{1} 0] -∗
-  "PSTATE" @ "Z" ↦ᵣ Val_Bits [BV{1} 0] -∗
-  "PSTATE" @ "C" ↦ᵣ Val_Bits [BV{1} 0] -∗
-  "PSTATE" @ "V" ↦ᵣ Val_Bits [BV{1} 0] -∗
+  "PSTATE" # "N" ↦ᵣ Val_Bits [BV{1} 0] -∗
+  "PSTATE" # "Z" ↦ᵣ Val_Bits [BV{1} 0] -∗
+  "PSTATE" # "C" ↦ᵣ Val_Bits [BV{1} 0] -∗
+  "PSTATE" # "V" ↦ᵣ Val_Bits [BV{1} 0] -∗
   spec_trace test_state2_spec -∗
   WPasm [].
 Proof.
@@ -718,9 +718,9 @@ Lemma test_state4_iris `{!islaG Σ} `{!threadG} :
   "EDSCR" ↦ᵣ Val_Bits [BV{32} 0] -∗
   "R0" ↦ᵣ Val_Poison -∗
   "OUT" ↦ᵣ Val_Poison -∗
-  "PSTATE" @ "EL" ↦ᵣ Val_Bits [BV{2} 2] -∗
-  "PSTATE" @ "nRW" ↦ᵣ Val_Bits [BV{1} 0] -∗
-  "PSTATE" @ "D" ↦ᵣ Val_Bits [BV{1} 1] -∗
+  "PSTATE" # "EL" ↦ᵣ Val_Bits [BV{2} 2] -∗
+  "PSTATE" # "nRW" ↦ᵣ Val_Bits [BV{1} 0] -∗
+  "PSTATE" # "D" ↦ᵣ Val_Bits [BV{1} 1] -∗
   spec_trace test_state3_spec -∗
   WPasm [].
 Proof.

@@ -135,9 +135,9 @@ Notation "r ↦ᵣ{ q } v" := (reg_mapsto thread_regs_name r q v)
   (at level 20, q at level 50, format "r  ↦ᵣ{ q }  v") : bi_scope.
 Notation "r ↦ᵣ v" := (reg_mapsto thread_regs_name r 1 v) (at level 20) : bi_scope.
 
-Notation "r @ f ↦ᵣ{ q } v" := (struct_reg_mapsto thread_struct_regs_name r f q v)
-  (at level 20, f at level 10, q at level 50, format "r  @  f  ↦ᵣ{ q }  v") : bi_scope.
-Notation "r  @  f  ↦ᵣ v" := (struct_reg_mapsto thread_struct_regs_name r f 1 v)
+Notation "r # f ↦ᵣ{ q } v" := (struct_reg_mapsto thread_struct_regs_name r f q v)
+  (at level 20, f at level 10, q at level 50, format "r  #  f  ↦ᵣ{ q }  v") : bi_scope.
+Notation "r  #  f  ↦ᵣ v" := (struct_reg_mapsto thread_struct_regs_name r f 1 v)
   (at level 20, f at level 10) : bi_scope.
 
 Notation "a ↦ₘ{ q } v" := (mem_mapsto a q v)
@@ -200,7 +200,7 @@ Section reg.
 
   Lemma reg_mapsto_to_struct_reg_mapsto regs r l:
     NoDup l.*1 →
-    regs_ctx regs -∗ r ↦ᵣ Val_Struct l ==∗ regs_ctx regs ∗ [∗ list] v∈l, r @ v.1 ↦ᵣ v.2.
+    regs_ctx regs -∗ r ↦ᵣ Val_Struct l ==∗ regs_ctx regs ∗ [∗ list] v∈l, r # v.1 ↦ᵣ v.2.
   Proof.
     rewrite reg_mapsto_eq struct_reg_mapsto_eq.
     iIntros (?) "(%rs&%srs&%Hrs&%Hsrs&%Hdisj&Hregs&Hsregs) Hreg".
@@ -249,7 +249,7 @@ Section reg.
 
   Lemma struct_reg_mapsto_lookup regs r q v f:
     regs_ctx regs -∗
-    r @ f ↦ᵣ{q} v -∗
+    r # f ↦ᵣ{q} v -∗
     ⌜∃ l i, regs !! r = Some (Val_Struct l) ∧ list_find_idx (λ x, x.1 = f) l = Some i ∧ l !! i = Some (f, v)⌝.
   Proof.
     rewrite struct_reg_mapsto_eq.
@@ -261,7 +261,7 @@ Section reg.
   Lemma struct_reg_mapsto_update regs r f v v' l i :
     regs !! r = Some (Val_Struct l) →
     list_find_idx (λ x, x.1 = f) l = Some i →
-    regs_ctx regs -∗ r @ f ↦ᵣ v ==∗ regs_ctx (<[r:=Val_Struct (<[i:=(f, v')]> l)]>regs) ∗ r @ f ↦ᵣ v'.
+    regs_ctx regs -∗ r # f ↦ᵣ v ==∗ regs_ctx (<[r:=Val_Struct (<[i:=(f, v')]> l)]>regs) ∗ r # f ↦ᵣ v'.
   Proof.
     iIntros (? Hl) "(%rs&%srs&%Hrs&%Hsrs&%Hdisj&Hregs&Hsregs) Hreg". rewrite struct_reg_mapsto_eq.
     iDestruct (ghost_map_lookup with "Hsregs Hreg") as %?.

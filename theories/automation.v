@@ -66,7 +66,7 @@ Definition FindStructRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r f : string) := {
   fic_A := reg_mapsto_kind;
   fic_Prop rk :=
   match rk with
-  | RKMapsTo v => (r @ f ↦ᵣ v)%I
+  | RKMapsTo v => (r # f ↦ᵣ v)%I
   | RKCol regs => reg_col regs
   end
 |}.
@@ -124,8 +124,8 @@ Section instances.
     rt_fic := FindDirect (λ v, r ↦ᵣ v)%I;
   |}.
 
-  Global Instance struct_reg_related r f v : RelatedTo (r @ f ↦ᵣ v) := {|
-    rt_fic := FindDirect (λ v, r @ f ↦ᵣ v)%I;
+  Global Instance struct_reg_related r f v : RelatedTo (r # f ↦ᵣ v) := {|
+    rt_fic := FindDirect (λ v, r # f ↦ᵣ v)%I;
   |}.
 
   Lemma find_in_context_reg_mapsto r T:
@@ -145,7 +145,7 @@ Section instances.
     λ T, i2p (find_in_context_reg_mapsto_col r T).
 
   Lemma find_in_context_struct_reg_mapsto r f T:
-    (∃ v, r @ f ↦ᵣ v ∗ T (RKMapsTo v)) -∗
+    (∃ v, r # f ↦ᵣ v ∗ T (RKMapsTo v)) -∗
     find_in_context (FindStructRegMapsTo r f) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
   Global Instance find_in_context_struct_reg_mapsto_inst r f :
@@ -178,10 +178,10 @@ Section instances.
 
   Lemma subsume_struct_reg r f v1 v2 G:
     ⌜v1 = v2⌝ ∗ G -∗
-    subsume (r @ f ↦ᵣ v1) (r @ f ↦ᵣ v2) G.
+    subsume (r # f ↦ᵣ v1) (r # f ↦ᵣ v2) G.
   Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
   Global Instance subsume_struct_reg_inst r f v1 v2 :
-    Subsume (r @ f ↦ᵣ v1) (r @ f ↦ᵣ v2) :=
+    Subsume (r # f ↦ᵣ v1) (r # f ↦ᵣ v2) :=
     λ G, i2p (subsume_struct_reg r f v1 v2 G).
 
   Lemma subsume_instr a i1 i2 G:
@@ -290,7 +290,7 @@ Section instances.
     (∃ vread, ⌜read_accessor [Field f] v = Some vread⌝ ∗
      (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
-      | RKMapsTo v' => (⌜vread = v'⌝ -∗ r @ f ↦ᵣ v' -∗ WPasm es)
+      | RKMapsTo v' => (⌜vread = v'⌝ -∗ r # f ↦ᵣ v' -∗ WPasm es)
       | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = RegColStruct r f)) regs)⌝ ∗
                       (reg_col regs -∗ WPasm es)
       end))) -∗
@@ -310,9 +310,9 @@ Section instances.
   Proof. iDestruct 1 as (?) "[Hr Hwp]". by iApply (wp_write_reg with "Hr"). Qed.
 
   Lemma li_wp_write_reg_struct r f v ann es:
-    (∃ v' vnew, r @ f ↦ᵣ v' ∗
+    (∃ v' vnew, r # f ↦ᵣ v' ∗
      ⌜read_accessor [Field f] v = Some vnew⌝ ∗
-     (r @ f ↦ᵣ vnew -∗ WPasm es)) -∗
+     (r # f ↦ᵣ vnew -∗ WPasm es)) -∗
     WPasm (WriteReg r [Field f] v ann :: es).
   Proof. iDestruct 1 as (??) "[Hr [% Hwp]]". by iApply (wp_write_reg_struct with "Hr"). Qed.
 

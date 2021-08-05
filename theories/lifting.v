@@ -283,8 +283,8 @@ Section lifting.
 
   Lemma wp_read_reg_struct r v v' vread ann es q f:
     read_accessor [Field f] v = Some vread →
-    r @ f ↦ᵣ{q} v' -∗
-    (⌜vread = v'⌝ -∗ r @ f ↦ᵣ{q} v' -∗ WPasm es) -∗
+    r # f ↦ᵣ{q} v' -∗
+    (⌜vread = v'⌝ -∗ r # f ↦ᵣ{q} v' -∗ WPasm es) -∗
     WPasm (ReadReg r [Field f] v ann :: es).
   Proof.
     iIntros (?) "Hr Hcont". setoid_rewrite wp_asm_unfold.
@@ -343,8 +343,8 @@ Section lifting.
 
   Lemma wp_write_reg_struct r v v' vnew ann es f:
     read_accessor [Field f] v = Some vnew →
-    r @ f ↦ᵣ v' -∗
-    (r @ f ↦ᵣ vnew -∗ WPasm es) -∗
+    r # f ↦ᵣ v' -∗
+    (r # f ↦ᵣ vnew -∗ WPasm es) -∗
     WPasm (WriteReg r [Field f] v ann :: es).
   Proof.
     iIntros (?) "Hr Hcont". setoid_rewrite wp_asm_unfold.
