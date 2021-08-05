@@ -59,40 +59,102 @@ Definition eval_unop (u : unop) (v : valu) : option valu :=
   match u, v with
   | Not, Val_Bool b => Some (Val_Bool (negb b))
   | Bvnot, Val_Bits n => Some (Val_Bits (bv_not n.(bvn_val)))
+  | Bvneg, Val_Bits n => Some (Val_Bits (bv_opp n.(bvn_val)))
   | ZeroExtend z, Val_Bits n => Some (Val_Bits (bv_zero_extend (z + n.(bvn_n)) n.(bvn_val)))
   | SignExtend z, Val_Bits n => Some (Val_Bits (bv_sign_extend (z + n.(bvn_n)) n.(bvn_val)))
   | Extract u l, Val_Bits n => Some (Val_Bits (bv_extract l (u + 1 - l) n.(bvn_val)))
-  | _, _ => (* TODO: other cases *) None
+  | _, _ => None
   end.
 
 Definition eval_binop (b : binop) (v1 v2 : valu) : option valu :=
   match b, v1, v2 with
-  | Eq, Val_Bool b1, Val_Bool b2 => Some (Val_Bool (eqb b1 b2))
+  | Eq, Val_Bool b1, Val_Bool b2 =>
+    Some (Val_Bool (eqb b1 b2))
   | Eq, Val_Bits n1, Val_Bits n2 =>
-    guard (n1.(bvn_n) = n2.(bvn_n)); Some (Val_Bool (bool_decide (n1 = n2)))
+    guard (n1.(bvn_n) = n2.(bvn_n));
+    Some (Val_Bool (bool_decide (n1 = n2)))
+
+  (* TODO: add support for Bvnand, Bvnor, Bvxnor *)
+
+  | Bvarith Bvsub, Val_Bits n1, Val_Bits n2 =>
+    n2' ← bvn_to_bv n1.(bvn_n) n2;
+    Some (Val_Bits (bv_sub n1.(bvn_val) n2'))
+  (* TODO: what is the difference between Bvudiv and Bvudivi? *)
+  | Bvarith Bvudiv, Val_Bits n1, Val_Bits n2 =>
+    n2' ← bvn_to_bv n1.(bvn_n) n2;
+    Some (Val_Bits (bv_divu n1.(bvn_val) n2'))
+  (* TODO: what is the difference between Bvsdiv and Bvsdivi? *)
+  | Bvarith Bvsdiv, Val_Bits n1, Val_Bits n2 =>
+    n2' ← bvn_to_bv n1.(bvn_n) n2;
+    Some (Val_Bits (bv_quots n1.(bvn_val) n2'))
+  | Bvarith Bvurem, Val_Bits n1, Val_Bits n2 =>
+    n2' ← bvn_to_bv n1.(bvn_n) n2;
+    Some (Val_Bits (bv_modu n1.(bvn_val) n2'))
+  | Bvarith Bvsrem, Val_Bits n1, Val_Bits n2 =>
+    n2' ← bvn_to_bv n1.(bvn_n) n2;
+    Some (Val_Bits (bv_rems n1.(bvn_val) n2'))
+  | Bvarith Bvsmod, Val_Bits n1, Val_Bits n2 =>
+    n2' ← bvn_to_bv n1.(bvn_n) n2;
+    Some (Val_Bits (bv_mods n1.(bvn_val) n2'))
+  | Bvarith Bvshl, Val_Bits n1, Val_Bits n2 =>
+    n2' ← bvn_to_bv n1.(bvn_n) n2;
+    Some (Val_Bits (bv_shiftl n1.(bvn_val) n2'))
   | Bvarith Bvlshr, Val_Bits n1, Val_Bits n2 =>
-    n2' ← bvn_to_bv n1.(bvn_n) n2; Some (Val_Bits (bv_shiftr n1.(bvn_val) n2'))
+    n2' ← bvn_to_bv n1.(bvn_n) n2;
+    Some (Val_Bits (bv_shiftr n1.(bvn_val) n2'))
+  | Bvarith Bvashr, Val_Bits n1, Val_Bits n2 =>
+    n2' ← bvn_to_bv n1.(bvn_n) n2;
+    Some (Val_Bits (bv_ashiftr n1.(bvn_val) n2'))
+
+  | Bvcomp Bvult, Val_Bits n1, Val_Bits n2 =>
+    guard (n1.(bvn_n) = n2.(bvn_n));
+    Some (Val_Bool (bool_decide (bv_unsigned n1.(bvn_val) < bv_unsigned n2.(bvn_val))))
+  | Bvcomp Bvslt, Val_Bits n1, Val_Bits n2 =>
+    guard (n1.(bvn_n) = n2.(bvn_n));
+    Some (Val_Bool (bool_decide (bv_signed n1.(bvn_val) < bv_signed n2.(bvn_val))))
+  | Bvcomp Bvule, Val_Bits n1, Val_Bits n2 =>
+    guard (n1.(bvn_n) = n2.(bvn_n));
+    Some (Val_Bool (bool_decide (bv_unsigned n1.(bvn_val) ≤ bv_unsigned n2.(bvn_val))))
+  | Bvcomp Bvsle, Val_Bits n1, Val_Bits n2 =>
+    guard (n1.(bvn_n) = n2.(bvn_n));
+    Some (Val_Bool (bool_decide (bv_signed n1.(bvn_val) ≤ bv_signed n2.(bvn_val))))
+  | Bvcomp Bvuge, Val_Bits n1, Val_Bits n2 =>
+    guard (n1.(bvn_n) = n2.(bvn_n));
+    Some (Val_Bool (bool_decide (bv_unsigned n1.(bvn_val) >= bv_unsigned n2.(bvn_val))))
+  | Bvcomp Bvsge, Val_Bits n1, Val_Bits n2 =>
+    guard (n1.(bvn_n) = n2.(bvn_n));
+    Some (Val_Bool (bool_decide (bv_signed n1.(bvn_val) >= bv_signed n2.(bvn_val))))
   | Bvcomp Bvugt, Val_Bits n1, Val_Bits n2 =>
-    guard (n1.(bvn_n) = n2.(bvn_n)); Some (Val_Bool (bool_decide (bv_unsigned n1.(bvn_val) > bv_unsigned n2.(bvn_val))))
-  | _, _, _ => (* TODO: other cases *) None
+    guard (n1.(bvn_n) = n2.(bvn_n));
+    Some (Val_Bool (bool_decide (bv_unsigned n1.(bvn_val) > bv_unsigned n2.(bvn_val))))
+  | Bvcomp Bvsgt, Val_Bits n1, Val_Bits n2 =>
+    guard (n1.(bvn_n) = n2.(bvn_n));
+    Some (Val_Bool (bool_decide (bv_signed n1.(bvn_val) > bv_signed n2.(bvn_val))))
+  | _, _, _ => None
   end.
 
 
 Definition eval_manyop (m : manyop) (vs : list valu) : option valu :=
   match m, vs with
-  | Bvmanyarith Bvadd, (Val_Bits n0 :: vs') =>
-    (λ ns, Val_Bits (foldl bv_add n0.(bvn_val) ns)) <$>
-     (mapM (M := option) (λ v, match v with | Val_Bits n => bvn_to_bv n0.(bvn_n) n | _ => None end ) vs')
-  | Bvmanyarith Bvor, (Val_Bits n0 :: vs') =>
-    (λ ns, Val_Bits (foldl bv_or n0.(bvn_val) ns)) <$>
-    (mapM (M := option) (λ v, match v with | Val_Bits n => bvn_to_bv n0.(bvn_n) n | _ => None end ) vs')
   | Bvmanyarith Bvand, (Val_Bits n0 :: vs') =>
     (λ ns, Val_Bits (foldl bv_and n0.(bvn_val) ns)) <$> (
       mapM (M := option) (λ v, match v with | Val_Bits n => bvn_to_bv n0.(bvn_n) n | _ => None end ) vs')
+  | Bvmanyarith Bvor, (Val_Bits n0 :: vs') =>
+    (λ ns, Val_Bits (foldl bv_or n0.(bvn_val) ns)) <$>
+    (mapM (M := option) (λ v, match v with | Val_Bits n => bvn_to_bv n0.(bvn_n) n | _ => None end ) vs')
+  | Bvmanyarith Bvxor, (Val_Bits n0 :: vs') =>
+    (λ ns, Val_Bits (foldl bv_xor n0.(bvn_val) ns)) <$>
+    (mapM (M := option) (λ v, match v with | Val_Bits n => bvn_to_bv n0.(bvn_n) n | _ => None end ) vs')
+  | Bvmanyarith Bvadd, (Val_Bits n0 :: vs') =>
+    (λ ns, Val_Bits (foldl bv_add n0.(bvn_val) ns)) <$>
+     (mapM (M := option) (λ v, match v with | Val_Bits n => bvn_to_bv n0.(bvn_n) n | _ => None end ) vs')
+  | Bvmanyarith Bvmul, (Val_Bits n0 :: vs') =>
+    (λ ns, Val_Bits (foldl bv_mul n0.(bvn_val) ns)) <$>
+     (mapM (M := option) (λ v, match v with | Val_Bits n => bvn_to_bv n0.(bvn_n) n | _ => None end ) vs')
   | Concat, (Val_Bits n0 :: vs') =>
     (λ ns, Val_Bits (foldl (λ b1 b2, bv_to_bvn (bv_concat b1.(bvn_val) b2.(bvn_val))) n0 ns)) <$>
     (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs')
-  | _, _ => (* TODO: other cases *) None
+  | _, _ => (* TODO: And, Or *) None
   end.
 
 Fixpoint eval_exp (e : exp) : option valu :=
