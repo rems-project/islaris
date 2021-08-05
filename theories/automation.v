@@ -83,7 +83,7 @@ Section instances.
     find_in_context (FindInstrKind a) T.
   Proof. iDestruct 1 as (??) "[??]". iExists _. by iFrame. Qed.
   Global Instance find_in_context_instr_kind_pre_inst a :
-    FindInContext (FindInstrKind a) 0%nat FICSyntactic :=
+    FindInContext (FindInstrKind a) FICSyntactic | 1 :=
     λ T, i2p (find_in_context_instr_kind_pre a T).
 
   Lemma find_in_context_instr_kind_instr a T:
@@ -91,7 +91,7 @@ Section instances.
     find_in_context (FindInstrKind a) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
   Global Instance find_in_context_instr_kind_instr_inst a :
-    FindInContext (FindInstrKind a) 1%nat FICSyntactic :=
+    FindInContext (FindInstrKind a) FICSyntactic | 10 :=
     λ T, i2p (find_in_context_instr_kind_instr a T).
 
   Definition FindMapsto `{!islaG Σ} (a : addr) (n : N) := {|
@@ -107,12 +107,12 @@ Section instances.
     find_in_context (FindMapsto a n) T.
   Proof. iDestruct 1 as (v) "[Hl HT]". iExists _ => /=. iFrame. Qed.
   Global Instance find_in_context_mapsto_id_inst `{!islaG Σ} a n :
-    FindInContext (FindMapsto a n) 0%nat FICSyntactic :=
+    FindInContext (FindMapsto a n) FICSyntactic | 1 :=
     λ T, i2p (find_in_context_mapsto_id a n T).
 
   Inductive FICMapstoSemantic : Set :=.
   Global Instance find_in_context_mapsto_semantic_inst `{!islaG Σ} a n :
-    FindInContext (FindMapsto a n) 1%nat FICMapstoSemantic :=
+    FindInContext (FindMapsto a n) FICMapstoSemantic | 10 :=
     λ T, i2p (find_in_context_mapsto_id a n T).
 
   Lemma tac_mapsto_eq `{!islaG Σ} l1 n (v1 v2 : bv n) l2:
@@ -133,7 +133,7 @@ Section instances.
     find_in_context (FindRegMapsTo r) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
   Global Instance find_in_context_reg_mapsto_inst r :
-    FindInContext (FindRegMapsTo r) 0%nat FICSyntactic :=
+    FindInContext (FindRegMapsTo r) FICSyntactic | 1 :=
     λ T, i2p (find_in_context_reg_mapsto r T).
 
   Lemma find_in_context_reg_mapsto_col r T:
@@ -141,7 +141,7 @@ Section instances.
     find_in_context (FindRegMapsTo r) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
   Global Instance find_in_context_reg_mapsto_col_inst r :
-    FindInContext (FindRegMapsTo r) 1%nat FICSyntactic :=
+    FindInContext (FindRegMapsTo r) FICSyntactic | 10 :=
     λ T, i2p (find_in_context_reg_mapsto_col r T).
 
   Lemma find_in_context_struct_reg_mapsto r f T:
@@ -149,7 +149,7 @@ Section instances.
     find_in_context (FindStructRegMapsTo r f) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
   Global Instance find_in_context_struct_reg_mapsto_inst r f :
-    FindInContext (FindStructRegMapsTo r f) 0%nat FICSyntactic :=
+    FindInContext (FindStructRegMapsTo r f) FICSyntactic | 1 :=
     λ T, i2p (find_in_context_struct_reg_mapsto r f T).
 
   Lemma find_in_context_struct_reg_mapsto_col r f T:
@@ -157,7 +157,7 @@ Section instances.
     find_in_context (FindStructRegMapsTo r f) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
   Global Instance find_in_context_struct_reg_mapsto_col_inst r f:
-    FindInContext (FindStructRegMapsTo r f) 1%nat FICSyntactic :=
+    FindInContext (FindStructRegMapsTo r f) FICSyntactic | 10 :=
     λ T, i2p (find_in_context_struct_reg_mapsto_col r f T).
 
   Global Instance instr_related a i : RelatedTo (instr a i) := {|
