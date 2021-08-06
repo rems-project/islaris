@@ -2,6 +2,8 @@ Require Import isla.base.
 Require Import isla.opsem.
 Require Import isla.automation.
 Require Import isla.adequacy.
+From isla.instructions Require Import load.
+
 
 (* Ltac solve_trace_step := by econstructor. *)
 (* Ltac do_trace_step := *)
@@ -654,8 +656,6 @@ trace of ldr x0, [x1]: (trace of str x0, [x1] is similar, only with write-mem)
 
 Definition test_state3_spec : list seq_label := [ SInstrTrap [BV{64} 0x0000000010300004] ].
 
-From isla Require Import load.
-
 (*
 Lemma test_state3_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some [load_trace]) -∗
@@ -700,7 +700,7 @@ Qed.
 *)
 
 Lemma test_state4_iris `{!islaG Σ} `{!threadG} :
-  instr 0x0000000010300000 (Some [load_trace_reduced]) -∗
+  instr 0x0000000010300000 (Some [load_trace]) -∗
   instr 0x0000000010300004 None -∗
   "_PC" ↦ᵣ Val_Bits start_address -∗
   "__PC_changed" ↦ᵣ Val_Bool false -∗

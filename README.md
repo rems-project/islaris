@@ -20,6 +20,19 @@ You might need to run `eval $(opam env)` afterwards to update the environment of
 Run `make -jN` to build the full development, where `N` is the number of your
 CPU cores.
 
+## Generating traces
+
+To regenerate the traces used in the examples, run `./generate_traces.py`.
+It expects a script `run_isla_footprint.sh` in the root of this repository that runs `isla-footprint`.
+An example for `run_isla_footprint.sh` is:
+```bash
+#!/bin/bash
+
+set -e
+cd ../isla
+LD_LIBRARY_PATH=. cargo run --release --bin isla-footprint -- "$@"
+```
+
 # TODOs
 
 - [ ] Figure out how to talk about post condition of some asm code (Michael)

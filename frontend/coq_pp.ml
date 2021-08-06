@@ -243,7 +243,7 @@ let pp_event ff e =
         pp_valu v pp_lrng a
   | Ast.ReadMem(v1,v2,v3,i,v,a)    ->
       pp "ReadMem (%a) (%a) (%a) %a %a %a"
-        pp_valu v1 pp_valu v2 pp_valu v3 pp_Z i
+        pp_valu v1 pp_valu v2 pp_valu v3 pp_N i
         (pp_option (fun ff -> Format.fprintf ff "(%a)" pp_valu)) v pp_lrng a
   | Ast.WriteMem(i,v1,v2,v3,j,v,a) ->
       pp "WriteMem (%a) (%a) (%a) (%a) %a %a %a"
@@ -284,15 +284,16 @@ let pp_trace_def : string -> trace Format.pp = fun id ff (Trace(events)) ->
   List.iter print_event events;
   pp ("@]" ^^ (if events = [] then "" else "@;") ^^ "].")
 
-(** [pp_trace_file] is the entry point of the pretty-printer. *)
-let pp_trace_file : trace Format.pp = fun ff tr ->
+(** [pp_trace_file name] is the entry point of the pretty-printer. [name] is the name
+of the generated Definition. *)
+let pp_trace_file : string -> trace Format.pp = fun id ff tr ->
   let pp fmt = Format.fprintf ff fmt in
   pp "@[<v 0>From isla Require Import isla_lang.@;@;";
-  pp "%a@]" (pp_trace_def "trace") tr
+  pp "%a@]" (pp_trace_def id) tr
 
-let write_trace_to_file : trace -> string -> unit = fun tr fname ->
+let write_trace_to_file : string -> trace -> string -> unit = fun id tr fname ->
   let buffer = Buffer.create 4096 in
-  Format.fprintf (Format.formatter_of_buffer buffer) "%a@." pp_trace_file tr;
+  Format.fprintf (Format.formatter_of_buffer buffer) "%a@." (pp_trace_file id) tr;
   (* Check if we should write the file (inexistent / contents different). *)
   let must_write =
     try Buffer.contents (Buffer.from_file fname) <> Buffer.contents buffer
@@ -300,7 +301,7 @@ let write_trace_to_file : trace -> string -> unit = fun tr fname ->
   in
   if must_write then Buffer.to_file fname buffer
 
-let write_trace : trace -> string option -> unit = fun tr fname ->
+let write_trace : string -> trace -> string option -> unit = fun id tr fname ->
   match fname with
-  | Some(fname) -> write_trace_to_file tr fname
-  | None        -> Format.printf "%a@." pp_trace_file tr
+  | Some(fname) -> write_trace_to_file id tr fname
+  | None        -> Format.printf "%a@." (pp_trace_file id) tr

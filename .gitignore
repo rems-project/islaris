@@ -12,3 +12,4 @@ _CoqProject.*
 _opam/
 _build/
 .merlin
+/run_isla_footprint.sh
