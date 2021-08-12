@@ -54,7 +54,7 @@ metavar enum_ty ::= {{ ocaml int  }}
                     {{ phantom }}
                     {{ lex alphanum }}
                     {{ ocamllex 'E''n''u''m'['0'-'9']+ }}
-                    {{ ocamllex-of-string (function s -> Scanf.sscanf s "Enum%d" (fun x -> x)) }}
+                    {{ ocamllex-of-string (function s -> Scanf.sscanf s "Enum%d" Fun.id) }}
                     {{ pp-raw x = !^(Printf.sprintf "Enum(%d)" x) }}
                     {{ pp x = !^(Printf.sprintf "Enum%d" x) }}
 
@@ -427,3 +427,9 @@ trc :: '' ::=                 {{ menhir-start }}
                               {{ menhir-start-type Isla_lang_ast.lrng Isla_lang_ast.trc }}
                               {{ coq list event }}
  | ( trace event1 .. eventj )                                                   :: :: Trace
+
+trcs :: '' ::=                {{ menhir-start }}
+                              {{ auxparam 'a }}
+                              {{ menhir-start-type Isla_lang_ast.lrng Isla_lang_ast.trcs }}
+                              {{ coq list (list event) }}
+ | trc1 .. trck                                                                 :: :: Traces

@@ -10,11 +10,11 @@ type config = {
 }
 
 let run : config -> unit = fun cfg ->
-  let tr =
+  let trs =
     try Parser.parse_file cfg.input_file with Parser.Parse_error(msg) ->
       panic "Error while parsing [%s]\n%s" cfg.input_file msg
   in
-  Coq_pp.write_trace cfg.definition_name tr cfg.output_file
+  Coq_pp.write_traces cfg.definition_name trs cfg.output_file
 
 let output =
   let doc =

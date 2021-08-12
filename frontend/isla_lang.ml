@@ -1,11 +1,12 @@
 module Ast = Isla_lang_ast
 
 type trace = Ast.lrng Ast.trc
+type traces = Ast.lrng Ast.trcs
 
 module Parser = struct
   exception Parse_error of string
 
-  let parse_file : string -> trace = fun fname ->
+  let parse_file : string -> traces = fun fname ->
     let module L = Isla_lang_lexer in
     let module P = Isla_lang_parser in
     let fail fmt =
@@ -17,7 +18,7 @@ module Parser = struct
     let ic = try open_in fname with Sys_error(msg) -> fail "%s" msg in
     let lexbuf = Lexing.from_channel ic in
     try
-      let ast = P.trc_start L.token lexbuf in
+      let ast = P.trcs_start L.token lexbuf in
       close_in ic; ast
     with e ->
     close_in ic;
