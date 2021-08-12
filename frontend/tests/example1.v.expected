@@ -1,13 +1,15 @@
 From isla Require Import isla_lang.
 
 Definition trace : trc := [
-  Smt (DeclareConst 3428%Z (Ty_BitVec 64%N)) Mk_annot;
-  Smt (DefineConst 3429%Z (Val (Val_Symbolic 3428%Z) Mk_annot)) Mk_annot;
-  ReadReg "R30" [] (Val_Symbolic 3429%Z) Mk_annot;
-  Smt (DefineConst 3435%Z (Val (Val_Symbolic 3429%Z) Mk_annot)) Mk_annot;
-  Smt (DefineConst 3436%Z (Val (Val_Symbolic 3435%Z) Mk_annot)) Mk_annot;
-  BranchAddress (Val_Symbolic 3436%Z) Mk_annot;
-  Smt (DefineConst 3437%Z (Val (Val_Symbolic 3435%Z) Mk_annot)) Mk_annot;
-  WriteReg "_PC" [] (Val_Symbolic 3437%Z) Mk_annot;
-  WriteReg "__PC_changed" [] (Val_Bool true) Mk_annot
+  [
+    Smt (DeclareConst 3428%Z (Ty_BitVec 64%N)) Mk_annot;
+    Smt (DefineConst 3429%Z (Val (Val_Symbolic 3428%Z) Mk_annot)) Mk_annot;
+    ReadReg "R30" [] (Val_Symbolic 3429%Z) Mk_annot;
+    Smt (DefineConst 3435%Z (Val (Val_Symbolic 3429%Z) Mk_annot)) Mk_annot;
+    Smt (DefineConst 3436%Z (Val (Val_Symbolic 3435%Z) Mk_annot)) Mk_annot;
+    BranchAddress (Val_Symbolic 3436%Z) Mk_annot;
+    Smt (DefineConst 3437%Z (Val (Val_Symbolic 3435%Z) Mk_annot)) Mk_annot;
+    WriteReg "_PC" [] (Val_Symbolic 3437%Z) Mk_annot;
+    WriteReg "__PC_changed" [] (Val_Bool true) Mk_annot
+  ]
 ].

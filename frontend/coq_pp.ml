@@ -270,9 +270,9 @@ let pp_event ff e =
 
 (** [pp_trace_def name] is a pretty-printer for the Coq definition of a trace,
 with given definition name [name]. *)
-let pp_trace_def : string -> trace Format.pp = fun id ff (Trace(events)) ->
+let pp_trace : trace Format.pp = fun ff (Trace events) ->
   let pp fmt = Format.fprintf ff fmt in
-  pp "@[<v 2>Definition %s : trc := [" id;
+  pp "@[<v 2>[";
   let print_event =
     let first = ref true in
     let print_event e =
@@ -282,18 +282,33 @@ let pp_trace_def : string -> trace Format.pp = fun id ff (Trace(events)) ->
     print_event
   in
   List.iter print_event events;
-  pp ("@]" ^^ (if events = [] then "" else "@;") ^^ "].")
+  pp ("@]" ^^ (if events = [] then "" else "@;") ^^ "]")
+
+let pp_traces_def : string -> traces Format.pp = fun id ff (Traces trcs) ->
+  let pp fmt = Format.fprintf ff fmt in
+  pp "@[<v 2>Definition %s : trc := [" id;
+  let print_trace =
+    let first = ref true in
+    let print_trace t =
+      (if !first then first := false else pp ";");
+      pp "@;%a" pp_trace t
+    in
+    print_trace
+  in
+  List.iter print_trace trcs;
+  pp "@]@;]."
+
 
 (** [pp_trace_file name] is the entry point of the pretty-printer. [name] is the name
 of the generated Definition. *)
-let pp_trace_file : string -> trace Format.pp = fun id ff tr ->
+let pp_traces_file : string -> traces Format.pp = fun id ff trs ->
   let pp fmt = Format.fprintf ff fmt in
   pp "@[<v 0>From isla Require Import isla_lang.@;@;";
-  pp "%a@]" (pp_trace_def id) tr
+  pp "%a@]" (pp_traces_def id) trs
 
-let write_trace_to_file : string -> trace -> string -> unit = fun id tr fname ->
+let write_traces_to_file : string -> traces -> string -> unit = fun id trs fname ->
   let buffer = Buffer.create 4096 in
-  Format.fprintf (Format.formatter_of_buffer buffer) "%a@." (pp_trace_file id) tr;
+  Format.fprintf (Format.formatter_of_buffer buffer) "%a@." (pp_traces_file id) trs;
   (* Check if we should write the file (inexistent / contents different). *)
   let must_write =
     try Buffer.contents (Buffer.from_file fname) <> Buffer.contents buffer
@@ -301,7 +316,7 @@ let write_trace_to_file : string -> trace -> string -> unit = fun id tr fname ->
   in
   if must_write then Buffer.to_file fname buffer
 
-let write_trace : string -> trace -> string option -> unit = fun id tr fname ->
+let write_traces : string -> traces -> string option -> unit = fun id tr fname ->
   match fname with
-  | Some(fname) -> write_trace_to_file id tr fname
-  | None        -> Format.printf "%a@." (pp_trace_file id) tr
+  | Some(fname) -> write_traces_to_file id tr fname
+  | None        -> Format.printf "%a@." (pp_traces_file id) tr
