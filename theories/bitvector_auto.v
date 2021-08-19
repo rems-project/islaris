@@ -76,7 +76,7 @@ Hint Rewrite Z.land_ones using lia : bv_unfolded_simplify.
 Ltac bv_solve :=
   unLET;
   autorewrite with bv_simplify;
-  apply bv_eq;
+  try apply bv_eq;
   autorewrite with bv_unfold;
   autorewrite with bv_unfolded_simplify;
   unfold bv_wrap, bv_modulus, bv_unsigned in *;

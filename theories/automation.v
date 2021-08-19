@@ -94,6 +94,25 @@ Section instances.
     FindInContext (FindInstrKind a) FICSyntactic | 10 :=
     λ T, i2p (find_in_context_instr_kind_instr a T).
 
+  Inductive FICInstrSemantic : Set :=.
+  Global Instance find_in_context_instr_pre_semantic_inst  a :
+    FindInContext (FindInstrKind a) FICInstrSemantic | 100 :=
+    λ T, i2p (find_in_context_instr_kind_pre a T).
+
+  Lemma tac_instr_pre_eq l1 l2 a1 a2 P1 P2:
+    a1 = a2 →
+    FindHypEqual FICInstrSemantic (instr_pre' l1 a1 P1) (instr_pre' l2 a2 P2) (instr_pre' l2 a1 P2).
+  Proof. by move => ->. Qed.
+
+  Global Instance find_in_context_instr_semantic_inst a :
+  FindInContext (FindInstrKind a) FICInstrSemantic | 110 :=
+  λ T, i2p (find_in_context_instr_kind_instr a T).
+
+  Lemma tac_instr_eq a1 a2 ins1 ins2:
+    a1 = a2 →
+    FindHypEqual FICInstrSemantic (instr a1 ins1) (instr a2 ins2) (instr a1 ins2).
+  Proof. by move => ->. Qed.
+
   Definition FindMapsto `{!islaG Σ} (a : addr) (n : N) := {|
     fic_A := bv n; fic_Prop v := a ↦ₘ v;
   |}%I.
@@ -212,7 +231,7 @@ Section instances.
     (∃ (nPC : addr) bPC_changed,
         "_PC" ↦ᵣ Val_Bits nPC ∗ "__PC_changed" ↦ᵣ Val_Bool bPC_changed ∗
      ∃ a newPC,
-       ⌜a = (if bPC_changed : bool then (bv_unsigned nPC) else (bv_unsigned nPC + instruction_size)%Z)⌝ ∗
+       ⌜a = (if bPC_changed : bool then (bv_unsigned nPC) else (bv_unsigned nPC + 4)%Z)⌝ ∗
        ⌜Z_to_bv_checked 64 a = Some newPC⌝ ∗
      find_in_context (FindInstrKind a) (λ ik,
      match ik with
@@ -389,6 +408,10 @@ End instances.
 
 #[ global ] Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) =>
   ( apply tac_mapsto_eq; bv_solve) : typeclass_instances.
+#[ global ] Hint Extern 10 (FindHypEqual FICInstrSemantic (instr_pre' _ _ _) (instr_pre' _ _ _) _) =>
+  ( apply tac_instr_pre_eq; bv_solve) : typeclass_instances.
+#[ global ] Hint Extern 10 (FindHypEqual FICInstrSemantic (instr _ _) (instr _ _) _) =>
+  ( apply tac_instr_eq; bv_solve) : typeclass_instances.
 
 (* TODO: upstream? *)
 Ltac liLetBindHint :=

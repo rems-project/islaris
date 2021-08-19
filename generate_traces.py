@@ -37,11 +37,36 @@ INSTRUCTIONS = {
         "constraints" : [
             '= (bvand R1 0xfff0000000000007) 0x0000000000000000',
         ]
-    }
+    },
+    "b_0x8" : {
+        "instruction" : "b 0x8",
+    },
+    "bl_0x100" : {
+        "instruction" : "bl 0x100",
+    },
+    # "bne_0xc" : {
+        # "instruction" : "bne 0xc",
+    # },
+    "mov_w0_0" : {
+        "instruction" : "mov w0, 0",
+    },
+    "mov_x0_1" : {
+        "instruction" : "mov x0, 1",
+    },
+    "ret" : {
+        "instruction" : "ret",
+    },
+    "mov_x28_x0" : {
+        "instruction" : "mov x28, x0",
+    },
+    "cmp_x1_0" : {
+        "instruction" : "cmp x1, 0",
+    },
 }
 
 IGNORED_REGISTER_NAMES = [
     "SEE",
+    "BTypeNext",
     "__unconditional",
     "__v81_implemented",
     "__v82_implemented",
@@ -71,7 +96,7 @@ def main():
         with open(trace_file, "w") as f:
             sp.run([ISLA_FOOTPRINT] + ISLA_ARGS
                    + ["-i", data["instruction"]]
-                   + [y for x in data["constraints"] for y in ["--reset-constraint", x]],
+                   + [y for x in data.get("constraints", []) for y in ["--reset-constraint", x]],
                    stdout=f)
 
         # run isla-coq fronteng
@@ -89,6 +114,7 @@ def main():
                     else:
                         fout.write(line)
 
+        os.remove(original_coq_file)
 
 if __name__ == "__main__":
     main()

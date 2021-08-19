@@ -120,6 +120,15 @@ Section lifting.
     by iMod "Hwp" as "$".
   Qed.
 
+  Lemma wp_asm_thread_ctx es :
+    (∀ regs, thread_ctx regs ={⊤}=∗ thread_ctx regs ∗ WPasm es) -∗
+    WPasm es.
+  Proof.
+    rewrite wp_asm_eq.
+    iIntros "HWP" (???) "Hθ". iMod ("HWP" with "Hθ") as "[? HWP]".
+      by iApply "HWP".
+  Qed.
+
   Lemma wp_next_instr i newPC ins :
     ins ≠ [] →
     Z_to_bv_checked 64 i = Some newPC →
