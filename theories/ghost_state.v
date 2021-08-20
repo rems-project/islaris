@@ -13,6 +13,9 @@ Import uPred.
 Definition instrtblUR : cmra :=
   agreeR (gmapO addr (leibnizO (list trc))).
 
+Definition backed_memUR : cmra :=
+  agreeR (leibnizO (gset addr)).
+
 
 Class heapG Σ := HeapG {
   heap_instrs_inG :> inG Σ instrtblUR;
@@ -21,6 +24,8 @@ Class heapG Σ := HeapG {
   heap_struct_regs_inG :> ghost_mapG Σ (string * string) valu;
   heap_mem_inG :> ghost_mapG Σ addr byte;
   heap_mem_name : gname;
+  heap_backed_mem_inG :> inG Σ backed_memUR;
+  heap_backed_mem_name : gname;
   heap_full_trace : list seq_label;
   heap_spec_trace : list seq_label;
   heap_spec_trace_inG :> ghost_varG Σ (list seq_label);
@@ -33,6 +38,9 @@ Class threadG := ThreadG {
 }.
 
 Definition to_instrtbl : gmap addr (list trc) → instrtblUR :=
+  to_agree.
+
+Definition to_backed_mem : gset addr → backed_memUR :=
   to_agree.
 
 Section definitions.
@@ -90,6 +98,21 @@ Section definitions.
       ghost_map_auth thread_struct_regs_name 1 srs
   .
 
+  Definition backed_mem_def (m : gset addr) : iProp Σ :=
+    own heap_backed_mem_name (to_backed_mem m).
+  Definition backed_mem_aux : seal (@backed_mem_def). by eexists. Qed.
+  Definition backed_mem := unseal backed_mem_aux.
+  Definition backed_mem_eq : @backed_mem = @backed_mem_def :=
+    seal_eq backed_mem_aux.
+
+  Definition mmio_range_def (a : addr) (len : Z) : iProp Σ :=
+    ∃ bm, ⌜0 ≤ len⌝ ∗ ⌜set_Forall (λ a', ¬ (bv_unsigned a ≤ bv_unsigned a' < bv_unsigned a + len)) bm⌝ ∗
+           backed_mem bm.
+  Definition mmio_range_aux : seal (@mmio_range_def). by eexists. Qed.
+  Definition mmio_range := unseal mmio_range_aux.
+  Definition mmio_range_eq : @mmio_range = @mmio_range_def :=
+    seal_eq mmio_range_aux.
+
   Definition mem_mapsto_byte_def (γ : gname) (a : addr) (q : dfrac) (v : byte) : iProp Σ :=
     a ↪[ γ ]{q} v.
   Definition mem_mapsto_byte_aux : seal (@mem_mapsto_byte_def). by eexists. Qed.
@@ -107,7 +130,7 @@ Section definitions.
     seal_eq mem_mapsto_aux.
 
   Definition mem_ctx (mem : mem_map) : iProp Σ :=
-    ghost_map_auth heap_mem_name 1 mem.
+    ghost_map_auth heap_mem_name 1 mem ∗ backed_mem (dom _ mem).
 
   Definition spec_trace_def (κs: list seq_label) : iProp Σ :=
     ghost_var heap_spec_trace_name (1/2) κs.
@@ -286,15 +309,79 @@ End reg.
 Section mem.
   Context `{!heapG Σ}.
 
+  Global Instance backed_mem_tl m : Timeless (backed_mem m).
+  Proof. rewrite backed_mem_eq /backed_mem_def. by apply _. Qed.
+
+  Global Instance backed_mem_pers m : Persistent (backed_mem m).
+  Proof. rewrite backed_mem_eq /backed_mem_def. by apply _. Qed.
+
+  Global Instance mmio_range_tl a l : Timeless (mmio_range a l).
+  Proof. rewrite mmio_range_eq /mmio_range_def. by apply _. Qed.
+
+  Global Instance mmio_range_pers a l : Persistent (mmio_range a l).
+  Proof. rewrite mmio_range_eq /mmio_range_def. by apply _. Qed.
+
   Global Instance mem_mapsto_byte_tl γ a q v : Timeless (mem_mapsto_byte γ a q v).
   Proof. rewrite mem_mapsto_byte_eq. by apply _. Qed.
 
   Global Instance mem_mapsto_tl n a q (v : bv n) : Timeless (a ↦ₘ{q} v).
   Proof. rewrite mem_mapsto_eq /mem_mapsto_def. by apply _. Qed.
 
+
+  Lemma backed_mem_agree m1 m2 :
+    backed_mem m1 -∗ backed_mem m2 -∗ ⌜m1 = m2⌝.
+  Proof.
+    rewrite backed_mem_eq. iIntros "H1 H2".
+    iDestruct (own_valid_2 with "H1 H2") as %Hvalid.
+    move: Hvalid => /to_agree_op_valid. by fold_leibniz.
+  Qed.
+
+  Lemma mmio_range_intro mem a l :
+    0 ≤ l →
+    set_Forall (λ a', ¬ (bv_unsigned a ≤ bv_unsigned a' < bv_unsigned a + l)) mem →
+    backed_mem mem -∗ mmio_range a l.
+  Proof. rewrite mmio_range_eq. iIntros (??) "?". iExists _. by iFrame. Qed.
+
+  Lemma mmio_range_Forall mem a l :
+    mem_ctx mem -∗
+    mmio_range a l -∗
+    ⌜set_Forall (λ a', ¬ (bv_unsigned a ≤ bv_unsigned a' < bv_unsigned a + l)) (dom (gset _) mem)⌝.
+  Proof.
+    rewrite mmio_range_eq. iIntros "[_ Hbm] [%bm[% [% Hbm']]]".
+    by iDestruct (backed_mem_agree with "Hbm Hbm'") as %?; subst.
+  Qed.
+
+  Lemma mmio_range_shorten a l a' l' :
+    0 ≤ l' →
+    bv_unsigned a ≤ bv_unsigned a' →
+    bv_unsigned a' + l' ≤ bv_unsigned a + l →
+    mmio_range a l -∗
+    mmio_range a' l'.
+  Proof.
+    rewrite mmio_range_eq.
+    iIntros (???) "[%m[%[% ?]]]". iExists _. iFrame.
+    iPureIntro. split; [done|]. apply: set_Forall_impl; [done|].
+    naive_solver lia.
+  Qed.
+
+  Lemma mmio_range_lookup mem a l :
+    0 < l →
+    mem_ctx mem -∗ mmio_range a l -∗ ⌜read_mem mem a (Z.to_N l) = None⌝.
+  Proof.
+    iIntros (?) "Hmem Ha".
+    iDestruct (mmio_range_Forall with "Hmem Ha") as %Hall. iPureIntro.
+    rewrite /read_mem/read_mem_list Z2N.id; [|lia].
+    apply fmap_None. apply mapM_None_2.
+    rewrite -(Z.succ_pred l) bv_seq_succ; [|lia]. left.
+    destruct (mem !! a) eqn: Hl; [|done].
+    move: Hall. erewrite <-(insert_id mem); [|done].
+    rewrite dom_insert_L => /(set_Forall_union_inv_1 _ _ _)/set_Forall_singleton.
+    lia.
+  Qed.
+
   Lemma mem_mapsto_byte_lookup mem a q v :
     mem_ctx mem -∗ mem_mapsto_byte heap_mem_name a q v -∗ ⌜mem !! a = Some v⌝.
-  Proof. rewrite mem_mapsto_byte_eq. apply ghost_map_lookup. Qed.
+  Proof. rewrite mem_mapsto_byte_eq. iIntros "[Hmem _]". by iApply ghost_map_lookup. Qed.
 
   Lemma mem_mapsto_byte_lookup_big mem a q bs :
     mem_ctx mem -∗ ([∗ list] i↦v∈ bs, mem_mapsto_byte heap_mem_name (bv_add_Z a i) q v) -∗
@@ -312,7 +399,12 @@ Section mem.
   Lemma mem_mapsto_byte_update mem a v v' :
     mem_ctx mem -∗ mem_mapsto_byte heap_mem_name a (DfracOwn 1) v ==∗
       mem_ctx (<[a := v']> mem) ∗ mem_mapsto_byte heap_mem_name a (DfracOwn 1) v'.
-  Proof. rewrite mem_mapsto_byte_eq. apply ghost_map_update. Qed.
+  Proof.
+    iIntros "Hmem Hbyte". iDestruct (mem_mapsto_byte_lookup with "Hmem Hbyte") as %?.
+    rewrite mem_mapsto_byte_eq. iDestruct "Hmem" as "[Hmem Hbacked]".
+    iMod (ghost_map_update with "Hmem Hbyte") as "[$ $]".
+    by rewrite -{1}(insert_id mem a v) // !dom_insert_L.
+  Qed.
 
   Lemma mem_mapsto_byte_update_big mem a bs bs' :
     length bs = length bs' →

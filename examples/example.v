@@ -3,7 +3,7 @@ Require Import isla.opsem.
 Require Import isla.automation.
 Require Import isla.adequacy.
 Require Import isla.examples.sys_regs.
-From isla.instructions Require Import bl_0x100 mov_w0_0 ret mov_x28_x0 mov_x0_1 b_0x8 cmp_x1_0.
+From isla.instructions Require Import bl_0x100 mov_w0_0 ret mov_x28_x0 mov_x0_1 b_0x8 cmp_x1_0 str_x28_x27.
 
 (*
 C:
@@ -24,6 +24,7 @@ Definition test_state_local := {|
     <[ "R30" := Val_Poison ]> $
     <[ "R1" := Val_Poison ]> $
     <[ "R0" := Val_Poison ]> $
+    <[ "R27" := Val_Bits [BV{64} 0x101f1000] ]> $
     <[ "R28" := Val_Poison ]> $
      sys_regs_map;
   seq_nb_state  := false;
@@ -31,21 +32,26 @@ Definition test_state_local := {|
 
 Definition test_state_global := {|
     seq_instrs :=
-    <[ [BV{64} 0x0000000010300000] := [bl_0x100_trace]]> $   (* bl 0x100 *)
-    <[ [BV{64} 0x0000000010300004] := [mov_x28_x0_trace]]> $ (* mov OUT, x0 *)
-    <[ [BV{64} 0x0000000010300100] := [mov_w0_0_trace]]> $   (* mov w0, 0 *)
-    <[ [BV{64} 0x0000000010300104] := [ret_trace]]> $        (* ret *)
+    <[ [BV{64} 0x0000000010300000] := [bl_0x100_trace]]> $    (* bl 0x100 *)
+    <[ [BV{64} 0x0000000010300004] := [mov_x28_x0_trace]]> $  (* mov OUT, x0 *)
+    <[ [BV{64} 0x0000000010300008] := [str_x28_x27_trace]]> $ (* str x28, [x27] *)
+    <[ [BV{64} 0x0000000010300100] := [mov_w0_0_trace]]> $    (* mov w0, 0 *)
+    <[ [BV{64} 0x0000000010300104] := [ret_trace]]> $         (* ret *)
     ∅;
     seq_mem := ∅
 |}.
 
 
-Definition test_state_spec : list seq_label := [ SInstrTrap ([BV{64} 0x0000000010300008]) ].
+Definition test_state_spec : list seq_label := [
+  SWriteMem [BV{64} 0x101f1000] [BV{64} 0];
+  SInstrTrap ([BV{64} 0x000000001030000c])
+].
 
 Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some [bl_0x100_trace]) -∗
   instr 0x0000000010300004 (Some [mov_x28_x0_trace]) -∗
-  instr 0x0000000010300008 None -∗
+  instr 0x0000000010300008 (Some [str_x28_x27_trace]) -∗
+  instr 0x000000001030000c None -∗
   instr 0x0000000010300100 (Some [mov_w0_0_trace]) -∗
   instr 0x0000000010300104 (Some [ret_trace]) -∗
   reg_col sys_regs -∗
@@ -54,12 +60,17 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   "R30" ↦ᵣ Val_Poison -∗
   "R1" ↦ᵣ Val_Poison -∗
   "R0" ↦ᵣ Val_Poison -∗
+  "R27" ↦ᵣ Val_Bits [BV{64} 0x101f1000] -∗
   "R28" ↦ᵣ Val_Poison -∗
+  mmio_range [BV{64} 0x101f1000] 8 -∗
   spec_trace test_state_spec -∗
   WPasm [].
 Proof.
   iStartProof.
   repeat liAStep; liShow.
+
+  Unshelve. all: unLET; normalize_and_simpl_goal => //=.
+  all: try bv_solve.
 Qed.
 
 Lemma test_state_adequate κs t2 σ2 n:
@@ -70,14 +81,15 @@ Lemma test_state_adequate κs t2 σ2 n:
 Proof.
   set Σ : gFunctors := #[islaΣ].
   apply: (isla_adequacy Σ) => //.
-  iIntros (?) "#Hi Hspec /= !>". iSplitL => //.
+  iIntros (?) "#Hi #Hbm Hspec /= !>". iSplitL => //.
   iIntros (?).
-  do 6 (rewrite big_sepM_insert; [|by vm_compute]).
-  iIntros "(?&?&?&?&?&?&Hregs)".
+  do 7 (rewrite big_sepM_insert; [|by vm_compute]).
+  iIntros "(?&?&?&?&?&?&?&Hregs)".
   iApply wp_asm_thread_ctx. iIntros (?) "Hctx".
   iMod (sys_regs_init with "Hctx Hregs") as "(?&?&?)". iModIntro. iFrame.
-  iApply (test_state_iris with "[] [] [] [] [] [$] [$] [$] [$] [$] [$] [$] [$]").
+  iApply (test_state_iris with "[] [] [] [] [] [] [$] [$] [$] [$] [$] [$] [$] [$] [] [$]").
   all: try by unshelve iApply (instr_intro with "Hi").
+  all: try by iApply (mmio_range_intro with "[//]").
 Qed.
 
 Definition test_state_fn1_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
@@ -106,6 +118,8 @@ Definition test_state_fn2_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   "R30" ↦ᵣ Val_Poison ∗
   "R1" ↦ᵣ Val_Poison ∗
   "R0" ↦ᵣ Val_Poison ∗
+  "R27" ↦ᵣ Val_Bits [BV{64} 0x101f1000] ∗
+  mmio_range [BV{64} 0x101f1000] 8 ∗
   "R28" ↦ᵣ Val_Poison ∗
   spec_trace test_state_spec.
 Arguments test_state_fn2_spec /.
@@ -113,12 +127,15 @@ Arguments test_state_fn2_spec /.
 Lemma test_state_iris_fn2 `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some [bl_0x100_trace]) -∗
   instr 0x0000000010300004 (Some [mov_x28_x0_trace]) -∗
-  instr 0x0000000010300008 None -∗
+  instr 0x0000000010300008 (Some [str_x28_x27_trace]) -∗
+  instr 0x000000001030000c None -∗
   □ instr_pre 0x0000000010300100 test_state_fn1_spec -∗
   instr_body 0x0000000010300000 test_state_fn2_spec.
 Proof.
   iStartProof.
   repeat liAStep; liShow.
+  Unshelve. all: unLET; normalize_and_simpl_goal => //=.
+  all: try bv_solve.
 Qed.
 
 Lemma test_state_adequate' κs t2 σ2 n:
@@ -129,10 +146,10 @@ Lemma test_state_adequate' κs t2 σ2 n:
 Proof.
   set Σ : gFunctors := #[islaΣ].
   apply: (isla_adequacy Σ) => //.
-  iIntros (?) "#Hi Hspec /= !>". iSplitL => //.
+  iIntros (?) "#Hi #Hbm Hspec /= !>". iSplitL => //.
   iIntros (?) "/=".
-  do 6 (rewrite big_sepM_insert; [|by vm_compute]).
-  iIntros "(HPC&Hchanged&?&?&?&?&Hregs)".
+  do 7 (rewrite big_sepM_insert; [|by vm_compute]).
+  iIntros "(HPC&Hchanged&?&?&?&?&?&Hregs)".
   iApply wp_asm_thread_ctx. iIntros (?) "Hctx".
   iMod (sys_regs_init with "Hctx Hregs") as "(?&?&?)". iModIntro. iFrame.
 
@@ -151,7 +168,7 @@ Proof.
   }
   iApply (wp_next_instr_pre with "Hmain [HPC Hchanged]").
   - iExists _, _, _. by iFrame.
-  - iFrame.
+  - iFrame. by iApply (mmio_range_intro with "[//]").
 Qed.
 
 (* trace of bne 0xc: (at address 0x0000000010300004)

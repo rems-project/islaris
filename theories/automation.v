@@ -23,6 +23,10 @@ Hint Rewrite ite_bits : lithium_rewrite.
 
 Hint Rewrite Z_to_bv_checked_bv_unsigned : lithium_rewrite.
 
+Global Instance simpl_SWriteMem a1 a2 v1 v2:
+  SimplBoth (SWriteMem a1 v1 = SWriteMem a2 v2) (a1 = a2 ∧ v1 = v2).
+Proof. split; naive_solver. Qed.
+
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
@@ -72,10 +76,24 @@ Definition FindStructRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r f : string) := {
 |}.
 Typeclasses Opaque FindStructRegMapsTo.
 
+Inductive mem_mapsto_kind (n : N) : Type :=
+| MKMapsTo (v : bv n) | MKMMIO (a : addr) (l : Z).
+Definition FindMemMapsTo {Σ} `{!islaG Σ} `{!threadG} (a : addr) (n : N) := {|
+  fic_A := mem_mapsto_kind n;
+  fic_Prop mk :=
+  match mk with
+  | MKMapsTo _ v => (a ↦ₘ v)%I
+  | MKMMIO _ a' l => mmio_range a' l
+  end
+|}.
+
 Section instances.
   Context `{!islaG Σ} `{!threadG}.
 
   Global Instance instr_intro_pers i a : IntroPersistent (instr a i) (instr a i).
+  Proof. constructor. iIntros "#$". Qed.
+
+  Global Instance mmio_range_intro_pers a l : IntroPersistent (mmio_range a l) (mmio_range a l).
   Proof. constructor. iIntros "#$". Qed.
 
   Lemma find_in_context_instr_kind_pre a T:
@@ -113,31 +131,40 @@ Section instances.
     FindHypEqual FICInstrSemantic (instr a1 ins1) (instr a2 ins2) (instr a1 ins2).
   Proof. by move => ->. Qed.
 
-  Definition FindMapsto `{!islaG Σ} (a : addr) (n : N) := {|
-    fic_A := bv n; fic_Prop v := a ↦ₘ v;
-  |}%I.
-
-  Global Instance mem_related `{!islaG Σ} a n (v : bv n) : RelatedTo (a ↦ₘ v) := {|
-    rt_fic := FindMapsto a n;
+  Global Instance mem_related a n (v : bv n) : RelatedTo (a ↦ₘ v) := {|
+    rt_fic := FindMemMapsTo a n;
   |}.
 
-  Lemma find_in_context_mapsto_id `{!islaG Σ} a n T:
-    (∃ v : bv n, a ↦ₘ v ∗ T v) -∗
-    find_in_context (FindMapsto a n) T.
+  Lemma find_in_context_mem_mapsto_id a n T:
+    (∃ v : bv n, a ↦ₘ v ∗ T (MKMapsTo n v)) -∗
+    find_in_context (FindMemMapsTo a n) T.
   Proof. iDestruct 1 as (v) "[Hl HT]". iExists _ => /=. iFrame. Qed.
-  Global Instance find_in_context_mapsto_id_inst `{!islaG Σ} a n :
-    FindInContext (FindMapsto a n) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_mapsto_id a n T).
+  Global Instance find_in_context_mapsto_id_inst a n :
+    FindInContext (FindMemMapsTo a n) FICSyntactic | 1 :=
+    λ T, i2p (find_in_context_mem_mapsto_id a n T).
 
-  Inductive FICMapstoSemantic : Set :=.
-  Global Instance find_in_context_mapsto_semantic_inst `{!islaG Σ} a n :
-    FindInContext (FindMapsto a n) FICMapstoSemantic | 10 :=
-    λ T, i2p (find_in_context_mapsto_id a n T).
+  Inductive FICMemMapstoSemantic (a : addr) (n : N) : Set :=.
+  Global Instance find_in_context_mem_mapsto_semantic_inst a n :
+    FindInContext (FindMemMapsTo a n) (FICMemMapstoSemantic a n) | 10 :=
+    λ T, i2p (find_in_context_mem_mapsto_id a n T).
 
-  Lemma tac_mapsto_eq `{!islaG Σ} l1 n (v1 v2 : bv n) l2:
+  Lemma tac_mem_mapsto_eq `{!islaG Σ} l1 l' n' n (v1 v2 : bv n) l2:
     l1 = l2 →
-    FindHypEqual FICMapstoSemantic (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
+    FindHypEqual (FICMemMapstoSemantic l' n') (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
   Proof. by move => ->. Qed.
+
+  Lemma find_in_context_mem_mapsto_mmio a n T:
+    (∃ a' l, mmio_range a' l ∗ T (MKMMIO n a' l)) -∗
+    find_in_context (FindMemMapsTo a n) T.
+  Proof. iDestruct 1 as (a' l) "[Hl HT]". iExists _ => /=. iFrame. Qed.
+  Global Instance find_in_context_mem_mapsto_mmio_semantic_inst a n :
+  FindInContext (FindMemMapsTo a n) (FICMemMapstoSemantic a n) | 20 :=
+  λ T, i2p (find_in_context_mem_mapsto_mmio a n T).
+
+  Lemma tac_mem_mapsto_mmio a n a1 a2 l1 l2:
+    bv_unsigned a1 ≤ bv_unsigned a ≤ bv_unsigned a1 + l1 →
+    FindHypEqual (FICMemMapstoSemantic a n) (mmio_range a1 l1) (mmio_range a2 l2) (mmio_range a2 l2).
+  Proof. done. Qed.
 
   Global Instance reg_related r v : RelatedTo (r ↦ᵣ v) := {|
     rt_fic := FindDirect (λ v, r ↦ᵣ v)%I;
@@ -364,20 +391,35 @@ Section instances.
   Proof. apply: wp_assert. Qed.
 
   Lemma li_wp_write_mem len n success kind a (vnew : bv n) tag ann es:
-    (∃ (vold : bv n),
-    ⌜n = (8*len)%N⌝ ∗
-    a ↦ₘ vold ∗
-    (⌜success = true ⌝ -∗ a ↦ₘ vnew -∗ WPasm es)) -∗
+    (⌜n = (8*len)%N⌝ ∗
+    ⌜len ≠ 0%N⌝ ∗
+    find_in_context (FindMemMapsTo a n) (λ mk,
+      match mk with
+      | MKMapsTo _ vold => (a ↦ₘ vnew -∗ WPasm es)
+      | MKMMIO _ a' l =>
+        ⌜bv_unsigned a' ≤ bv_unsigned a⌝ ∗ ⌜bv_unsigned a + Z.of_N len ≤ bv_unsigned a' + l⌝ ∗
+        ∃ κs, spec_trace κs ∗ ⌜head κs = Some (SWriteMem a vnew)⌝ ∗
+        (spec_trace (tail κs) -∗ WPasm es)
+      end
+    )) -∗
     WPasm (WriteMem (Val_Bool success) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
-  Proof. iDestruct 1 as (?) "[% [Hvold Hcont]]". by iApply (wp_write_mem with "Hvold Hcont"). Qed.
+  Proof.
+    iDestruct 1 as (?? mk) "[HP Hcont]" => /=. case_match.
+    - iApply (wp_write_mem with "HP Hcont"); [done | lia].
+    - iDestruct "Hcont" as (?? κs) "[Hκs [% Hcont]]". destruct κs => //; simplify_eq/=.
+      iApply (wp_write_mmio with "[HP] Hκs"); [done | lia| | ].
+      { iApply (mmio_range_shorten with "HP"); lia. }
+      done.
+  Qed.
 
   Lemma li_wp_read_mem len n kind a vread tag ann es:
     (∃ vmem,
     ⌜n = (8 * len)%N⌝ ∗
+    ⌜len ≠ 0%N⌝ ∗
     a ↦ₘ vmem ∗
     (⌜vread = vmem⌝ -∗ a ↦ₘ vmem -∗ WPasm es)) -∗
     WPasm (ReadMem (Val_Bits (BVN n vread)) kind (Val_Bits (BVN 64 a)) len tag ann :: es).
-  Proof. iDestruct 1 as (?) "[% [Hmem Hcont]]". by iApply (wp_read_mem with "Hmem Hcont"). Qed.
+  Proof. iDestruct 1 as (?) "[% [% [Hmem Hcont]]]". iApply (wp_read_mem with "Hmem Hcont"); [done|lia]. Qed.
 
   Lemma li_wpe_val v Φ ann:
     Φ v -∗
@@ -406,8 +448,10 @@ Section instances.
   Proof. apply: wpe_ite. Qed.
 End instances.
 
-#[ global ] Hint Extern 10 (FindHypEqual FICMapstoSemantic (_ ↦ₘ _) (_ ↦ₘ _) _) =>
-  ( apply tac_mapsto_eq; bv_solve) : typeclass_instances.
+#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _ _) (_ ↦ₘ _) (_ ↦ₘ _) _) =>
+  ( apply tac_mem_mapsto_eq; bv_solve) : typeclass_instances.
+#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _ _) (mmio_range _ _) (mmio_range _ _) _) =>
+  ( apply tac_mem_mapsto_mmio; bv_solve) : typeclass_instances.
 #[ global ] Hint Extern 10 (FindHypEqual FICInstrSemantic (instr_pre' _ _ _) (instr_pre' _ _ _) _) =>
   ( apply tac_instr_pre_eq; bv_solve) : typeclass_instances.
 #[ global ] Hint Extern 10 (FindHypEqual FICInstrSemantic (instr _ _) (instr _ _) _) =>

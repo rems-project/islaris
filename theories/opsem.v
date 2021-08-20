@@ -269,6 +269,7 @@ Record seq_local_state := {
 Instance eta_seq_local_state : Settable _ := settable! Build_seq_local_state <seq_trace; seq_regs; seq_nb_state>.
 
 Inductive seq_label : Set :=
+| SWriteMem (a : addr) (v : bvn)
 | SInstrTrap (pc : addr)
 .
 
@@ -314,6 +315,7 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       ∃ addr' data' data'',
       addr = Val_Bits (BVN 64 addr') ∧
       data = Val_Bits (BVN (8 * len) data') ∧
+      0 < Z.of_N len ∧
       read_mem σ.(seq_mem) addr' len = Some (BVN (8 * len) data'') ∧
       κ' = None ∧
       σ' = σ ∧
@@ -321,16 +323,24 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
         ∨ (θ' = θ <| seq_nb_state := true|>))
     | Some (LWriteMem res kind addr data len tag) =>
       (* Ignoring tags and kinds. *)
-      κ' = None ∧
-      ((∃ mem' addr' data',
+      (∃ mem' addr' data',
       addr = Val_Bits (BVN 64 addr') ∧
       data = Val_Bits (BVN (8 * len) data') ∧
-      mem' = write_mem len σ.(seq_mem) addr' (bv_unsigned data') ∧
-      σ' = σ <| seq_mem := mem' |> ∧
-      (θ' = θ <| seq_trace := t' |> ∧ res = Val_Bool true))
-      (* Currently, we use an SC memory model where writes never fail so we see
-      NB when res = false *)
-      ∨ (σ' = σ ∧ θ' = θ <| seq_nb_state := true |>))
+      0 < Z.of_N len ∧
+      (* If there is memory, we write to that memory. *)
+      if read_mem σ.(seq_mem) addr' len is Some _ then
+       (* TODO: say something about res, e.g. that there is NB if it is false? *)
+        mem' = write_mem len σ.(seq_mem) addr' (bv_unsigned data') ∧
+        κ' = None ∧
+        σ' = σ <| seq_mem := mem' |> ∧
+        θ' = θ <| seq_trace := t' |>
+      (* If there is no memory, we emit an event. *)
+      else
+        set_Forall (λ a, ¬ (bv_unsigned addr' ≤ bv_unsigned a < bv_unsigned addr' + Z.of_N len)) (dom (gset _) σ.(seq_mem)) ∧
+        κ' = Some (SWriteMem addr' data') ∧
+        σ' = σ ∧
+        θ' = θ <| seq_trace := t' |>
+      )
     | Some (LBranchAddress _) =>
       κ' = None ∧
       θ' = θ <| seq_trace := t'|> ∧

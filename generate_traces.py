@@ -47,6 +47,12 @@ INSTRUCTIONS = {
     # "bne_0xc" : {
         # "instruction" : "bne 0xc",
     # },
+    "str_x28_x27" : {
+        "instruction" : "str x28, [x27]",
+        "constraints" : [
+            '= (bvand R27 0xfff0000000000007) 0x0000000000000000',
+        ]
+    },
     "mov_w0_0" : {
         "instruction" : "mov w0, 0",
     },

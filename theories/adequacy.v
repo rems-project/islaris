@@ -10,7 +10,8 @@ Class islaPreG Σ := PreIslaG {
   heap_pre_instrs_inG :> inG Σ (instrtblUR);
   heap_pre_regs_inG :> ghost_mapG Σ string valu;
   heap_pre_struct_regs_inG :> ghost_mapG Σ (string * string) valu;
-  heap_pre_mem_ingG :> ghost_mapG Σ addr byte;
+  heap_pre_mem_inG :> ghost_mapG Σ addr byte;
+  heap_pre_backed_mem_inG :> inG Σ (backed_memUR);
   heap_pre_spec_inG :> ghost_varG Σ (list seq_label);
 }.
 
@@ -19,6 +20,7 @@ Definition islaΣ : gFunctors :=
    ghost_mapΣ string valu;
    ghost_mapΣ (string * string) valu;
    ghost_mapΣ addr byte;
+   GFunctor (constRF backed_memUR);
    ghost_varΣ (list seq_label)].
 
 Instance subG_islaPreG {Σ} : subG islaΣ Σ → islaPreG Σ.
@@ -32,7 +34,7 @@ Definition initial_local_state (regs : reg_map) : seq_local_state := {|
 
 Lemma isla_adequacy Σ `{!islaPreG Σ} (instrs : gmap addr (list trc)) (mem : mem_map) (regs : list reg_map) κsspec t2 σ2 κs n:
   (∀ {HG : islaG Σ},
-    ⊢ instr_table instrs -∗ spec_trace κsspec
+    ⊢ instr_table instrs -∗ backed_mem (dom _ mem) -∗ spec_trace κsspec
     ={⊤}=∗ [∗ list] rs ∈ regs, ∀ (_ : threadG), ([∗ map] r↦v∈rs, r ↦ᵣ v) -∗ WPasm []) →
   nsteps n (initial_local_state <$> regs, {| seq_instrs := instrs; seq_mem := mem |}) κs (t2, σ2) →
   (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧
@@ -41,15 +43,18 @@ Proof.
   move => Hwp.
   apply: wp_strong_adequacy => ?.
   set i := to_instrtbl instrs.
+  set bm := to_backed_mem (dom _ mem).
   iMod (own_alloc (i)) as (γi) "#Hi" => //.
+  iMod (own_alloc (bm)) as (γbm) "#Hb" => //.
   iMod (ghost_var_alloc κsspec) as (γs) "[Hs1 Hs2]".
   iMod (ghost_map_alloc mem) as (γm) "[Hm1 Hm2]".
 
-  set (HheapG := HeapG _ _ γi _ _ _ γm κs κsspec _ γs).
+  set (HheapG := HeapG _ _ γi _ _ _ γm _ γbm κs κsspec _ γs).
   set (HislaG := IslaG _ _ HheapG).
   iAssert (instr_table instrs) as "#His". { by rewrite instr_table_eq. }
+  iAssert (backed_mem (dom _ mem)) as "#Hbm". { by rewrite backed_mem_eq. }
 
-  iMod (Hwp HislaG with "His [Hs1]") as "Hwp". {
+  iMod (Hwp HislaG with "His Hbm [Hs1]") as "Hwp". {
     rewrite spec_trace_eq. iFrame.
   }
 
@@ -75,6 +80,6 @@ Proof.
     simpl in *. subst.
     iPureIntro. split; [naive_solver|].
     rewrite right_id. by apply: prefix_app_r.
-  - simpl. iFrame "His". iFrame.
+  - simpl. iFrame "His Hbm". iFrame.
     iExists [], _. by iFrame.
 Qed.

@@ -70,7 +70,7 @@ Hint Rewrite
 (** The [bv_unfolded_simplify] database collects rewrite rules that
 should be used to simplify the goal after Z is bv_unfolded. *)
 Create HintDb bv_unfolded_simplify discriminated.
-Hint Rewrite Z.shiftr_0_r : bv_unfolded_simplify.
+Hint Rewrite Z.shiftr_0_r Z.lor_0_r Z.lor_0_l : bv_unfolded_simplify.
 Hint Rewrite Z.land_ones using lia : bv_unfolded_simplify.
 
 Ltac bv_solve :=
