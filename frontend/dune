@@ -4,7 +4,7 @@
  (package coq-isla)
  (flags (:standard -warn-error -A -w -27 -w -26))
 ; (promote (until-clean))
- (libraries cmdliner pprint))
+ (libraries cmdliner pprint str))
 
 (rule
  (targets isla_lang_parser.mly isla_lang_parser_pp.ml isla_lang_lexer.mll
