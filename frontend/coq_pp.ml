@@ -286,7 +286,7 @@ let pp_trace : trace Format.pp = fun ff (Trace events) ->
 
 let pp_traces_def : string -> traces Format.pp = fun id ff (Traces trcs) ->
   let pp fmt = Format.fprintf ff fmt in
-  pp "@[<v 2>Definition %s : trc := [" id;
+  pp "@[<v 2>Definition %s : list trc := [" id;
   let print_trace =
     let first = ref true in
     let print_trace t =
