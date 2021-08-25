@@ -69,7 +69,7 @@ Proof.
   iStartProof.
   repeat liAStep; liShow.
 
-  Unshelve. all: unLET; normalize_and_simpl_goal => //=.
+  Unshelve. all: prepare_sidecond.
   all: try bv_solve.
 Qed.
 
@@ -134,7 +134,7 @@ Lemma test_state_iris_fn2 `{!islaG Σ} `{!threadG} :
 Proof.
   iStartProof.
   repeat liAStep; liShow.
-  Unshelve. all: unLET; normalize_and_simpl_goal => //=.
+  Unshelve. all: prepare_sidecond.
   all: try bv_solve.
 Qed.
 

@@ -72,12 +72,29 @@ should be used to simplify the goal after Z is bv_unfolded. *)
 Create HintDb bv_unfolded_simplify discriminated.
 Hint Rewrite Z.shiftr_0_r Z.lor_0_r Z.lor_0_l : bv_unfolded_simplify.
 Hint Rewrite Z.land_ones using lia : bv_unfolded_simplify.
+Hint Rewrite bv_wrap_bv_wrap using lia : bv_unfolded_simplify.
 
-Ltac bv_solve :=
+Ltac bv_simplify :=
   unLET;
   autorewrite with bv_simplify;
-  try apply bv_eq;
+  try apply bv_eq_wrap;
   autorewrite with bv_unfold;
-  autorewrite with bv_unfolded_simplify;
+  autorewrite with bv_unfolded_simplify.
+
+Ltac bv_simplify_hyp H :=
+  unLET;
+  autorewrite with bv_simplify in H;
+  first [ apply bv_eq in H | apply bv_neq in H | idtac ];
+  autorewrite with bv_unfold in H;
+  autorewrite with bv_unfolded_simplify in H.
+Tactic Notation "bv_simplify_hyp" "select" open_constr(pat) :=
+  select pat (fun H => bv_simplify_hyp H).
+
+Ltac bv_solve :=
+  bv_simplify;
+  (* try lazymatch goal with *)
+  (* | |- bv_wrap _ _ = bv_wrap _ _ => f_equal *)
+  (* end; *)
   unfold bv_wrap, bv_modulus, bv_unsigned in *;
+  simpl;
   lia.

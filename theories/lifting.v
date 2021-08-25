@@ -410,6 +410,21 @@ Section lifting.
     iApply ("Hcont" with "[] [Hm]"); done.
   Qed.
 
+  Lemma wp_read_mem_array n len a a' vread vmem (i : nat) (l : list (bv n)) es ann kind tag q:
+    n = (8 * len)%N →
+    0 < Z.of_N len →
+    l !! i = Some vmem →
+    a = bv_add_Z a' (i * Z.of_N len) →
+    a' ↦ₘ{q}∗ l -∗
+    (⌜vread = vmem⌝ -∗ a' ↦ₘ{q}∗ l -∗ WPasm es) -∗
+    WPasm (ReadMem (Val_Bits (BVN n vread)) kind (Val_Bits (BVN 64 a)) len tag ann :: es).
+  Proof.
+    iIntros (??? ->) "Hm Hcont".
+    iDestruct (mem_mapsto_array_lookup_acc with "Hm") as "[Hv Hm]"; [done..|].
+    iApply (wp_read_mem with "Hv"); [lia..|].
+    iIntros (?) "Hl". iApply ("Hcont" with "[//]"). by iApply "Hm".
+  Qed.
+
   Lemma wp_write_mem n len a (vold vnew : bv n) es ann res kind tag:
     n = (8 * len)%N →
     0 < Z.of_N len →

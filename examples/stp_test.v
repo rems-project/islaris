@@ -29,6 +29,6 @@ Proof.
   iStartProof.
   unfold spec.
   repeat liAStep; liShow.
-  Unshelve.
-  all: try (repeat f_equal; bv_solve).
+  Unshelve. all: prepare_sidecond.
+  all: try bv_solve.
 Qed.

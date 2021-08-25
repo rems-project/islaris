@@ -154,6 +154,16 @@ Lemma bv_swrap_wrap n z:
   bv_swrap n (bv_wrap n z) = bv_swrap n z.
 Proof. unfold bv_swrap, bv_wrap. by rewrite Zplus_mod_idemp_l. Qed.
 
+Lemma bv_wrap_bv_wrap n1 n2 bv :
+  (n1 ≤ n2)%N →
+  bv_wrap n1 (bv_wrap n2 bv) = bv_wrap n1 bv.
+Proof.
+  intros ?. unfold bv_wrap.
+  rewrite <-Znumtheory.Zmod_div_mod; [done| apply bv_modulus_pos.. |].
+  unfold bv_modulus. eexists (2 ^ (Z.of_N n2 - Z.of_N n1)).
+  rewrite <-Z.pow_add_r by lia. f_equal. lia.
+Qed.
+
 Lemma bv_wf_bitwise_op {n} op bop n1 n2 :
   (∀ k, Z.testbit (op n1 n2) k = bop (Z.testbit n1 k) (Z.testbit n2 k)) →
   (0 ≤ n1 → 0 ≤ n2 → 0 ≤ op n1 n2) →
@@ -188,6 +198,10 @@ Proof.
   intros. subst. f_equal. apply proof_irrel.
 Qed.
 
+Lemma bv_neq n (b1 b2 : bv n) :
+  b1 ≠ b2 ↔ b1.(bv_unsigned) ≠ b2.(bv_unsigned).
+Proof. unfold not. by rewrite bv_eq. Qed.
+
 Definition Z_to_bv_checked (n : N) (z : Z) : option (bv n) :=
   guard (bv_wf n z) as H; Some (BV n z H).
 
@@ -211,6 +225,16 @@ Proof. rewrite Z_to_bv_unsigned. apply bv_wrap_small. Qed.
 Lemma bv_unsigned_in_range n (b : bv n):
   0 ≤ bv_unsigned b < bv_modulus n.
 Proof. apply bv_wf_in_range. apply bv_is_wf. Qed.
+
+Lemma bv_eq_wrap n (b1 b2 : bv n) :
+  b1 = b2 ↔ bv_wrap n b1.(bv_unsigned) = bv_wrap n b2.(bv_unsigned).
+Proof.
+  rewrite !bv_wrap_small; [apply bv_eq | apply bv_unsigned_in_range..].
+Qed.
+
+Lemma bv_neq_wrap n (b1 b2 : bv n) :
+  b1 ≠ b2 ↔ bv_wrap n b1.(bv_unsigned) ≠ bv_wrap n b2.(bv_unsigned).
+Proof. unfold not. by rewrite bv_eq_wrap. Qed.
 
 Lemma bv_signed_in_range n (b : bv n):
   n ≠ 0%N →
@@ -477,16 +501,8 @@ extract in SMTLIB which uses [extract (inclusive upper bound)
 (inclusive lower bound)]. The version here is phrased in a way that
 makes it impossible to use an upper bound that is lower than the lower
 bound. *)
-Program Definition bv_extract {n} (s l : N) (b : bv n) : bv l :=
-  BV l (Z.land (bv_unsigned b ≫ Z.of_N s) (Z.ones (Z.of_N l))) _.
-Next Obligation.
-  intros.
-  apply bv_wf_in_range.
-  apply Z_bounded_iff_bits_nonneg'; [lia | |].
-  { apply Z.land_nonneg. left. apply Z.shiftr_nonneg. bv_saturate. lia. }
-  intros k ?. rewrite Z.land_spec. apply andb_false_intro2.
-  apply Z.ones_spec_high. lia.
-Qed.
+Definition bv_extract {n} (s l : N) (b : bv n) : bv l :=
+  Z_to_bv l (bv_unsigned b ≫ Z.of_N s).
 
 Program Definition bv_concat {n1 n2} (b1 : bv n1) (b2 : bv n2) : bv (n1 + n2) := (* SMT: concat *)
   BV _ (Z.lor (bv_unsigned b1 ≪ Z.of_N n2) (bv_unsigned b2)) _.
@@ -694,11 +710,11 @@ Section unfolding.
   Qed.
 
   Lemma bv_extract_unsigned s l b :
-    bv_unsigned (bv_extract s l b) = Z.land (bv_unsigned b ≫ Z.of_N s) (Z.ones (Z.of_N l)).
+    bv_unsigned (bv_extract s l b) = bv_wrap l (bv_unsigned b ≫ Z.of_N s).
   Proof. done. Qed.
   Lemma bv_extract_signed s l b :
-    bv_signed (bv_extract s l b) = bv_swrap l (Z.land (bv_unsigned b ≫ Z.of_N s) (Z.ones (Z.of_N l))).
-  Proof. done. Qed.
+    bv_signed (bv_extract s l b) = bv_swrap l (bv_unsigned b ≫ Z.of_N s).
+  Proof. unfold bv_extract. rewrite Z_to_bv_signed. done. Qed.
 
   Lemma bv_concat_unsigned n2 b1 (b2 : bv n2) :
     bv_unsigned (bv_concat b1 b2) = Z.lor (bv_unsigned b1 ≪ Z.of_N n2) (bv_unsigned b2).

@@ -68,6 +68,36 @@ INSTRUCTIONS = {
     "cmp_x1_0" : {
         "instruction" : "cmp x1, 0",
     },
+    "mov_w0_72" : {
+        "instruction" : "mov w0, 72",
+    },
+    "adrp_x1" : {
+        "instruction" : "adrp x1, 400000"
+    },
+    "add_x1_x1_0x690" : {
+        "instruction" : "add x1, x1, 0x690"
+    },
+    "mov_x2_4096" : {
+        "instruction" : "mov x2, 4096",
+    },
+    "movk_x2" : {
+        "instruction" : "movk x2, 0x101f, lsl 16"
+    },
+    "strb_w0_x2" : {
+        "instruction" : "strb w0, [x2]",
+        "constraints" : [
+            '= (bvand R2 0xfff0000000000007) 0x0000000000000000',
+        ]
+    },
+    "ldrb_w0_x1" : {
+        "instruction" : "ldrb w0, [x1, 1]!",
+        "constraints" : [
+            '= (bvand R1 0xfff0000000000007) 0x0000000000000000',
+        ]
+    },
+    # "cbnz_w0" : {
+        # "instruction" : "cbnz    w0, -0x08"
+    # },
 }
 
 IGNORED_REGISTER_NAMES = [

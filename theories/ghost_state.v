@@ -129,6 +129,14 @@ Section definitions.
   Definition mem_mapsto_eq {n} : @mem_mapsto n = @mem_mapsto_def n :=
     seal_eq mem_mapsto_aux.
 
+  Definition mem_mapsto_array_def {n} (a : addr) (q : dfrac) (l : list (bv n)) : iProp Σ :=
+    ∃ len, ⌜n = (len * 8)%N⌝ ∗
+    [∗ list] i↦v∈l, mem_mapsto (bv_add_Z a (i * Z.of_N len)) q v.
+  Definition mem_mapsto_array_aux {n} : seal (@mem_mapsto_array_def n). by eexists. Qed.
+  Definition mem_mapsto_array {n} := unseal (@mem_mapsto_array_aux n).
+  Definition mem_mapsto_array_eq {n} : @mem_mapsto_array n = @mem_mapsto_array_def n :=
+    seal_eq mem_mapsto_array_aux.
+
   Definition mem_ctx (mem : mem_map) : iProp Σ :=
     ghost_map_auth heap_mem_name 1 mem ∗ backed_mem (dom _ mem).
 
@@ -166,6 +174,10 @@ Notation "r  #  f  ↦ᵣ v" := (struct_reg_mapsto thread_struct_regs_name r f 1
 Notation "a ↦ₘ{ q } v" := (mem_mapsto a q v)
   (at level 20, q at level 50, format "a  ↦ₘ{ q }  v") : bi_scope.
 Notation "a ↦ₘ v" := (mem_mapsto a (DfracOwn 1) v) (at level 20) : bi_scope.
+
+Notation "a ↦ₘ{ q }∗ l" := (mem_mapsto_array a q l)
+  (at level 20, q at level 50, format "a  ↦ₘ{ q }∗  l") : bi_scope.
+Notation "a ↦ₘ∗ l" := (mem_mapsto_array a (DfracOwn 1) l) (at level 20) : bi_scope.
 
 Section instr.
   Context `{!heapG Σ}.
@@ -327,6 +339,9 @@ Section mem.
   Global Instance mem_mapsto_tl n a q (v : bv n) : Timeless (a ↦ₘ{q} v).
   Proof. rewrite mem_mapsto_eq /mem_mapsto_def. by apply _. Qed.
 
+  Global Instance mem_mapsto_array_tl n a q (l : list (bv n)) : Timeless (a ↦ₘ{q}∗ l).
+  Proof. rewrite mem_mapsto_array_eq /mem_mapsto_array_def. by apply _. Qed.
+
 
   Lemma backed_mem_agree m1 m2 :
     backed_mem m1 -∗ backed_mem m2 -∗ ⌜m1 = m2⌝.
@@ -463,6 +478,29 @@ Section mem.
     iMod (mem_mapsto_update_list with "Hmem Ha") as (len Hlen) "[Hmem Ha]".
     iExists _. iSplitR; [done|]. iFrame.
     by rewrite Nat2N.id.
+  Qed.
+
+  Lemma mem_mapsto_array_insert_acc n a (i : nat) (l : list (bv n)) q len v :
+    n = (8 * len)%N →
+    l !! i = Some v →
+    a ↦ₘ{q}∗ l -∗
+    bv_add_Z a (i * Z.of_N len) ↦ₘ{q} v ∗
+      (∀ v', bv_add_Z a (i * Z.of_N len) ↦ₘ{q} v' -∗ a ↦ₘ{q}∗ (<[i := v']>l)).
+  Proof.
+    rewrite mem_mapsto_array_eq. iIntros (??) "[%len' [% Ha]]". have ? : len = len' by lia. subst.
+    iDestruct (big_sepL_insert_acc with "Ha") as "[$ Ha]"; [done|].
+    iIntros (?) "?". iExists _. iSplit; [done|]. by iApply "Ha".
+  Qed.
+
+  Lemma mem_mapsto_array_lookup_acc n a (i : nat) (l : list (bv n)) q len v :
+    n = (8 * len)%N →
+    l !! i = Some v →
+    a ↦ₘ{q}∗ l -∗
+    bv_add_Z a (i * Z.of_N len) ↦ₘ{q} v ∗
+      (bv_add_Z a (i * Z.of_N len) ↦ₘ{q} v -∗ a ↦ₘ{q}∗ l).
+  Proof.
+    iIntros (??) "Hl". iDestruct (mem_mapsto_array_insert_acc with "Hl") as "[$ Hl]"; [done..|].
+    iIntros "Hv". iDestruct ("Hl" with "Hv") as "Hl". by rewrite list_insert_id.
   Qed.
 End mem.
 

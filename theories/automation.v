@@ -15,6 +15,14 @@ Proof.
   - move => ?. subst. apply bv_eq. by destruct Heq => /=.
   - move => Hb. apply bvn_eq. move: Hb => /bv_eq. by destruct Heq => /= ?.
 Qed.
+Global Instance simpl_bvn_neq (b1 b2 : bvn) {Heq : TCEq b2.(bvn_n) b1.(bvn_n)}:
+  SimplBoth (b1 ≠ b2) (b1.(bvn_val) ≠ TCEq_rect _ _ (λ x, bv x) b2.(bvn_val) _ Heq).
+Proof.
+  split.
+  - move => Hb Hbn. apply: Hb. apply bvn_eq. move: Hbn => /bv_eq.
+    by destruct Heq => /=.
+  - move => Hb. contradict Hb. subst. apply bv_eq. by destruct Heq.
+Qed.
 
 Lemma ite_bits n b (n1 n2 : bv n) :
   ite b (Val_Bits n1) (Val_Bits n2) = Val_Bits (ite b n1 n2).
@@ -40,16 +48,21 @@ Ltac li_impl_check_injection_tac ::=
   | |- _ => idtac
   end.
 
+Ltac prepare_sidecond :=
+  li_unshelve_sidecond; unLET; normalize_and_simpl_goal => //=.
+
 Definition let_bind_hint {A B} (x : A) (f : A → B) : B :=
   f x.
 
 Inductive instr_kind {Σ} : Type :=
 | IKInstr (ins : option (list trc)) | IKPre (l : bool) (P : iProp Σ).
-Definition FindInstrKind {Σ} `{!islaG Σ} `{!threadG} (a : Z) := {| fic_A := @instr_kind Σ; fic_Prop ik :=
-  match ik with
-  | IKInstr ins => instr a ins
-  | IKPre l P => instr_pre' l a P
-  end
+Definition FindInstrKind {Σ} `{!islaG Σ} `{!threadG} (a : Z) (l : bool) := {|
+  fic_A := @instr_kind Σ;
+  fic_Prop ik :=
+    match ik with
+    | IKInstr ins => instr a ins
+    | IKPre l' P => instr_pre' l' a P
+    end
 |}.
 Typeclasses Opaque FindInstrKind.
 
@@ -77,12 +90,13 @@ Definition FindStructRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r f : string) := {
 Typeclasses Opaque FindStructRegMapsTo.
 
 Inductive mem_mapsto_kind (n : N) : Type :=
-| MKMapsTo (v : bv n) | MKMMIO (a : addr) (l : Z).
+| MKMapsTo (v : bv n) | MKArray (a : addr) (l : list (bv n)) | MKMMIO (a : addr) (l : Z).
 Definition FindMemMapsTo {Σ} `{!islaG Σ} `{!threadG} (a : addr) (n : N) := {|
   fic_A := mem_mapsto_kind n;
   fic_Prop mk :=
   match mk with
   | MKMapsTo _ v => (a ↦ₘ v)%I
+  | MKArray _ a' l => (a' ↦ₘ∗ l)%I
   | MKMMIO _ a' l => mmio_range a' l
   end
 |}.
@@ -96,35 +110,49 @@ Section instances.
   Global Instance mmio_range_intro_pers a l : IntroPersistent (mmio_range a l) (mmio_range a l).
   Proof. constructor. iIntros "#$". Qed.
 
-  Lemma find_in_context_instr_kind_pre a T:
-    (∃ l P, instr_pre' l a P ∗ T (IKPre l P)) -∗
-    find_in_context (FindInstrKind a) T.
-  Proof. iDestruct 1 as (??) "[??]". iExists _. by iFrame. Qed.
-  Global Instance find_in_context_instr_kind_pre_inst a :
-    FindInContext (FindInstrKind a) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_instr_kind_pre a T).
-
-  Lemma find_in_context_instr_kind_instr a T:
-    (∃ ins, instr a ins ∗ T (IKInstr ins)) -∗
-    find_in_context (FindInstrKind a) T.
+  (* If there is no later in the goal (i.e. the second parameter to FindInstrKind is false),
+     we should only find instr_pre with false in the context. Otherwise, we can find an
+     arbitrary instr_pre. *)
+  Lemma find_in_context_instr_kind_pre_false a T:
+    (∃ P, instr_pre' false a P ∗ T (IKPre false P)) -∗
+    find_in_context (FindInstrKind a false) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
-  Global Instance find_in_context_instr_kind_instr_inst a :
-    FindInContext (FindInstrKind a) FICSyntactic | 10 :=
-    λ T, i2p (find_in_context_instr_kind_instr a T).
+  Global Instance find_in_context_instr_kind_pre_false_inst a :
+    FindInContext (FindInstrKind a false) FICSyntactic | 1 :=
+    λ T, i2p (find_in_context_instr_kind_pre_false a T).
+
+  Lemma find_in_context_instr_kind_pre_true a T:
+    (∃ l P, instr_pre' l a P ∗ T (IKPre l P)) -∗
+    find_in_context (FindInstrKind a true) T.
+  Proof. iDestruct 1 as (??) "[??]". iExists _. by iFrame. Qed.
+  Global Instance find_in_context_instr_kind_pre_true_inst a :
+    FindInContext (FindInstrKind a true) FICSyntactic | 1 :=
+    λ T, i2p (find_in_context_instr_kind_pre_true a T).
+
+  Lemma find_in_context_instr_kind_instr a T l:
+    (∃ ins, instr a ins ∗ T (IKInstr ins)) -∗
+    find_in_context (FindInstrKind a l) T.
+  Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
+  Global Instance find_in_context_instr_kind_instr_inst a l:
+    FindInContext (FindInstrKind a l) FICSyntactic | 10 :=
+    λ T, i2p (find_in_context_instr_kind_instr a T l).
 
   Inductive FICInstrSemantic : Set :=.
-  Global Instance find_in_context_instr_pre_semantic_inst  a :
-    FindInContext (FindInstrKind a) FICInstrSemantic | 100 :=
-    λ T, i2p (find_in_context_instr_kind_pre a T).
+  Global Instance find_in_context_instr_pre_semantic_false_inst a :
+    FindInContext (FindInstrKind a false) FICInstrSemantic | 100 :=
+    λ T, i2p (find_in_context_instr_kind_pre_false a T).
+  Global Instance find_in_context_instr_pre_semantic_true_inst a :
+    FindInContext (FindInstrKind a true) FICInstrSemantic | 100 :=
+    λ T, i2p (find_in_context_instr_kind_pre_true a T).
 
   Lemma tac_instr_pre_eq l1 l2 a1 a2 P1 P2:
     a1 = a2 →
     FindHypEqual FICInstrSemantic (instr_pre' l1 a1 P1) (instr_pre' l2 a2 P2) (instr_pre' l2 a1 P2).
   Proof. by move => ->. Qed.
 
-  Global Instance find_in_context_instr_semantic_inst a :
-  FindInContext (FindInstrKind a) FICInstrSemantic | 110 :=
-  λ T, i2p (find_in_context_instr_kind_instr a T).
+  Global Instance find_in_context_instr_semantic_inst a l:
+  FindInContext (FindInstrKind a l) FICInstrSemantic | 110 :=
+  λ T, i2p (find_in_context_instr_kind_instr a T l).
 
   Lemma tac_instr_eq a1 a2 ins1 ins2:
     a1 = a2 →
@@ -153,12 +181,25 @@ Section instances.
     FindHypEqual (FICMemMapstoSemantic l' n') (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
   Proof. by move => ->. Qed.
 
+  Lemma find_in_context_mem_mapsto_array a n T:
+    (∃ a' l, a' ↦ₘ∗ l ∗ T (MKArray n a' l)) -∗
+    find_in_context (FindMemMapsTo a n) T.
+  Proof. iDestruct 1 as (a' l) "[Hl HT]". iExists _ => /=. by iFrame. Qed.
+  Global Instance find_in_context_mapsto_array_inst a n :
+    FindInContext (FindMemMapsTo a n) (FICMemMapstoSemantic a n) | 20 :=
+    λ T, i2p (find_in_context_mem_mapsto_array a n T).
+
+  Lemma tac_mem_mapsto_array_eq a n a1 a2 (l1 l2 : list (bv n)):
+    bv_unsigned a1 ≤ bv_unsigned a ≤ bv_unsigned a1 + length l1 * Z.of_N n `div` 8 →
+    FindHypEqual (FICMemMapstoSemantic a n) (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) (a2 ↦ₘ∗ l2).
+  Proof. done. Qed.
+
   Lemma find_in_context_mem_mapsto_mmio a n T:
     (∃ a' l, mmio_range a' l ∗ T (MKMMIO n a' l)) -∗
     find_in_context (FindMemMapsTo a n) T.
   Proof. iDestruct 1 as (a' l) "[Hl HT]". iExists _ => /=. iFrame. Qed.
   Global Instance find_in_context_mem_mapsto_mmio_semantic_inst a n :
-  FindInContext (FindMemMapsTo a n) (FICMemMapstoSemantic a n) | 20 :=
+  FindInContext (FindMemMapsTo a n) (FICMemMapstoSemantic a n) | 30 :=
   λ T, i2p (find_in_context_mem_mapsto_mmio a n T).
 
   Lemma tac_mem_mapsto_mmio a n a1 a2 l1 l2:
@@ -258,9 +299,9 @@ Section instances.
     (∃ (nPC : addr) bPC_changed,
         "_PC" ↦ᵣ Val_Bits nPC ∗ "__PC_changed" ↦ᵣ Val_Bool bPC_changed ∗
      ∃ a newPC,
-       ⌜a = (if bPC_changed : bool then (bv_unsigned nPC) else (bv_unsigned nPC + 4)%Z)⌝ ∗
+       ⌜a = (if (bPC_changed : bool) then (via_vm_compute bv_unsigned nPC) else (via_vm_compute (Z.add (bv_unsigned nPC)) 4)%Z)⌝ ∗
        ⌜Z_to_bv_checked 64 a = Some newPC⌝ ∗
-     find_in_context (FindInstrKind a) (λ ik,
+     find_in_context (FindInstrKind a true) (λ ik,
      match ik with
      | IKInstr (Some ts) =>
        ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm t
@@ -276,20 +317,20 @@ Section instances.
     destruct ins as [[?|]|?] => /=.
     - iDestruct "Hwp" as (?) "Hl".
       iApply (wp_next_instr with "[HPC Hchanged] Hi [Hl]") => //.
-      + iExists _, _, _. by iFrame.
+      + iExists _, _, _. rewrite ->!via_vm_compute_eq in *. by iFrame.
       + iIntros "!>" (i Hi) "? ?".
         iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
         iApply ("Hwp" with "[$] [$]").
     - iDestruct "Hwp" as (?) "(?&%&?)".
       iApply (wp_next_instr_extern with "[HPC Hchanged] [$] [$]") => //.
-      iExists _, _, _. by iFrame.
+      iExists _, _, _. rewrite ->!via_vm_compute_eq in *. by iFrame.
     - iApply (wp_next_instr_pre with "[$] [HPC Hchanged] [$]").
-      iExists _, _, _. by iFrame.
+      iExists _, _, _. rewrite ->!via_vm_compute_eq in *. by iFrame.
   Qed.
 
   Lemma li_instr_pre l a P:
     (∃ newPC, ⌜Z_to_bv_checked 64 a = Some newPC⌝ ∗
-     find_in_context (FindInstrKind a) (λ ik,
+     find_in_context (FindInstrKind a l) (λ ik,
      match ik with
      | IKInstr (Some ts) =>
        ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, P -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm t
@@ -396,6 +437,7 @@ Section instances.
     find_in_context (FindMemMapsTo a n) (λ mk,
       match mk with
       | MKMapsTo _ vold => (a ↦ₘ vnew -∗ WPasm es)
+      | MKArray _ a' l => False
       | MKMMIO _ a' l =>
         ⌜bv_unsigned a' ≤ bv_unsigned a⌝ ∗ ⌜bv_unsigned a + Z.of_N len ≤ bv_unsigned a' + l⌝ ∗
         ∃ κs, spec_trace κs ∗ ⌜head κs = Some (SWriteMem a vnew)⌝ ∗
@@ -406,6 +448,7 @@ Section instances.
   Proof.
     iDestruct 1 as (?? mk) "[HP Hcont]" => /=. case_match.
     - iApply (wp_write_mem with "HP Hcont"); [done | lia].
+    - done.
     - iDestruct "Hcont" as (?? κs) "[Hκs [% Hcont]]". destruct κs => //; simplify_eq/=.
       iApply (wp_write_mmio with "[HP] Hκs"); [done | lia| | ].
       { iApply (mmio_range_shorten with "HP"); lia. }
@@ -413,13 +456,24 @@ Section instances.
   Qed.
 
   Lemma li_wp_read_mem len n kind a vread tag ann es:
-    (∃ vmem,
-    ⌜n = (8 * len)%N⌝ ∗
+    (⌜n = (8 * len)%N⌝ ∗
     ⌜len ≠ 0%N⌝ ∗
-    a ↦ₘ vmem ∗
-    (⌜vread = vmem⌝ -∗ a ↦ₘ vmem -∗ WPasm es)) -∗
+    find_in_context (FindMemMapsTo a n) (λ mk,
+      match mk with
+      | MKMapsTo _ vmem => (⌜vread = vmem⌝ -∗ a ↦ₘ vmem -∗ WPasm es)
+      | MKArray _ a' l => ∃ i : nat, ⌜a = bv_add_Z a' (i * Z.of_N len)⌝ ∗ ⌜i < length l⌝%nat ∗
+         (∀ vmem, ⌜l !! i = Some vmem⌝ -∗ ⌜vread = vmem⌝ -∗ a' ↦ₘ∗ l -∗ WPasm es)
+      | MKMMIO _ _ _ => False
+      end)) -∗
     WPasm (ReadMem (Val_Bits (BVN n vread)) kind (Val_Bits (BVN 64 a)) len tag ann :: es).
-  Proof. iDestruct 1 as (?) "[% [% [Hmem Hcont]]]". iApply (wp_read_mem with "Hmem Hcont"); [done|lia]. Qed.
+  Proof.
+    iDestruct 1 as (?? mk) "[Hmem Hcont]" => /=. case_match.
+    - iApply (wp_read_mem with "Hmem Hcont"); [done|lia].
+    - iDestruct "Hcont" as (i?[??]%lookup_lt_is_Some_2) "Hcont".
+      iApply (wp_read_mem_array with "Hmem [Hcont]"); [done|lia|done|done|].
+      iIntros (?) "Hl". by iApply "Hcont".
+    - done.
+  Qed.
 
   Lemma li_wpe_val v Φ ann:
     Φ v -∗
@@ -450,6 +504,8 @@ End instances.
 
 #[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _ _) (_ ↦ₘ _) (_ ↦ₘ _) _) =>
   ( apply tac_mem_mapsto_eq; bv_solve) : typeclass_instances.
+#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _ _) (_ ↦ₘ∗ _) (_ ↦ₘ∗ _) _) =>
+  ( apply tac_mem_mapsto_array_eq; bv_solve) : typeclass_instances.
 #[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _ _) (mmio_range _ _) (mmio_range _ _) _) =>
   ( apply tac_mem_mapsto_mmio; bv_solve) : typeclass_instances.
 #[ global ] Hint Extern 10 (FindHypEqual FICInstrSemantic (instr_pre' _ _ _) (instr_pre' _ _ _) _) =>
