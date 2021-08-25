@@ -539,6 +539,35 @@ Ltac liLetBindHint :=
     end
   end.
 
+Definition TRACE_LET {A} (x : A) : A := x.
+Arguments TRACE_LET : simpl never.
+Notation "'HIDDEN'" := (TRACE_LET _) (only printing).
+
+Ltac liAIntroduceLetInGoal :=
+  (* kill old unused TRACE_LET. This can happen e.g. because of subst_event unfolding TRACE_LET. *)
+  try match goal with | H := TRACE_LET _ |- _ => clear H end;
+  lazymatch goal with
+  | |- envs_entails ?Δ ?P =>
+    lazymatch P with
+    | wp_exp ?e ?Φ =>
+      let H := fresh "GOAL" in
+      pose H := (LET_ID Φ);
+      change_no_check (envs_entails Δ (wp_exp e H))
+    | WPasm (?e::?es) =>
+      let H := fresh "TRACE" in
+      assert_fails (is_var es);
+      pose H := (TRACE_LET es);
+      change_no_check (envs_entails Δ (WPasm (e::H)))
+    | WPasm (TRACE_LET (?e::?es)) =>
+      let H := fresh "TRACE" in
+      pose H := (TRACE_LET es);
+      change_no_check (envs_entails Δ (WPasm (e::H)))
+    | WPasm (TRACE_LET []) =>
+      change_no_check (envs_entails Δ (WPasm []))
+    end
+  end
+  .
+
 Ltac liAAsm :=
   lazymatch goal with
   | |- envs_entails ?Δ (WPasm ?es) =>
@@ -559,7 +588,7 @@ Ltac liAAsm :=
       | Smt (Assert _) _ => notypeclasses refine (tac_fast_apply (li_wp_assert _ _ _) _)
       end
     | ?def => first [
-                 iEval (unfold def)
+                 iEval (unfold def); try clear def
                | fail "liAAsm: unknown asm" es
                ]
     end
@@ -583,6 +612,7 @@ Ltac liAExp :=
 
 Ltac liAStep :=
  liEnforceInvariantAndUnfoldInstantiatedEvars;
+ try liAIntroduceLetInGoal;
  first [
     liAAsm
   | liAExp
