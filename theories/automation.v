@@ -427,7 +427,7 @@ Section instances.
   Qed.
 
   Lemma li_wp_assert es ann e:
-    WPexp e {{ v, if v is Val_Bool b then ⌜b = true⌝ -∗ WPasm es else False }} -∗
+    WPexp e {{ v, ∃ b, ⌜v = Val_Bool b⌝ ∗ (⌜b = true⌝ -∗ WPasm es) }} -∗
     WPasm (Smt (Assert e) ann :: es).
   Proof. apply: wp_assert. Qed.
 
@@ -481,23 +481,23 @@ Section instances.
   Proof. apply: wpe_val. Qed.
 
   Lemma li_wpe_manyop op es Φ ann:
-    foldr (λ e Ψ, λ vs, WPexp e {{ v, Ψ (vs ++ [v]) }}) (λ vs, if eval_manyop op vs is Some v then Φ v else False) es [] -∗
+    foldr (λ e Ψ, λ vs, WPexp e {{ v, Ψ (vs ++ [v]) }}) (λ vs, ∃ v, ⌜eval_manyop op vs = Some v⌝ ∗ Φ v) es [] -∗
     WPexp (Manyop op es ann) {{ Φ }}.
   Proof. apply: wpe_manyop. Qed.
 
   Lemma li_wpe_unop op e Φ ann:
-    WPexp e {{ v1, if eval_unop op v1 is Some v then Φ v else False }} -∗
+    WPexp e {{ v1, ∃ v, ⌜eval_unop op v1 = Some v⌝ ∗ Φ v}} -∗
     WPexp (Unop op e ann) {{ Φ }}.
   Proof. apply: wpe_unop. Qed.
 
   Lemma li_wpe_binop op e1 e2 Φ ann:
-    WPexp e1 {{ v1, WPexp e2 {{ v2, if eval_binop op v1 v2 is Some v then Φ v else False}} }} -∗
+    WPexp e1 {{ v1, WPexp e2 {{ v2, ∃ v, ⌜eval_binop op v1 v2 = Some v⌝ ∗ Φ v}} }} -∗
     WPexp (Binop op e1 e2 ann) {{ Φ }}.
   Proof. apply: wpe_binop. Qed.
 
   Lemma li_wpe_ite e1 e2 e3 Φ ann:
     WPexp e1 {{ v1, WPexp e2 {{ v2, WPexp e3 {{ v3,
-       if v1 is Val_Bool b then Φ (ite b v2 v3) else False}} }} }} -∗
+       ∃ b, ⌜v1 = Val_Bool b⌝ ∗ Φ (ite b v2 v3)}} }} }} -∗
     WPexp (Ite e1 e2 e3 ann) {{ Φ }}.
   Proof. apply: wpe_ite. Qed.
 End instances.

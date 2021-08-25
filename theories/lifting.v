@@ -565,10 +565,10 @@ Section lifting.
   Qed.
 
   Lemma wp_assert es ann e:
-    WPexp e {{ v, if v is Val_Bool b then ⌜b = true⌝ -∗ WPasm es else False }} -∗
+    WPexp e {{ v, ∃ b, ⌜v = Val_Bool b⌝ ∗ (⌜b = true⌝ -∗ WPasm es) }} -∗
     WPasm (Smt (Assert e) ann :: es).
   Proof.
-    rewrite wp_exp_unfold. iDestruct 1 as (v Hv) "Hcont". destruct v as [| b | | | | | | | | | |] => //.
+    rewrite wp_exp_unfold. iDestruct 1 as (v Hv b ?) "Hcont". subst v.
     rewrite !wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
@@ -605,7 +605,7 @@ Section exp_lifting.
   Proof. rewrite wp_exp_unfold. iIntros "?". iExists _. by iFrame. Qed.
 
   Lemma wpe_manyop op es Φ ann:
-    foldr (λ e Ψ, λ vs, WPexp e {{ v, Ψ (vs ++ [v]) }}) (λ vs, if eval_manyop op vs is Some v then Φ v else False) es [] -∗
+    foldr (λ e Ψ, λ vs, WPexp e {{ v, Ψ (vs ++ [v]) }}) (λ vs, ∃ v, ⌜eval_manyop op vs = Some v⌝ ∗ Φ v) es [] -∗
     WPexp (Manyop op es ann) {{ Φ }}.
   Proof.
     rewrite -{2}(app_nil_l es).
@@ -614,7 +614,8 @@ Section exp_lifting.
     move: {1 3}(@nil valu) => vs Hall.
     iIntros "Hes".
     iInduction es as [|e es] "IH" forall (es' vs Hall) => /=.
-    - rewrite right_id wp_exp_unfold. case_match => //.
+    - rewrite right_id wp_exp_unfold.
+      iDestruct "Hes" as (v Hv) "HΦ".
       iExists _. iFrame. iPureIntro. simpl.
       erewrite mapM_Some_2; [|done]. done.
     - rewrite wp_exp_unfold.
@@ -626,30 +627,30 @@ Section exp_lifting.
   Qed.
 
   Lemma wpe_unop op e Φ ann:
-    WPexp e {{ v1, if eval_unop op v1 is Some v then Φ v else False}} -∗
+    WPexp e {{ v1, ∃ v, ⌜eval_unop op v1 = Some v⌝ ∗ Φ v}} -∗
     WPexp (Unop op e ann) {{ Φ }}.
   Proof.
-    rewrite wp_exp_unfold. iDestruct 1 as (? Hv) "HΦ".
-    rewrite wp_exp_unfold. case_match => //. iExists _ => /=. iFrame. by rewrite Hv /=.
+    rewrite wp_exp_unfold. iDestruct 1 as (? Hv ??) "HΦ".
+    rewrite wp_exp_unfold. iExists _ => /=. iFrame. by rewrite Hv /=.
   Qed.
 
   Lemma wpe_binop op e1 e2 Φ ann:
-    WPexp e1 {{ v1, WPexp e2 {{ v2, if eval_binop op v1 v2 is Some v then Φ v else False}} }} -∗
+    WPexp e1 {{ v1, WPexp e2 {{ v2, ∃ v, ⌜eval_binop op v1 v2 = Some v⌝ ∗ Φ v}} }} -∗
     WPexp (Binop op e1 e2 ann) {{ Φ }}.
   Proof.
     rewrite wp_exp_unfold. iDestruct 1 as (? Hv1) "He2".
-    rewrite wp_exp_unfold. iDestruct "He2" as (? Hv2) "HΦ". case_match => //.
+    rewrite wp_exp_unfold. iDestruct "He2" as (? Hv2 ? Hv) "HΦ".
     rewrite wp_exp_unfold. iExists _ => /=. iFrame. by rewrite Hv1 Hv2 /=.
   Qed.
 
   Lemma wpe_ite e1 e2 e3 Φ ann:
     WPexp e1 {{ v1, WPexp e2 {{ v2, WPexp e3 {{ v3,
-       if v1 is Val_Bool b then Φ (ite b v2 v3) else False}} }} }} -∗
+       ∃ b, ⌜v1 = Val_Bool b⌝ ∗ Φ (ite b v2 v3)}} }} }} -∗
     WPexp (Ite e1 e2 e3 ann) {{ Φ }}.
   Proof.
     rewrite wp_exp_unfold. iDestruct 1 as (? Hv1) "He2".
     rewrite wp_exp_unfold. iDestruct "He2" as (? Hv2) "He3".
-    rewrite wp_exp_unfold. iDestruct "He3" as (? Hv3) "HΦ". case_match => //.
+    rewrite wp_exp_unfold. iDestruct "He3" as (? Hv3 ? Hv) "HΦ".
     rewrite wp_exp_unfold. iExists _ => /=. iFrame. iPureIntro. simplify_eq.
     rewrite Hv1 Hv2 Hv3. by case_match.
   Qed.
