@@ -26,7 +26,6 @@ Definition strb_w0_x2_trace : trc := [
   Smt (DefineConst 96%Z (Binop (Eq) (Val (Val_Symbolic 89%Z) Mk_annot) (Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 89%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0xffffffffffffffff%Z]) Mk_annot] Mk_annot) Mk_annot)) Mk_annot;
   Smt (Assert (Unop (Not) (Unop (Not) (Val (Val_Symbolic 96%Z) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
   Smt (Assert (Unop (Not) (Unop (Not) (Val (Val_Symbolic 96%Z) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
-  Smt (Assert (Binop (Eq) (Val (Val_Symbolic 89%Z) Mk_annot) (Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 89%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0xffffffffffffffff%Z]) Mk_annot] Mk_annot) Mk_annot)) Mk_annot;
   ReadReg "SCR_EL3" [] (Val_Bits [BV{32%N} 0x0%Z]) Mk_annot;
 (*  ReadReg "__v81_implemented" [] (Val_Bool true) Mk_annot;*)
   ReadReg "TCR_EL2" [] (Val_Bits [BV{64%N} 0x0%Z]) Mk_annot;

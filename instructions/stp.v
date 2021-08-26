@@ -32,7 +32,6 @@ Definition stp_trace : trc := [
   Smt (DefineConst 83%Z (Binop (Eq) (Val (Val_Symbolic 78%Z) Mk_annot) (Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 78%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0xfffffffffffffff8%Z]) Mk_annot] Mk_annot) Mk_annot)) Mk_annot;
   Smt (Assert (Unop (Not) (Unop (Not) (Val (Val_Symbolic 83%Z) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
   Smt (Assert (Unop (Not) (Unop (Not) (Val (Val_Symbolic 83%Z) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
-  Smt (Assert (Binop (Eq) (Val (Val_Symbolic 78%Z) Mk_annot) (Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 78%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0xfffffffffffffff8%Z]) Mk_annot] Mk_annot) Mk_annot)) Mk_annot;
   ReadReg "SCR_EL3" [] (Val_Bits [BV{32%N} 0x0%Z]) Mk_annot;
 (*  ReadReg "__v81_implemented" [] (Val_Bool true) Mk_annot;*)
   ReadReg "TCR_EL2" [] (Val_Bits [BV{64%N} 0x0%Z]) Mk_annot;
@@ -58,7 +57,6 @@ Definition stp_trace : trc := [
   Smt (DefineConst 1311%Z (Binop (Eq) (Val (Val_Symbolic 1306%Z) Mk_annot) (Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 1306%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0xfffffffffffffff8%Z]) Mk_annot] Mk_annot) Mk_annot)) Mk_annot;
   Smt (Assert (Unop (Not) (Unop (Not) (Val (Val_Symbolic 1311%Z) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
   Smt (Assert (Unop (Not) (Unop (Not) (Val (Val_Symbolic 1311%Z) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
-  Smt (Assert (Binop (Eq) (Val (Val_Symbolic 1306%Z) Mk_annot) (Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 1306%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0xfffffffffffffff8%Z]) Mk_annot] Mk_annot) Mk_annot)) Mk_annot;
   Smt (Assert (Unop (Not) (Unop (Not) (Binop (Eq) (Unop (Extract 63%N 52%N) (Val (Val_Symbolic 1306%Z) Mk_annot) Mk_annot) (Val (Val_Bits [BV{12%N} 0x0%Z]) Mk_annot) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
   Smt (Assert (Unop (Not) (Unop (Not) (Val (Val_Symbolic 1311%Z) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
   Smt (DefineConst 2497%Z (Unop (ZeroExtend 8%N) (Manyop Concat [Val (Val_Bits [BV{4%N} 0x0%Z]) Mk_annot; Unop (Extract 51%N 0%N) (Val (Val_Symbolic 1306%Z) Mk_annot) Mk_annot] Mk_annot) Mk_annot)) Mk_annot;

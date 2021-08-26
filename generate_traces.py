@@ -12,6 +12,7 @@ ISLA_ARGS = [
     "-f", "isla_footprint_no_init",
     "-s",
     "--simplify-registers",
+    "--pessimistic",
 ]
 
 ISLA_COQ_FRONTEND = [ "dune", "exec", "--", "isla-coq" ]

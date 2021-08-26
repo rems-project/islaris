@@ -16,7 +16,6 @@ Definition ldrb_w0_x1_trace : trc := [
   ReadReg "SCTLR_EL2" [] (Val_Bits [BV{64%N} 0x4000002%Z]) Mk_annot;
   Smt (Assert (Unop (Not) (Unop (Not) (Val (Val_Symbolic 91%Z) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
   Smt (Assert (Unop (Not) (Unop (Not) (Val (Val_Symbolic 91%Z) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
-  Smt (Assert (Binop (Eq) (Val (Val_Symbolic 87%Z) Mk_annot) (Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 87%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0xffffffffffffffff%Z]) Mk_annot] Mk_annot) Mk_annot)) Mk_annot;
 (*  ReadReg "__v84_implemented" [] (Val_Bool false) Mk_annot;*)
   ReadReg "CFG_ID_AA64PFR0_EL1_EL2" [] (Val_Bits [BV{4%N} 0x1%Z]) Mk_annot;
   ReadReg "CFG_ID_AA64PFR0_EL1_EL3" [] (Val_Bits [BV{4%N} 0x1%Z]) Mk_annot;

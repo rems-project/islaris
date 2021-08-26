@@ -24,7 +24,6 @@
   (define-const v97 (= v90 (bvand v90 #xfffffffffffffff8)))
   (assert (not (not v97)))
   (assert (not (not v97)))
-  (assert (= v90 (bvand v90 #xfffffffffffffff8)))
   (read-reg |SCR_EL3| nil #x00000000)
   (read-reg |__v81_implemented| nil true)
   (read-reg |TCR_EL2| nil #x0000000000000000)
