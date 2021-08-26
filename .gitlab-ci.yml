@@ -1,0 +1,53 @@
+image: ralfjung/opam-ci:opam2
+
+stages:
+  - build
+
+variables:
+  # dune takes care of parallelization itself and does not like running in parallel
+  CPU_CORES: "1"
+  MAKE_TARGET: "all_and_tests"
+  OCAML: "ocaml-base-compiler.4.07.1"
+
+.template: &template
+  stage: build
+  tags:
+  - fp
+  script:
+  - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
+  - ci/buildjob
+  cache:
+    key: "$CI_JOB_NAME"
+    paths:
+    - _opam/
+  only:
+  - main@iris/isla-coq
+  - /^ci/@iris/isla-coq
+  - /^time/@iris/isla-coq
+  except:
+  - triggers
+  - schedules
+  - api
+
+## Build jobs
+# TODO: remove    z3 version 4.8.9-1 once https://github.com/Z3Prover/z3/issues/5405 and https://github.com/rems-project/cerberus/issues/180 are fixed
+build-coq.8.13.2-timing:
+  <<: *template
+  variables:
+    OPAM_PINS: "coq version 8.13.2   cerberus git git+https://github.com/rems-project/cerberus.git#7eb94d628845555cb5425f4f4b48890b345efdc5   z3 version 4.8.9-1"
+    DENY_WARNINGS: "1"
+    # OPAM_PKG: "1"
+  only:
+  - main@iris/isla-coq
+  - /^time/@iris/isla-coq
+  # timing only for main and time/ branches
+  # tags:
+  # - fp-timing
+
+build-coq.8.13.2:
+  <<: *template
+  variables:
+    OPAM_PINS: "coq version 8.13.2   cerberus git git+https://github.com/rems-project/cerberus.git#7eb94d628845555cb5425f4f4b48890b345efdc5   z3 version 4.8.9-1"
+    DENY_WARNINGS: "1"
+  only:
+  - /^ci/@iris/isla-coq
