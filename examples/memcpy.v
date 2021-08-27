@@ -72,11 +72,21 @@ Proof.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   - rename select (bv_extract _ _ _ ≠ _) into Hextract.
-    (* TODO: use some lemma to turn bv_not into bv_opp / bv_sub *)
+    have ? : bv_unsigned i + 1 ≠ bv_unsigned n. { admit. }
+    bv_solve.
+  - have ? : bv_unsigned i + 1 ≠ bv_unsigned n. { admit. }
     admit.
-  - admit.
-  - admit.
-  - admit.
+  - have ? : bv_unsigned i + 1 = bv_unsigned n. { admit. }
+    bv_solve.
+  - have ? : bv_unsigned i + 1 = bv_unsigned n. { admit. }
+    rewrite -(take_drop (Z.to_nat (bv_unsigned i)) (<[_ := _]> dstdata)).
+    rewrite -(take_drop (Z.to_nat (bv_unsigned i)) srcdata).
+    f_equal.
+    + by rewrite take_insert.
+    + erewrite drop_S. 2: { apply: list_lookup_insert. bv_solve. }
+      erewrite (drop_S srcdata); [|done].
+      rewrite !drop_ge ?insert_length; [ |lia..].
+      f_equal. bv_solve.
 Abort.
 
 Lemma memcpy `{!islaG Σ} `{!threadG} :
