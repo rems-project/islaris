@@ -1,4 +1,5 @@
 From isla Require Export base.
+From refinedc.lithium Require Import Z_bitblast.
 
 Typeclasses Opaque Z_to_bv
        bv_0 bv_succ bv_pred
@@ -19,10 +20,33 @@ Global Opaque Z_to_bv
        bv_sign_extend bv_extract bv_concat
        bv_add_Z bv_sub_Z bv_mul_Z.
 
+Hint Rewrite bv_unsigned_spec_high using lia : rewrite_bits_db.
+
+Lemma bv_extract_concat_later n1 n2 s l (b1 : bv n1) (b2 : bv n2):
+  (n2 ≤ s)%N →
+  bv_extract s l (bv_concat b1 b2) = bv_extract (s - n2) l b1.
+Proof.
+  move => ?. apply bv_eq.
+  rewrite !bv_extract_unsigned bv_concat_unsigned !bv_wrap_land.
+  bitblast.
+Qed.
+Lemma bv_extract_concat_here n1 n2 s (b1 : bv n1) (b2 : bv n2):
+  s = 0%N →
+  bv_extract s n2 (bv_concat b1 b2) = b2.
+Proof.
+  move => ->. apply bv_eq.
+  rewrite !bv_extract_unsigned bv_concat_unsigned !bv_wrap_land.
+  bitblast.
+Qed.
+
 (** The [bv_simplify] database collects rewrite rules that rewrite
 bitvectors into other bitvectors. *)
 Create HintDb bv_simplify discriminated.
 Hint Rewrite @bv_concat_0 using done : bv_simplify.
+Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : bv_simplify.
+
+(* These rules are also useful for general simplification. *)
+Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : lithium_rewrite.
 
 (** The [bv_unfold] database contains rewrite rules that propagate
 bv_unsigned and bv_signed and unfold the bitvector definitions. *)
@@ -74,8 +98,23 @@ Hint Rewrite Z.shiftr_0_r Z.lor_0_r Z.lor_0_l : bv_unfolded_simplify.
 Hint Rewrite Z.land_ones using lia : bv_unfolded_simplify.
 Hint Rewrite bv_wrap_bv_wrap using lia : bv_unfolded_simplify.
 
+Ltac reduce_closed_N_tac := idtac.
+Ltac reduce_closed_N :=
+  idtac;
+  reduce_closed_N_tac;
+  repeat match goal with
+  | |- context [N.add ?a ?b] => progress reduce_closed (N.add a b)
+  | H : context [N.add ?a ?b] |- _ => progress reduce_closed (N.add a b)
+  end.
+
+
 Ltac bv_simplify :=
   unLET;
+  (* We need to reduce operations on N in indices of bv because
+  otherwise lia can get confused (it does not perform unification when
+  finding identical subterms). This sometimes leads to problems
+  with length of lists of bytes. *)
+  reduce_closed_N;
   autorewrite with bv_simplify;
   try apply bv_eq_wrap;
   autorewrite with bv_unfold;
@@ -90,11 +129,15 @@ Ltac bv_simplify_hyp H :=
 Tactic Notation "bv_simplify_hyp" "select" open_constr(pat) :=
   select pat (fun H => bv_simplify_hyp H).
 
+Ltac bv_solve_unfold_tac := idtac.
+
 Ltac bv_solve :=
   bv_simplify;
   (* try lazymatch goal with *)
   (* | |- bv_wrap _ _ = bv_wrap _ _ => f_equal *)
   (* end; *)
+  bv_saturate;
+  bv_solve_unfold_tac;
   unfold bv_wrap, bv_modulus, bv_unsigned in *;
   simpl;
   lia.

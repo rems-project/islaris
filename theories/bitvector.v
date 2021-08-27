@@ -178,6 +178,10 @@ Proof.
   by rewrite Hbits, Hok1, Hok2.
 Qed.
 
+Lemma bv_wrap_land n z :
+  bv_wrap n z = Z.land z (Z.ones (Z.of_N n)).
+Proof. by rewrite Z.land_ones by lia. Qed.
+
 (** * Definition of [bv n] *)
 Record bv (n : N) := BV {
   bv_unsigned : Z;
@@ -240,6 +244,14 @@ Lemma bv_signed_in_range n (b : bv n):
   n ≠ 0%N →
   - bv_half_modulus n ≤ bv_signed b < bv_half_modulus n.
 Proof. apply bv_swrap_in_range. Qed.
+
+Lemma bv_unsigned_spec_high i n (b : bv n) :
+  Z.of_N n ≤ i →
+  Z.testbit (bv_unsigned b) i = false.
+Proof.
+  intros ?. pose proof (bv_unsigned_in_range _ b). unfold bv_modulus in *.
+  eapply Z_bounded_iff_bits_nonneg; [..|done]; lia.
+Qed.
 
 Lemma bv_unsigned_N_0 (b : bv 0):
   bv_unsigned b = 0.

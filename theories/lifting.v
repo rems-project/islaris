@@ -452,6 +452,21 @@ Section lifting.
     by iApply ("Hcont" with "Hm").
   Qed.
 
+  Lemma wp_write_mem_array n len a a' vnew (i : nat) (l : list (bv n)) es ann kind res tag:
+    n = (8 * len)%N →
+    0 < Z.of_N len →
+    (i < length l)%nat →
+    a = bv_add_Z a' (i * Z.of_N len) →
+    a' ↦ₘ∗ l -∗
+    (a' ↦ₘ∗ <[i := vnew]> l -∗ WPasm es) -∗
+    WPasm (WriteMem (Val_Bool res) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
+  Proof.
+    iIntros (??[??]%lookup_lt_is_Some_2 ->) "Hm Hcont".
+    iDestruct (mem_mapsto_array_insert_acc with "Hm") as "[Hv Hm]"; [done..|].
+    iApply (wp_write_mem with "Hv"); [lia..|].
+    iIntros "Hl". iApply ("Hcont"). by iApply "Hm".
+  Qed.
+
   Lemma wp_write_mmio n len a (vnew : bv n) es ann res kind tag κs:
     n = (8 * len)%N →
     0 < Z.of_N len →
@@ -483,6 +498,26 @@ Section lifting.
   Lemma wp_branch_address v es ann:
     WPasm es -∗
     WPasm (BranchAddress v ann :: es).
+  Proof.
+    iIntros "Hcont". setoid_rewrite wp_asm_unfold.
+    iIntros ([???]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "(?&Hictx&?)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iSplit. {
+      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      done.
+    }
+    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
+    inv_seq_step.
+    iFrame; iSplitL; [|done].
+    iApply ("Hcont"); [done|done|].
+    iFrame.
+  Qed.
+
+  Lemma wp_branch c desc es ann:
+    WPasm es -∗
+    WPasm (Branch c desc ann :: es).
   Proof.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".

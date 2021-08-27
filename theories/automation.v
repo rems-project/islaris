@@ -4,6 +4,13 @@ From isla Require Export lifting bitvector_auto.
 Set Default Proof Using "Type".
 
 (** * Simplification and normalization hints *)
+
+(* TODO: upstream *)
+Global Instance simpl_eqb_true b1 b2: SimplBothRel (=) (eqb b1 b2) true (b1 = b2).
+Proof. destruct b1, b2; done. Qed.
+Global Instance simpl_eqb_false b1 b2: SimplBothRel (=) (eqb b1 b2) false (b1 = negb b2).
+Proof. destruct b1, b2; done. Qed.
+
 Global Instance simpl_val_bits_bv_to_bvn n (b1 b2 : bv n) :
   SimplBoth (Val_Bits b1 = Val_Bits b2) (b1 = b2).
 Proof. split; naive_solver. Qed.
@@ -28,6 +35,12 @@ Lemma ite_bits n b (n1 n2 : bv n) :
   ite b (Val_Bits n1) (Val_Bits n2) = Val_Bits (ite b n1 n2).
 Proof. by destruct b. Qed.
 Hint Rewrite ite_bits : lithium_rewrite.
+Global Instance ite_1_0_eq_1_simpl b :
+  SimplBoth (ite b [BV{1} 1] [BV{1} 0] = [BV{1} 1]) (b = true).
+Proof. by destruct b. Qed.
+Global Instance ite_1_0_neq_1_simpl b :
+  SimplBoth (ite b [BV{1} 1] [BV{1} 0] ≠ [BV{1} 1]) (b = false).
+Proof. by destruct b. Qed.
 
 Hint Rewrite Z_to_bv_checked_bv_unsigned : lithium_rewrite.
 
@@ -40,6 +53,9 @@ Proof. split; naive_solver. Qed.
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
 Ltac normalize_tac ::= normalize_autorewrite.
+
+Ltac bv_solve_unfold_tac ::=
+  unfold byte, addr in *.
 
 (* injection on bitvectors sometimes creates weird matches, so we disable it. *)
 Ltac li_impl_check_injection_tac ::=
@@ -163,6 +179,10 @@ Section instances.
     rt_fic := FindMemMapsTo a n;
   |}.
 
+  Global Instance mem_array_related a n (l : list (bv n)) : RelatedTo (a ↦ₘ∗ l) := {|
+    rt_fic := FindDirect (λ l' : list (bv n), a ↦ₘ∗ l')%I;
+  |}.
+
   Lemma find_in_context_mem_mapsto_id a n T:
     (∃ v : bv n, a ↦ₘ v ∗ T (MKMapsTo n v)) -∗
     find_in_context (FindMemMapsTo a n) T.
@@ -176,7 +196,7 @@ Section instances.
     FindInContext (FindMemMapsTo a n) (FICMemMapstoSemantic a n) | 10 :=
     λ T, i2p (find_in_context_mem_mapsto_id a n T).
 
-  Lemma tac_mem_mapsto_eq `{!islaG Σ} l1 l' n' n (v1 v2 : bv n) l2:
+  Lemma tac_mem_mapsto_eq l1 l' n' n (v1 v2 : bv n) l2:
     l1 = l2 →
     FindHypEqual (FICMemMapstoSemantic l' n') (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
   Proof. by move => ->. Qed.
@@ -190,7 +210,7 @@ Section instances.
     λ T, i2p (find_in_context_mem_mapsto_array a n T).
 
   Lemma tac_mem_mapsto_array_eq a n a1 a2 (l1 l2 : list (bv n)):
-    bv_unsigned a1 ≤ bv_unsigned a ≤ bv_unsigned a1 + length l1 * Z.of_N n `div` 8 →
+    bv_unsigned a1 ≤ bv_unsigned a < bv_unsigned a1 + length l1 * Z.of_N (n `div` 8)%N →
     FindHypEqual (FICMemMapstoSemantic a n) (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) (a2 ↦ₘ∗ l2).
   Proof. done. Qed.
 
@@ -287,13 +307,21 @@ Section instances.
     Subsume (spec_trace κs1) (spec_trace κs2) :=
     λ G, i2p (subsume_spec_trace κs1 κs2 G).
 
-  Lemma subsume_mem `{!islaG Σ} a n (v1 v2 : bv n) G:
+  Lemma subsume_mem a n (v1 v2 : bv n) G:
     ⌜v1 = v2⌝ ∗ G -∗
     subsume (a ↦ₘ v1) (a ↦ₘ v2) G.
   Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
-  Global Instance subsume_mem_inst  `{!islaG Σ} a n (v1 v2 : bv n) :
+  Global Instance subsume_mem_inst a n (v1 v2 : bv n) :
     Subsume (a ↦ₘ v1) (a ↦ₘ v2) :=
     λ G, i2p (subsume_mem a n v1 v2 G).
+
+  Lemma subsume_mem_array a n (l1 l2 : list (bv n)) G:
+    ⌜l1 = l2⌝ ∗ G -∗
+    subsume (a ↦ₘ∗ l1) (a ↦ₘ∗ l2) G.
+  Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
+  Global Instance subsume_mem_array_inst a n (l1 l2 : list (bv n)) :
+    Subsume (a ↦ₘ∗ l1) (a ↦ₘ∗ l2) :=
+    λ G, i2p (subsume_mem_array a n l1 l2 G).
 
   Lemma li_wp_next_instr:
     (∃ (nPC : addr) bPC_changed,
@@ -408,6 +436,11 @@ Section instances.
     WPasm (BranchAddress v ann :: es).
   Proof. apply: wp_branch_address. Qed.
 
+  Lemma li_wp_branch c desc ann es:
+    WPasm es -∗
+    WPasm (Branch c desc ann :: es).
+  Proof. apply: wp_branch. Qed.
+
   Lemma li_wp_declare_const_bv v es ann b:
     (∀ (n : bv b), WPasm ((subst_event v (Val_Bits n)) <$> es)) -∗
     WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
@@ -437,7 +470,8 @@ Section instances.
     find_in_context (FindMemMapsTo a n) (λ mk,
       match mk with
       | MKMapsTo _ vold => (a ↦ₘ vnew -∗ WPasm es)
-      | MKArray _ a' l => False
+      | MKArray _ a' l => ∃ i : nat, ⌜a = bv_add_Z a' (i * Z.of_N len)⌝ ∗ ⌜i < length l⌝%nat ∗
+         (a' ↦ₘ∗ <[i := vnew]>l -∗ WPasm es)
       | MKMMIO _ a' l =>
         ⌜bv_unsigned a' ≤ bv_unsigned a⌝ ∗ ⌜bv_unsigned a + Z.of_N len ≤ bv_unsigned a' + l⌝ ∗
         ∃ κs, spec_trace κs ∗ ⌜head κs = Some (SWriteMem a vnew)⌝ ∗
@@ -448,7 +482,9 @@ Section instances.
   Proof.
     iDestruct 1 as (?? mk) "[HP Hcont]" => /=. case_match.
     - iApply (wp_write_mem with "HP Hcont"); [done | lia].
-    - done.
+    - iDestruct "Hcont" as (i??) "Hcont".
+      iApply (wp_write_mem_array with "HP [Hcont]"); [done|lia|done|done|].
+      iIntros "Hl". by iApply "Hcont".
     - iDestruct "Hcont" as (?? κs) "[Hκs [% Hcont]]". destruct κs => //; simplify_eq/=.
       iApply (wp_write_mmio with "[HP] Hκs"); [done | lia| | ].
       { iApply (mmio_range_shorten with "HP"); lia. }
@@ -580,6 +616,7 @@ Ltac liAAsm :=
       | WriteReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg _ _ _ _) _)
       | WriteReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg_struct _ _ _ _ _) _)
       | BranchAddress _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch_address _ _ _) _)
+      | Branch _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch _ _ _ _) _)
       | ReadMem _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_mem _ _ _ _ _ _ _ _) _)
       | WriteMem _ _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_mem _ _ _ _ _ _ _ _ _) _)
       | Smt (DeclareConst _ (Ty_BitVec _)) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bv _ _ _ _) _)

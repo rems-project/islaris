@@ -96,6 +96,18 @@ INSTRUCTIONS = {
             '= (bvand R1 0xfff0000000000007) 0x0000000000000000',
         ]
     },
+    "ldrb_w4_x1_x3" : {
+        "instruction" : "ldrb w4, [x1, x3]",
+        "constraints" : [
+            '= (bvand (bvadd R1 R3) 0xfff0000000000007) 0x0000000000000000',
+        ]
+    },
+    "strb_w4_x0_x3" : {
+        "instruction" : "strb w4, [x0, x3]",
+        "constraints" : [
+            '= (bvand (bvadd R0 R3) 0xfff0000000000007) 0x0000000000000000',
+        ]
+    },
     # "cbnz_w0" : {
         # "instruction" : "cbnz    w0, -0x08"
     # },

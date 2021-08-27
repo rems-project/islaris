@@ -179,6 +179,7 @@ Inductive trace_label : Set :=
 | LReadMem (data : valu) (kind : valu) (addr : valu) (len : N) (tag : valu_option)
 | LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : N) (tag : valu_option)
 | LBranchAddress (v : valu)
+| LBranch (c : Z) (desc : string)
 | LDone (next : trc)
 | LAssert (b : bool)
 .
@@ -204,6 +205,8 @@ Inductive trace_step : trc → option trace_label → trc → Prop :=
     trace_step (WriteMem res kind addr data len tag ann :: es) (Some (LWriteMem res kind addr data len tag)) es
 | BranchAddressS v ann es:
     trace_step (BranchAddress v ann :: es) (Some (LBranchAddress v)) es
+| BranchS c desc ann es:
+    trace_step (Branch c desc ann :: es) (Some (LBranch c desc)) es
 | DoneES es:
     trace_step [] (Some (LDone es)) es
 .
@@ -342,6 +345,10 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
         θ' = θ <| seq_trace := t' |>
       )
     | Some (LBranchAddress _) =>
+      κ' = None ∧
+      θ' = θ <| seq_trace := t'|> ∧
+      σ' = σ
+    | Some (LBranch _ _) =>
       κ' = None ∧
       θ' = θ <| seq_trace := t'|> ∧
       σ' = σ
