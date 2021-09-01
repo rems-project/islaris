@@ -10,3 +10,4 @@ INSTALLDEFAULTROOT = isla # silence multiple roots warning
 -Q _build/default/theories isla
 -Q _build/default/instructions isla.instructions
 -Q _build/default/examples isla.examples
+-Q _build/default/pkvm isla.pkvm

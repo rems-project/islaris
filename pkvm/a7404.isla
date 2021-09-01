@@ -1,0 +1,13 @@
+(trace
+  (cycle)
+  (read-reg |SEE| nil (_ bv-1 128))
+  (write-reg |SEE| nil (_ bv1800 128))
+  (write-reg |__unconditional| nil true)
+  (read-reg |__v85_implemented| nil false)
+  (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b10)))
+  (read-reg |HCR_EL2| nil #x0000000000000000)
+  (read-reg |SCTLR_EL1| nil #x0000000004000002)
+  (read-reg |PSTATE| ((_ field |SP|)) (_ struct (|SP| #b1)))
+  (read-reg |SCTLR_EL2| nil #x0000000004000002)
+  (read-reg |CFG_ID_AA64PFR0_EL1_EL3| nil #x1)
+  (read-reg |SCR_EL3| nil #x00000000))
