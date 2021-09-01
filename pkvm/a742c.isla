@@ -1,0 +1,10 @@
+(trace
+  (cycle)
+  (read-reg |SEE| nil (_ bv-1 128))
+  (write-reg |SEE| nil (_ bv1169 128))
+  (write-reg |__unconditional| nil true)
+  (read-reg |__v85_implemented| nil false)
+  (declare-const v44 (_ BitVec 64))
+  (read-reg |R6| nil v44)
+  (define-const v47 (bvor (bvand v44 #xffffffff0000ffff) #x0000000000000000))
+  (write-reg |R6| nil v47))
