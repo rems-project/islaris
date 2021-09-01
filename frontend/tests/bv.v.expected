@@ -1,6 +1,6 @@
 From isla Require Import isla_lang.
 
-Definition trace : trc := [
+Definition trace : list trc := [
   [
     ReadReg "R" [] (Val_Bits [BV{4%N} 0x0%Z]) Mk_annot;
     ReadReg "R" [] (Val_Bits [BV{32%N} 0x0%Z]) Mk_annot;
