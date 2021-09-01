@@ -54,7 +54,7 @@ metavar enum_ty ::= {{ ocaml int  }}
                     {{ phantom }}
                     {{ lex alphanum }}
                     {{ ocamllex 'E''n''u''m'['0'-'9']+ }}
-                    {{ ocamllex-of-string (function s -> Scanf.sscanf s "Enum%d" Fun.id) }}
+                    {{ ocamllex-of-string (function s -> Scanf.sscanf s "Enum%d" (fun x -> x)) }}
                     {{ pp-raw x = !^(Printf.sprintf "Enum(%d)" x) }}
                     {{ pp x = !^(Printf.sprintf "Enum%d" x) }}
 

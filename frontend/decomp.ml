@@ -94,7 +94,7 @@ let process_line line addrs =
 
 let output_instr_map addrs oc =
   let p fmt = Printf.fprintf oc fmt in
-  p "From isla Require Import isla_lang\n"; (* I don't know why we need this, but without it I get a weird parser error from coq *)
+  p "From isla Require Import isla_lang.\n"; (* I don't know why we need this, but without it I get a weird parser error from coq *)
   List.iter (fun a -> p "Require Import a%s.\n" a) addrs;
   p "\n\nDefinition instr_map := [";
   match addrs with
