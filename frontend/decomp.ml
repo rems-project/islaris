@@ -37,16 +37,19 @@ let filter_events : (event -> bool) -> traces -> traces = fun pred trs ->
   let filter_traces (Traces(trs)) = Traces(List.map filter_trace trs) in
   filter_traces trs
 
-let generate_coq_file def_name isla_file coq_file =
-  (* Parsing the isla file and minimising the traces. *)
+(** [gen_coq name isla_f coq_f] processes the Isla file [isla_f] and generates
+    a corresponding Coq file [coq_f] whose main definition is named [name]. In
+    case of an error, the whole program is terminated using [panic]. *)
+let gen_coq : string -> string -> string -> unit = fun name isla_f coq_f ->
+  (* Parsing the isla file. *)
   let trs =
-    try Parser.parse_file isla_file with Parser.Parse_error(msg) ->
-      panic "Error while parsing [%s].\n%s" isla_file msg
+    try Parser.parse_file isla_f with Parser.Parse_error(msg) ->
+      panic "Error while parsing [%s].\n%s" isla_f msg
   in
+  (* Filtering the events to minimise the trace. *)
   let trs = filter_events event_filter trs in
   (* Generating the Coq file. *)
-  Coq_pp.write_traces def_name trs (Some(coq_file))
-
+  Coq_pp.write_traces name trs (Some(coq_f))
 
 let rec split_instr s =
   if String.equal s "" then
@@ -80,7 +83,7 @@ let process_line line addrs =
     ("./run_isla_footprint.sh -f isla_footprint_no_init --simplify-registers -s -x -i " ^ instr ^ " " ^ constraint_str ^ " > " ^ isla_file)
   in
   ignore (Sys.command command);
-  generate_coq_file addr_name isla_file coq_file;
+  gen_coq addr_name isla_file coq_file;
   addr :: addrs
 
 let output_instr_map addrs oc =
