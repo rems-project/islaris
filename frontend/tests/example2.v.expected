@@ -1,6 +1,6 @@
 From isla Require Import isla_lang.
 
-Definition trace : trc := [
+Definition trace : list trc := [
   [
     Smt (DeclareConst 7%Z (Ty_BitVec 32%N)) Mk_annot;
     Smt (Assert (Binop (Eq) (Manyop (Bvmanyarith Bvor) [Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot; Unop (Extract 0%N 0%N) (Binop ((Bvarith Bvlshr)) (Manyop (Bvmanyarith Bvor) [Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 7%Z) Mk_annot; Val (Val_Bits [BV{32%N} 0xfffffffe%Z]) Mk_annot] Mk_annot; Val (Val_Bits [BV{32%N} 0x1%Z]) Mk_annot] Mk_annot) (Val (Val_Bits [BV{32%N} 0x0%Z]) Mk_annot) Mk_annot) Mk_annot] Mk_annot) (Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot)) Mk_annot;

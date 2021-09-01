@@ -1,6 +1,6 @@
 From isla Require Import isla_lang.
 
-Definition trace : trc := [
+Definition trace : list trc := [
   [
     Smt (DeclareConst 3%Z (Ty_BitVec 1%N)) Mk_annot;
     Smt (DeclareConst 4%Z (Ty_BitVec 2%N)) Mk_annot;
