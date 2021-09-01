@@ -1,59 +1,52 @@
-let input_line_opt ic =
-  try
-    Some (input_line ic)
-  with e ->
-    None
+open Isla_lang
+open Extra
 
-let rec read_lines ic =
-  match input_line_opt ic with
-  | Some line ->
-    line :: (read_lines ic)
-  | None ->
-    []
+(** [ignored_registers] is a list of registers for which read and write events
+    are removed from the trace. *)
+let ignored_registers = [
+  "SEE";
+  "__unconditional";
+  "__v81_implemented";
+  "__v82_implemented";
+  "__v83_implemented";
+  "__v84_implemented";
+  "__v85_implemented";
+  "__trickbox_enabled";
+  "__CNTControlBase";
+  "__defaultRAM";
+  "__isla_monomorphize_reads";
+  "__isla_monomorphize_writes";
+  "__highest_el_aarch32";
+]
 
-let ignored_registers =
-  [
-    "SEE";
-    "__unconditional";
-    "__v81_implemented";
-    "__v82_implemented";
-    "__v83_implemented";
-    "__v84_implemented";
-    "__v85_implemented";
-    "__trickbox_enabled";
-    "__CNTControlBase";
-    "__defaultRAM";
-    "__isla_monomorphize_reads";
-    "__isla_monomorphize_writes";
-    "__highest_el_aarch32"
-  ]
+(** [event_filter e] returns true for all events that are not "Cycle" and that
+    are not register operations for registers in [ignored_registers]. *)
+let event_filter : event -> bool = fun e ->
+  let open Ast in
+  match e with
+  | ReadReg(n,_,_,_)
+  | WriteReg(n,_,_,_) -> not (List.mem n ignored_registers)
+  | Cycle(_)          -> false
+  | _                 -> true
 
-let ignored_words =
-  ["Cycle"] @ 
-  List.map (fun reg -> "ReadReg \"" ^ reg ^ "\"") ignored_registers @
-  List.map (fun reg -> "WriteReg \"" ^ reg ^ "\"") ignored_registers
+(** [filter_events pred trs] returns a copy of [trs] in which only events that
+    satisfy the predicate [pred] have been kept. *)
+let filter_events : (event -> bool) -> traces -> traces = fun pred trs ->
+  let open Ast in
+  let filter_trace (Trace(tr)) = Trace(List.filter pred tr) in
+  let filter_traces (Traces(trs)) = Traces(List.map filter_trace trs) in
+  filter_traces trs
 
-let contains_string haystack needle =
-  try ignore(Str.search_forward (Str.regexp_string needle) haystack 0 : int); true
-  with e -> false
+let generate_coq_file def_name isla_file coq_file =
+  (* Parsing the isla file and minimising the traces. *)
+  let trs =
+    try Parser.parse_file isla_file with Parser.Parse_error(msg) ->
+      panic "Error while parsing [%s].\n%s" isla_file msg
+  in
+  let trs = filter_events event_filter trs in
+  (* Generating the Coq file. *)
+  Coq_pp.write_traces def_name trs (Some(coq_file))
 
-let contains_ignored_word line =
-  match List.find_opt (fun word -> contains_string line word) ignored_words with
-  | Some _ -> true
-  | None -> false
-
-let filter_ignored_words lines =
-  let f l = not (contains_ignored_word l) in
-  List.filter f lines
-
-let filter_file filename =
-  let ic = open_in filename in
-  let lines = read_lines ic in
-  close_in ic;
-  let lines = filter_ignored_words lines in
-  let oc = open_out filename in
-  List.iter (Printf.fprintf oc "%s\n") lines;
-  close_out oc
 
 let rec split_instr s =
   if String.equal s "" then
@@ -86,10 +79,8 @@ let process_line line addrs =
   let command =
     ("./run_isla_footprint.sh -f isla_footprint_no_init --simplify-registers -s -x -i " ^ instr ^ " " ^ constraint_str ^ " > " ^ isla_file)
   in
-  let _ : int = Sys.command command in
-  let conf : Of_isla.config = { input_file = isla_file; output_file = Some coq_file; definition_name = addr_name} in
-  Of_isla.run conf;
-  filter_file coq_file;
+  ignore (Sys.command command);
+  generate_coq_file addr_name isla_file coq_file;
   addr :: addrs
 
 let output_instr_map addrs oc =
@@ -105,12 +96,8 @@ let output_instr_map addrs oc =
     p "]."
 
 let process_file filename =
-  let ic = open_in filename in
-  let lines = read_lines ic in
-  close_in ic;
+  let lines = read_file filename in
   let addrs = List.fold_right process_line lines [] in
   let instr_map_oc = open_out "instrs.v" in
   output_instr_map addrs instr_map_oc;
   close_out instr_map_oc
-
-

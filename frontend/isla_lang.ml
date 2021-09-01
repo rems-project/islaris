@@ -1,5 +1,6 @@
 module Ast = Isla_lang_ast
 
+type event = Ast.lrng Ast.event
 type trace = Ast.lrng Ast.trc
 type traces = Ast.lrng Ast.trcs
 

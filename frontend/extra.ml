@@ -63,4 +63,21 @@ module Buffer = struct
     close_out oc
 end
 
+(** [read_file fname] returns the list of the lines of file [fname]. Note that
+    the trailing newlines are removed. *)
+let read_file : string -> string list = fun fname ->
+  let ic = open_in fname in
+  let lines = ref [] in
+  try
+    while true do lines := input_line ic :: !lines done;
+    assert false (* Unreachable. *)
+  with End_of_file -> close_in ic; List.rev !lines
 
+(** Short name for a standard formatter with continuation. *)
+type ('a,'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
+
+(** [invalid_arg fmt ...] raises [Invalid_argument] with the given message. It
+    can be formed using the standard formatter syntax. *)
+let invalid_arg : ('a, 'b) koutfmt -> 'a = fun fmt ->
+  let cont _ = invalid_arg (Format.flush_str_formatter ()) in
+  Format.kfprintf cont Format.str_formatter fmt
