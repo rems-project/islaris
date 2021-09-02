@@ -43,6 +43,10 @@ let gen_coq : string -> string -> string -> unit = fun name isla_f coq_f ->
   (* Generating the Coq file. *)
   Coq_pp.write_traces name trs (Some(coq_f))
 
+(** Absolute path to the aarch64 isla configuration file. *)
+let aarch64_isla_coq : Filename.filepath =
+  Filename.concat Config.etc "aarch65_isla_coq.toml"
+
 let rec split_instr s =
   if String.equal s "" then
     []
@@ -72,7 +76,9 @@ let process_line line addrs =
   let coq_file = addr_name ^ ".v" in
   let constraint_str = get_constraint_str derefs in
   let command =
-    ("./run_isla_footprint.sh -f isla_footprint_no_init --simplify-registers -s -x -i " ^ instr ^ " " ^ constraint_str ^ " > " ^ isla_file)
+    Printf.sprintf "./run_isla_footprint.sh -f isla_footprint_no_init \
+      -C %s --simplify-registers -s -x -i %s %s > %s" aarch64_isla_coq instr
+      constraint_str isla_file
   in
   ignore (Sys.command command);
   gen_coq addr_name isla_file coq_file;

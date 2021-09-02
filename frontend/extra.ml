@@ -38,6 +38,22 @@ let panic : ('a, 'b) Format.koutfmt -> 'a = fun fmt ->
   let fmt = Color.red (fmt ^^ "\n") in
   Format.kfprintf (fun _ -> exit 1) Format.err_formatter fmt
 
+module Filename =
+  struct
+    include Filename
+
+    (** Type synonym representing a path to a file. *)
+    type filepath = string
+
+    (** Type synonym representing a path to a directory. *)
+    type dirpath = string
+
+    (** [realpath path] returns the absolute canonical path to file [path]. If
+        [path] is invalid (i.e., it does not describe an existing file),  then
+        the exception [Invalid_argument] is raised. *)
+    external realpath : filepath -> filepath = "c_realpath"
+  end
+
 module Buffer = struct
   include Buffer
 
