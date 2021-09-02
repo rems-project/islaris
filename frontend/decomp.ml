@@ -29,14 +29,6 @@ let event_filter : event -> bool = fun e ->
   | Cycle(_)          -> false
   | _                 -> true
 
-(** [filter_events pred trs] returns a copy of [trs] in which only events that
-    satisfy the predicate [pred] have been kept. *)
-let filter_events : (event -> bool) -> traces -> traces = fun pred trs ->
-  let open Ast in
-  let filter_trace (Trace(tr)) = Trace(List.filter pred tr) in
-  let filter_traces (Traces(trs)) = Traces(List.map filter_trace trs) in
-  filter_traces trs
-
 (** [gen_coq name isla_f coq_f] processes the Isla file [isla_f] and generates
     a corresponding Coq file [coq_f] whose main definition is named [name]. In
     case of an error, the whole program is terminated using [panic]. *)
