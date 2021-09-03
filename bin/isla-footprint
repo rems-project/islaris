@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# Root of repo https://github.com/rems-project/isla, defined as:
+# - the value of environment variable ISLA_REPO if defined,
+# - directory named "isla" in the parent directory of current repo.
+ISLA_ROOT=
+
+# Root of repo [https://github.com/rems-project/isla-snapshots], defined as:
+# - the value of environment variable ISLA_SNAP_REPO if defined,
+# - directory named "isla-snapshots" in the parent directory of current repo.
+ISLA_SNAP_ROOT=
+
+SCRIPT_DIR="$(dirname "$BASH_SOURCE")"
+
+# Definition of ISLA_ROOT.
+if [ -z "$ISLA_REPO" ]; then
+  ISLA_ROOT="$(realpath "$SCRIPT_DIR/../../isla")"
+else
+  ISLA_ROOT="$(realpath "$ISLA_REPO")"
+fi
+
+# Definition of ISLA_SNAPSHOTS_ROOT.
+if [ -z "$ISLA_REPO" ]; then
+  ISLA_SNAP_ROOT="$(realpath "$SCRIPT_DIR/../../isla-snapshots")"
+else
+  ISLA_SNAP_ROOT="$(realpath "$ISLA_SNAP_REPO")"
+fi
+
+# Architecture file.
+IR_FILE="$ISLA_SNAP_ROOT/aarch64.ir"
+
+# Check that the architecture file exists.
+if [ ! -e "$IR_FILE" ]; then
+  echo "File [$IR_FILE] does not exist."
+  exit 1
+fi
+
+# Sanity check: verify that we indeed got the Isla repo.
+if [ ! -d "$ISLA_ROOT" ]; then
+  echo "Directory [$ISLA_ROOT] does not exist."
+  exit 1
+fi
+
+# Move to the repository.
+cd "$ISLA_ROOT"
+
+# Check that it is the right folder.
+if [ ! -e "Cargo.toml" ]; then
+  echo "Directory [$ISLA_ROOT] does not seem to be the Isla repository."
+  echo "No [Cargo.toml] file found."
+  exit 1
+elif ! grep "name *= *\"isla-footprint\"" -q Cargo.toml; then
+  echo "Directory [$ISLA_ROOT] does not seem to be the Isla repository."
+  echo "The [Cargo.toml] does not contain [name = \"isla-footprint\"]."
+  exit 1
+fi
+
+# Run isla-footprint.
+export LD_LIBRARY_PATH=.
+cargo run --release --bin isla-footprint -- "$@" -A "$IR_FILE"
