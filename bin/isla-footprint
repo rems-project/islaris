@@ -57,4 +57,4 @@ fi
 
 # Run isla-footprint.
 export LD_LIBRARY_PATH=.
-cargo run --release --bin isla-footprint -- "$@" -A "$IR_FILE"
+cargo run --quiet --release --bin isla-footprint -- "$@" -A "$IR_FILE"

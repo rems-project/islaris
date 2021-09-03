@@ -143,7 +143,7 @@ let opts_config : config Term.t =
     in
     let output_dir =
       match output with
-      | None      -> "."
+      | None      -> Filename.dirname input_file
       | Some(dir) -> dir (* TODO sanintize, check if needs creating. *)
     in
     {file_name; output_dir}
