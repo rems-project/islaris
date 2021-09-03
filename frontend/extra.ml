@@ -1,5 +1,7 @@
 (** Standard library extension (mostly). *)
 
+type 'a eq = 'a -> 'a -> bool
+
 module Format = struct
   include Format
 
@@ -12,6 +14,42 @@ module Format = struct
   (** Short name for a standard formatter with continuation. *)
   type ('a, 'b) koutfmt = ('a, formatter, unit, unit, unit, 'b) format6
 end
+
+module Option =
+  struct
+    type 'a t = 'a option
+
+    let map : ('a -> 'b) -> 'a t -> 'b t = fun f o ->
+      match o with
+      | None    -> None
+      | Some(e) -> Some(f e)
+
+    let map_default : ('a -> 'b) -> 'b -> 'a option -> 'b = fun f d o ->
+      match o with
+      | None    -> d
+      | Some(e) -> f e
+
+    let iter : ('a -> unit) -> 'a t -> unit = fun f o ->
+      match o with
+      | None    -> ()
+      | Some(e) -> f e
+
+    let get : 'a -> 'a option -> 'a = fun d o ->
+      match o with
+      | None    -> d
+      | Some(e) -> e
+
+    let equal : 'a eq -> 'a option eq = fun eq o1 o2 ->
+      match (o1, o2) with
+      | (None    , None    ) -> true
+      | (Some(e1), Some(e2)) -> eq e1 e2
+      | (_       , _       ) -> false
+
+    let pp : 'a Format.pp -> 'a option Format.pp = fun pp_elt oc o ->
+      match o with
+      | None   -> ()
+      | Some e -> pp_elt oc e
+  end
 
 (** Basic format transformer to add to console output. *)
 module Color = struct
