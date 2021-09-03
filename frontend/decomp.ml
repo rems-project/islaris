@@ -45,7 +45,7 @@ let gen_coq : string -> string -> string -> unit = fun name isla_f coq_f ->
 
 (** Absolute path to the aarch64 isla configuration file. *)
 let aarch64_isla_coq : Filename.filepath =
-  Filename.concat Config.etc "aarch65_isla_coq.toml"
+  Filename.concat Config.etc "aarch64_isla_coq.toml"
 
 let rec split_instr s =
   if String.equal s "" then
@@ -76,13 +76,14 @@ let process_line name_template output_dir line addrs =
   let coq_file = Filename.concat output_dir (addr_name ^ ".v") in
   let constraint_str = get_constraint_str derefs in
   let command =
-    Printf.sprintf "./run_isla_footprint.sh -f isla_footprint_no_init \
+    Printf.sprintf "isla-footprint -f isla_footprint_no_init \
       -C %s --simplify-registers -s -x -i %s %s > %s" aarch64_isla_coq instr
       constraint_str isla_file
   in
-  ignore (Sys.command command);
-  gen_coq addr_name isla_file coq_file;
-  addr :: addrs
+  match Sys.command command with
+  | 0 -> gen_coq addr_name isla_file coq_file;
+         addr :: addrs
+  | i -> panic "Command [%s] terminated with code %i." command i
 
 let output_instr_map addrs oc =
   let p fmt = Printf.fprintf oc fmt in
