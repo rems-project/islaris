@@ -66,14 +66,14 @@ let get_constraint_str derefs =
     let constraints = List.map (fun d -> "--reset-constraint '= (bvand " ^ d ^ " 0xfff0000000000007) 0x0000000000000000'") derefs in
     String.concat " " constraints
 
-let process_line line addrs =
+let process_line name_template output_dir line addrs =
   let cols = String.split_on_char ':' line in
   let addr = String.trim (List.nth cols 0) in
   let instr = instr_rev (String.trim (List.nth cols 1)) in
   let derefs = String.trim (List.nth cols 2) in
-  let addr_name = "a" ^ addr in
-  let isla_file = addr_name ^ ".isla" in
-  let coq_file = addr_name ^ ".v" in
+  let addr_name = name_template addr instr in
+  let isla_file = Filename.concat output_dir (addr_name ^ ".isla") in
+  let coq_file = Filename.concat output_dir (addr_name ^ ".v") in
   let constraint_str = get_constraint_str derefs in
   let command =
     Printf.sprintf "./run_isla_footprint.sh -f isla_footprint_no_init \
@@ -96,9 +96,9 @@ let output_instr_map addrs oc =
     List.iter (fun a -> p "; (0x%s%%Z, a%s)\n" a a) addrs;
     p "]."
 
-let process_file filename =
-  let lines = read_file filename in
-  let addrs = List.fold_right process_line lines [] in
-  let instr_map_oc = open_out "instrs.v" in
+let run name_template output_dir input_file =
+  let lines = read_file input_file in
+  let addrs = List.fold_right (process_line name_template output_dir) lines [] in
+  let instr_map_oc = open_out (Filename.concat output_dir "instrs.v") in
   output_instr_map addrs instr_map_oc;
   close_out instr_map_oc
