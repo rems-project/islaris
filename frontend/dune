@@ -4,7 +4,7 @@
  (package coq-isla)
  (flags (:standard -warn-error -A -w -27 -w -26))
  (foreign_stubs (language c) (names stubs))
- (libraries cmdliner pprint str))
+ (libraries cmdliner pprint str unix))
 
 (rule
  (targets isla_lang_parser.mly isla_lang_parser_pp.ml isla_lang_lexer.mll

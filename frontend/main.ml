@@ -60,7 +60,8 @@ let output =
      written to standard output), or a directory name (in which case the \
      output file is written to the directory, with a name constructed by \
      changing the extension of the input file. In Dump mode $(docv) should \
-     give the path to a directory (it is created if it does not exist."
+     give the path to a directory (it is created if it does not exist, but \
+     not its parent directories)."
   in
   let i = Arg.(info ["o"; "output"] ~docv:"PATH" ~doc) in
   Arg.(value & opt (some string) None & i)
@@ -104,18 +105,65 @@ let input_file =
   Arg.(required & pos 0 (some non_dir_file) None & info [] ~docv:"FILE" ~doc)
 
 let opts_config : config Term.t =
+  let is_valid_coq_ident s =
+    let valid_char first c =
+      match c with
+      | 'a'..'z' | 'A'..'Z' -> true
+      | '0'..'9' | '_'      -> not first
+      | _                   -> false
+    in
+    String.length s <> 0 &&
+    valid_char true s.[0] &&
+    String.for_all (valid_char false) s
+  in
   let build_isla_config output def_name input_file =
     let def_name =
-      match def_name with
-      | None      -> "trace"
-      | Some(def) -> def (* TODO sanitize. *)
+      let def_name = Option.get "trace" def_name in
+      if is_valid_coq_ident def_name then def_name else
+      panic "The name \"%s\" is not a valid Coq identifier." def_name
     in
     let output_file =
-      (* TODO check that default name is valid Coq path. *)
       match output with
-      | None        -> Some(Filename.remove_extension input_file ^ ".v")
-      | Some("-"  ) -> None
-      | Some(fname) -> Some(fname) (* TODO Handle dir, check extension. *)
+      | None        ->
+          (* Build output file name from input file. *)
+          let dir = Filename.dirname input_file in
+          let base = Filename.(remove_extension (basename input_file)) in
+          let out_file = Filename.concat dir (base ^ ".v") in
+          if is_valid_coq_ident base then Some(out_file) else
+          panic "File name \"%s\", derived form the input file, leads to \
+            an invalid Coq path member (\"%s\")." out_file base
+      | Some("-"  ) -> None (* Output to [stdout]. *)
+      | Some(fname) ->
+      if Filename.extension fname = ".v" then
+        (* We assume [fname] is a path to a Coq file: check it is valid. *)
+        let dir = Filename.dirname fname in
+        let _ =
+          try
+            if not (Sys.is_directory dir) then
+              panic "Invalid path: \"%s\" is not a directory." dir
+          with Sys_error(_) ->
+            panic "Invalid path: directory \"%s\" does not exist." dir
+        in
+        let base = Filename.remove_extension (Filename.basename fname) in
+        if is_valid_coq_ident base then Some(fname) else
+        panic "File name \"%s\" leads to an invalid Coq path member (\"%s\")."
+          fname base
+      else
+        (* Variable [fname] is a path to a directory. *)
+        let _ =
+          try
+            if not (Sys.is_directory fname) then
+              panic "Invalid path: \"%s\" is not a directory (nor a Coq \
+                file)." fname
+          with Sys_error(_) ->
+            panic "Invalid path: directory \"%s\" does not exist." fname
+        in
+        let base = Filename.(remove_extension (basename input_file)) in
+        if is_valid_coq_ident base then
+          Some(Filename.concat fname (base ^ ".v"))
+        else
+          panic "File name \"%s\", derived form the input file, leads to \
+            an invalid Coq path member (\"%s\")." (base ^ ".v") base
     in
     {def_name; output_file}
   in
@@ -126,7 +174,6 @@ let opts_config : config Term.t =
         Str.full_split re def_name
       in
       Option.map fn def_name
-      (* TODO check well-formed coq path + uses key. *)
     in
     let file_name addr opcode =
       match def_name with
@@ -141,10 +188,36 @@ let opts_config : config Term.t =
       in
       String.concat "" (List.map to_string l)
     in
+    let _ =
+      (* Check that [file_name] is well-formed. *)
+      let template = file_name "{addr}" "{op}" in
+      if template = file_name "" "" then
+        panic "Invalid name template \"%s\": one of \"{addr}\" or \"{op}\" \
+          must appear at least once." template;
+      if not (is_valid_coq_ident (file_name "0" "1")) then
+        panic "Invalid name template \"%s\": may lead to an invalid Coq path \
+          member." template
+    in
     let output_dir =
       match output with
       | None      -> Filename.dirname input_file
-      | Some(dir) -> dir (* TODO sanintize, check if needs creating. *)
+      | Some(dir) ->
+      let dir_dir = Filename.dirname dir in
+      let _ =
+        try
+          if not (Sys.is_directory dir_dir) then
+            panic "Invalid path: \"%s\" is not a directory." dir_dir
+        with Sys_error(_) ->
+          panic "Invalid path: directory \"%s\" does not exist." dir_dir
+      in
+      let _ =
+        try
+          if not (Sys.is_directory dir) then
+            panic "Invalid path: \"%s\" is not a directory." dir
+        with Sys_error(_) ->
+          Unix.mkdir dir 0o755
+      in
+      dir
     in
     {file_name; output_dir}
   in
@@ -156,8 +229,11 @@ let opts_config : config Term.t =
       match Filename.extension input_file with
       | ".isla" -> Isla_mode
       | ".dump" -> Dump_mode
-      | ""      -> assert false (* TODO *)
-      | ext     -> ignore ext; assert false (* TODO *)
+      | ""      -> panic "The input file \"%s\" has no extension, you must \
+                     specify a mode with -i or -d." input_file
+      | ext     -> panic "The input file \"%s\" has extension \"%s\", which \
+                     is not recognised: specify a running mode with -i or -d."
+                     input_file ext
     in
     let mode =
       match mode_name with

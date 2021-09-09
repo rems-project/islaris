@@ -15,41 +15,49 @@ module Format = struct
   type ('a, 'b) koutfmt = ('a, formatter, unit, unit, unit, 'b) format6
 end
 
-module Option =
-  struct
-    type 'a t = 'a option
+module String = struct
+  include String
 
-    let map : ('a -> 'b) -> 'a t -> 'b t = fun f o ->
-      match o with
-      | None    -> None
-      | Some(e) -> Some(f e)
+  let for_all : (char -> bool) -> string -> bool = fun pred s ->
+    let exception Bad_char in
+    let check_pred c = if not (pred c) then raise Bad_char in
+    try String.iter check_pred s; true with Bad_char -> false
+end
 
-    let map_default : ('a -> 'b) -> 'b -> 'a option -> 'b = fun f d o ->
-      match o with
-      | None    -> d
-      | Some(e) -> f e
+module Option = struct
+  type 'a t = 'a option
 
-    let iter : ('a -> unit) -> 'a t -> unit = fun f o ->
-      match o with
-      | None    -> ()
-      | Some(e) -> f e
+  let map : ('a -> 'b) -> 'a t -> 'b t = fun f o ->
+    match o with
+    | None    -> None
+    | Some(e) -> Some(f e)
 
-    let get : 'a -> 'a option -> 'a = fun d o ->
-      match o with
-      | None    -> d
-      | Some(e) -> e
+  let map_default : ('a -> 'b) -> 'b -> 'a option -> 'b = fun f d o ->
+    match o with
+    | None    -> d
+    | Some(e) -> f e
 
-    let equal : 'a eq -> 'a option eq = fun eq o1 o2 ->
-      match (o1, o2) with
-      | (None    , None    ) -> true
-      | (Some(e1), Some(e2)) -> eq e1 e2
-      | (_       , _       ) -> false
+  let iter : ('a -> unit) -> 'a t -> unit = fun f o ->
+    match o with
+    | None    -> ()
+    | Some(e) -> f e
 
-    let pp : 'a Format.pp -> 'a option Format.pp = fun pp_elt oc o ->
-      match o with
-      | None   -> ()
-      | Some e -> pp_elt oc e
-  end
+  let get : 'a -> 'a option -> 'a = fun d o ->
+    match o with
+    | None    -> d
+    | Some(e) -> e
+
+  let equal : 'a eq -> 'a option eq = fun eq o1 o2 ->
+    match (o1, o2) with
+    | (None    , None    ) -> true
+    | (Some(e1), Some(e2)) -> eq e1 e2
+    | (_       , _       ) -> false
+
+  let pp : 'a Format.pp -> 'a option Format.pp = fun pp_elt oc o ->
+    match o with
+    | None   -> ()
+    | Some e -> pp_elt oc e
+end
 
 (** Basic format transformer to add to console output. *)
 module Color = struct
