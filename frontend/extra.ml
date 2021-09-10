@@ -13,6 +13,11 @@ module Format = struct
 
   (** Short name for a standard formatter with continuation. *)
   type ('a, 'b) koutfmt = ('a, formatter, unit, unit, unit, 'b) format6
+
+  let write_file : string -> (formatter -> unit) -> unit = fun fname pp ->
+    let oc = open_out fname in
+    let ff = formatter_of_out_channel oc in
+    pp ff; print_flush (); close_out oc
 end
 
 module String = struct
@@ -22,6 +27,15 @@ module String = struct
     let exception Bad_char in
     let check_pred c = if not (pred c) then raise Bad_char in
     try String.iter check_pred s; true with Bad_char -> false
+
+  (** [chop size s] chops string [s] into chunks of size [size] (in order). If
+      the length of [s] is not a multiple of [size] then [Invalid_argument] is
+      raise. *)
+  let chop : int -> string -> string list = fun size s ->
+    if String.length s mod size <> 0 then
+      invalid_arg "String.chop: bad chunk size";
+    let fn i = String.sub s (i * size) size in
+    List.init (String.length s / size) fn
 end
 
 module Option = struct
