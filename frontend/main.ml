@@ -15,6 +15,7 @@ type isla_config = {
 type dump_config = {
   file_name  : string -> string -> string; (** Definition name template. *)
   output_dir : string; (** Directory where to write the generated files. *)
+  coq_prefix : string list; (** Coq module path prefix for generated files. *)
 }
 
 (** Running mode. *)
@@ -40,7 +41,7 @@ let run_isla : isla_config -> string -> unit = fun cfg input_file ->
 (** [run_dump cfg input_file] runs the Dump mode on the file [input_file] with
     the configuration [cfg]. *)
 let run_dump : dump_config -> string -> unit = fun cfg input_file ->
-  Decomp.run cfg.file_name cfg.output_dir input_file
+  Decomp.run cfg.file_name cfg.output_dir cfg.coq_prefix input_file
 
 (** [run cfg] runs the program in the mode specified by [cfg]. Any error leads
     to the program being terminated cleanly. *)
@@ -52,6 +53,23 @@ let run : config -> unit = fun cfg ->
   with e ->
     (* Just in case there is a bug somewhere. *)
     panic "Uncaught exception: [%s]." (Printexc.to_string e)
+
+(** [is_valid_coq_ident s] indicates whether [s] is a valid Coq identifier. An
+    identifier that is valid in this sense can be used everywhere: as the name
+    of a Coq definition, or as a Coq module path member, for example. *)
+let is_valid_coq_ident : string -> bool = fun s ->
+  let valid_char first c =
+    match c with
+    | 'a'..'z' | 'A'..'Z' -> true
+    | '0'..'9' | '_'      -> not first
+    | _                   -> false
+  in
+  String.length s <> 0 &&
+  valid_char true s.[0] &&
+  String.for_all (valid_char false) s
+
+let default_coq_dir : string -> string list = fun base ->
+  ["isla"; "examples"; base]
 
 let output =
   let doc =
@@ -96,6 +114,29 @@ let mode_flag =
   in
   Arg.(value & vflag None [isla_mode; dump_mode])
 
+let coq_prefix =
+  let doc =
+    Printf.sprintf "Specify the logical Coq directory (i.e., module path) \
+      under which the generated files are placed. This option is only valid \
+      in Dump mode. The argument $(docv) is expected to be a dot-sperated \
+      list of identifiers formed of letters, underscores, and numbers (with \
+      a letter in first position). If no explicit Coq directory is given \
+      then it defaults to \"%s\", where BASE is the base name of the input \
+      file. If BASE is not a valid identifier then the command fails."
+      (String.concat "." (default_coq_dir "BASE"))
+  in
+  let coqdir =
+    let parse s =
+      let ids = String.split_on_char '.' s in
+      if ids <> [""] && List.for_all is_valid_coq_ident ids then Ok(ids) else
+      Error(`Msg "invalid COQDIR argument")
+    in
+    let pp fmt ids = Format.pp_print_string fmt (String.concat "." ids) in
+    Arg.conv ~docv:"COQDIR" (parse, pp)
+  in
+  let i = Arg.(info ["coqdir"] ~docv:"COQDIR" ~doc) in
+  Arg.(value & opt (some coqdir) None & i)
+
 let input_file =
   let doc =
     "Isla language source file or annotated object dump file. If no running \
@@ -105,17 +146,6 @@ let input_file =
   Arg.(required & pos 0 (some non_dir_file) None & info [] ~docv:"FILE" ~doc)
 
 let opts_config : config Term.t =
-  let is_valid_coq_ident s =
-    let valid_char first c =
-      match c with
-      | 'a'..'z' | 'A'..'Z' -> true
-      | '0'..'9' | '_'      -> not first
-      | _                   -> false
-    in
-    String.length s <> 0 &&
-    valid_char true s.[0] &&
-    String.for_all (valid_char false) s
-  in
   let build_isla_config output def_name input_file =
     let def_name =
       let def_name = Option.get "trace" def_name in
@@ -167,7 +197,7 @@ let opts_config : config Term.t =
     in
     {def_name; output_file}
   in
-  let build_dump_config output def_name input_file =
+  let build_dump_config output def_name coq_prefix input_file =
     let def_name =
       let fn def_name =
         let re = Str.regexp "[{][a-z]*[}]"in
@@ -219,9 +249,19 @@ let opts_config : config Term.t =
       in
       dir
     in
-    {file_name; output_dir}
+    let coq_prefix =
+      match coq_prefix with
+      | Some(p) -> p
+      | None    ->
+      let base = Filename.chop_extension (Filename.basename input_file) in
+      if not (is_valid_coq_ident base) then
+        panic "A coq directory name cannot be derived from the name of the \
+          input file, use the --coqdir option.";
+      default_coq_dir base
+    in
+    {file_name; output_dir; coq_prefix}
   in
-  let build output def_name mode_flag input_file =
+  let build output def_name mode_flag coq_prefix input_file =
     let mode_name =
       match mode_flag with
       | Some(m) -> m
@@ -237,12 +277,16 @@ let opts_config : config Term.t =
     in
     let mode =
       match mode_name with
-      | Isla_mode -> Isla(build_isla_config output def_name input_file)
-      | Dump_mode -> Dump(build_dump_config output def_name input_file)
+      | Isla_mode when coq_prefix = None ->
+          Isla(build_isla_config output def_name input_file)
+      | Isla_mode                        ->
+          panic "Option --coqdir is only available in Dump mode.";
+      | Dump_mode                        ->
+          Dump(build_dump_config output def_name coq_prefix input_file)
     in
     {input_file; mode}
   in
-  Term.(pure build $ output $ def_name $ mode_flag $ input_file)
+  Term.(pure build $ output $ def_name $ mode_flag $ coq_prefix $ input_file)
 
 let cmd =
   let doc =
