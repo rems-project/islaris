@@ -11,4 +11,5 @@ if [ -z "${TIMECMD}" ]; then
 else
   echo "${TIMECMD}"
   ${TIMECMD} coqc "$@"
+  ls examples
 fi
