@@ -47,14 +47,32 @@ let gen_coq : string -> string -> string -> unit = fun name isla_f coq_f ->
 let aarch64_isla_coq : Filename.filepath =
   Filename.concat Config.etc "aarch64_isla_coq.toml"
 
+(** Keys allowed in name templates. *)
+let template_keys : (string * string) list = [
+  ("addr" , "address of the instruction");
+  ("op"   , "opcode of the instruction" );
+  ("revop", "reversed opcode of the instruction");
+]
+
+let default_template : string = "a{addr}"
+
 (** Representation of a line of (annotated) objdump output. *)
 type decomp_line = {
-  dl_addr    : string;
-  dl_opcode  : string;
-  dl_constrs : string list;
-  dl_instr   : string;
-  dl_comment : string option;
+  dl_addr      : string;
+  dl_opcode    : string; (* The opcode from objdump. *)
+  dl_revopcode : string; (* Reversed version (other endianness). *)
+  dl_constrs   : string list;
+  dl_instr     : string;
+  dl_comment   : string option;
 }
+
+let name_from_template : Template.t -> decomp_line -> string = fun t d ->
+  let map = SMap.empty in
+  let map = SMap.add "addr"  d.dl_addr      map in
+  let map = SMap.add "op"    d.dl_opcode    map in
+  let map = SMap.add "revop" d.dl_revopcode map in
+  try Template.subst t map with Invalid_argument(_) ->
+    assert false (* Unreachable. *)
 
 (** [parse_decomp input_file] parses lines of [input_file] to obtain a list of
     instruction lines to be processed. Empty lines are ignored, and in case of
@@ -94,7 +112,8 @@ let parse_decomp : string -> decomp_line list = fun input_file ->
       addr
     in
     (* Sanity check and endianness fix for the opcode. *)
-    let dl_opcode =
+    let dl_opcode = opcode in
+    let dl_revopcode =
       if opcode = "" then
         parse_error "the second column is empty (expected hex op-code)";
       if not (String.for_all is_hex opcode) then
@@ -132,13 +151,13 @@ let parse_decomp : string -> decomp_line list = fun input_file ->
     in
     (* Remove random tabs from the instruction. *)
     let dl_instr = String.concat " " (String.split_on_char '\t' dl_instr) in
-    {dl_addr; dl_opcode; dl_constrs; dl_instr; dl_comment}
+    {dl_addr; dl_opcode; dl_revopcode; dl_constrs; dl_instr; dl_comment}
   in
   List.map parse_line lines
 
-let process_line : (string -> string -> string) -> string -> decomp_line
-    -> unit = fun name_template output_dir d ->
-  let name = name_template d.dl_addr d.dl_instr in
+let process_line : Template.t -> string -> decomp_line -> unit =
+    fun name_template output_dir d ->
+  let name = name_from_template name_template d in
   let isla_file = Filename.concat output_dir (name ^ ".isla") in
   let coq_file  = Filename.concat output_dir (name ^ ".v"   ) in
   let constrs =
@@ -151,20 +170,19 @@ let process_line : (string -> string -> string) -> string -> decomp_line
   let command =
     Printf.sprintf "isla-footprint -f isla_footprint_no_init \
       -C %s --simplify-registers -s -x -i %s %s > %s" aarch64_isla_coq
-      d.dl_opcode constrs isla_file
+      d.dl_revopcode constrs isla_file
   in
   match Sys.command command with
   | 0 -> gen_coq name isla_file coq_file
   | i -> panic "Command [%s] terminated with code %i." command i
 
-let gen_instr_map : (string -> string -> string) -> string list
-    -> decomp_line list -> Format.formatter -> unit =
-    fun name_template coq_prefix lines ff ->
+let gen_instr_map : Template.t -> string list -> decomp_line list
+    -> Format.formatter -> unit = fun name_template coq_prefix lines ff ->
   let pp fmt = Format.fprintf ff fmt in
   (* Imports. *)
   pp "From isla Require Import isla_lang.@."; (* Required for notations. *)
   let pp_import d =
-    let name = name_template d.dl_addr d.dl_instr in
+    let name = name_from_template name_template d in
     pp "Require Import %s.@." (String.concat "." (coq_prefix @ [name]))
   in
   List.iter pp_import lines;
@@ -173,7 +191,7 @@ let gen_instr_map : (string -> string -> string) -> string list
   let pp_sep ff _ = Format.fprintf ff ";" in
   let pp_elt ff d =
     Format.fprintf ff "@.  (0x%s%%Z, %s (* %s *))" d.dl_addr
-      (name_template d.dl_addr d.dl_instr) d.dl_instr
+      (name_from_template name_template d) d.dl_instr
   in
   pp "%a" (Format.pp_print_list ~pp_sep pp_elt) lines;
   if lines <> [] then pp "@.";
