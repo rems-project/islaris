@@ -9,11 +9,11 @@ type isla_config = {
   output_file : string option; (** Path to the output file. *)
 }
 
-(** Options required in [Dump] mode. The function [file_name] is used to build
-    the file name for a given instruction, given its address (first argument),
-    and its opcode (second argument). *)
+let default_def_name : string = "trace"
+
+(** Options required in [Dump] mode. *)
 type dump_config = {
-  file_name  : string -> string -> string; (** Definition name template. *)
+  name_template : Template.t; (** File and definition name template. *)
   output_dir : string; (** Directory where to write the generated files. *)
   coq_prefix : string list; (** Coq module path prefix for generated files. *)
 }
@@ -41,7 +41,7 @@ let run_isla : isla_config -> string -> unit = fun cfg input_file ->
 (** [run_dump cfg input_file] runs the Dump mode on the file [input_file] with
     the configuration [cfg]. *)
 let run_dump : dump_config -> string -> unit = fun cfg input_file ->
-  Decomp.run cfg.file_name cfg.output_dir cfg.coq_prefix input_file
+  Decomp.run cfg.name_template cfg.output_dir cfg.coq_prefix input_file
 
 (** [run cfg] runs the program in the mode specified by [cfg]. Any error leads
     to the program being terminated cleanly. *)
@@ -74,23 +74,29 @@ let default_coq_dir : string -> string list = fun base ->
 let output =
   let doc =
     "Write output to $(docv). In Isla mode $(docv) is expected to be either \
-     a file name with \".v\" extension, \"-\" (in which case the output is \
-     written to standard output), or a directory name (in which case the \
-     output file is written to the directory, with a name constructed by \
-     changing the extension of the input file. In Dump mode $(docv) should \
-     give the path to a directory (it is created if it does not exist, but \
-     not its parent directories)."
+    a file name with \".v\" extension, \"-\" (in which case the output is \
+    written to standard output), or a directory name (in which case the \
+    output file is written to the directory, with a name constructed by \
+    changing the extension of the input file. In Dump mode $(docv) should \
+    give the path to a directory (it is created if it does not exist, but \
+    not its parent directories)."
   in
   let i = Arg.(info ["o"; "output"] ~docv:"PATH" ~doc) in
   Arg.(value & opt (some string) None & i)
 
 let def_name =
   let doc =
-    "Specifies a $(docv) for the produced Coq definition holding the traces. \
-     In Dump mode, at least one of the strings \"{addr}\" and \"{op}\" must \
-     appear in the name to form a template. They are respectively replaced \
-     by the address and opcode of the instruction in the input file. In Dump \
-     mode, the given template is also used to generate file names."
+    let keys_descr =
+      let key_descr (k, d) = Printf.sprintf "\"{%s}\" (%s)" k d in
+      String.concat ", " (List.map key_descr Decomp.template_keys)
+    in
+    Printf.sprintf "Specifies a $(docv) for the produced Coq definition \
+      holding the traces. In Isla mode, the default name is \"%s\". In Dump \
+      mode, $(docv) plays the role of a template used to generate Coq \
+      definition names and file names. It should contain at least one of the \
+      following strings (that are substituted with the described value): %s. \
+      The default value for the template is \"%s\"."
+      default_def_name keys_descr Decomp.default_template
   in
   let i = Arg.(info ["n"; "def-name"] ~docv:"NAME" ~doc) in
   Arg.(value & opt (some string) None & i)
@@ -148,7 +154,7 @@ let input_file =
 let opts_config : config Term.t =
   let build_isla_config output def_name input_file =
     let def_name =
-      let def_name = Option.get "trace" def_name in
+      let def_name = Option.get default_def_name def_name in
       if is_valid_coq_ident def_name then def_name else
       panic "The name \"%s\" is not a valid Coq identifier." def_name
     in
@@ -198,35 +204,28 @@ let opts_config : config Term.t =
     {def_name; output_file}
   in
   let build_dump_config output def_name coq_prefix input_file =
-    let def_name =
-      let fn def_name =
-        let re = Str.regexp "[{][a-z]*[}]"in
-        Str.full_split re def_name
+    let name_template =
+      let def_name = Option.get Decomp.default_template def_name in
+      let keys =
+        let fn acc (k, _) = SSet.add k acc in
+        List.fold_left fn SSet.empty Decomp.template_keys
       in
-      Option.map fn def_name
-    in
-    let file_name addr opcode =
-      match def_name with
-      | None    -> "a" ^ addr
-      | Some(l) ->
-      let to_string elt =
-        match elt with
-        | Str.Text(s)         -> s
-        | Str.Delim("{addr}") -> addr
-        | Str.Delim("{op}"  ) -> opcode
-        | Str.Delim(_       ) -> assert false (* unreachable *)
+      let template =
+        try Template.make keys def_name with Invalid_argument(msg) ->
+          panic "Invalid name template \"%s\": %s." def_name msg
       in
-      String.concat "" (List.map to_string l)
-    in
-    let _ =
-      (* Check that [file_name] is well-formed. *)
-      let template = file_name "{addr}" "{op}" in
-      if template = file_name "" "" then
-        panic "Invalid name template \"%s\": one of \"{addr}\" or \"{op}\" \
-          must appear at least once." template;
-      if not (is_valid_coq_ident (file_name "0" "1")) then
+      (* Check that the template is well-formed. *)
+      if SSet.is_empty (Template.used_keys template) then
+        panic "Invalid name template \"%s\": no key used." def_name;
+      let worst_example =
+        let m = SSet.fold (fun e acc -> SMap.add e "0" acc) keys SMap.empty in
+        try Template.subst template m with Invalid_argument(_) ->
+          assert false (* Unreachable. *)
+      in
+      if not (is_valid_coq_ident worst_example) then
         panic "Invalid name template \"%s\": may lead to an invalid Coq path \
-          member." template
+          member." def_name;
+      template
     in
     let output_dir =
       match output with
@@ -259,7 +258,7 @@ let opts_config : config Term.t =
           input file, use the --coqdir option.";
       default_coq_dir base
     in
-    {file_name; output_dir; coq_prefix}
+    {name_template; output_dir; coq_prefix}
   in
   let build output def_name mode_flag coq_prefix input_file =
     let mode_name =

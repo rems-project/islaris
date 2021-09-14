@@ -157,3 +157,9 @@ type ('a,'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
 let invalid_arg : ('a, 'b) koutfmt -> 'a = fun fmt ->
   let cont _ = invalid_arg (Format.flush_str_formatter ()) in
   Format.kfprintf cont Format.str_formatter fmt
+
+(** Sets of elements of [string] *)
+module SSet = Set.Make(String)
+
+(** Maps of [string] keys. *)
+module SMap = Map.Make(String)
