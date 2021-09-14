@@ -62,22 +62,22 @@ from an exception handler in pkvm:
 ```
 We then manually transform it into the following:
 ```
-7400:	a9bf07e0: (bvadd SP_EL2 0x0000000000000008) ; (bvsub SP_EL2 0x0000000000000010)	:stp	x0, x1, [sp, #-16]!	
-7404:	d53c5200: 	:mrs	x0, esr_el2
-7408:	d35afc00: 	:lsr	x0, x0, #26
-740c:	f100581f: 	:cmp	x0, #0x16
-7410:	54ff9f81: 	:b.ne	6800 <__host_exit>  // b.any
-7414:	a94007e0: SP_EL2 ; (bvadd SP_EL2  0x0000000000000008)	:ldp	x0, x1, [sp]
-7418:	f1000c1f: 	:cmp	x0, #0x3
-741c:	54ff9f22: 	:b.cs	6800 <__host_exit>  // b.hs, b.nlast
-7420:	910043ff: 	:add	sp, sp, #0x10
-7424:	58001ea5: 0x00000000000077f8 	:ldr	x5, 77f8 <__kvm_hyp_host_forward_smc+0x64>
-7428:	d2800006: 	:mov	x6, #0x0                   	// #0
-742c:	f2a00006: 	:movk	x6, #0x0, lsl #16
-7430:	f2c00006: 	:movk	x6, #0x0, lsl #32
-7434:	f2e00006: 	:movk	x6, #0x0, lsl #48
-7438:	cb0600a5: 	:sub	x5, x5, x6
-743c:	d61f00a0: 	:br	x5
+    7400:	a9bf07e0: (= (bvand (bvadd SP_EL2 0x0000000000000008) 0xfff0000000000007) 0x0000000000000000) ; (= (bvand (bvsub SP_EL2 0x0000000000000010) 0xfff0000000000007) 0x0000000000000000)	:stp	x0, x1, [sp, #-16]!
+    7404:	d53c5200: 	:mrs	x0, esr_el2
+    7408:	d35afc00: 	:lsr	x0, x0, #26
+    740c:	f100581f: 	:cmp	x0, #0x16
+    7410:	54ff9f81: 	:b.ne	6800 <__host_exit>  // b.any
+    7414:	a94007e0: (= (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000) ; (= (bvand (bvadd SP_EL2  0x0000000000000008) 0xfff0000000000007) 0x0000000000000000)	:ldp	x0, x1, [sp]
+    7418:	f1000c1f: 	:cmp	x0, #0x3
+    741c:	54ff9f22: 	:b.cs	6800 <__host_exit>  // b.hs, b.nlast
+    7420:	910043ff: 	:add	sp, sp, #0x10
+    7424:	58001ea5: (= (bvand 0x00000000000077f8 0xfff0000000000007) 0x0000000000000000) 	:ldr	x5, 77f8 <__kvm_hyp_host_forward_smc+0x64>
+    7428:	d2800006: 	:mov	x6, #0x0                   	// #0
+    742c:	f2a00006: 	:movk	x6, #0x0, lsl #16
+    7430:	f2c00006: 	:movk	x6, #0x0, lsl #32
+    7434:	f2e00006: 	:movk	x6, #0x0, lsl #48
+    7438:	cb0600a5: 	:sub	x5, x5, x6
+    743c:	d61f00a0: 	:br	x5
 ```
 and write the result to a file named `pkvm_handler/pkvm_handler.dump`. Note
 that a `:` is added after the op-code, followed by an optional list of

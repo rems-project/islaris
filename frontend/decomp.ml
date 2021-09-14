@@ -161,10 +161,7 @@ let process_line : Template.t -> string -> decomp_line -> unit =
   let isla_file = Filename.concat output_dir (name ^ ".isla") in
   let coq_file  = Filename.concat output_dir (name ^ ".v"   ) in
   let constrs =
-    let constr_to_string c =
-      "--reset-constraint '= (bvand " ^ c ^
-      " 0xfff0000000000007) 0x0000000000000000'"
-    in
+    let constr_to_string = Printf.sprintf "--reset-constraint '%s'" in
     String.concat " " (List.map constr_to_string d.dl_constrs)
   in
   let command =
