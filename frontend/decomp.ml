@@ -5,6 +5,7 @@ open Extra
     are removed from the trace. *)
 let ignored_registers = [
   "SEE";
+  "BTypeNext";
   "__unconditional";
   "__v81_implemented";
   "__v82_implemented";

@@ -26,6 +26,7 @@
   (define-const v110 (= v103 (bvand v103 #xffffffffffffffff)))
   (assert (not (not v110)))
   (assert (not (not v110)))
+  (assert (= v103 (bvand v103 #xffffffffffffffff)))
   (read-reg |SCR_EL3| nil #x00000000)
   (read-reg |__v81_implemented| nil true)
   (read-reg |TCR_EL2| nil #x0000000000000000)

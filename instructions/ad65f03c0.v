@@ -5,7 +5,6 @@ Definition ad65f03c0 : list trc := [
     Smt (DeclareConst 49%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "R30" [] (Val_Symbolic 49%Z) Mk_annot;
     Smt (DefineConst 50%Z (Val (Val_Symbolic 49%Z) Mk_annot)) Mk_annot;
-    (* WriteReg "BTypeNext" [] (Val_Bits [BV{2%N} 0x0%Z]) Mk_annot; *)
     ReadReg "PSTATE" [Field "nRW"] (Val_Struct [("nRW", Val_Bits [BV{1%N} 0x0%Z])]) Mk_annot;
     ReadReg "CFG_ID_AA64PFR0_EL1_EL0" [] (Val_Bits [BV{4%N} 0x1%Z]) Mk_annot;
     ReadReg "CFG_ID_AA64PFR0_EL1_EL1" [] (Val_Bits [BV{4%N} 0x1%Z]) Mk_annot;

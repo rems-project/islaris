@@ -24,6 +24,10 @@ ASM:
   14:	eb03005f 	cmp	x2, x3
   18:	54ffff81 	b.ne	8 <mcpy+0x8>  // b.any
   1c:	d65f03c0 	ret
+
+The code can be generated with
+$ PATH=$PWD/bin:$PATH dune exec -- isla-coq examples/memcpy.dump -d -o instructions  -n "a{op}" --coqdir=isla.instructions
+
 *)
 
 Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
