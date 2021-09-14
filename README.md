@@ -79,7 +79,9 @@ We then manually transform it into the following:
 7438:	cb0600a5: 	:sub	x5, x5, x6
 743c:	d61f00a0: 	:br	x5
 ```
-and write the result to a file named `pkvm/pkvm.dump`.
+and write the result to a file named `pkvm_handler/pkvm_handler.dump`. Note
+that a `:` is added after the op-code, followed by an optional list of
+constraints (separated by `;`), and an additional `:` before the instruction.
 
 To run the development version of `isla-footprint` (necessary for `isla-coq`),
 we provide a script in `bin/isla-footprint` that must be placed in the `PATH`.
@@ -89,11 +91,18 @@ export PATH=$PWD/bin:$PATH
 ```
 We can then run the front end with the following command:
 ```sh
-dune exec -- isla-coq pkvm/pkvm.dump
+dune exec -- isla-coq pkvm_handler/pkvm_handler.dump
 ```
 This will generate one coq file per address containing the trace for the instruction at
 that address and a file called `instrs.v` containing a mapping from addresses to
 traces. `instrs.v` may need to be manually modified to correctly qualify imports.
+
+Note that you can also extend the `PATH` directly when calling `isla-coq`, by
+using the following command instead.
+```sh
+# This assumes you are at the root of the repo.
+PATH=$PWD/bin:$PATH dune exec -- isla-coq pkvm_handler/pkvm_handler.dump
+```
 
 # TODOs
 
