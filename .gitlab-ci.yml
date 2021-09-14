@@ -41,8 +41,8 @@ build-coq.8.13.2-timing:
   - main@iris/isla-coq
   - /^time/@iris/isla-coq
   # timing only for main and time/ branches
-  # tags:
-  # - fp-timing
+  tags:
+  - fp-timing
 
 build-coq.8.13.2:
   <<: *template
