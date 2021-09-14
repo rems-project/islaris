@@ -9,7 +9,7 @@ tests: frontend/tests/dune
 	@dune runtest
 .PHONY: tests
 
-all_and_tests: all tests
+all_and_tests: tests all
 .PHONY: all_and_tests
 
 frontend/tests/%.v.expected: frontend/tests/%.isla
