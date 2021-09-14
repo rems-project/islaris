@@ -71,14 +71,40 @@ Proof.
 
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
-  - rename select (bv_extract _ _ _ ≠ _) into Hextract.
-    have ? : bv_unsigned i + 1 ≠ bv_unsigned n. { admit. }
+  - have ? : bv_unsigned i + 1 ≠ bv_unsigned n. {
+      rename select (bv_extract _ _ _ ≠ _) into Hextract.
+      rewrite bv_not_opp in Hextract.
+      bv_simplify_hyp Hextract.
+      bv_solve.
+    }
     bv_solve.
-  - have ? : bv_unsigned i + 1 ≠ bv_unsigned n. { admit. }
-    admit.
-  - have ? : bv_unsigned i + 1 = bv_unsigned n. { admit. }
+  - have ? : bv_unsigned i + 1 ≠ bv_unsigned n. {
+      rename select (bv_extract _ _ _ ≠ _) into Hextract.
+      rewrite bv_not_opp in Hextract.
+      bv_simplify_hyp Hextract.
+      bv_solve.
+    }
+    bv_simplify.
+    rewrite (bv_wrap_small _ (bv_unsigned i)); [|bv_solve].
+    rewrite (bv_wrap_small _ (bv_unsigned i + _)); [|bv_solve].
+    have ->: (Z.to_nat (bv_unsigned i + 1)) = S ((Z.to_nat (bv_unsigned i))) by bv_solve.
+    erewrite take_S_r. 2: apply list_lookup_insert; bv_solve.
+    erewrite take_S_r; [|done].
+    rewrite take_insert; [|lia].
+    f_equal; [done|]. f_equal. bv_solve.
+  - have ? : bv_unsigned i + 1 = bv_unsigned n. {
+      rename select (bv_extract _ _ _ = _) into Hextract.
+      rewrite bv_not_opp in Hextract.
+      bv_simplify_hyp Hextract.
+      bv_solve.
+    }
     bv_solve.
-  - have ? : bv_unsigned i + 1 = bv_unsigned n. { admit. }
+  - have ? : bv_unsigned i + 1 = bv_unsigned n. {
+      rename select (bv_extract _ _ _ = _) into Hextract.
+      rewrite bv_not_opp in Hextract.
+      bv_simplify_hyp Hextract.
+      bv_solve.
+    }
     rewrite -(take_drop (Z.to_nat (bv_unsigned i)) (<[_ := _]> dstdata)).
     rewrite -(take_drop (Z.to_nat (bv_unsigned i)) srcdata).
     f_equal.
@@ -87,7 +113,7 @@ Proof.
       erewrite (drop_S srcdata); [|done].
       rewrite !drop_ge ?insert_length; [ |lia..].
       f_equal. bv_solve.
-Abort.
+Qed.
 
 Lemma memcpy `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some ab40000e2) -∗

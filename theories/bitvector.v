@@ -4,6 +4,10 @@ From stdpp Require Import options.
 
 Local Open Scope Z_scope.
 
+(* TODO: move *)
+Lemma Z_lnot_opp a: Z.lnot a = - a - 1.
+Proof. pose proof (Z.add_lnot_diag a). lia. Qed.
+
 (** * Preliminary definitions *)
 Definition bv_modulus (n : N) : Z := 2 ^ (Z.of_N n).
 Definition bv_half_modulus (n : N) : Z := bv_modulus n `div` 2.
@@ -805,6 +809,14 @@ Section properties.
     bv_add_Z b (Z.succ m) = bv_add_Z (bv_add_Z b 1) m.
   Proof.
     apply bv_eq. unfold bv_add_Z. rewrite !Z_to_bv_unsigned.
+    bv_wrap_simplify_solve.
+  Qed.
+
+  Lemma bv_not_opp b:
+    bv_not b = bv_sub_Z (bv_opp b) 1.
+  Proof.
+    apply bv_eq.
+    rewrite bv_not_unsigned, bv_sub_Z_unsigned, bv_opp_unsigned, Z_lnot_opp.
     bv_wrap_simplify_solve.
   Qed.
 
