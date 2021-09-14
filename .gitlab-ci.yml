@@ -14,7 +14,7 @@ variables:
   tags:
   - fp
   script:
-  - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
+  - git clone https://gitlab.mpi-sws.org/msammler/ci.git ci -b msammler/debug
   - ci/buildjob
   cache:
     key: "$CI_JOB_NAME"
