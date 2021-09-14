@@ -9,5 +9,6 @@ set -e
 if [ -z "${TIMECMD}" ]; then
   coqc "$@"
 else
+  echo "${TIMECMD}"
   ${TIMECMD} coqc "$@"
 fi
