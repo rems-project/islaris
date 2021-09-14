@@ -9,8 +9,5 @@ set -e
 if [ -z "${TIMECMD}" ]; then
   coqc "$@"
 else
-  echo "${TIMECMD}"
   ${TIMECMD} coqc "$@"
-  ls examples
-  find -name "*.v.perf" -print0 | xargs -0 cat
 fi

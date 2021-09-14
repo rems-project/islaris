@@ -9,6 +9,7 @@ tests: frontend/tests/dune
 	@dune runtest
 .PHONY: tests
 
+# It is important that tests comes first here as the timing infrastructure breaks otherwise
 all_and_tests: tests all
 .PHONY: all_and_tests
 
