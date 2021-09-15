@@ -60,10 +60,10 @@ Definition instr_pre'_eq `{!islaG Σ} `{!threadG} : instr_pre' = @instr_pre'_def
 Notation instr_pre := (instr_pre' true).
 Notation instr_body := (instr_pre' false).
 
-Definition wp_exp_def `{!islaG Σ} (e : exp) (Φ : valu → iProp Σ) : iProp Σ :=
+Definition wp_exp_def `{!islaG Σ} (e : exp) (Φ : base_val → iProp Σ) : iProp Σ :=
   (∃ v, ⌜eval_exp e = Some v⌝ ∗ Φ v).
 Definition wp_exp_aux `{!islaG Σ} : seal (@wp_exp_def Σ _). by eexists. Qed.
-Definition wp_exp `{!islaG Σ} : exp → (valu → iProp Σ ) → iProp Σ := (wp_exp_aux).(unseal).
+Definition wp_exp `{!islaG Σ} : exp → (base_val → iProp Σ ) → iProp Σ := (wp_exp_aux).(unseal).
 Definition wp_exp_eq `{!islaG Σ} : wp_exp = @wp_exp_def Σ _ := (wp_exp_aux).(seal_eq).
 
 Notation "'WPexp' e {{ Φ } }" := (wp_exp e%E Φ)
@@ -536,7 +536,7 @@ Section lifting.
   Qed.
 
   Lemma wp_declare_const_bv v es ann b:
-    (∀ (n : bv b), WPasm ((subst_event v (Val_Bits n)) <$> es)) -∗
+    (∀ (n : bv b), WPasm ((subst_val_event (Val_Bits n) v) <$> es)) -∗
     WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
   Proof.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.
@@ -558,7 +558,7 @@ Section lifting.
   Qed.
 
   Lemma wp_declare_const_bool v es ann:
-    (∀ (b : bool), WPasm ((subst_event v (Val_Bool b)) <$> es)) -∗
+    (∀ (b : bool), WPasm ((subst_val_event (Val_Bool b) v) <$> es)) -∗
     WPasm (Smt (DeclareConst v Ty_Bool) ann :: es).
   Proof.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.
@@ -579,7 +579,7 @@ Section lifting.
   Qed.
 
   Lemma wp_define_const n es ann e:
-    WPexp e {{ v, WPasm ((subst_event n v) <$> es) }} -∗
+    WPexp e {{ v, WPasm ((subst_val_event v n) <$> es) }} -∗
     WPasm (Smt (DefineConst n e) ann :: es).
   Proof.
     rewrite wp_asm_unfold wp_exp_unfold. iDestruct 1 as (v Hv) "Hcont".
@@ -646,7 +646,7 @@ Section exp_lifting.
     rewrite -{2}(app_nil_l es).
     have : Forall2 (λ e v, eval_exp e = Some v) [] [] by constructor.
     move: (@nil exp) => es'.
-    move: {1 3}(@nil valu) => vs Hall.
+    move: {1 3}(@nil base_val) => vs Hall.
     iIntros "Hes".
     iInduction es as [|e es] "IH" forall (es' vs Hall) => /=.
     - rewrite right_id wp_exp_unfold.

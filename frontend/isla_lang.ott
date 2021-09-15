@@ -11,6 +11,7 @@ Require Import String.
 Require Import ZArith.
 
 Definition var_name : Set := Z.
+Definition eq_var_name (v w : var_name) : bool := Z.eqb v w.
 
 Definition register_name : Set := string.
 
@@ -54,7 +55,7 @@ metavar enum_ty ::= {{ ocaml int  }}
                     {{ phantom }}
                     {{ lex alphanum }}
                     {{ ocamllex 'E''n''u''m'['0'-'9']+ }}
-                    {{ ocamllex-of-string (function s -> Scanf.sscanf s "Enum%d" (fun x -> x)) }}
+                    {{ ocamllex-of-string (function s -> Scanf.sscanf s "Enum%d" Fun.id) }}
                     {{ pp-raw x = !^(Printf.sprintf "Enum(%d)" x) }}
                     {{ pp x = !^(Printf.sprintf "Enum%d" x) }}
 
@@ -67,22 +68,9 @@ metavar enum ::=    {{ ocaml int * int }}
                     {{ pp-raw x = let (a,b) = x in !^(Printf.sprintf "%d/%d" b a) }}
                     {{ pp x = let (a,b) = x in !^(Printf.sprintf "e%d_%d" a b) }}
 
-
-% % Just a plain natural - not currently distinguished from int because the
-% lexing of traces goes wrong
-% metavar nat, num_bytes ::=     {{ ocaml int }}
-%                     {{ coq nat }}
-%                     {{ phantom }}
-%                     {{ lex numeric }}
-%                     {{ ocamllex ['0'-'9']+ }}
-%                     {{ ocamllex-of-string int_of_string }}
-%                     {{ pp x = string (string_of_int x) }}
-%                     {{ pp-raw x = string (string_of_int x) }}
-
-
-% Just a plain integer
-metavar int, num_bytes ::=     {{ ocaml int }}
-                    {{ coq Z }}
+% natural numbers
+metavar nat, num_bytes ::=     {{ ocaml int }}
+                    {{ coq N }}
                     {{ phantom }}
                     {{ lex numeric }}
                     {{ ocamllex '-'?['0'-'9']+ }}
@@ -105,7 +93,7 @@ metavar bvi ::=     {{ ocaml int }}
 % for Coq, leave as string for now so see in Coq what you see in the
 % trace; later turn into whatever choice of bitvector repr type
 metavar bv ::=      {{ ocaml string }}
-                    {{ coq string }}
+                    {{ coq bvn }}
                     {{ phantom }}
                     {{ lex numeric }}
                     {{ ocamllex ('#''b'['0'-'1']+)|('#''x'['0'-'9''a'-'f''A'-'F']+) }}
@@ -177,12 +165,22 @@ annot :: '' ::=                         {{ phantom }}
                                         {{ pp l = PPrint.empty }}
                                         {{ pp-raw l = PPrint.empty }}
 
+%%%%% integers %%%%%
+% Use a rule because the lexer will not be able to distinguish between nat and int
+
+grammar
+int :: '' ::=                           {{ ocaml int }} {{ coq Z }}
+                                        {{ phantom }}
+                                        {{ pp i = string (string_of_int i) }}
+                                        {{ pp-raw i = string (string_of_int i) }}
+    | nat                               :: :: pos {{ ocaml [[nat]] }} {{ coq Z.of_N [[nat]] }}
+    | - nat                             :: :: neg {{ ocaml - [[nat]] }} {{ coq Z.opp (Z.of_N [[nat]] }}
 
 %%%%% types %%%%%
 grammar
 ty :: 'Ty_' ::=
   | Bool                                :: :: Bool
-  | (_ BitVec int )                     :: :: BitVec
+  | (_ BitVec nat )                     :: :: BitVec
   | enum_ty                             :: :: Enum
   | ( Array ty1 ty2 )                   :: :: Array
 
@@ -206,9 +204,9 @@ unop :: '' ::=
   | bvredand                            :: :: Bvredand
   | bvredor                             :: :: Bvredor
   | bvneg                               :: :: Bvneg
-  | (_ extract int int' )               :: :: Extract
-  | (_ zero_extend int )                :: :: ZeroExtend
-  | (_ sign_extend int )                :: :: SignExtend
+  | (_ extract nat nat' )               :: :: Extract
+  | (_ zero_extend nat )                :: :: ZeroExtend
+  | (_ sign_extend nat )                :: :: SignExtend
 
 % Arithmetic operations that must be applied to exactly two elements of the same size
 bvarith :: '' ::=
@@ -262,40 +260,26 @@ manyop :: '' ::=
   | concat                              :: :: Concat
 
 
+% Base symbolic values that can appear in both SMT expressions and register values
+grammar
+base_val :: 'Val_' ::=
+ | vvar                                 :: :: Symbolic
+ | bool                                 :: :: Bool
+ | bv                                   :: :: Bits
+ | enum                                 :: :: Enum
+
 %%%%% exp %%%%%
 grammar
 exp :: '' ::=                           {{ aux _ annot }}
                                         {{ auxparam 'a }}
                                         {{ menhir-start }}
                                         {{ menhir-start-type (Isla_lang_ast.lrng) Isla_lang_ast.exp }}
-  | vvar                                :: :: Var
-  | bv                                  :: :: Bits
-  | bool                                :: :: Bool
-  | enum                                :: :: Enum
+  | base_val                            :: :: Val
   | ( unop exp )                        :: :: Unop
   | ( binop exp1 exp2 )                 :: :: Binop
   | ( manyop exp1 .. expj )             :: :: Manyop
   | ( ite exp1 exp2 exp3 )              :: :: Ite
 
-
-%exp_val :: 'EV_' ::=                    {{ aux _ annot }}
-%                                        {{ auxparam 'a }}
-%                                        {{ menhir-start }}
-%                                        {{ menhir-start-type (Isla_lang_ast.lrng) Isla_lang_ast.exp }}
-%  | vvar                                :: :: Var
-%  | bv                                  :: :: Bits
-%  | bool                                :: :: Bool
-%  | enum                                :: :: Enum
-%  | ( unop exp_val )                        :: :: Unop
-%  | ( binop exp_val1 exp_val2 )                 :: :: Binop
-%  | ( manyop exp_val1 .. exp_valj )             :: :: Manyop
-%  | ( ite exp_val1 exp_val2 exp_val3 )              :: :: Ite
-
-%subrules
-%exp_val <:: exp
-%
-%substitutions
-%single exp vvar :: subst_exp
 
 
 
@@ -322,63 +306,28 @@ smt :: '' ::= {{auxparam 'a }}
 
 %%% TODO: JP: these are *patterns* ==> rename to avoid utter confusion?
 grammar
-valu, addr, data, rkind, wkind, bkind, ckind, opcode :: 'Val_' ::=
- | vvar                                 :: :: Symbolic
- | bool                                 :: :: Bool
+valu, addr, data, rkind, wkind, bkind, ckind, opcode :: 'RegVal_' ::=
+ | base_val                             :: :: Base
  | (_ bvi int )                         :: :: I
- | bv                                   :: :: Bits
- | enum                                 :: :: Enum
  | str                                  :: :: String
  | (_ unit )                            :: :: Unit
  | ( name (_ unit))                     :: :: NamedUnit
  | (_ vec valu1  ..  valuk  )           :: :: Vector  % TODO: fix syntax
  | (_ list valu1 .. valuk )             :: :: List  % TODO: fix syntax
+%%% TODO: MS: The coq version of this is wrong. Ott generates list register_name * valu
+%%%  but it should be list (register_name * valu)
  | (_ struct  selem1 .. selemk )        :: :: Struct
  | (_ poison )                          :: :: Poison
 
 % structure element constructor: pair of field name and value
 selem :: '' ::=                         {{ phantom }}
                                         {{ ocaml string * valu }}
-					{{ coq register_name * valu }}
+					{{ coq (register_name * valu) }}
                                         {{ pp se = let (n,v) = se in
                                                    parens (pp_name n ^^ blank 1 ^^ pp_valu v) }}
                                         {{ pp-raw se = let (n,v) = se in
                                                        pp_raw_name n ^^ !^"," ^^ pp_raw_valu v }}
  | ( name valu )                        :: :: Struct_elem {{ ocaml (name,valu) }} {{ coq (name,valu) }}
-
-%%% TODO: JP: Ideally, (1) remove the values that don't occur (struct, etc.)
-%%% TODO: JP: (2) add a `Val` ctor to `exp`, and
-%%% TODO: JP: (3) remove redundant `exp` constructors
-%grammar
-%valu_concrete :: 'CVal_' ::=
-% | bool                                 :: :: Bool
-% | (_ bvi int )                         :: :: I
-% | bv                                   :: :: Bits
-% | enum                                 :: :: Enum
-% | str                                  :: :: String
-% | (_ unit )                            :: :: Unit
-% | ( name (_ unit))                     :: :: NamedUnit
-% | (_ vec valu1  ..  valuk  )           :: :: Vector  % TODO: fix syntax
-% | (_ list valu1 .. valuk )             :: :: List  % TODO: fix syntax
-% | (_ struct  selem1 .. selemk )        :: :: Struct
-% | (_ poison )                           :: :: Poison
-
-
-grammar
-% structure element constructor: pair of field name and value
-%selem_concrete :: 'C_' ::=                         {{ phantom }}
-%                                        {{ ocaml string * valu_concrete }}
-%					{{ coq register_name * valu }}
-%                                        {{ pp se = let (n,v) = se in
-%                                                   parens (pp_name n ^^ blank 1 ^^ pp_valu_concrete v) }}
-%                                        {{ pp-raw se = let (n,v) = se in
-%                                                       pp_raw_name n ^^ !^"," ^^ pp_raw_valu_concrete v }}
-% | ( name valu_concrete )                        :: :: Struct_elem {{ ocaml (name,valu_concrete) }} {{ coq (name,valu) }}
-%
-%subrules
-%valu_concrete <:: valu
-%selem_concrete <:: selem
-
 
 %%%%% events %%%%%
 grammar
@@ -406,7 +355,7 @@ event :: '' ::=  {{ aux _ annot }} {{auxparam 'a }}
   |  ( read-reg name accessor_list valu )                                       :: :: ReadReg {{ com read value `valu` from register `name` }}
   |  ( write-reg name accessor_list valu )                                      :: :: WriteReg {{ com write value `valu` to register `name` }}
   |  ( read-mem valu rkind addr num_bytes tag_value )                                 :: :: ReadMem {{ com read value `valu` from memory address `addr`, with read kind `rkind`, byte width `byte_width`, and `tag_value` is the optional capability tag }}
-  |  ( write-mem vvar wkind addr data num_bytes tag_value )                           :: :: WriteMem {{ com write value `valu` to memory address `addr`, with write kind `wkind`, byte width `byte_width`, `tag_value` is the optional capability tag, and success flag `vvar` }}
+  |  ( write-mem valu wkind addr data num_bytes tag_value )                           :: :: WriteMem {{ com write value `valu` to memory address `addr`, with write kind `wkind`, byte width `byte_width`, `tag_value` is the optional capability tag, and success flag `vvar` }}
   |  ( branch-address addr )                                                    :: :: BranchAddress {{ com announce branch address `addr`, to induce ctrl dependency in the concurrency model }}
   |  ( barrier bkind )                                                          :: :: Barrier {{ com memory barrier of kind `bkind` }}
   |  ( cache-op ckind addr )                                                    :: :: CacheOp {{ com cache maintenance effect of kind `ckind`, at address `addr`, for data-cache clean etc. }}
@@ -433,3 +382,14 @@ trcs :: '' ::=                {{ menhir-start }}
                               {{ menhir-start-type Isla_lang_ast.lrng Isla_lang_ast.trcs }}
                               {{ coq list (list event) }}
  | trc1 .. trck                                                                 :: :: Traces
+
+substitutions
+single base_val vvar :: subst_val
+
+embed
+{{ coq
+
+Coercion RegVal_Base : base_val >-> valu.
+Definition base_val_to_exp (v : base_val) : exp := Val v Mk_annot.
+Coercion base_val_to_exp : base_val >-> exp.
+}}

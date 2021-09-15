@@ -15,6 +15,10 @@ Global Instance simpl_val_bits_bv_to_bvn n (b1 b2 : bv n) :
   SimplBoth (Val_Bits b1 = Val_Bits b2) (b1 = b2).
 Proof. split; naive_solver. Qed.
 
+Global Instance simple_regval_to_base_val (v1 v2 : base_val) :
+  SimplBoth (RegVal_Base v1 = RegVal_Base v2) (v1 = v2).
+Proof. split; congruence. Qed.
+
 Global Instance simpl_bvn_eq (b1 b2 : bvn) {Heq : TCEq b2.(bvn_n) b1.(bvn_n)}:
   SimplBoth (b1 = b2) (b1.(bvn_val) = TCEq_rect _ _ (λ x, bv x) b2.(bvn_val) _ Heq).
 Proof.
@@ -643,17 +647,17 @@ Section instances.
   Proof. apply: wp_branch. Qed.
 
   Lemma li_wp_declare_const_bv v es ann b:
-    (∀ (n : bv b), WPasm ((subst_event v (Val_Bits n)) <$> es)) -∗
+    (∀ (n : bv b), WPasm ((subst_val_event (Val_Bits n) v) <$> es)) -∗
     WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
   Proof. apply: wp_declare_const_bv. Qed.
 
   Lemma li_wp_declare_const_bool v es ann:
-    (∀ b : bool, WPasm ((subst_event v (Val_Bool b)) <$> es)) -∗
+    (∀ b : bool, WPasm ((subst_val_event (Val_Bool b) v) <$> es)) -∗
     WPasm (Smt (DeclareConst v Ty_Bool) ann :: es).
   Proof. apply: wp_declare_const_bool. Qed.
 
   Lemma li_wp_define_const n es ann e:
-    WPexp e {{ v, let_bind_hint v (λ v, WPasm ((subst_event n v) <$> es)) }} -∗
+    WPexp e {{ v, let_bind_hint v (λ v, WPasm ((subst_val_event v n) <$> es)) }} -∗
     WPasm (Smt (DefineConst n e) ann :: es).
   Proof.
     iIntros "Hexp". iApply wp_define_const. unfold let_bind_hint.
