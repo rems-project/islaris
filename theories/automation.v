@@ -247,9 +247,15 @@ Section instances.
     (∃ regs, reg_col regs ∗ T (RKCol regs)) -∗
     find_in_context (FindRegMapsTo r) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
+  Inductive FICRegMapstoSemantic (r : string) : Set :=.
   Global Instance find_in_context_reg_mapsto_col_inst r :
-    FindInContext (FindRegMapsTo r) FICSyntactic | 10 :=
+    FindInContext (FindRegMapsTo r) (FICRegMapstoSemantic r) | 10 :=
     λ T, i2p (find_in_context_reg_mapsto_col r T).
+
+  Lemma tac_reg_mapsto_reg_col r regs1 regs2:
+    is_Some (list_find_idx (λ x, x.1 = RegColDirect r) regs1) →
+    FindHypEqual (FICRegMapstoSemantic r) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
+  Proof. done. Qed.
 
   Lemma find_in_context_struct_reg_mapsto r f T:
     (∃ v, r # f ↦ᵣ v ∗ T (RKMapsTo v)) -∗
@@ -263,9 +269,15 @@ Section instances.
     (∃ regs, reg_col regs ∗ T (RKCol regs)) -∗
     find_in_context (FindStructRegMapsTo r f) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
+  Inductive FICStructRegMapstoSemantic (r f : string) : Set :=.
   Global Instance find_in_context_struct_reg_mapsto_col_inst r f:
-    FindInContext (FindStructRegMapsTo r f) FICSyntactic | 10 :=
+    FindInContext (FindStructRegMapsTo r f) (FICStructRegMapstoSemantic r f) | 10 :=
     λ T, i2p (find_in_context_struct_reg_mapsto_col r f T).
+
+  Lemma tac_struct_reg_mapsto_reg_col r f regs1 regs2:
+    is_Some (list_find_idx (λ x, x.1 = RegColStruct r f) regs1) →
+    FindHypEqual (FICStructRegMapstoSemantic r f) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
+  Proof. done. Qed.
 
   Global Instance instr_related a i : RelatedTo (instr a i) := {|
     rt_fic := FindDirect (λ i, instr a i)%I;
@@ -544,6 +556,10 @@ End instances.
   ( apply tac_mem_mapsto_array_eq; bv_solve) : typeclass_instances.
 #[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _ _) (mmio_range _ _) (mmio_range _ _) _) =>
   ( apply tac_mem_mapsto_mmio; bv_solve) : typeclass_instances.
+#[ global ] Hint Extern 10 (FindHypEqual (FICRegMapstoSemantic _) (reg_col _) (reg_col _) _) =>
+( apply tac_reg_mapsto_reg_col; vm_compute; eexists _; done) : typeclass_instances.
+#[ global ] Hint Extern 10 (FindHypEqual (FICStructRegMapstoSemantic _ _) (reg_col _) (reg_col _) _) =>
+( apply tac_struct_reg_mapsto_reg_col; vm_compute; eexists _; done) : typeclass_instances.
 #[ global ] Hint Extern 10 (FindHypEqual FICInstrSemantic (instr_pre' _ _ _) (instr_pre' _ _ _) _) =>
   ( apply tac_instr_pre_eq; bv_solve) : typeclass_instances.
 #[ global ] Hint Extern 10 (FindHypEqual FICInstrSemantic (instr _ _) (instr _ _) _) =>
