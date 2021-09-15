@@ -4,36 +4,7 @@
  (package coq-isla)
  (flags (:standard -warn-error -A -w -27 -w -26))
  (foreign_stubs (language c) (names stubs))
- (libraries cmdliner pprint str unix))
-
-(rule
- (targets isla_lang_parser.mly isla_lang_parser_pp.ml isla_lang_lexer.mll
-   isla_lang_ast.ml isla_lang.v)
- (deps isla_lang.ott)
- (action
-  (pipe-stdout
-    (run ott -show_sort false -quotient_rules false -aux_style_rules false -i
-      isla_lang.ott -o isla_lang_parser.mly -o isla_lang_lexer.mll -o
-      isla_lang_ast.ml -o isla_lang.v)
-    (run sed "s/Warning/warning/g"))))
-
-(rule
- (target ott.path)
- (action (with-stdout-to ott.path (system "opam var ott:share"))))
-
-(rule
- (target ottlib.mly)
- (action
-  (copy "%{read-lines:ott.path}/menhir_library_extra.mly" ottlib.mly)))
-
-
-(menhir
- (modules isla_lang_parser ottlib)
- (merge_into isla_lang_parser)
- (infer true))
-
-(ocamllex
- (modules isla_lang_lexer))
+ (libraries cmdliner pprint str unix isla-lang))
 
 (rule
  (targets version.ml)
