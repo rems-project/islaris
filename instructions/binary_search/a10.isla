@@ -1,0 +1,12 @@
+(trace
+  (cycle)
+  (read-reg |SEE| nil (_ bv-1 128))
+  (write-reg |SEE| nil (_ bv1066 128))
+  (write-reg |__unconditional| nil true)
+  (read-reg |__v85_implemented| nil false)
+  (read-reg |PSTATE| ((_ field |SP|)) (_ struct (|SP| #b1)))
+  (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b10)))
+  (declare-const v38 (_ BitVec 64))
+  (read-reg |SP_EL2| nil v38)
+  (define-const v59 ((_ extract 63 0) ((_ zero_extend 64) v38)))
+  (write-reg |R29| nil v59))

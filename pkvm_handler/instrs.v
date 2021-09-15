@@ -1,20 +1,20 @@
 From isla Require Import isla_lang.
-Require Import isla.examples.pkvm_handler.a7400.
-Require Import isla.examples.pkvm_handler.a7404.
-Require Import isla.examples.pkvm_handler.a7408.
-Require Import isla.examples.pkvm_handler.a740c.
-Require Import isla.examples.pkvm_handler.a7410.
-Require Import isla.examples.pkvm_handler.a7414.
-Require Import isla.examples.pkvm_handler.a7418.
-Require Import isla.examples.pkvm_handler.a741c.
-Require Import isla.examples.pkvm_handler.a7420.
-Require Import isla.examples.pkvm_handler.a7424.
-Require Import isla.examples.pkvm_handler.a7428.
-Require Import isla.examples.pkvm_handler.a742c.
-Require Import isla.examples.pkvm_handler.a7430.
-Require Import isla.examples.pkvm_handler.a7434.
-Require Import isla.examples.pkvm_handler.a7438.
-Require Import isla.examples.pkvm_handler.a743c.
+Require Export isla.examples.pkvm_handler.a7400.
+Require Export isla.examples.pkvm_handler.a7404.
+Require Export isla.examples.pkvm_handler.a7408.
+Require Export isla.examples.pkvm_handler.a740c.
+Require Export isla.examples.pkvm_handler.a7410.
+Require Export isla.examples.pkvm_handler.a7414.
+Require Export isla.examples.pkvm_handler.a7418.
+Require Export isla.examples.pkvm_handler.a741c.
+Require Export isla.examples.pkvm_handler.a7420.
+Require Export isla.examples.pkvm_handler.a7424.
+Require Export isla.examples.pkvm_handler.a7428.
+Require Export isla.examples.pkvm_handler.a742c.
+Require Export isla.examples.pkvm_handler.a7430.
+Require Export isla.examples.pkvm_handler.a7434.
+Require Export isla.examples.pkvm_handler.a7438.
+Require Export isla.examples.pkvm_handler.a743c.
 
 Definition instr_map := [
   (0x7400%Z, a7400 (* stp x0, x1, [sp, #-16]! *));

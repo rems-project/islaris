@@ -179,11 +179,11 @@ let gen_instr_map : Template.t -> string list -> decomp_line list
   let pp fmt = Format.fprintf ff fmt in
   (* Imports. *)
   pp "From isla Require Import isla_lang.@."; (* Required for notations. *)
-  let pp_import d =
+  let pp_export d =
     let name = name_from_template name_template d in
-    pp "Require Import %s.@." (String.concat "." (coq_prefix @ [name]))
+    pp "Require Export %s.@." (String.concat "." (coq_prefix @ [name]))
   in
-  List.iter pp_import lines;
+  List.iter pp_export lines;
   (* Definition. *)
   pp "@.Definition instr_map := [";
   let pp_sep ff _ = Format.fprintf ff ";" in
