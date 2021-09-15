@@ -91,7 +91,7 @@ Section definitions.
   Definition regs_ctx `{!threadG} (regs : reg_map) : iProp Σ :=
     ∃ rs (srs : gmap (string * string) valu),
       ⌜map_Forall (λ r v, regs !! r = Some v) rs⌝ ∗
-      ⌜map_Forall (λ r v, ∃ l i, regs !! r.1 = Some (Val_Struct l) ∧
+      ⌜map_Forall (λ r v, ∃ l i, regs !! r.1 = Some (RegVal_Struct l) ∧
          list_find_idx (λ x, x.1 = r.2) l = Some i ∧ l !! i = Some (r.2, v)) srs⌝ ∗
       ⌜∀ i, is_Some (rs !! i) → (∃ f, is_Some (srs !! (i, f))) → False⌝ ∗
       ghost_map_auth thread_regs_name 1 rs ∗
@@ -235,7 +235,7 @@ Section reg.
 
   Lemma reg_mapsto_to_struct_reg_mapsto regs r l:
     NoDup l.*1 →
-    regs_ctx regs -∗ r ↦ᵣ Val_Struct l ==∗ regs_ctx regs ∗ [∗ list] v∈l, r # v.1 ↦ᵣ v.2.
+    regs_ctx regs -∗ r ↦ᵣ RegVal_Struct l ==∗ regs_ctx regs ∗ [∗ list] v∈l, r # v.1 ↦ᵣ v.2.
   Proof.
     rewrite reg_mapsto_eq struct_reg_mapsto_eq.
     iIntros (?) "(%rs&%srs&%Hrs&%Hsrs&%Hdisj&Hregs&Hsregs) Hreg".
@@ -285,7 +285,7 @@ Section reg.
   Lemma struct_reg_mapsto_lookup regs r q v f:
     regs_ctx regs -∗
     r # f ↦ᵣ{q} v -∗
-    ⌜∃ l i, regs !! r = Some (Val_Struct l) ∧ list_find_idx (λ x, x.1 = f) l = Some i ∧ l !! i = Some (f, v)⌝.
+    ⌜∃ l i, regs !! r = Some (RegVal_Struct l) ∧ list_find_idx (λ x, x.1 = f) l = Some i ∧ l !! i = Some (f, v)⌝.
   Proof.
     rewrite struct_reg_mapsto_eq.
     iIntros "(%rs&%srs&%Hrs&%Hsrs&%&Hregs&Hsregs) Hreg".
@@ -294,9 +294,9 @@ Section reg.
   Qed.
 
   Lemma struct_reg_mapsto_update regs r f v v' l i :
-    regs !! r = Some (Val_Struct l) →
+    regs !! r = Some (RegVal_Struct l) →
     list_find_idx (λ x, x.1 = f) l = Some i →
-    regs_ctx regs -∗ r # f ↦ᵣ v ==∗ regs_ctx (<[r:=Val_Struct (<[i:=(f, v')]> l)]>regs) ∗ r # f ↦ᵣ v'.
+    regs_ctx regs -∗ r # f ↦ᵣ v ==∗ regs_ctx (<[r:=RegVal_Struct (<[i:=(f, v')]> l)]>regs) ∗ r # f ↦ᵣ v'.
   Proof.
     iIntros (? Hl) "(%rs&%srs&%Hrs&%Hsrs&%Hdisj&Hregs&Hsregs) Hreg". rewrite struct_reg_mapsto_eq.
     iDestruct (ghost_map_lookup with "Hsregs Hreg") as %?.

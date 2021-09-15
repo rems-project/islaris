@@ -6,56 +6,7 @@ Definition ite {A} (b : bool) (x y : A) : A :=
   if b then x else y.
 Typeclasses Opaque ite.
 
-
-Fixpoint subst_valu (n : var_name) (z : valu) (v : valu) {struct v} : valu :=
-  match v with
-  | Val_Symbolic x => if bool_decide (n = x) then z else Val_Symbolic x
-  | Val_Bool b => Val_Bool b
-  | Val_I x i => Val_I x i
-  | Val_Bits bs => Val_Bits bs
-  | Val_Enum em => Val_Enum em
-  | Val_String s => Val_String s
-  | Val_Unit => Val_Unit
-  | Val_NamedUnit u => Val_NamedUnit u
-  | Val_Vector vs => Val_Vector (subst_valu n z <$> vs)
-  | Val_List vs => Val_List (subst_valu n z <$> vs)
-  | Val_Struct s => Val_Struct (prod_map id (subst_valu n z) <$> s)
-  | Val_Poison => Val_Poison
-  end.
-
-Fixpoint subst_exp (n : var_name) (v : valu) (e : exp) {struct e} : exp :=
-  match e with
-  | Val w a => Val (subst_valu n v w) a
-  | Unop op e a => Unop op (subst_exp n v e) a
-  | Binop op e1 e2 a => Binop op (subst_exp n v e1) (subst_exp n v e2) a
-  | Manyop op x a => Manyop op (subst_exp n v <$> x) a
-  | Ite e1 e2 e3 a => Ite (subst_exp n v e1) (subst_exp n v e2) (subst_exp n v e3) a
-  end.
-
-Definition subst_smt (n : var_name) (v : valu) (s : smt) : smt :=
-  match s with
-  (* TODO: What to do on name clash? Return option? *)
-  | DeclareConst _ _ => s
-  | DefineConst r e => DefineConst r (subst_exp n v e)
-  | Assert e => Assert (subst_exp n v e)
-  | DefineEnum _ => s
-  end.
-
-Definition subst_event (n : var_name) (v : valu) (e : event) : event :=
-  match e with
-  | Branch _ _ _ | MarkReg _ _ _ | Cycle _ | Sleeping _ _ | WakeRequest _ | SleepRequest _ => e
-  | Smt s ann => Smt (subst_smt n v s) ann
-  | Instr i ann => Instr (subst_valu n v i) ann
-  | Barrier b ann => Barrier (subst_valu n v b) ann
-  | CacheOp v1 v2 ann => CacheOp (subst_valu n v v1) (subst_valu n v v2) ann
-  | BranchAddress a ann => BranchAddress (subst_valu n v a) ann
-  | ReadReg r al vr ann => ReadReg r al (subst_valu n v vr) ann
-  | WriteReg r al vr ann => WriteReg r al (subst_valu n v vr) ann
-  | ReadMem vr rkind addr len tag_value ann => ReadMem (subst_valu n v vr) (subst_valu n v rkind) (subst_valu n v addr) len (subst_valu n v <$> tag_value) ann
-  | WriteMem va wkind addr data nat5 tag_value ann => WriteMem (subst_valu n v va) (subst_valu n v wkind) (subst_valu n v addr) (subst_valu n v data) nat5 (subst_valu n v <$> tag_value) ann
-  end.
-
-Definition eval_unop (u : unop) (v : valu) : option valu :=
+Definition eval_unop (u : unop) (v : base_val) : option base_val :=
   match u, v with
   | Not, Val_Bool b => Some (Val_Bool (negb b))
   | Bvnot, Val_Bits n => Some (Val_Bits (bv_not n.(bvn_val)))
@@ -66,7 +17,7 @@ Definition eval_unop (u : unop) (v : valu) : option valu :=
   | _, _ => None
   end.
 
-Definition eval_binop (b : binop) (v1 v2 : valu) : option valu :=
+Definition eval_binop (b : binop) (v1 v2 : base_val) : option base_val :=
   match b, v1, v2 with
   | Eq, Val_Bool b1, Val_Bool b2 =>
     Some (Val_Bool (eqb b1 b2))
@@ -134,7 +85,7 @@ Definition eval_binop (b : binop) (v1 v2 : valu) : option valu :=
   end.
 
 
-Definition eval_manyop (m : manyop) (vs : list valu) : option valu :=
+Definition eval_manyop (m : manyop) (vs : list base_val) : option base_val :=
   match m, vs with
   | Bvmanyarith Bvand, (Val_Bits n0 :: vs') =>
     (λ ns, Val_Bits (foldl bv_and n0.(bvn_val) ns)) <$> (
@@ -157,7 +108,7 @@ Definition eval_manyop (m : manyop) (vs : list valu) : option valu :=
   | _, _ => (* TODO: And, Or *) None
   end.
 
-Fixpoint eval_exp (e : exp) : option valu :=
+Fixpoint eval_exp (e : exp) : option base_val :=
   match e with
   | Val x _ => Some x
   | Unop uo e' _ =>
@@ -186,12 +137,12 @@ Inductive trace_label : Set :=
 
 Inductive trace_step : trc → option trace_label → trc → Prop :=
 | DeclareConstBitVecS x n ann es b Heq:
-    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) None (subst_event x (Val_Bits (BV b n Heq)) <$> es)
+    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) None (subst_val_event (Val_Bits (BV b n Heq)) x <$> es)
 | DeclareConstBoolS x ann es b:
-    trace_step (Smt (DeclareConst x Ty_Bool) ann :: es) None (subst_event x (Val_Bool b) <$> es)
+    trace_step (Smt (DeclareConst x Ty_Bool) ann :: es) None (subst_val_event (Val_Bool b) x <$> es)
 | DefineConstS x e v ann es:
     eval_exp e = Some v ->
-    trace_step (Smt (DefineConst x e) ann :: es) None (subst_event x v <$> es)
+    trace_step (Smt (DefineConst x e) ann :: es) None (subst_val_event v x <$> es)
 | AssertS e b ann es:
     eval_exp e = Some (Val_Bool b) ->
     trace_step (Smt (Assert e) ann :: es) (Some (LAssert b)) es
@@ -226,18 +177,18 @@ Definition instruction_size : Z := 0x4.
 
 Definition next_pc (regs : reg_map) : option (addr * reg_map) :=
   a ← regs !! "_PC";
-  an ← if a is Val_Bits n then bvn_to_bv 64 n else None;
+  an ← if a is RegVal_Base (Val_Bits n) then bvn_to_bv 64 n else None;
   c ← regs !! "__PC_changed";
-  cb ← if c is Val_Bool b then Some b else None;
+  cb ← if c is RegVal_Base (Val_Bool b) then Some b else None;
   let new_pc := if cb : bool then bv_unsigned an else bv_unsigned an + instruction_size in
   n ← Z_to_bv_checked 64 new_pc;
-  Some (n, <["_PC" := Val_Bits (BVN _ n)]> $ <["__PC_changed" := Val_Bool false]> regs).
+  Some (n, <["_PC" := RegVal_Base (Val_Bits (BVN _ n))]> $ <["__PC_changed" := RegVal_Base (Val_Bool false)]> regs).
 
 Fixpoint read_accessor (al : accessor_list) (v : valu) : option valu :=
   match al with
   | [] => Some v
   | Field a :: al' =>
-    s ← (if v is Val_Struct s then Some s else None);
+    s ← (if v is RegVal_Struct s then Some s else None);
     i ← (list_find_idx (λ x, x.1 = a) s);
     v' ← s !! i;
     read_accessor al' v'.2
@@ -247,10 +198,10 @@ Fixpoint write_accessor (al : accessor_list) (v : valu) (vnew : valu) : option v
   match al with
   | [] => Some vnew
   | Field a :: al' =>
-    s ← (if v is Val_Struct s then Some s else None);
+    s ← (if v is RegVal_Struct s then Some s else None);
     i ← (list_find_idx (λ x, x.1 = a) s);
     v' ← s !! i;
-    (λ vnew', Val_Struct (<[i := (a, vnew')]> s))
+    (λ vnew', RegVal_Struct (<[i := (a, vnew')]> s))
       <$> write_accessor al' v'.2 vnew
   end.
 
