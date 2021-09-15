@@ -1,5 +1,5 @@
 open Cmdliner
-open Isla_lang
+open Isla_lang_if
 open Version
 open Extra
 

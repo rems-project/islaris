@@ -1,4 +1,4 @@
-module Ast = Isla_lang_ast
+module Ast = Isla_lang.AST
 
 type event = Ast.lrng Ast.event
 type trace = Ast.lrng Ast.trc
@@ -16,8 +16,8 @@ module Parser = struct
   exception Parse_error of string
 
   let parse_file : string -> traces = fun fname ->
-    let module L = Isla_lang_lexer in
-    let module P = Isla_lang_parser in
+    let module L = Isla_lang.Lexer in
+    let module P = Isla_lang.Parser in
     let fail fmt =
       let k _ = raise (Parse_error(Format.flush_str_formatter ())) in
       Format.kfprintf k Format.str_formatter fmt
