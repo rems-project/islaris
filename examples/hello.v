@@ -78,11 +78,11 @@ Proof.
   - erewrite drop_S; csimpl.
     2: { apply: list_lookup_lookup_total_lt => /=. lia. }
     rewrite drop_ge => //=.
-    rename select (bv_extract 0 _ _ = _) into Heq.
+    rename select (bv_concat _ _ _ = _) into Heq.
     bv_simplify_hyp Heq.
     revert select (_ !! i = Some vmem). move: Heq. clear => ??.
     by repeat (destruct i; simplify_eq/=).
-  - rename select (bv_extract 0 _ _ ≠ _) into Hneq.
+  - rename select (bv_concat _ _ _ ≠ _) into Hneq.
     bv_simplify_hyp Hneq.
     revert select (_ !! i = Some vmem). move: Hneq. clear => ??.
     by repeat (destruct i; simplify_eq/=).

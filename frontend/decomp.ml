@@ -28,6 +28,7 @@ let event_filter : event -> bool = fun e ->
   | ReadReg(n,_,_,_)
   | WriteReg(n,_,_,_) -> not (List.mem n ignored_registers)
   | Cycle(_)          -> false
+  | MarkReg(_, _, _)  -> false
   | _                 -> true
 
 (** [gen_coq name isla_f coq_f] processes the Isla file [isla_f] and generates

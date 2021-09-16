@@ -11,8 +11,8 @@ Definition a40 : list trc := [
     Smt (DefineConst 55%Z (Manyop (Bvmanyarith Bvand) [Unop (Extract 31%N 0%N) (Val (Val_Symbolic 53%Z) Mk_annot) Mk_annot; Val (Val_Bits [BV{32%N} 0x1%Z]) Mk_annot] Mk_annot)) Mk_annot;
     Smt (DefineConst 58%Z (Binop (Eq) (Val (Val_Symbolic 55%Z) Mk_annot) (Val (Val_Bits [BV{32%N} 0x0%Z]) Mk_annot) Mk_annot)) Mk_annot;
     Branch 0%Z "model/aarch64.sail 4039:4 - 4039:34" Mk_annot;
-    Smt (Assert (Unop (Not) (Val (Val_Symbolic 58%Z) Mk_annot) Mk_annot)) Mk_annot;
-    Smt (DefineConst 60%Z (Manyop Concat [Manyop Concat [Manyop (Bvmanyarith Bvor) [Manyop (Bvmanyarith Bvand) [Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot; Unop (Bvnot) (Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot] Mk_annot; Unop (Extract 0%N 0%N) (Binop ((Bvarith Bvlshr)) (Val (Val_Symbolic 55%Z) Mk_annot) (Unop (Extract 31%N 0%N) (Val (Val_Bits [BV{128%N} 0x1f%Z]) Mk_annot) Mk_annot) Mk_annot) Mk_annot] Mk_annot; Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot] Mk_annot; Val (Val_Bits [BV{2%N} 0x0%Z]) Mk_annot] Mk_annot)) Mk_annot;
+    Smt (Assert (Val (Val_Symbolic 58%Z) Mk_annot)) Mk_annot;
+    Smt (DefineConst 60%Z (Manyop Concat [Manyop Concat [Manyop (Bvmanyarith Bvor) [Manyop (Bvmanyarith Bvand) [Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot; Unop (Bvnot) (Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot] Mk_annot; Unop (Extract 0%N 0%N) (Binop ((Bvarith Bvlshr)) (Val (Val_Symbolic 55%Z) Mk_annot) (Unop (Extract 31%N 0%N) (Val (Val_Bits [BV{128%N} 0x1f%Z]) Mk_annot) Mk_annot) Mk_annot) Mk_annot] Mk_annot; Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot] Mk_annot; Val (Val_Bits [BV{2%N} 0x0%Z]) Mk_annot] Mk_annot)) Mk_annot;
     Smt (DefineConst 61%Z (Unop (Extract 3%N 3%N) (Val (Val_Symbolic 60%Z) Mk_annot) Mk_annot)) Mk_annot;
     ReadReg "PSTATE" [Field "N"] (Val_Struct [("N", Val_Symbolic 17%Z)]) Mk_annot;
     WriteReg "PSTATE" [Field "N"] (Val_Struct [("N", Val_Symbolic 61%Z)]) Mk_annot;
@@ -36,8 +36,8 @@ Definition a40 : list trc := [
     Smt (DefineConst 55%Z (Manyop (Bvmanyarith Bvand) [Unop (Extract 31%N 0%N) (Val (Val_Symbolic 53%Z) Mk_annot) Mk_annot; Val (Val_Bits [BV{32%N} 0x1%Z]) Mk_annot] Mk_annot)) Mk_annot;
     Smt (DefineConst 58%Z (Binop (Eq) (Val (Val_Symbolic 55%Z) Mk_annot) (Val (Val_Bits [BV{32%N} 0x0%Z]) Mk_annot) Mk_annot)) Mk_annot;
     Branch 0%Z "model/aarch64.sail 4039:4 - 4039:34" Mk_annot;
-    Smt (Assert (Val (Val_Symbolic 58%Z) Mk_annot)) Mk_annot;
-    Smt (DefineConst 60%Z (Manyop Concat [Manyop Concat [Manyop (Bvmanyarith Bvor) [Manyop (Bvmanyarith Bvand) [Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot; Unop (Bvnot) (Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot] Mk_annot; Unop (Extract 0%N 0%N) (Binop ((Bvarith Bvlshr)) (Val (Val_Symbolic 55%Z) Mk_annot) (Unop (Extract 31%N 0%N) (Val (Val_Bits [BV{128%N} 0x1f%Z]) Mk_annot) Mk_annot) Mk_annot) Mk_annot] Mk_annot; Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot] Mk_annot; Val (Val_Bits [BV{2%N} 0x0%Z]) Mk_annot] Mk_annot)) Mk_annot;
+    Smt (Assert (Unop (Not) (Val (Val_Symbolic 58%Z) Mk_annot) Mk_annot)) Mk_annot;
+    Smt (DefineConst 60%Z (Manyop Concat [Manyop Concat [Manyop (Bvmanyarith Bvor) [Manyop (Bvmanyarith Bvand) [Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot; Unop (Bvnot) (Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot] Mk_annot; Unop (Extract 0%N 0%N) (Binop ((Bvarith Bvlshr)) (Val (Val_Symbolic 55%Z) Mk_annot) (Unop (Extract 31%N 0%N) (Val (Val_Bits [BV{128%N} 0x1f%Z]) Mk_annot) Mk_annot) Mk_annot) Mk_annot] Mk_annot; Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot] Mk_annot; Val (Val_Bits [BV{2%N} 0x0%Z]) Mk_annot] Mk_annot)) Mk_annot;
     Smt (DefineConst 61%Z (Unop (Extract 3%N 3%N) (Val (Val_Symbolic 60%Z) Mk_annot) Mk_annot)) Mk_annot;
     ReadReg "PSTATE" [Field "N"] (Val_Struct [("N", Val_Symbolic 17%Z)]) Mk_annot;
     WriteReg "PSTATE" [Field "N"] (Val_Struct [("N", Val_Symbolic 61%Z)]) Mk_annot;

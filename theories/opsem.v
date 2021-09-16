@@ -152,7 +152,7 @@ Definition eval_manyop (m : manyop) (vs : list valu) : option valu :=
     (λ ns, Val_Bits (foldl bv_mul n0.(bvn_val) ns)) <$>
      (mapM (M := option) (λ v, match v with | Val_Bits n => bvn_to_bv n0.(bvn_n) n | _ => None end ) vs')
   | Concat, (Val_Bits n0 :: vs') =>
-    (λ ns, Val_Bits (foldl (λ b1 b2, bv_to_bvn (bv_concat b1.(bvn_val) b2.(bvn_val))) n0 ns)) <$>
+    (λ ns, Val_Bits (foldl (λ b1 b2, bv_to_bvn (bv_concat (b1.(bvn_n) + b2.(bvn_n)) b1.(bvn_val) b2.(bvn_val))) n0 ns)) <$>
     (mapM (M := option) (λ v, match v with | Val_Bits n => Some n | _ => None end ) vs')
   | _, _ => (* TODO: And, Or *) None
   end.

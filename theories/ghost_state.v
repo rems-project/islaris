@@ -82,11 +82,12 @@ Section definitions.
   Global Instance reg_col_entry_eq_decision : EqDecision reg_col_entry.
   Proof. solve_decision. Defined.
 
-  Definition reg_col `{!threadG} (regs : list (reg_col_entry * valu)) : iProp Σ :=
-    [∗ list] v ∈ regs, match v.1 with
-                       | RegColDirect r => reg_mapsto thread_regs_name r 1 v.2
-                       | RegColStruct r f => struct_reg_mapsto thread_struct_regs_name r f 1 v.2
-                       end.
+  Definition reg_col `{!threadG} (regs : list (reg_col_entry * option valu)) : iProp Σ :=
+    [∗ list] v ∈ regs, ∃ vact, ⌜if v.2 is Some v' then vact = v' else True⌝ ∗
+      match v.1 with
+      | RegColDirect r => reg_mapsto thread_regs_name r 1 vact
+      | RegColStruct r f => struct_reg_mapsto thread_struct_regs_name r f 1 vact
+      end.
 
   Definition regs_ctx `{!threadG} (regs : reg_map) : iProp Σ :=
     ∃ rs (srs : gmap (string * string) valu),
@@ -315,6 +316,21 @@ Section reg.
       + apply: list_find_idx_insert_neq; [done|naive_solver|done| naive_solver].
       + apply list_lookup_insert_Some. right. naive_solver.
     - move => ?? [? /lookup_insert_is_Some'?]. naive_solver.
+  Qed.
+
+  Lemma reg_col_nil :
+    reg_col [] ⊣⊢ True.
+  Proof. done. Qed.
+
+  Lemma reg_col_cons_Some r v col :
+    reg_col ((r, Some v)::col) ⊣⊢ match r with
+                                 | RegColDirect r => r ↦ᵣ v
+                                 | RegColStruct r f => r # f ↦ᵣ v
+                                 end ∗ reg_col col.
+  Proof.
+    rewrite /reg_col /=. f_equiv. iSplit.
+    - iIntros "[% [-> $]]".
+    - iIntros "?". iExists _. by iFrame.
   Qed.
 End reg.
 

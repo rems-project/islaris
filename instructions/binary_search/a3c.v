@@ -5,8 +5,6 @@ Definition a3c : list trc := [
     Smt (DeclareConst 49%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "R22" [] (Val_Symbolic 49%Z) Mk_annot;
     Smt (DefineConst 50%Z (Val (Val_Symbolic 49%Z) Mk_annot)) Mk_annot;
-    MarkReg "R22" "ignore_edge" Mk_annot;
-    MarkReg "R30" "ignore_edge" Mk_annot;
     Smt (DeclareConst 51%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "_PC" [] (Val_Symbolic 51%Z) Mk_annot;
     Smt (DefineConst 53%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 51%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0x4%Z]) Mk_annot] Mk_annot)) Mk_annot;

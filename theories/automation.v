@@ -85,7 +85,7 @@ Typeclasses Opaque FindInstrKind.
 (* If we ever need to support more than one reg_col, we can use
 a solver for finding the collection with the right r. *)
 Inductive reg_mapsto_kind : Type :=
-| RKMapsTo (v : valu) | RKCol (regs : list (reg_col_entry * valu)).
+| RKMapsTo (v : valu) | RKCol (regs : list (reg_col_entry * option valu)).
 Definition FindRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r : string) := {|
   fic_A := reg_mapsto_kind;
   fic_Prop rk :=
@@ -400,17 +400,19 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = RegColDirect r)) regs)⌝ ∗
-                      (reg_col regs -∗ WPasm es)
+      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColDirect r)) regs) = Some i⌝ ∗
+                      (∀ vr, ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v' then v = v' else True⌝ -∗
+                       reg_col regs -∗ WPasm es)
       end)) -∗
     WPasm (ReadReg r [] v ann :: es).
   Proof.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg with "Hr").
     - rewrite via_vm_compute_eq.
-      iDestruct "Hwp" as ([? [[??][?[??]]]%list_find_idx_Some]) "Hwp"; simplify_eq/=.
-      iDestruct (big_sepL_lookup_acc with "Hr") as "[Hr Hregs]"; [done|] => /=.
-      iApply (wp_read_reg with "Hr"). iIntros "_ Hr". iApply "Hwp". by iApply "Hregs".
+      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+      iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|] => /=.
+      iApply (wp_read_reg with "Hr"). iIntros "% Hr". subst. iApply "Hwp"; [done..|]. iApply "Hregs".
+      iExists _. by iFrame.
   Qed.
 
   Lemma li_wp_read_reg_struct r f v ann es :
@@ -418,17 +420,19 @@ Section instances.
      (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜vread = v'⌝ -∗ r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = RegColStruct r f)) regs)⌝ ∗
-                      (reg_col regs -∗ WPasm es)
+      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColStruct r f)) regs) = Some i⌝ ∗
+                      (∀ vr, ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v' then vread = v' else True⌝ -∗
+                      reg_col regs -∗ WPasm es)
       end))) -∗
     WPasm (ReadReg r [Field f] v ann :: es).
   Proof.
     iDestruct 1 as (???) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg_struct with "Hr").
     - rewrite via_vm_compute_eq.
-      iDestruct "Hwp" as ([? [[??][?[??]]]%list_find_idx_Some]) "Hwp"; simplify_eq/=.
-      iDestruct (big_sepL_lookup_acc with "Hr") as "[Hr Hregs]"; [done|] => /=.
-      iApply (wp_read_reg_struct with "Hr"); [done|]. iIntros "_ Hr". iApply "Hwp". by iApply "Hregs".
+      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+      iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|] => /=.
+      iApply (wp_read_reg_struct with "Hr"); [done|]. iIntros "% Hr". subst.
+      iApply "Hwp"; [done..|]. iApply "Hregs". iExists _. by iFrame.
   Qed.
 
   Lemma li_wp_write_reg r v ann es:

@@ -520,18 +520,9 @@ bound. *)
 Definition bv_extract {n} (s l : N) (b : bv n) : bv l :=
   Z_to_bv l (bv_unsigned b ≫ Z.of_N s).
 
-Program Definition bv_concat {n1 n2} (b1 : bv n1) (b2 : bv n2) : bv (n1 + n2) := (* SMT: concat *)
-  BV _ (Z.lor (bv_unsigned b1 ≪ Z.of_N n2) (bv_unsigned b2)) _.
-Next Obligation.
-  intros n1 n2 b1 b2.
-  apply bv_wf_in_range.
-  apply Z_bounded_iff_bits_nonneg'; [lia | |].
-  { apply Z.lor_nonneg. bv_saturate. split; [|lia]. apply Z.shiftl_nonneg. lia. }
-  intros k ?. rewrite Z.lor_spec, Z.shiftl_spec; [|lia].
-  apply orb_false_intro; (eapply Z_bounded_iff_bits_nonneg; [..|done]); bv_saturate; try lia.
-  - apply (Z.lt_le_trans _ (bv_modulus n1)); [lia|]. apply Z.pow_le_mono_r; lia.
-  - apply (Z.lt_le_trans _ (bv_modulus n2)); [lia|]. apply Z.pow_le_mono_r; lia.
-Qed.
+(* Note that we should always have n1 + n2 = n, but we use a parameter to avoid a type-level (_ + _) *)
+Program Definition bv_concat n {n1 n2} (b1 : bv n1) (b2 : bv n2) : bv n := (* SMT: concat *)
+  Z_to_bv n (Z.lor (bv_unsigned b1 ≪ Z.of_N n2) (bv_unsigned b2)).
 
 Definition bv_to_little_endian m n (z : Z) : list (bv n) :=
   (λ b, Z_to_bv n b) <$> Z_to_little_endian m (Z.of_N n) z.
@@ -732,12 +723,26 @@ Section unfolding.
     bv_signed (bv_extract s l b) = bv_swrap l (bv_unsigned b ≫ Z.of_N s).
   Proof. unfold bv_extract. rewrite Z_to_bv_signed. done. Qed.
 
-  Lemma bv_concat_unsigned n2 b1 (b2 : bv n2) :
-    bv_unsigned (bv_concat b1 b2) = Z.lor (bv_unsigned b1 ≪ Z.of_N n2) (bv_unsigned b2).
+  Lemma bv_concat_unsigned' m  n2 b1 (b2 : bv n2) :
+    bv_unsigned (bv_concat m b1 b2) = bv_wrap m (Z.lor (bv_unsigned b1 ≪ Z.of_N n2) (bv_unsigned b2)).
   Proof. done. Qed.
-  Lemma bv_concat_signed n2 b1 (b2 : bv n2) :
-    bv_signed (bv_concat b1 b2) = bv_swrap (n + n2) (Z.lor (bv_unsigned b1 ≪ Z.of_N n2) (bv_unsigned b2)).
-  Proof. done. Qed.
+  (* [bv_concat_unsigned'] is the version that we want, but it
+  only holds with a precondition. *)
+  Lemma bv_concat_unsigned m n2 b1 (b2 : bv n2) :
+    (m = n + n2)%N →
+    bv_unsigned (bv_concat m b1 b2) = Z.lor (bv_unsigned b1 ≪ Z.of_N n2) (bv_unsigned b2).
+  Proof.
+    intros ->. rewrite bv_concat_unsigned', bv_wrap_small; [done|].
+    apply Z_bounded_iff_bits_nonneg'; [lia | |].
+    { apply Z.lor_nonneg. bv_saturate. split; [|lia]. apply Z.shiftl_nonneg. lia. }
+    intros k ?. rewrite Z.lor_spec, Z.shiftl_spec; [|lia].
+    apply orb_false_intro; (eapply Z_bounded_iff_bits_nonneg; [..|done]); bv_saturate; try lia.
+    - apply (Z.lt_le_trans _ (bv_modulus n)); [lia|]. apply Z.pow_le_mono_r; lia.
+    - apply (Z.lt_le_trans _ (bv_modulus n2)); [lia|]. apply Z.pow_le_mono_r; lia.
+  Qed.
+  Lemma bv_concat_signed m n2 b1 (b2 : bv n2) :
+    bv_signed (bv_concat m b1 b2) = bv_swrap m (Z.lor (bv_unsigned b1 ≪ Z.of_N n2) (bv_unsigned b2)).
+  Proof. unfold bv_concat. rewrite Z_to_bv_signed. done. Qed.
 
   Lemma bv_add_Z_unsigned b z :
     bv_unsigned (bv_add_Z b z) = bv_wrap n (bv_unsigned b + z).
@@ -820,13 +825,12 @@ Section properties.
     bv_wrap_simplify_solve.
   Qed.
 
-  Lemma bv_concat_0 m b1 (b2 : bv m) :
+  Lemma bv_concat_0 m n2 b1 (b2 : bv n2) :
     bv_unsigned b1 = 0 →
-    bv_concat b1 b2 = bv_zero_extend (n + m) b2.
+    bv_concat m b1 b2 = bv_zero_extend m b2.
   Proof.
     intros Hb1. apply bv_eq.
-    rewrite bv_zero_extend_unsigned; [|lia].
-    by rewrite bv_concat_unsigned, Hb1, Z.shiftl_0_l, Z.lor_0_l.
+    by rewrite bv_zero_extend_unsigned', bv_concat_unsigned', Hb1, Z.shiftl_0_l, Z.lor_0_l.
   Qed.
 End properties.
 

@@ -22,20 +22,20 @@ Global Opaque Z_to_bv
 
 Hint Rewrite bv_unsigned_spec_high using lia : rewrite_bits_db.
 
-Lemma bv_extract_concat_later n1 n2 s l (b1 : bv n1) (b2 : bv n2):
-  (n2 ≤ s)%N →
-  bv_extract s l (bv_concat b1 b2) = bv_extract (s - n2) l b1.
+Lemma bv_extract_concat_later m n1 n2 s l (b1 : bv n1) (b2 : bv n2):
+  (n2 ≤ s)%N → (m = n1 + n2)%N →
+  bv_extract s l (bv_concat m b1 b2) = bv_extract (s - n2) l b1.
 Proof.
-  move => ?. apply bv_eq.
-  rewrite !bv_extract_unsigned bv_concat_unsigned !bv_wrap_land.
+  move => ? ->. apply bv_eq.
+  rewrite !bv_extract_unsigned bv_concat_unsigned // !bv_wrap_land.
   bitblast.
 Qed.
-Lemma bv_extract_concat_here n1 n2 s (b1 : bv n1) (b2 : bv n2):
-  s = 0%N →
-  bv_extract s n2 (bv_concat b1 b2) = b2.
+Lemma bv_extract_concat_here m n1 n2 s (b1 : bv n1) (b2 : bv n2):
+  s = 0%N → (m = n1 + n2)%N →
+  bv_extract s n2 (bv_concat m b1 b2) = b2.
 Proof.
-  move => ->. apply bv_eq.
-  rewrite !bv_extract_unsigned bv_concat_unsigned !bv_wrap_land.
+  move => -> ->. apply bv_eq.
+  rewrite !bv_extract_unsigned bv_concat_unsigned // !bv_wrap_land.
   bitblast.
 Qed.
 
@@ -88,6 +88,7 @@ Hint Rewrite
 (* Rules with sideconditions *)
 Hint Rewrite
      @bv_zero_extend_unsigned @bv_sign_extend_signed
+     @bv_concat_unsigned
      using lia
   : bv_unfold.
 
