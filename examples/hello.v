@@ -105,10 +105,10 @@ Lemma hello `{!islaG Σ} `{!threadG} :
     [BV{64} 0x0000000010300690] ↦ₘ∗ hello_world_string ∗
     "_PC" ↦ᵣ Val_Bits [BV{64} 0x0000000010300000 - 0x4] ∗
     "__PC_changed" ↦ᵣ Val_Bool false ∗
-    "R0" ↦ᵣ Val_Poison ∗
-    "R1" ↦ᵣ Val_Poison ∗
-    "R2" ↦ᵣ Val_Poison ∗
-    "R11" ↦ᵣ Val_Poison ∗
+    "R0" ↦ᵣ RegVal_Poison ∗
+    "R1" ↦ᵣ RegVal_Poison ∗
+    "R2" ↦ᵣ RegVal_Poison ∗
+    "R11" ↦ᵣ RegVal_Poison ∗
     spec_trace hello_spec_trace ∗
     True)
     .
