@@ -19,6 +19,7 @@ depends: [
   "pprint" {>= "20171003"}
   "menhir" {build}
   "ott" {>= "0.31" & build}
+  "isla-lang"
 ]
 
 build: [
