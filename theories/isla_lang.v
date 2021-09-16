@@ -5,12 +5,6 @@ Require Export isla.base isla.bitvector.
 
 
 
-
-
-
-
-
-
 Definition var_name : Set := Z.
 Definition eq_var_name (v w : var_name) : bool := Z.eqb v w.
 
@@ -27,7 +21,17 @@ Inductive annot : Type :=
 
 Definition enum : Set := (enum_id*enum_ctor).
 
-Inductive bvarith : Set := 
+Inductive bvcomp : Set :=
+ | Bvult : bvcomp
+ | Bvslt : bvcomp
+ | Bvule : bvcomp
+ | Bvsle : bvcomp
+ | Bvuge : bvcomp
+ | Bvsge : bvcomp
+ | Bvugt : bvcomp
+ | Bvsgt : bvcomp.
+
+Inductive bvarith : Set :=
  | Bvnand : bvarith
  | Bvnor : bvarith
  | Bvxnor : bvarith
@@ -43,41 +47,31 @@ Inductive bvarith : Set :=
  | Bvlshr : bvarith
  | Bvashr : bvarith.
 
-Inductive bvcomp : Set := 
- | Bvult : bvcomp
- | Bvslt : bvcomp
- | Bvule : bvcomp
- | Bvsle : bvcomp
- | Bvuge : bvcomp
- | Bvsge : bvcomp
- | Bvugt : bvcomp
- | Bvsgt : bvcomp.
-
-Inductive bvmanyarith : Set := 
+Inductive bvmanyarith : Set :=
  | Bvand : bvmanyarith
  | Bvor : bvmanyarith
  | Bvxor : bvmanyarith
  | Bvadd : bvmanyarith
  | Bvmul : bvmanyarith.
 
-Inductive binop : Set := 
- | Eq : binop
- | Bvarith (bvarith5:bvarith)
- | Bvcomp (bvcomp5:bvcomp).
-
-Inductive manyop : Set := 
- | And : manyop
- | Or : manyop
- | Bvmanyarith (bvmanyarith5:bvmanyarith)
- | Concat : manyop.
-
-Inductive base_val : Set := 
+Inductive base_val : Set :=
  | Val_Symbolic (vvar5:var_name)
  | Val_Bool (bool5:bool)
  | Val_Bits (bv5:bvn)
  | Val_Enum (enum5:enum).
 
-Inductive unop : Set := 
+Inductive binop : Set :=
+ | Eq : binop
+ | Bvarith (bvarith5:bvarith)
+ | Bvcomp (bvcomp5:bvcomp).
+
+Inductive manyop : Set :=
+ | And : manyop
+ | Or : manyop
+ | Bvmanyarith (bvmanyarith5:bvmanyarith)
+ | Concat : manyop.
+
+Inductive unop : Set :=
  | Not : unop
  | Bvnot : unop
  | Bvredand : unop
@@ -87,20 +81,10 @@ Inductive unop : Set :=
  | ZeroExtend (nat5:N)
  | SignExtend (nat5:N).
 
-Inductive ty : Set := 
- | Ty_Bool : ty
- | Ty_BitVec (nat5:N)
- | Ty_Enum (enum_ty5:enum_id)
- | Ty_Array (ty1:ty) (ty2:ty).
+Inductive accessor : Set :=
+ | Field (name5:register_name).
 
-Inductive exp : Set := 
- | Val (base_val5:base_val) (annot5:annot)
- | Unop (unop5:unop) (exp5:exp) (annot5:annot)
- | Binop (binop5:binop) (exp1:exp) (exp2:exp) (annot5:annot)
- | Manyop (manyop5:manyop) (_:list exp) (annot5:annot)
- | Ite (exp1:exp) (exp2:exp) (exp3:exp) (annot5:annot).
-
-Inductive valu : Set := 
+Inductive valu : Set :=
  | RegVal_Base (base_val5:base_val)
  | RegVal_I (bvi5:Z) (int5:Z)
  | RegVal_String (str5:string)
@@ -111,20 +95,30 @@ Inductive valu : Set :=
  | RegVal_Struct (_:list (register_name * valu))
  | RegVal_Poison : valu.
 
-Inductive accessor : Set := 
- | Field (name5:register_name).
+Inductive ty : Set :=
+ | Ty_Bool : ty
+ | Ty_BitVec (nat5:N)
+ | Ty_Enum (enum_ty5:enum_id)
+ | Ty_Array (ty1:ty) (ty2:ty).
 
-Inductive smt : Set := 
+Inductive exp : Set :=
+ | Val (base_val5:base_val) (annot5:annot)
+ | Unop (unop5:unop) (exp5:exp) (annot5:annot)
+ | Binop (binop5:binop) (exp1:exp) (exp2:exp) (annot5:annot)
+ | Manyop (manyop5:manyop) (_:list exp) (annot5:annot)
+ | Ite (exp1:exp) (exp2:exp) (exp3:exp) (annot5:annot).
+
+Definition accessor_list : Set := list accessor.
+
+Definition valu_option : Set := option valu.
+
+Inductive smt : Set :=
  | DeclareConst (vvar5:var_name) (ty5:ty)
  | DefineConst (vvar5:var_name) (exp5:exp)
  | Assert (exp5:exp)
  | DefineEnum (int5:Z).
 
-Definition valu_option : Set := option valu.
-
-Definition accessor_list : Set := list accessor.
-
-Inductive event : Set := 
+Inductive event : Set :=
  | Smt (smt5:smt) (annot5:annot)
  | Branch (int5:Z) (str5:string) (annot5:annot) (*r Sail trace fork *)
  | ReadReg (name5:register_name) (accessor_list5:accessor_list) (valu5:valu) (annot5:annot) (*r read value `valu` from register `name` *)
@@ -202,12 +196,12 @@ Fixpoint subst_val_valu (base_val_6:base_val) (vvar5:var_name) (addr5:valu) {str
   | (RegVal_Base base_val5) => RegVal_Base (subst_val_base_val base_val_6 vvar5 base_val5)
   | (RegVal_I bvi5 int5) => RegVal_I bvi5 int5
   | (RegVal_String str5) => RegVal_String str5
-  | RegVal_Unit => RegVal_Unit 
+  | RegVal_Unit => RegVal_Unit
   | (RegVal_NamedUnit name5) => RegVal_NamedUnit name5
   | (RegVal_Vector valu_list) => RegVal_Vector (map (fun (valu_:valu) => (subst_val_valu base_val_6 vvar5 valu_)) valu_list)
   | (RegVal_List valu_list) => RegVal_List (map (fun (valu_:valu) => (subst_val_valu base_val_6 vvar5 valu_)) valu_list)
   | (RegVal_Struct selem_list) => RegVal_Struct selem_list
-  | RegVal_Poison => RegVal_Poison 
+  | RegVal_Poison => RegVal_Poison
 end.
 
 Definition subst_val_event (base_val5:base_val) (vvar_6:var_name) (event5:event) : event :=
