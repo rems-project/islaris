@@ -99,6 +99,12 @@ Hint Rewrite Z.shiftr_0_r Z.lor_0_r Z.lor_0_l : bv_unfolded_simplify.
 Hint Rewrite Z.land_ones using lia : bv_unfolded_simplify.
 Hint Rewrite bv_wrap_bv_wrap using lia : bv_unfolded_simplify.
 
+(** The [bv_unfolded_to_arith] database collects rewrite rules that
+convert bitwise operations to arithmetic operations in preparation for lia. *)
+Create HintDb bv_unfolded_to_arith discriminated.
+Hint Rewrite Z_lnot_opp : bv_unfolded_to_arith.
+Hint Rewrite Z.shiftl_mul_pow2 Z.shiftr_div_pow2 using lia : bv_unfolded_to_arith.
+
 Ltac reduce_closed_N_tac := idtac.
 Ltac reduce_closed_N :=
   idtac;
@@ -134,6 +140,7 @@ Ltac bv_solve_unfold_tac := idtac.
 
 Ltac bv_solve :=
   bv_simplify;
+  autorewrite with bv_unfolded_to_arith;
   (* try lazymatch goal with *)
   (* | |- bv_wrap _ _ = bv_wrap _ _ => f_equal *)
   (* end; *)
