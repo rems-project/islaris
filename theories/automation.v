@@ -434,16 +434,38 @@ Section instances.
   Qed.
 
   Lemma li_wp_write_reg r v ann es:
-    (∃ v', r ↦ᵣ v' ∗ (r ↦ᵣ v -∗ WPasm es)) -∗
+    (find_in_context (FindRegMapsTo r) (λ rk,
+      match rk with
+      | RKMapsTo v' => (r ↦ᵣ v -∗ WPasm es)
+      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColDirect r)) regs) = Some i⌝ ∗
+          (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r ↦ᵣ v -∗ WPasm es)
+      end)) -∗
     WPasm (WriteReg r [] v ann :: es).
-  Proof. iDestruct 1 as (?) "[Hr Hwp]". by iApply (wp_write_reg with "Hr"). Qed.
+  Proof.
+    iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
+    - by iApply (wp_write_reg with "Hr").
+    - rewrite via_vm_compute_eq.
+      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+  Admitted.
+      (* iDestruct (big_sepL_delete_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|] => /=. *)
+      (* iApply (wp_write_reg with "Hr"). iIntros "% Hr". iApply "Hwp". iApply "Hregs". *)
+      (* iExists _. by iFrame. *)
 
   Lemma li_wp_write_reg_struct r f v ann es:
-    (∃ v' vnew, r # f ↦ᵣ v' ∗
-     ⌜read_accessor [Field f] v = Some vnew⌝ ∗
-     (r # f ↦ᵣ vnew -∗ WPasm es)) -∗
+    (∃ vnew, ⌜read_accessor [Field f] v = Some vnew⌝ ∗
+    (find_in_context (FindStructRegMapsTo r f) (λ rk,
+      match rk with
+      | RKMapsTo v' => (r # f ↦ᵣ vnew -∗ WPasm es)
+      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColStruct r f)) regs) = Some i⌝ ∗
+          (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r # f ↦ᵣ vnew -∗ WPasm es)
+      end))) -∗
     WPasm (WriteReg r [Field f] v ann :: es).
-  Proof. iDestruct 1 as (??) "[Hr [% Hwp]]". by iApply (wp_write_reg_struct with "Hr"). Qed.
+  Proof.
+    iDestruct 1 as (vnew ? rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
+    - by iApply (wp_write_reg_struct with "Hr").
+    - rewrite via_vm_compute_eq.
+      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+  Admitted.
 
   Lemma li_wp_branch_address v ann es:
     WPasm es -∗
