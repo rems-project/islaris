@@ -19,6 +19,13 @@ Definition sys_regs : list (reg_col_entry * option valu) := [
   (RegColStruct "PSTATE" "D" , Some (Val_Bits [BV{1} 1]))
 ].
 
+Definition CNVZ_regs : list (reg_col_entry * option valu) := [
+  (RegColStruct "PSTATE" "C", None);
+  (RegColStruct "PSTATE" "N", None);
+  (RegColStruct "PSTATE" "V", None);
+  (RegColStruct "PSTATE" "Z", None)
+].
+
 Definition sys_regs_map : reg_map :=
   <[ "SCTLR_EL2" := Val_Bits [BV{64} 0x0000000004000002] ]> $
   <[ "SCR_EL3" := Val_Bits [BV{32} 0] ]> $
@@ -52,19 +59,16 @@ Section sys_regs.
     ([∗ map] k↦y ∈ sys_regs_map, k ↦ᵣ y) ==∗
     regs_ctx regs ∗
     reg_col sys_regs ∗
-    "PSTATE" # "C" ↦ᵣ Val_Bits [BV{1} 0] ∗
-    "PSTATE" # "N" ↦ᵣ Val_Bits [BV{1} 0] ∗
-    "PSTATE" # "V" ↦ᵣ Val_Bits [BV{1} 0] ∗
-    "PSTATE" # "Z" ↦ᵣ Val_Bits [BV{1} 0].
+    reg_col CNVZ_regs.
   Proof.
-    rewrite !reg_col_cons_Some reg_col_nil.
+    rewrite !reg_col_cons_Some !reg_col_cons_None reg_col_nil.
     repeat (rewrite big_sepM_insert;[ | by vm_compute]).
     iIntros "Hctx H". repeat iDestruct "H" as "[$ H]".
     iDestruct "H" as "[HPSTATE _]".
     iMod (reg_mapsto_to_struct_reg_mapsto with "Hctx HPSTATE") as "[$ H]".
     { simpl. repeat (constructor; [set_solver|]). constructor. }
-    simpl. repeat (iDestruct "H" as "[Hf H]"; first [ iFrame "Hf" | iClear "Hf"]).
-    done.
+    simpl. iModIntro. iRevert "H".
+    repeat liAStep; liShow.
   Qed.
 End sys_regs.
 

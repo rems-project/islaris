@@ -335,6 +335,37 @@ Section instances.
     Subsume (a ↦ₘ∗ l1) (a ↦ₘ∗ l2) :=
     λ G, i2p (subsume_mem_array a n l1 l2 G).
 
+  Lemma simpl_goal_reg_col_nil T:
+    (T True) -∗
+    simplify_goal (reg_col []) T.
+  Proof.
+    iIntros "?". iExists _. iFrame. by rewrite reg_col_nil.
+  Qed.
+  Global Instance simpl_goal_reg_col_nil_inst :
+    SimplifyGoal (reg_col []) (Some 100%N) :=
+    λ T, i2p (simpl_goal_reg_col_nil T).
+
+  Lemma simpl_goal_reg_col_cons_None r col T:
+    (∃ v, T (match r with | RegColDirect r => r ↦ᵣ v | RegColStruct r f => r # f ↦ᵣ v end ∗ reg_col col)) -∗
+           simplify_goal (reg_col ((r, None)::col)) T.
+  Proof.
+    iIntros "[%v ?]". iExists _. iFrame.
+    rewrite reg_col_cons_None. iIntros "[? $]". by iExists _.
+  Qed.
+  Global Instance simpl_goal_reg_col_cons_None_inst r col :
+    SimplifyGoal (reg_col ((r, None)::col)) (Some 100%N) :=
+    λ T, i2p (simpl_goal_reg_col_cons_None r col T).
+
+  Lemma simpl_goal_reg_col_cons_Some r v col T:
+    (T (match r with | RegColDirect r => r ↦ᵣ v | RegColStruct r f => r # f ↦ᵣ v end ∗ reg_col col)) -∗
+           simplify_goal (reg_col ((r, Some v)::col)) T.
+  Proof.
+    iIntros "?". iExists _. iFrame. rewrite reg_col_cons_Some. by iIntros "[? $]".
+  Qed.
+  Global Instance simpl_goal_reg_col_cons_Some_inst r v col :
+    SimplifyGoal (reg_col ((r, Some v)::col)) (Some 100%N) :=
+    λ T, i2p (simpl_goal_reg_col_cons_Some r v col T).
+
   Lemma li_wp_next_instr:
     (∃ (nPC : addr) bPC_changed,
         "_PC" ↦ᵣ Val_Bits nPC ∗ "__PC_changed" ↦ᵣ Val_Bool bPC_changed ∗
@@ -446,10 +477,10 @@ Section instances.
     - by iApply (wp_write_reg with "Hr").
     - rewrite via_vm_compute_eq.
       iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
-  Admitted.
-      (* iDestruct (big_sepL_delete_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|] => /=. *)
-      (* iApply (wp_write_reg with "Hr"). iIntros "% Hr". iApply "Hwp". iApply "Hregs". *)
-      (* iExists _. by iFrame. *)
+      rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
+      iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
+      iApply (wp_write_reg with "Hr"). iIntros "Hr". iApply ("Hwp" with "[] Hregs [$]"). done.
+  Qed.
 
   Lemma li_wp_write_reg_struct r f v ann es:
     (∃ vnew, ⌜read_accessor [Field f] v = Some vnew⌝ ∗
@@ -465,7 +496,10 @@ Section instances.
     - by iApply (wp_write_reg_struct with "Hr").
     - rewrite via_vm_compute_eq.
       iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
-  Admitted.
+      rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
+      iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
+      iApply (wp_write_reg_struct with "Hr"); [done|]. iIntros "Hr". iApply ("Hwp" with "[] Hregs [$]"). done.
+  Qed.
 
   Lemma li_wp_branch_address v ann es:
     WPasm es -∗

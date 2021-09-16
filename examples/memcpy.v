@@ -31,10 +31,9 @@ $ PATH=$PWD/bin:$PATH dune exec -- isla-coq examples/memcpy.dump -d -o instructi
 *)
 
 Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
-  ∃ (tmp src dst i n : bv 64) (srcdata dstdata : list byte) (pstaten pstatez pstatec pstatev : bv 1),
+  ∃ (tmp src dst i n : bv 64) (srcdata dstdata : list byte),
   reg_col sys_regs ∗
-  "PSTATE" # "N" ↦ᵣ Val_Bits pstaten ∗ "PSTATE" # "Z" ↦ᵣ Val_Bits pstatez ∗
-  "PSTATE" # "C" ↦ᵣ Val_Bits pstatec ∗ "PSTATE" # "V" ↦ᵣ Val_Bits pstatev ∗
+  reg_col CNVZ_regs ∗
   "R0" ↦ᵣ Val_Bits dst ∗ "R1" ↦ᵣ Val_Bits src ∗ "R2" ↦ᵣ Val_Bits n ∗
   "R3" ↦ᵣ Val_Bits i ∗ "R4" ↦ᵣ Val_Bits tmp ∗
   src ↦ₘ∗ srcdata ∗ dst ↦ₘ∗ dstdata ∗
@@ -44,10 +43,9 @@ Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ⌜bv_unsigned dst + bv_unsigned n < 2 ^ 52⌝ ∗
   ⌜take (Z.to_nat (bv_unsigned i)) dstdata = take (Z.to_nat (bv_unsigned i)) srcdata⌝ ∗
   instr_pre 0x000000001030001c (
-    ∃ (tmp n : bv 64) (pstaten pstatez pstatec pstatev : bv 1),
+    ∃ (tmp n : bv 64),
       reg_col sys_regs ∗
-      "PSTATE" # "N" ↦ᵣ Val_Bits pstaten ∗ "PSTATE" # "Z" ↦ᵣ Val_Bits pstatez ∗
-      "PSTATE" # "C" ↦ᵣ Val_Bits pstatec ∗ "PSTATE" # "V" ↦ᵣ Val_Bits pstatev ∗
+      reg_col CNVZ_regs ∗
       "R0" ↦ᵣ Val_Bits dst ∗ "R1" ↦ᵣ Val_Bits src ∗ "R2" ↦ᵣ Val_Bits n ∗
       "R4" ↦ᵣ Val_Bits tmp ∗ "R3" ↦ᵣ Val_Bits n ∗
       src ↦ₘ∗ srcdata ∗ dst ↦ₘ∗ srcdata ∗
@@ -125,10 +123,9 @@ Lemma memcpy `{!islaG Σ} `{!threadG} :
   instr 0x000000001030001c (Some a1c) -∗
   □ instr_pre 0x0000000010300008 memcpy_loop_spec -∗
   instr_body 0x0000000010300000 (
-    ∃ (tmp1 tmp2 src dst n ret : bv 64) (srcdata dstdata : list byte) (pstaten pstatez pstatec pstatev : bv 1),
+    ∃ (tmp1 tmp2 src dst n ret : bv 64) (srcdata dstdata : list byte),
     reg_col sys_regs ∗
-    "PSTATE" # "N" ↦ᵣ Val_Bits pstaten ∗ "PSTATE" # "Z" ↦ᵣ Val_Bits pstatez ∗
-    "PSTATE" # "C" ↦ᵣ Val_Bits pstatec ∗ "PSTATE" # "V" ↦ᵣ Val_Bits pstatev ∗
+    reg_col CNVZ_regs ∗
     "R0" ↦ᵣ Val_Bits dst ∗ "R1" ↦ᵣ Val_Bits src ∗ "R2" ↦ᵣ Val_Bits n ∗
     "R3" ↦ᵣ Val_Bits tmp2 ∗ "R4" ↦ᵣ Val_Bits tmp1 ∗
     "R30" ↦ᵣ Val_Bits ret ∗
@@ -137,10 +134,9 @@ Lemma memcpy `{!islaG Σ} `{!threadG} :
     ⌜bv_unsigned src + bv_unsigned n < 2 ^ 52⌝ ∗
     ⌜bv_unsigned dst + bv_unsigned n < 2 ^ 52⌝ ∗
     instr_pre (bv_unsigned ret) (
-    ∃ (tmp1 tmp2 n : bv 64) (pstaten pstatez pstatec pstatev : bv 1),
+    ∃ (tmp1 tmp2 n : bv 64),
       reg_col sys_regs ∗
-      "PSTATE" # "N" ↦ᵣ Val_Bits pstaten ∗ "PSTATE" # "Z" ↦ᵣ Val_Bits pstatez ∗
-      "PSTATE" # "C" ↦ᵣ Val_Bits pstatec ∗ "PSTATE" # "V" ↦ᵣ Val_Bits pstatev ∗
+      reg_col CNVZ_regs ∗
       "R0" ↦ᵣ Val_Bits dst ∗ "R1" ↦ᵣ Val_Bits src ∗ "R2" ↦ᵣ Val_Bits n ∗
       "R3" ↦ᵣ Val_Bits tmp2 ∗ "R4" ↦ᵣ Val_Bits tmp1 ∗
       "R30" ↦ᵣ Val_Bits ret ∗

@@ -322,6 +322,17 @@ Section reg.
     reg_col [] ⊣⊢ True.
   Proof. done. Qed.
 
+  Lemma reg_col_cons_None r col :
+    reg_col ((r, None)::col) ⊣⊢ (∃ v, match r with
+                                 | RegColDirect r => r ↦ᵣ v
+                                 | RegColStruct r f => r # f ↦ᵣ v
+                                 end) ∗ reg_col col.
+  Proof.
+    rewrite /reg_col /=. f_equiv. iSplit.
+    - iIntros "[% [_ ?]]". by iExists _.
+    - iIntros "[% ?]". iExists _. by iFrame.
+  Qed.
+
   Lemma reg_col_cons_Some r v col :
     reg_col ((r, Some v)::col) ⊣⊢ match r with
                                  | RegColDirect r => r ↦ᵣ v
