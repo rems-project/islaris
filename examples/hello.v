@@ -3,7 +3,7 @@ Require Import isla.opsem.
 Require Import isla.automation.
 Require Import isla.adequacy.
 Require Import isla.examples.sys_regs.
-From isla.instructions Require Import adrp_x1 mov_x2_4096 add_x1_x1_0x690 mov_w0_72 movk_x2 strb_w0_x2 ldrb_w0_x1 cbnz_w0_1 cbnz_w0_2.
+From isla.instructions.hello Require Import instrs.
 
 (*
 C code:
@@ -53,9 +53,9 @@ Definition hello_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
 Arguments hello_loop_spec /.
 
 Lemma hello_loop `{!islaG Σ} `{!threadG} :
-  instr 0x0000000010300014 (Some [strb_w0_x2_trace]) -∗
-  instr 0x0000000010300018 (Some [ldrb_w0_x1_trace]) -∗
-  instr 0x000000001030001c (Some [cbnz_w0_1; cbnz_w0_2]) -∗
+  instr 0x0000000010300014 (Some a14) -∗
+  instr 0x0000000010300018 (Some a18) -∗
+  instr 0x000000001030001c (Some a1c) -∗
   instr 0x0000000010300020 None -∗
   □ instr_pre 0x0000000010300014 hello_loop_spec -∗
   mmio_range [BV{64} 0x101f1000] 0x10 -∗
@@ -94,11 +94,11 @@ Time Qed.
 
 
 Lemma hello `{!islaG Σ} `{!threadG} :
-  instr 0x0000000010300000 (Some [adrp_x1_trace]) -∗
-  instr 0x0000000010300004 (Some [mov_x2_4096_trace]) -∗
-  instr 0x0000000010300008 (Some [add_x1_x1_0x690_trace]) -∗
-  instr 0x000000001030000c (Some [mov_w0_72_trace]) -∗
-  instr 0x0000000010300010 (Some [movk_x2_trace]) -∗
+  instr 0x0000000010300000 (Some a0) -∗
+  instr 0x0000000010300004 (Some a4) -∗
+  instr 0x0000000010300008 (Some a8) -∗
+  instr 0x000000001030000c (Some ac) -∗
+  instr 0x0000000010300010 (Some a10) -∗
   □ instr_pre 0x0000000010300014 hello_loop_spec -∗
   instr_body 0x0000000010300000 (
     reg_col sys_regs ∗

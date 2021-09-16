@@ -28,6 +28,7 @@ generate:
 	mv instructions/af9000029.isla instructions/store.isla
 	mv instructions/af9000029.v instructions/store.v
 	rm instructions/instrs.v
+	export PATH=$$PWD/bin:$$PATH; dune exec -- isla-coq examples/hello.dump -d -o instructions/hello  -n "a{addr}" --coqdir=isla.instructions.hello
 	export PATH=$$PWD/bin:$$PATH; dune exec -- isla-coq examples/example.dump -d -o instructions/example  -n "a{addr}" --coqdir=isla.instructions.example
 	export PATH=$$PWD/bin:$$PATH; dune exec -- isla-coq examples/memcpy.dump -d -o instructions/memcpy  -n "a{addr}" --coqdir=isla.instructions.memcpy
 	export PATH=$$PWD/bin:$$PATH; dune exec -- isla-coq examples/binary_search.dump -d -o instructions/binary_search  -n "a{addr}" --coqdir=isla.instructions.binary_search
