@@ -1,4 +1,4 @@
-open Isla_lang
+open Isla_lang_if
 open Extra
 
 (** [ignored_registers] is a list of registers for which read and write events
