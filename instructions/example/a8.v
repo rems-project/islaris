@@ -1,14 +1,14 @@
 From isla Require Import isla_lang.
 
-Definition af9000029 : list trc := [
+Definition a8 : list trc := [
   [
     Smt (DeclareConst 6%Z (Ty_BitVec 1%N)) Mk_annot;
     Smt (DeclareConst 29%Z (Ty_BitVec 64%N)) Mk_annot;
     Smt (Assert (Binop (Eq) (Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 29%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0xfff0000000000007%Z]) Mk_annot] Mk_annot) (Val (Val_Bits [BV{64%N} 0x0%Z]) Mk_annot) Mk_annot)) Mk_annot;
-    ReadReg "R1" [] (Val_Symbolic 29%Z) Mk_annot;
+    ReadReg "R27" [] (Val_Symbolic 29%Z) Mk_annot;
     Smt (DefineConst 90%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 29%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0x0%Z]) Mk_annot] Mk_annot)) Mk_annot;
     Smt (DeclareConst 91%Z (Ty_BitVec 64%N)) Mk_annot;
-    ReadReg "R9" [] (Val_Symbolic 91%Z) Mk_annot;
+    ReadReg "R28" [] (Val_Symbolic 91%Z) Mk_annot;
     Smt (DefineConst 92%Z (Val (Val_Symbolic 91%Z) Mk_annot)) Mk_annot;
     ReadReg "PSTATE" [Field "EL"] (Val_Struct [("EL", Val_Bits [BV{2%N} 0x2%Z])]) Mk_annot;
     ReadReg "PSTATE" [Field "nRW"] (Val_Struct [("nRW", Val_Bits [BV{1%N} 0x0%Z])]) Mk_annot;

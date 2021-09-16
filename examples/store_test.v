@@ -17,7 +17,7 @@ Definition spec `{!islaG Σ} `{!threadG} a : iProp Σ :=
     True).
 
 Lemma store_wp `{!islaG Σ} `{!threadG}:
-  instr 0x0000000010300000 (Some [store_trace]) -∗
+  instr 0x0000000010300000 (Some af9000029) -∗
   instr_body 0x0000000010300000 (spec 0x0000000010300004).
 Proof.
   iStartProof.

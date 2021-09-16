@@ -3,7 +3,7 @@ Require Import isla.opsem.
 Require Import isla.automation.
 Require Import isla.adequacy.
 Require Import isla.examples.sys_regs.
-From isla.instructions Require Import bl_0x100 mov_w0_0 ret mov_x28_x0 mov_x0_1 b_0x8 cmp_x1_0 str_x28_x27.
+From isla.instructions.example Require Import instrs.
 
 (*
 C:
@@ -32,11 +32,12 @@ Definition test_state_local := {|
 
 Definition test_state_global := {|
     seq_instrs :=
-    <[ [BV{64} 0x0000000010300000] := [bl_0x100_trace]]> $    (* bl 0x100 *)
-    <[ [BV{64} 0x0000000010300004] := [mov_x28_x0_trace]]> $  (* mov OUT, x0 *)
-    <[ [BV{64} 0x0000000010300008] := [str_x28_x27_trace]]> $ (* str x28, [x27] *)
-    <[ [BV{64} 0x0000000010300100] := [mov_w0_0_trace]]> $    (* mov w0, 0 *)
-    <[ [BV{64} 0x0000000010300104] := [ret_trace]]> $         (* ret *)
+    <[ [BV{64} 0x0000000010300000] := a0]> $
+    <[ [BV{64} 0x0000000010300004] := a4]> $
+    <[ [BV{64} 0x0000000010300008] := a8]> $
+
+    <[ [BV{64} 0x0000000010300010] := a10]> $
+    <[ [BV{64} 0x0000000010300014] := a14]> $
     ∅;
     seq_mem := ∅
 |}.
@@ -48,12 +49,12 @@ Definition test_state_spec : list seq_label := [
 ].
 
 Lemma test_state_iris `{!islaG Σ} `{!threadG} :
-  instr 0x0000000010300000 (Some [bl_0x100_trace]) -∗
-  instr 0x0000000010300004 (Some [mov_x28_x0_trace]) -∗
-  instr 0x0000000010300008 (Some [str_x28_x27_trace]) -∗
+  instr 0x0000000010300000 (Some a0) -∗
+  instr 0x0000000010300004 (Some a4) -∗
+  instr 0x0000000010300008 (Some a8) -∗
   instr 0x000000001030000c None -∗
-  instr 0x0000000010300100 (Some [mov_w0_0_trace]) -∗
-  instr 0x0000000010300104 (Some [ret_trace]) -∗
+  instr 0x0000000010300010 (Some a10) -∗
+  instr 0x0000000010300014 (Some a14) -∗
   reg_col sys_regs -∗
   "_PC" ↦ᵣ Val_Bits start_address -∗
   "__PC_changed" ↦ᵣ Val_Bool false -∗
@@ -105,9 +106,9 @@ Definition test_state_fn1_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
 Arguments test_state_fn1_spec /.
 
 Lemma test_state_iris_fn1 `{!islaG Σ} `{!threadG} :
-  instr 0x0000000010300100 (Some [mov_w0_0_trace]) -∗
-  instr 0x0000000010300104 (Some [ret_trace]) -∗
-  instr_body 0x0000000010300100 test_state_fn1_spec.
+  instr 0x0000000010300010 (Some a10) -∗
+  instr 0x0000000010300014 (Some a14) -∗
+  instr_body 0x0000000010300010 test_state_fn1_spec.
 Proof.
   iStartProof.
   repeat liAStep; liShow.
@@ -125,11 +126,11 @@ Definition test_state_fn2_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
 Arguments test_state_fn2_spec /.
 
 Lemma test_state_iris_fn2 `{!islaG Σ} `{!threadG} :
-  instr 0x0000000010300000 (Some [bl_0x100_trace]) -∗
-  instr 0x0000000010300004 (Some [mov_x28_x0_trace]) -∗
-  instr 0x0000000010300008 (Some [str_x28_x27_trace]) -∗
+  instr 0x0000000010300000 (Some a0) -∗
+  instr 0x0000000010300004 (Some a4) -∗
+  instr 0x0000000010300008 (Some a8) -∗
   instr 0x000000001030000c None -∗
-  □ instr_pre 0x0000000010300100 test_state_fn1_spec -∗
+  □ instr_pre 0x0000000010300010 test_state_fn1_spec -∗
   instr_body 0x0000000010300000 test_state_fn2_spec.
 Proof.
   iStartProof.
@@ -155,7 +156,7 @@ Proof.
 
   iAssert (
       □ instr_body 0x0000000010300000 test_state_fn2_spec ∗
-      □ instr_body 0x0000000010300100 test_state_fn1_spec
+      □ instr_body 0x0000000010300010 test_state_fn1_spec
     )%I as "(Hmain & _)". {
     iLöb as "IH". iDestruct "IH" as "(?&?)".
     (repeat iSplit); iModIntro.
@@ -171,85 +172,17 @@ Proof.
   - iFrame. by iApply (mmio_range_intro with "[//]").
 Qed.
 
-(* trace of bne 0xc: (at address 0x0000000010300004)
-  (* TODO: Can we somehoe merge the common parts of the two traces? *)
-
-(trace
-  (declare-const v12 (_ BitVec 4))
-  (declare-const v14 (_ BitVec 1))
-  (declare-const v15 (_ BitVec 1))
-  (declare-const v16 (_ BitVec 5))
-  (declare-const v17 (_ BitVec 1))
-  (declare-const v20 (_ BitVec 1))
-  (declare-const v24 (_ BitVec 2))
-  (declare-const v25 (_ BitVec 1))
-  (declare-const v27 (_ BitVec 1))
-  (declare-const v28 (_ BitVec 8))
-  (declare-const v29 (_ BitVec 1))
-  (declare-const v30 (_ BitVec 1))
-  (declare-const v31 (_ BitVec 1))
-  (declare-const v32 (_ BitVec 1))
-  (declare-const v33 (_ BitVec 1))
-  (declare-const v35 (_ BitVec 1))
-  (declare-const v114 (_ BitVec 32))
-  (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
-  (define-const v3435 (not (= v35 #b1)))
-  (branch 0 "model/aarch64.sail 12127:4 - 12129:5")
-  (assert v3435)
-  (read-reg |_PC| nil #x0000000010300004)
-  (write-reg |_PC| nil #x0000000010300010)
-  (write-reg |__PC_changed| nil true))
-(trace
-  (declare-const v12 (_ BitVec 4))
-  (declare-const v14 (_ BitVec 1))
-  (declare-const v15 (_ BitVec 1))
-  (declare-const v16 (_ BitVec 5))
-  (declare-const v17 (_ BitVec 1))
-  (declare-const v20 (_ BitVec 1))
-  (declare-const v24 (_ BitVec 2))
-  (declare-const v25 (_ BitVec 1))
-  (declare-const v27 (_ BitVec 1))
-  (declare-const v28 (_ BitVec 8))
-  (declare-const v29 (_ BitVec 1))
-  (declare-const v30 (_ BitVec 1))
-  (declare-const v31 (_ BitVec 1))
-  (declare-const v32 (_ BitVec 1))
-  (declare-const v33 (_ BitVec 1))
-  (declare-const v35 (_ BitVec 1))
-  (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|F| #b1) (|GE| v12) (|A| #b1) (|C| v15) (|Z| v35) (|UAO| v33) (|D| #b1) (|BTYPE| v24) (|V| v17) (|N| v25) (|PAN| v29) (|TCO| v32) (|I| #b1) (|SS| #b0) (|SP| #b1) (|Q| v14) (|nRW| #b0) (|T| v31) (|M| v16) (|EL| #b00) (|J| v20) (|DIT| #b0) (|SSBS| v30) (|IL| #b0) (|IT| v28) (|E| v27)))
-  (define-const v3435 (not (= v35 #b1)))
-  (branch 0 "model/aarch64.sail 12127:4 - 12129:5")
-  (assert (not v3435)))
-
-*)
-Definition trc_bne_0xc : list trc := [
-[
-  Smt (DeclareConst 35 (Ty_BitVec 1)) Mk_annot;
-  ReadReg "PSTATE" [Field "Z"] (Val_Struct [ ("Z", (Val_Symbolic 35)) ]) Mk_annot;
-  Smt (DefineConst 3435 (Unop Not (Binop Eq (Val (Val_Symbolic 35) Mk_annot) (Val (Val_Bits [BV{1} 1]) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
-  Smt (Assert (Val (Val_Symbolic (3435)) Mk_annot)) Mk_annot;
-  ReadReg "_PC" nil (Val_Bits [BV{64} 0x0000000010300004]) Mk_annot;
-  WriteReg "_PC" nil (Val_Bits [BV{64} 0x0000000010300010]) Mk_annot;
-  WriteReg "__PC_changed" nil (Val_Bool true) Mk_annot
-]; [
-  Smt (DeclareConst 35 (Ty_BitVec 1)) Mk_annot;
-  ReadReg "PSTATE" [Field "Z"] (Val_Struct [ ("Z", (Val_Symbolic 35)) ]) Mk_annot;
-  Smt (DefineConst 3435 (Unop Not (Binop Eq (Val (Val_Symbolic 35) Mk_annot) (Val (Val_Bits [BV{1} 1]) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
-  Smt (Assert (Unop Not (Val (Val_Symbolic (3435)) Mk_annot) Mk_annot)) Mk_annot
-]
-].
-
 (*
-0x0000000010300000: cmp x1, 0
-0x0000000010300004: bne 0xc  --\
-0x0000000010300008: mov x0, 1  |
-0x000000001030000c: b   0x8  --|--\
-0x0000000010300010: bl  0x100<-/  |
-0x0000000010300014: mov OUT, x0 <-/
+0x0000000010300018: cmp x1, 0
+0x000000001030001c: bne 0xc  --\
+0x0000000010300020: mov x0, 1  |
+0x0000000010300024: b   0x8  --|--\
+0x0000000010300028: bl  34<-/  |
+0x000000001030002c: mov OUT, x0 <-/
 
 
-0x0000000010300110: mov x0, 0
-0x0000000010300114: ret
+0x0000000010300034: mov x0, 0
+0x0000000010300038: ret
 *)
 
 Definition test_state2_local (n1 : Z) Hin := {|
@@ -263,34 +196,34 @@ Definition test_state2_local (n1 : Z) Hin := {|
 |}.
 Definition test_state2_global  := {|
   seq_instrs :=
-    <[[BV{64} 0x0000000010300000] := [cmp_x1_0_trace]]> $
-    <[[BV{64} 0x0000000010300004] := trc_bne_0xc ]> $
-    <[[BV{64} 0x0000000010300008] := [mov_x0_1_trace]]> $
-    <[[BV{64} 0x000000001030000c] := [b_0x8_trace]]> $
-    <[[BV{64} 0x0000000010300010] := [bl_0x100_trace]]> $
-    <[[BV{64} 0x0000000010300014] := [mov_x28_x0_trace]]> $
+    <[[BV{64} 0x0000000010300018] := a18]> $
+    <[[BV{64} 0x000000001030001c] := a1c ]> $
+    <[[BV{64} 0x0000000010300020] := a20]> $
+    <[[BV{64} 0x0000000010300024] := a24]> $
+    <[[BV{64} 0x0000000010300028] := a28]> $
+    <[[BV{64} 0x000000001030002c] := a2c]> $
 
-    <[[BV{64} 0x0000000010300110] := [mov_w0_0_trace]]> $
-    <[[BV{64} 0x0000000010300114] := [ret_trace]]> $
+    <[[BV{64} 0x0000000010300034] := a34]> $
+    <[[BV{64} 0x0000000010300038] := a38]> $
     ∅;
   seq_mem := ∅
 |}.
 
-Definition test_state2_spec : list seq_label := [ SInstrTrap [BV{64} 0x0000000010300018] ].
+Definition test_state2_spec : list seq_label := [ SInstrTrap [BV{64} 0x0000000010300030] ].
 
 Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
-  instr 0x0000000010300000 (Some [cmp_x1_0_trace]) -∗
-  instr 0x0000000010300004 (Some trc_bne_0xc ) -∗
-  instr 0x0000000010300008 (Some [mov_x0_1_trace]) -∗
-  instr 0x000000001030000c (Some [b_0x8_trace]) -∗
-  instr 0x0000000010300010 (Some [bl_0x100_trace]) -∗
-  instr 0x0000000010300014 (Some [mov_x28_x0_trace]) -∗
-  instr 0x0000000010300018 None -∗
-  instr 0x0000000010300110 (Some [mov_w0_0_trace]) -∗
-  instr 0x0000000010300114 (Some [ret_trace]) -∗
+  instr 0x0000000010300018 (Some a18) -∗
+  instr 0x000000001030001c (Some a1c ) -∗
+  instr 0x0000000010300020 (Some a20) -∗
+  instr 0x0000000010300024 (Some a24) -∗
+  instr 0x0000000010300028 (Some a28) -∗
+  instr 0x000000001030002c (Some a2c) -∗
+  instr 0x0000000010300030 None -∗
+  instr 0x0000000010300034 (Some a34) -∗
+  instr 0x0000000010300038 (Some a38) -∗
 
   reg_col sys_regs -∗
-  "_PC" ↦ᵣ Val_Bits start_address -∗
+  "_PC" ↦ᵣ Val_Bits [BV{64} (0x0000000010300018 - 0x4)] -∗
   "__PC_changed" ↦ᵣ Val_Bool false -∗
   "R30" ↦ᵣ Val_Poison -∗
   "R1" ↦ᵣ Val_Bits (BV 64 n1 Hin) -∗

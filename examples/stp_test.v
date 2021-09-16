@@ -23,7 +23,7 @@ Definition spec `{!islaG Σ} `{!threadG} a sp (v1 v2 : bv 64) : iProp Σ :=
     True).
 
 Lemma stp_wp `{!islaG Σ} `{!threadG} (sp v1 v2: bv 64):
-  instr 0x0000000010300000 (Some [stp_trace]) -∗
+  instr 0x0000000010300000 (Some aa9bf07e0) -∗
   instr_body 0x0000000010300000 (spec 0x0000000010300004 sp v1 v2).
 Proof.
   iStartProof.

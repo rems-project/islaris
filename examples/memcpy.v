@@ -3,7 +3,7 @@ Require Import isla.opsem.
 Require Import isla.automation.
 Require Import isla.adequacy.
 Require Import isla.examples.sys_regs.
-From isla.instructions Require Import a38236804 a38636824 a54ffff81 a91000463 ab40000e2 ad2800003 ad65f03c0 aeb03005f.
+From isla.instructions.memcpy Require Import instrs.
 
 
 (*
@@ -58,11 +58,11 @@ Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
 Arguments memcpy_loop_spec /.
 
 Lemma memcpy_loop `{!islaG Σ} `{!threadG} :
-  instr 0x0000000010300008 (Some a38636824) -∗
-  instr 0x000000001030000c (Some a38236804) -∗
-  instr 0x0000000010300010 (Some a91000463) -∗
-  instr 0x0000000010300014 (Some aeb03005f) -∗
-  instr 0x0000000010300018 (Some a54ffff81) -∗
+  instr 0x0000000010300008 (Some a8) -∗
+  instr 0x000000001030000c (Some ac) -∗
+  instr 0x0000000010300010 (Some a10) -∗
+  instr 0x0000000010300014 (Some a14) -∗
+  instr 0x0000000010300018 (Some a18) -∗
   □ instr_pre 0x0000000010300008 memcpy_loop_spec -∗
   instr_body 0x0000000010300008 memcpy_loop_spec.
 Proof.
@@ -120,9 +120,9 @@ Proof.
 Qed.
 
 Lemma memcpy `{!islaG Σ} `{!threadG} :
-  instr 0x0000000010300000 (Some ab40000e2) -∗
-  instr 0x0000000010300004 (Some ad2800003) -∗
-  instr 0x000000001030001c (Some ad65f03c0) -∗
+  instr 0x0000000010300000 (Some a0) -∗
+  instr 0x0000000010300004 (Some a4) -∗
+  instr 0x000000001030001c (Some a1c) -∗
   □ instr_pre 0x0000000010300008 memcpy_loop_spec -∗
   instr_body 0x0000000010300000 (
     ∃ (tmp1 tmp2 src dst n ret : bv 64) (srcdata dstdata : list byte) (pstaten pstatez pstatec pstatev : bv 1),
