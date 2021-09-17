@@ -77,6 +77,20 @@ Section definitions.
   Definition struct_reg_mapsto_eq : @struct_reg_mapsto = @struct_reg_mapsto_def :=
     seal_eq struct_reg_mapsto_aux.
 
+  Definition reg_mapsto_pred_def (γ : gname) (r : string) (q : frac) (P: valu → iProp Σ) : iProp Σ :=
+    ∃ v, reg_mapsto γ r q v ∗ P v.
+  Definition reg_mapsto_pred_aux : seal (@reg_mapsto_pred_def). by eexists. Qed.
+  Definition reg_mapsto_pred := unseal reg_mapsto_pred_aux.
+  Definition reg_mapsto_pred_eq : @reg_mapsto_pred = @reg_mapsto_pred_def :=
+    seal_eq reg_mapsto_pred_aux.
+
+  Definition struct_reg_mapsto_pred_def (γ : gname) (r f : string) (q : frac) (P: valu → iProp Σ) : iProp Σ :=
+    ∃ v, struct_reg_mapsto γ r f q v ∗ P v.
+  Definition struct_reg_mapsto_pred_aux : seal (@struct_reg_mapsto_pred_def). by eexists. Qed.
+  Definition struct_reg_mapsto_pred := unseal struct_reg_mapsto_pred_aux.
+  Definition struct_reg_mapsto_pred_eq : @struct_reg_mapsto_pred = @struct_reg_mapsto_pred_def :=
+    seal_eq struct_reg_mapsto_pred_aux.
+
   Inductive reg_col_entry :=
   | RegColDirect (r : string) | RegColStruct (r f : string).
   Global Instance reg_col_entry_eq_decision : EqDecision reg_col_entry.
@@ -166,10 +180,17 @@ End definitions.
 Notation "r ↦ᵣ{ q } v" := (reg_mapsto thread_regs_name r q v)
   (at level 20, q at level 50, format "r  ↦ᵣ{ q }  v") : bi_scope.
 Notation "r ↦ᵣ v" := (reg_mapsto thread_regs_name r 1 v) (at level 20) : bi_scope.
+Notation "r ↦ᵣ{ q } : P" := (reg_mapsto_pred thread_regs_name r q P%I)
+  (at level 20, q at level 50, format "r  ↦ᵣ{ q } :  P") : bi_scope.
+Notation "r ↦ᵣ: P" := (reg_mapsto_pred thread_regs_name r 1 P%I) (at level 20) : bi_scope.
 
 Notation "r # f ↦ᵣ{ q } v" := (struct_reg_mapsto thread_struct_regs_name r f q v)
   (at level 20, f at level 10, q at level 50, format "r  #  f  ↦ᵣ{ q }  v") : bi_scope.
 Notation "r  #  f  ↦ᵣ v" := (struct_reg_mapsto thread_struct_regs_name r f 1 v)
+  (at level 20, f at level 10) : bi_scope.
+Notation "r # f ↦ᵣ{ q } : P" := (struct_reg_mapsto_pred thread_struct_regs_name r f q P%I)
+  (at level 20, f at level 10, q at level 50, format "r  #  f  ↦ᵣ{ q } :  P") : bi_scope.
+Notation "r  #  f  ↦ᵣ: P" := (struct_reg_mapsto_pred thread_struct_regs_name r f 1 P%I)
   (at level 20, f at level 10) : bi_scope.
 
 Notation "a ↦ₘ{ q } v" := (mem_mapsto a q v)

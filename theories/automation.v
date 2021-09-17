@@ -41,6 +41,24 @@ Proof. by destruct b. Qed.
 Global Instance ite_1_0_neq_1_simpl b :
   SimplBoth (ite b [BV{1} 1] [BV{1} 0] ≠ [BV{1} 1]) (b = false).
 Proof. by destruct b. Qed.
+Global Instance ite_1_0_eq_0_simpl b :
+  SimplBoth (ite b [BV{1} 1] [BV{1} 0] = [BV{1} 0]) (b = false).
+Proof. by destruct b. Qed.
+Global Instance ite_1_0_neq_0_simpl b :
+  SimplBoth (ite b [BV{1} 1] [BV{1} 0] ≠ [BV{1} 0]) (b = true).
+Proof. by destruct b. Qed.
+Global Instance ite_0_1_eq_1_simpl b :
+  SimplBoth (ite b [BV{1} 0] [BV{1} 1] = [BV{1} 1]) (b = false).
+Proof. by destruct b. Qed.
+Global Instance ite_0_1_neq_1_simpl b :
+  SimplBoth (ite b [BV{1} 0] [BV{1} 1] ≠ [BV{1} 1]) (b = true).
+Proof. by destruct b. Qed.
+Global Instance ite_0_1_eq_0_simpl b :
+  SimplBoth (ite b [BV{1} 0] [BV{1} 1] = [BV{1} 0]) (b = true).
+Proof. by destruct b. Qed.
+Global Instance ite_0_1_neq_0_simpl b :
+  SimplBoth (ite b [BV{1} 0] [BV{1} 1] ≠ [BV{1} 0]) (b = false).
+Proof. by destruct b. Qed.
 
 Hint Rewrite Z_to_bv_checked_bv_unsigned : lithium_rewrite.
 
@@ -235,6 +253,13 @@ Section instances.
     rt_fic := FindDirect (λ v, r # f ↦ᵣ v)%I;
   |}.
 
+  Global Instance reg_pred_related r P : RelatedTo (r ↦ᵣ: P) := {|
+    rt_fic := FindRegMapsTo r;
+  |}.
+  Global Instance struct_reg_pred_related r f P : RelatedTo (r # f ↦ᵣ: P) := {|
+    rt_fic := FindStructRegMapsTo r f;
+  |}.
+
   Lemma find_in_context_reg_mapsto r T:
     (∃ v, r ↦ᵣ v ∗ T (RKMapsTo v)) -∗
     find_in_context (FindRegMapsTo r) T.
@@ -303,6 +328,107 @@ Section instances.
     Subsume (r # f ↦ᵣ v1) (r # f ↦ᵣ v2) :=
     λ G, i2p (subsume_struct_reg r f v1 v2 G).
 
+  Lemma subsume_reg_reg_pred r v P G:
+    P v ∗ G -∗
+    subsume (r ↦ᵣ v) (r ↦ᵣ: P) G.
+  Proof. iIntros "[? $] ?". rewrite reg_mapsto_pred_eq. iExists _. iFrame. Qed.
+  Global Instance subsume_reg_reg_pred_inst r v P:
+    Subsume (r ↦ᵣ v) (r ↦ᵣ: P) :=
+      λ G, i2p (subsume_reg_reg_pred r v P G).
+
+  Lemma subsume_struct_reg_reg_pred r f v P G:
+    P v ∗ G -∗
+      subsume (r # f ↦ᵣ v) (r # f ↦ᵣ: P) G.
+  Proof. iIntros "[? $] ?". rewrite struct_reg_mapsto_pred_eq. iExists _. iFrame. Qed.
+  Global Instance subsume_struct_reg_reg_pred_inst r f v P:
+    Subsume (r # f ↦ᵣ v) (r # f ↦ᵣ: P) :=
+    λ G, i2p (subsume_struct_reg_reg_pred r f v P G).
+
+  Lemma subsume_regcol_reg_pred regs r P G:
+    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColDirect r)) regs) = Some i⌝ ∗
+      (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
+         reg_col (delete i regs) -∗ P v' ∗ G)) -∗
+    subsume (reg_col regs) (r ↦ᵣ: P) G.
+  Proof.
+    rewrite via_vm_compute_eq.
+    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
+    rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
+    iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
+    iDestruct ("HG" with "[//] [//] Hregs") as "[? $]".
+    rewrite reg_mapsto_pred_eq. iExists _. iFrame.
+  Qed.
+  Global Instance subsume_regcol_reg_pred_inst regs r P:
+    Subsume (reg_col regs) (r ↦ᵣ: P) :=
+    λ G, i2p (subsume_regcol_reg_pred regs r P G).
+
+  Lemma subsume_struct_regcol_reg_pred regs r f P G:
+    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColStruct r f)) regs) = Some i⌝ ∗
+      (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
+         reg_col (delete i regs) -∗ P v' ∗ G)) -∗
+    subsume (reg_col regs) (r # f ↦ᵣ: P) G.
+  Proof.
+    rewrite via_vm_compute_eq.
+    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
+    rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
+    iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
+    iDestruct ("HG" with "[//] [//] Hregs") as "[? $]".
+    rewrite struct_reg_mapsto_pred_eq. iExists _. iFrame.
+  Qed.
+  Global Instance subsume_struct_regcol_reg_pred_inst regs r f P:
+    Subsume (reg_col regs) (r # f ↦ᵣ: P) :=
+    λ G, i2p (subsume_struct_regcol_reg_pred regs r f P G).
+
+  Lemma reg_mapsto_pred_intro r P :
+    find_in_context (FindRegMapsTo r) (λ rk,
+      match rk with
+      | RKMapsTo v => P v
+      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColDirect r)) regs) = Some i⌝ ∗
+           (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
+             reg_col (delete i regs) -∗ P v'))
+      end) -∗
+    r ↦ᵣ: P.
+  Proof.
+    rewrite reg_mapsto_pred_eq /reg_mapsto_pred_def.
+    iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
+    - eauto with iFrame.
+    - rewrite via_vm_compute_eq.
+      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+      rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
+      iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
+      iExists _. iFrame. iApply ("Hwp" with "[//] [//] Hregs").
+  Qed.
+
+  Lemma struct_reg_mapsto_pred_intro r f P :
+    find_in_context (FindStructRegMapsTo r f) (λ rk,
+      match rk with
+      | RKMapsTo v => P v
+      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColStruct r f)) regs) = Some i⌝ ∗
+           (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
+             reg_col (delete i regs) -∗ P v'))
+      end) -∗
+    r # f ↦ᵣ: P.
+  Proof.
+    rewrite struct_reg_mapsto_pred_eq /struct_reg_mapsto_pred_def.
+    iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
+    - eauto with iFrame.
+    - rewrite via_vm_compute_eq.
+      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+      rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
+      iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
+      iExists _. iFrame. iApply ("Hwp" with "[//] [//] Hregs").
+  Qed.
+
+  Lemma simpl_hyp_regcol_reg_pred r P G:
+    (∀ v, r ↦ᵣ v -∗ P v -∗ G) -∗
+    simplify_hyp (r ↦ᵣ: P) G.
+  Proof.
+    rewrite reg_mapsto_pred_eq /reg_mapsto_pred_def.
+    iIntros "HG [%v [? ?]]". by iApply ("HG" with "[$]").
+  Qed.
+  Global Instance simpl_hyp_regcol_reg_pred_inst r P:
+    SimplifyHyp (r ↦ᵣ: P) (Some 0%N) :=
+    λ G, i2p (simpl_hyp_regcol_reg_pred r P G).
+
   Lemma subsume_instr a i1 i2 G:
     ⌜i1 = i2⌝ ∗ G -∗
     subsume (instr a i1) (instr a i2) G.
@@ -346,11 +472,16 @@ Section instances.
     λ T, i2p (simpl_goal_reg_col_nil T).
 
   Lemma simpl_goal_reg_col_cons_None r col T:
-    (∃ v, T (match r with | RegColDirect r => r ↦ᵣ v | RegColStruct r f => r # f ↦ᵣ v end ∗ reg_col col)) -∗
+    (T (match r with
+        | RegColDirect r => r ↦ᵣ: (λ _, True)
+        | RegColStruct r f => r # f ↦ᵣ: (λ _, True)%I
+        end ∗ reg_col col)) -∗
            simplify_goal (reg_col ((r, None)::col)) T.
   Proof.
-    iIntros "[%v ?]". iExists _. iFrame.
-    rewrite reg_col_cons_None. iIntros "[? $]". by iExists _.
+    iIntros "?". iExists _. iFrame.
+    rewrite reg_col_cons_None. iIntros "[Hr $]". case_match.
+    - rewrite reg_mapsto_pred_eq. iDestruct "Hr" as (?) "[? _]". eauto with iFrame.
+    - rewrite struct_reg_mapsto_pred_eq. iDestruct "Hr" as (?) "[? _]". eauto with iFrame.
   Qed.
   Global Instance simpl_goal_reg_col_cons_None_inst r col :
     SimplifyGoal (reg_col ((r, None)::col)) (Some 100%N) :=
@@ -653,6 +784,7 @@ Definition TRACE_LET {A} (x : A) : A := x.
 Arguments TRACE_LET : simpl never.
 Notation "'HIDDEN'" := (TRACE_LET _) (only printing).
 
+
 Ltac liAIntroduceLetInGoal :=
   (* kill old unused TRACE_LET. This can happen e.g. because of subst_event unfolding TRACE_LET. *)
   try match goal with | H := TRACE_LET _ |- _ => clear H end;
@@ -674,9 +806,17 @@ Ltac liAIntroduceLetInGoal :=
       change_no_check (envs_entails Δ (WPasm (e::H)))
     | WPasm (TRACE_LET []) =>
       change_no_check (envs_entails Δ (WPasm []))
+    | (?r ↦ᵣ: ?P)%I =>
+      let H := fresh "GOAL" in
+      pose H := (LET_ID P);
+      change_no_check (envs_entails Δ (r ↦ᵣ: H))
+    | (?r # ?f ↦ᵣ: ?P)%I =>
+      let H := fresh "GOAL" in
+      pose H := (LET_ID P);
+      change_no_check (envs_entails Δ (r # f ↦ᵣ: H))
     end
   end
-  .
+.
 
 Ltac liAAsm :=
   lazymatch goal with
@@ -720,6 +860,16 @@ Ltac liAExp :=
     end
   end.
 
+Create HintDb isla_unfold discriminated.
+
+Ltac liAOther :=
+  lazymatch goal with
+  | |- envs_entails ?Δ ?P =>
+    lazymatch P with
+    | (_ ↦ᵣ: _)%I => notypeclasses refine (tac_fast_apply (reg_mapsto_pred_intro _ _) _)
+    | _ => iEval (progress autounfold with isla_unfold)
+    end
+  end.
 
 Ltac liAStep :=
  liEnforceInvariantAndUnfoldInstantiatedEvars;
@@ -729,4 +879,6 @@ Ltac liAStep :=
   | liAExp
   | liStep
   | liLetBindHint
+  (* Must come last as it does unfolding of definitions *)
+  | liAOther
 ]; liSimpl.
