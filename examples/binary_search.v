@@ -2,92 +2,110 @@ Require Import isla.base.
 Require Import isla.opsem.
 Require Import isla.automation.
 Require Import isla.adequacy.
-Require Import isla.examples.sys_regs.
+Require Import isla.sys_regs.
+Require Import isla.calling_convention.
 From isla.instructions.binary_search Require Import instrs.
 
-Global Instance valu_inhabited : Inhabited valu := populate (RegVal_Base (Val_Bool true)).
-Definition bool_to_bv (n : N) (b : bool) : bv n :=
-  Z_to_bv n (Z_of_bool b).
+    Lemma bv_or_0_l n (b1 b2 : bv n) :
+      bv_unsigned b1 = 0 →
+      bv_or b1 b2 = b2.
+    Proof. Admitted.
+Lemma bv_signed_eq n (b1 b2 : bv n) :
+  b1 = b2 ↔ bv_signed b1 = bv_signed b2.
+Proof. split; [naive_solver |]. Admitted.
 
-Lemma bv_extract_bool_to_bv n1 n2 b:
-  bv_extract 0 n1 (bool_to_bv n2 b) = bool_to_bv n1 b.
+Lemma bv_1_ind (P : bv 1 → Prop) :
+  P [BV{1} 1] → P [BV{1} 0] → ∀ b : bv 1, P b.
 Proof.
-  apply bv_eq.
-  rewrite bv_extract_unsigned.
+  move => ???.
 Admitted.
-Lemma bv_not_bool_to_bv b:
-  bv_not (bool_to_bv 1 b) = bool_to_bv 1 (negb b).
-Proof. apply bv_eq. by destruct b. Qed.
-
 
 Section proof.
 Context `{!islaG Σ} `{!threadG}.
 
-Definition tmp_registers : list string :=
-  ["R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"].
+(* TODO: allow the function to use the stack? *)
+Definition comp_spec (stack_size : Z) (R : bv 64 → bv 64 → Prop) (P : iProp Σ) : iProp Σ :=
+  (c_call stack_size (λ args sp RET,
+     ∃ x y : bv 64,
+     ⌜args !!! 0%nat = Val_Bits x⌝ ∗
+     ⌜args !!! 1%nat = Val_Bits y⌝ ∗
+     P ∗
+     RET (λ rets, ∃ b : bool, ⌜rets !!! 0%nat = Val_Bits (bool_to_bv 64 b)⌝ ∗ ⌜b ↔ R x y⌝ ∗ P ∗ True)
+  ))%I.
+Typeclasses Opaque comp_spec.
+Global Instance : LithiumUnfold (comp_spec) := I.
 
-Definition c_call (P : list valu → ((list valu → iProp Σ) → iProp Σ) → iProp Σ) : iProp Σ :=
-  ∃ (sp ret : bv 64),
-  reg_col sys_regs ∗
+Definition sub_R_R_R_spec (pc : Z) (R1 R2 R3 : string) : iProp Σ :=
+  ∃ (r2 r3 : bv 64),
+  R1 ↦ᵣ: λ r1,
+  R2 ↦ᵣ Val_Bits r2 ∗
+  R3 ↦ᵣ Val_Bits r3 ∗
+  instr_pre (pc + 4) (
+    R1 ↦ᵣ Val_Bits (bv_sub r2 r3) ∗
+    R2 ↦ᵣ Val_Bits r2 ∗
+    R3 ↦ᵣ Val_Bits r3 ∗
+    True
+  ).
+Global Instance : LithiumUnfold (sub_R_R_R_spec) := I.
+
+Lemma a2c_spec :
+  instr 0x000000001030002c (Some a2c) -∗
+  instr_body 0x000000001030002c (sub_R_R_R_spec 0x000000001030002c "R8" "R20" "R23").
+Proof.
+  iStartProof.
+  repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
+  all: bv_solve.
+Qed.
+
+Definition cmp_R_R_spec (pc : Z) (R1 R2 : string) : iProp Σ :=
+  ∃ (r1 r2 : bv 64),
   reg_col CNVZ_regs ∗
-  reg_col ((λ r, (RegColDirect r, None)) <$> tmp_registers) ∗
-  "R0" ↦ᵣ: λ r0,
-  "R1" ↦ᵣ: λ r1,
-  "R2" ↦ᵣ: λ r2,
-  "R3" ↦ᵣ: λ r3,
-  "R4" ↦ᵣ: λ r4,
-  "R5" ↦ᵣ: λ r5,
-  "R6" ↦ᵣ: λ r6,
-  "R7" ↦ᵣ: λ r7,
-  "R8" ↦ᵣ: λ r8,
-  "R19" ↦ᵣ: λ r19,
-  "R20" ↦ᵣ: λ r20,
-  "R21" ↦ᵣ: λ r21,
-  "R22" ↦ᵣ: λ r22,
-  "R23" ↦ᵣ: λ r23,
-  "R24" ↦ᵣ: λ r24,
-  "R25" ↦ᵣ: λ r25,
-  "R26" ↦ᵣ: λ r26,
-  "R27" ↦ᵣ: λ r27,
-  "R28" ↦ᵣ: λ r28,
-  "R29" ↦ᵣ: λ r29,
-  "R30" ↦ᵣ Val_Bits ret ∗
-  "SP_EL2" ↦ᵣ Val_Bits sp ∗
-  P [r0; r1; r2; r3; r4; r5; r6; r7] (λ Q,
-  instr_pre (bv_unsigned ret) (
-      reg_col sys_regs ∗
-      reg_col CNVZ_regs ∗
-      reg_col ((λ r, (RegColDirect r, None)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"]) ∗
-      reg_col ((λ r, (RegColDirect r, None)) <$> tmp_registers) ∗
-      "R0" ↦ᵣ: λ r0',
-      "R1" ↦ᵣ: λ r1',
-      "R2" ↦ᵣ: λ r2',
-      "R3" ↦ᵣ: λ r3',
-      "R4" ↦ᵣ: λ r4',
-      "R5" ↦ᵣ: λ r5',
-      "R6" ↦ᵣ: λ r6',
-      "R7" ↦ᵣ: λ r7',
-      "R8" ↦ᵣ: λ r8',
-      "R19" ↦ᵣ r19 ∗
-      "R20" ↦ᵣ r20 ∗
-      "R21" ↦ᵣ r21 ∗
-      "R22" ↦ᵣ r22 ∗
-      "R23" ↦ᵣ r23 ∗
-      "R24" ↦ᵣ r24 ∗
-      "R25" ↦ᵣ r25 ∗
-      "R26" ↦ᵣ r26 ∗
-      "R27" ↦ᵣ r27 ∗
-      "R28" ↦ᵣ r28 ∗
-      "R29" ↦ᵣ r29 ∗
-      "R30" ↦ᵣ Val_Bits ret ∗
-      "SP_EL2" ↦ᵣ Val_Bits sp ∗
-      Q [r0'; r1'; r2'; r3'; r4'; r5'; r6'; r7'; r8']
-  )).
-Hint Unfold c_call : isla_unfold.
+  R1 ↦ᵣ Val_Bits r1 ∗
+  R2 ↦ᵣ Val_Bits r2 ∗
+  instr_pre (pc + 4) (
+    R1 ↦ᵣ Val_Bits r1 ∗
+    R2 ↦ᵣ Val_Bits r2 ∗
+    "PSTATE" # "N" ↦ᵣ Val_Bits (bv_extract 63 1 (bv_sub r1 r2)) ∗
+    "PSTATE" # "Z" ↦ᵣ Val_Bits (bool_to_bv 1 (bool_decide (r1 = r2))) ∗
+    "PSTATE" # "C" ↦ᵣ Val_Bits (bool_to_bv 1 (bool_decide (bv_unsigned r2 ≤ bv_unsigned r1))) ∗
+    "PSTATE" # "V" ↦ᵣ Val_Bits (bool_to_bv 1 (bool_decide (bv_signed (bv_sub r1 r2) ≠ bv_signed r1 - bv_signed r2))) ∗
+    True
+  ).
+Global Instance : LithiumUnfold (cmp_R_R_spec) := I.
 
-Definition comp_spec : iProp Σ :=
-  (c_call (λ args R, R (λ rets, ∃ b : bool, ⌜rets !!! 0%nat = RegVal_Base (Val_Bits (bool_to_bv 64 b))⌝)))%I.
-Hint Unfold comp_spec : isla_unfold.
+Lemma a4c_has_cmp_R_R_spec :
+  instr 0x000000001030004c (Some a4c) -∗
+  instr_body 0x000000001030004c (cmp_R_R_spec 0x000000001030004c "R20" "R23").
+Proof.
+  iStartProof.
+  repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
+  - bv_simplify => /=. do 2 f_equal. bv_solve.
+  - apply bv_eq. case_bool_decide as Hbv; case_bool_decide as Heq => //; subst; exfalso; contradict Hbv.
+    + move/bv_eq in Heq. bv_solve.
+    + bv_solve.
+  - apply bv_eq. case_bool_decide as Hbv; case_bool_decide => //; exfalso; contradict Hbv; bv_solve.
+  - apply bv_eq.
+    case_bool_decide as Hbv; case_bool_decide as Heq => //; exfalso; contradict Hbv.
+    + apply/bv_signed_eq. bv_simplify_arith.
+      bv_simplify_arith_hyp Heq.
+      rewrite (bv_wrap_small 128 (bv_unsigned _ + _)); [|bv_solve].
+      rewrite (bv_wrap_small 128 (_ + 1)); [|bv_solve].
+      rewrite (bv_swrap_small 128 (bv_signed _ + _)); [|bv_solve].
+      have -> : bv_swrap 64 (bv_unsigned r1 + bv_wrap 64 (- bv_unsigned r2 - 1) + 1) = bv_swrap 64 (bv_unsigned r1 - bv_unsigned r2) by bv_solve.
+      bv_solve.
+    + apply/bv_signed_eq. bv_simplify_arith.
+      bv_simplify_arith_hyp Heq.
+      rewrite (bv_wrap_small 128 (bv_unsigned _ + _)); [|bv_solve].
+      rewrite (bv_wrap_small 128 (_ + 1)); [|bv_solve].
+      rewrite (bv_swrap_small 128 (bv_signed _ + _)); [|bv_solve].
+      rewrite (bv_swrap_small 128 (_ + _)); [|bv_solve].
+      rewrite (bv_swrap_small 128 1); [|bv_solve].
+      have -> : bv_swrap 64 (bv_unsigned r1 + bv_wrap 64 (- bv_unsigned r2 - 1) + 1)
+               = bv_swrap 64 (bv_unsigned r1 - bv_unsigned r2) by bv_solve.
+      bv_solve.
+Qed.
 
 Definition a40_tst_imm_spec : iProp Σ :=
   ∃ (v : bv 64),
@@ -101,13 +119,13 @@ Definition a40_tst_imm_spec : iProp Σ :=
     "PSTATE" # "V" ↦ᵣ Val_Bits [BV{1} 0] ∗
     True
   ).
-Hint Unfold a40_tst_imm_spec : isla_unfold.
+Global Instance : LithiumUnfold (a40_tst_imm_spec) := I.
 
 Lemma a40_has_tst_imm_spec :
   instr 0x0000000010300040 (Some a40) -∗
   instr_body 0x0000000010300040 (a40_tst_imm_spec).
 Proof.
-  iStartProof. rewrite /a40_tst_imm_spec.
+  iStartProof.
   repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
@@ -138,19 +156,18 @@ Definition a44_csel_spec : iProp Σ :=
     "PSTATE" # "V" ↦ᵣ Val_Bits pstatev ∗
     True
   ).
-Hint Unfold a44_csel_spec : isla_unfold.
+Global Instance : LithiumUnfold (a44_csel_spec) := I.
 
 Lemma a44_has_csel_spec :
   instr 0x0000000010300044 (Some a44) -∗
   instr_body 0x0000000010300044 (a44_csel_spec).
 Proof.
-  iStartProof. rewrite /a44_csel_spec.
+  iStartProof.
   repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
-  - rewrite bool_decide_true //.
-    admit.
-Admitted.
+  - rewrite bool_decide_true //. by destruct pstatez using bv_1_ind.
+Qed.
 
 Definition a48_csinc_spec : iProp Σ :=
   ∃ (v1 v2 : bv 64) (pstaten pstatez pstatec pstatev : bv 1),
@@ -169,23 +186,23 @@ Definition a48_csinc_spec : iProp Σ :=
     "PSTATE" # "V" ↦ᵣ Val_Bits pstatev ∗
     True
   ).
-Hint Unfold a48_csinc_spec : isla_unfold.
+Global Instance : LithiumUnfold (a48_csinc_spec) := I.
 
 Lemma a48_has_csinc_spec :
   instr 0x0000000010300048 (Some a48) -∗
   instr_body 0x0000000010300048 (a48_csinc_spec).
 Proof.
-  iStartProof. rewrite /a48_csinc_spec.
+  iStartProof.
   repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
-  - rewrite bool_decide_false //=.
-    rename select (_ ≠ _) into Hz. contradict Hz. bv_solve.
+  - rewrite bool_decide_false //=. by destruct pstatez using bv_1_ind.
 Qed.
 
 
 Definition binary_search_loop_spec : iProp Σ :=
   ∃ (x l r comp xs tmp2 sp : bv 64) (data : list (bv 64)),
+  ∃ stack_size R P,
   reg_col sys_regs ∗
   reg_col CNVZ_regs ∗
   reg_col ((λ r, (RegColDirect r, None)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R25"; "R26"; "R27"; "R28"; "R29"; "R30" ]) ∗
@@ -197,9 +214,15 @@ Definition binary_search_loop_spec : iProp Σ :=
   "R24" ↦ᵣ Val_Bits tmp2 ∗
   "SP_EL2" ↦ᵣ Val_Bits sp ∗
   xs ↦ₘ∗ data ∗
+  □ instr_pre (bv_unsigned comp) (comp_spec stack_size R P) ∗
+  P ∗
+  ⌜stack_size < bv_unsigned sp < 2 ^ 52⌝ ∗
+  bv_sub_Z sp stack_size ↦ₘ? stack_size ∗
   ⌜bv_unsigned l < bv_unsigned r ≤ length data⌝ ∗
   ⌜bv_unsigned xs + (length data) * 8 < 2 ^ 52⌝ ∗
-  □ instr_pre (bv_unsigned comp) comp_spec ∗
+  ⌜StronglySorted R data⌝ ∗ ⌜Transitive R⌝ ∗
+  ⌜∀ (i : nat) y, i < bv_unsigned l → data !! i = Some y → R y x⌝ ∗
+  ⌜∀ (i : nat) y, bv_unsigned r ≤ i → data !! i = Some y → ¬ R y x⌝ ∗
   instr_pre 0x0000000010300054 (
     ∃ (l' r' tmp2 : bv 64),
       reg_col sys_regs ∗
@@ -213,48 +236,92 @@ Definition binary_search_loop_spec : iProp Σ :=
       "R24" ↦ᵣ Val_Bits tmp2 ∗
       "SP_EL2" ↦ᵣ Val_Bits sp ∗
       xs ↦ₘ∗ data ∗
+      P ∗
+      bv_sub_Z sp stack_size ↦ₘ? stack_size ∗
+      ⌜∀ (i : nat) y, i < bv_unsigned l' → data !! i = Some y → R y x⌝ ∗
+      ⌜∀ (i : nat) y, bv_unsigned l' ≤ i → data !! i = Some y → ¬ R y x⌝ ∗
       True
   )
 .
-Hint Unfold binary_search_loop_spec : isla_unfold.
+Global Instance : LithiumUnfold (binary_search_loop_spec) := I.
+
+Lemma binary_search_cond_1 {A} y R (l : list A) i j x z `{!Transitive R}:
+  R y z → StronglySorted R l → l !! i = Some x → l !! j = Some y → (i ≤ j)%nat → R x z.
+Proof.
+  move => ?????.
+  have [||||->|?]:= StronglySorted_lookup_le R l i j x y => //. by etrans.
+Qed.
+
+Lemma binary_search_cond_2 {A} y R (l : list A) i j x z `{!Transitive R}:
+  ¬ R y z → StronglySorted R l → l !! i = Some x → l !! j = Some y → (j ≤ i)%nat → ¬ R x z.
+Proof.
+  move => Hneg ????. have [||||<-|?]:= StronglySorted_lookup_le R l j i y x => //.
+  contradict Hneg. by etrans.
+Qed.
+
 
 Lemma binary_search_loop :
-  instr 0x000000001030002c (Some a2c) -∗
+  (* instr 0x000000001030002c (Some a2c) -∗ *)
+  instr_body 0x000000001030002c (sub_R_R_R_spec 0x000000001030002c "R8" "R20" "R23") -∗
   instr 0x0000000010300030 (Some a30) -∗
   instr 0x0000000010300034 (Some a34) -∗
   instr 0x0000000010300038 (Some a38) -∗
   instr 0x000000001030003c (Some a3c) -∗
   (* instr 0x0000000010300040 (Some a40) -∗ *)
-  instr_body 0x0000000010300040 (a40_tst_imm_spec) -∗
+  instr_pre 0x0000000010300040 (a40_tst_imm_spec) -∗
   (* instr 0x0000000010300044 (Some a44) -∗ *)
-  instr_body 0x0000000010300044 (a44_csel_spec) -∗
+  instr_pre 0x0000000010300044 (a44_csel_spec) -∗
   (* instr 0x0000000010300048 (Some a48) -∗ *)
-  instr_body 0x0000000010300048 (a48_csinc_spec) -∗
-  instr 0x000000001030004c (Some a4c) -∗
+  instr_pre 0x0000000010300048 (a48_csinc_spec) -∗
+  (* instr 0x000000001030004c (Some a4c) -∗ *)
+  instr_pre 0x000000001030004c (cmp_R_R_spec 0x000000001030004c "R20" "R23") -∗
   instr 0x0000000010300050 (Some a50) -∗
   □ instr_pre 0x000000001030002c binary_search_loop_spec -∗
   instr_body 0x000000001030002c binary_search_loop_spec.
 Proof.
-  iStartProof. rewrite {2}/binary_search_loop_spec.
+(* Admitted. *)
+  iStartProof.
   Time repeat liAStep; liShow.
   liInst Hevar (Z.to_nat (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2)).
   Time repeat liAStep; liShow.
-
   Unshelve. all: prepare_sidecond.
-  - bv_simplify.
-    autorewrite with bv_unfolded_to_arith.
-    have -> : (bv_wrap 64 (bv_unsigned l) + bv_wrap 64
-                (bv_wrap 64
-                   (bv_wrap 64 (bv_wrap 64 (bv_unsigned r) + bv_wrap 64 (bv_wrap 64 (- bv_unsigned l - 1))) + 1)
-                   `div` 2 ^ 1))
+  all: try (rename select (_ ↔ R _ _) into HR; rewrite bv_or_0_l in HR; [|done]).
+  - bv_simplify => /=.
+    have -> : (bv_wrap 64 (bv_unsigned l) + bv_wrap 64 (bv_wrap 64 (bv_unsigned r - bv_unsigned l) ≫ 1))
              = (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2) by bv_solve.
     rewrite (bv_wrap_small 61 _); [|bv_solve].
     bv_solve.
   - bv_solve.
-  - admit.
-Abort.
+  - bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
+    destruct b; simpl in *; bv_solve.
+  - bv_simplify_arith_hyp select (i < _).
+    destruct b; simpl in *; eauto.
+    apply: binary_search_cond_1; [solve_goal..|].
+    bv_solve.
+  - bv_simplify_arith_hyp select (_ ≤ i).
+    destruct b; simpl in *; eauto.
+    apply: binary_search_cond_2; [solve_goal..|].
+    bv_solve.
+  - bv_simplify_arith_hyp select (i < _).
+    destruct b; simpl in *; eauto.
+    apply: binary_search_cond_1; [solve_goal..|].
+    bv_solve.
+  - bv_simplify_arith_hyp select (¬ _ ≤ _).
+    bv_simplify_arith_hyp select (_ ≤ i).
+    destruct b; simpl in *; bv_solve.
+  - bv_simplify_arith_hyp select (i < _).
+    destruct b; simpl in *; eauto.
+    apply: binary_search_cond_1; [solve_goal..|].
+    bv_solve.
+  - bv_simplify_arith_hyp select (ite _ _ _ = ite _ _ _).
+    bv_simplify_arith_hyp select (_ ≤ i).
+    destruct b; simpl in *; [solve_goal|].
+    apply: binary_search_cond_2; [solve_goal..|].
+    bv_solve.
+Time Qed.
 
-Lemma binary_search `{!islaG Σ} `{!threadG} :
+
+Lemma binary_search stack_size :
   instr 0x0000000010300000 (Some a0) -∗
   instr 0x0000000010300004 (Some a4) -∗
   instr 0x0000000010300008 (Some a8) -∗
@@ -276,25 +343,59 @@ Lemma binary_search `{!islaG Σ} `{!threadG} :
   instr 0x000000001030006c (Some a6c) -∗
   instr 0x0000000010300070 (Some a70) -∗
   □ instr_pre 0x000000001030002c binary_search_loop_spec -∗
-  instr_body 0x0000000010300000 (
-    ∃ (tmp1 tmp2 src dst n ret : bv 64) (srcdata dstdata : list byte),
-    reg_col sys_regs ∗
-    reg_col CNVZ_regs ∗
-    "R0" ↦ᵣ Val_Bits dst ∗ "R1" ↦ᵣ Val_Bits src ∗ "R2" ↦ᵣ Val_Bits n ∗
-    "R3" ↦ᵣ Val_Bits tmp2 ∗ "R4" ↦ᵣ Val_Bits tmp1 ∗
-    "R30" ↦ᵣ Val_Bits ret ∗
-    instr_pre (bv_unsigned ret) (
-    ∃ (tmp1 tmp2 n : bv 64),
-      reg_col sys_regs ∗
-      reg_col CNVZ_regs ∗
-      "R0" ↦ᵣ Val_Bits dst ∗ "R1" ↦ᵣ Val_Bits src ∗ "R2" ↦ᵣ Val_Bits n ∗
-      "R3" ↦ᵣ Val_Bits tmp2 ∗ "R4" ↦ᵣ Val_Bits tmp1 ∗
-      "R30" ↦ᵣ Val_Bits ret ∗
-      src ↦ₘ∗ srcdata ∗ dst ↦ₘ∗ srcdata ∗
-      True
-  )).
+  instr_body 0x0000000010300000 (c_call (stack_size + 64) (λ args sp RET,
+     RET (λ rets, ∃ r : bv 64, ⌜rets !!! 0%nat = Val_Bits r⌝))
+  ).
 Proof.
   iStartProof.
-  Time repeat liAStep; liShow.
+Admitted.
+
+(*
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  do 100 liAStep; liShow.
+  - do 100 liAStep; liShow.
+    do 100 liAStep; liShow.
+    do 100 liAStep; liShow.
+    do 100 liAStep; liShow.
+    do 100 liAStep; liShow.
+    do 100 liAStep; liShow.
+    do 100 liAStep; liShow.
+    do 100 liAStep; liShow.
+    + admit.
+    + done.
+  - do 100 liAStep; liShow.
+    do 100 liAStep; liShow.
+    do 100 liAStep; liShow.
+    do 100 liAStep; liShow.
+    do 100 liAStep; liShow.
+    repeat liAStep; liShow.
+
 Abort.
+*)
 End proof.

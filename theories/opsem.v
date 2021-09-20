@@ -2,9 +2,16 @@ Require Export isla.isla_lang.
 From iris.program_logic Require Export language.
 Open Scope Z_scope.
 
+Global Instance valu_inhabited : Inhabited valu := populate (Val_Bool true).
+
 Definition ite {A} (b : bool) (x y : A) : A :=
   if b then x else y.
 Typeclasses Opaque ite.
+
+Lemma ite_bv_unsigned n b (x1 x2 : bv n) :
+  bv_unsigned (ite b x1 x2) = ite b (bv_unsigned x1) (bv_unsigned x2).
+Proof. by destruct b. Qed.
+Hint Rewrite ite_bv_unsigned : bv_unfold.
 
 Definition eval_unop (u : unop) (v : base_val) : option base_val :=
   match u, v with
@@ -22,8 +29,8 @@ Definition eval_binop (b : binop) (v1 v2 : base_val) : option base_val :=
   | Eq, Val_Bool b1, Val_Bool b2 =>
     Some (Val_Bool (eqb b1 b2))
   | Eq, Val_Bits n1, Val_Bits n2 =>
-    guard (n1.(bvn_n) = n2.(bvn_n));
-    Some (Val_Bool (bool_decide (n1 = n2)))
+    n2' ← bvn_to_bv n1.(bvn_n) n2;
+    Some (Val_Bool (bool_decide (n1.(bvn_val) = n2')))
 
   (* TODO: add support for Bvnand, Bvnor, Bvxnor *)
 

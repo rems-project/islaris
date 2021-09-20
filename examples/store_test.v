@@ -2,7 +2,7 @@ Require Import isla.base.
 Require Import isla.opsem.
 Require Import isla.automation.
 Require Import isla.instructions.store.
-Require Import isla.examples.sys_regs.
+Require Import isla.sys_regs.
 
 Definition spec `{!islaG Σ} `{!threadG} a : iProp Σ :=
   "R1" ↦ᵣ Val_Bits [BV{64} 0x0000000000000008] ∗

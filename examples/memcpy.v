@@ -2,7 +2,7 @@ Require Import isla.base.
 Require Import isla.opsem.
 Require Import isla.automation.
 Require Import isla.adequacy.
-Require Import isla.examples.sys_regs.
+Require Import isla.sys_regs.
 From isla.instructions.memcpy Require Import instrs.
 
 

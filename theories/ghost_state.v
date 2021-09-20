@@ -152,6 +152,14 @@ Section definitions.
   Definition mem_mapsto_array_eq {n} : @mem_mapsto_array n = @mem_mapsto_array_def n :=
     seal_eq mem_mapsto_array_aux.
 
+  Definition mem_mapsto_uninit_def (a : addr) (q : dfrac) (n : Z) : iProp Σ :=
+    ∃ nn : nat, ⌜n = nn⌝ ∗
+    [∗ list] i ↦ _ ∈ replicate nn (), ∃ v : bv 8, mem_mapsto_byte heap_mem_name (bv_add_Z a i) q v.
+  Definition mem_mapsto_uninit_aux : seal (@mem_mapsto_uninit_def). by eexists. Qed.
+  Definition mem_mapsto_uninit := unseal (@mem_mapsto_uninit_aux).
+  Definition mem_mapsto_uninit_eq : @mem_mapsto_uninit = @mem_mapsto_uninit_def :=
+    seal_eq mem_mapsto_uninit_aux.
+
   Definition mem_ctx (mem : mem_map) : iProp Σ :=
     ghost_map_auth heap_mem_name 1 mem ∗ backed_mem (dom _ mem).
 
@@ -200,6 +208,10 @@ Notation "a ↦ₘ v" := (mem_mapsto a (DfracOwn 1) v) (at level 20) : bi_scope.
 Notation "a ↦ₘ{ q }∗ l" := (mem_mapsto_array a q l)
   (at level 20, q at level 50, format "a  ↦ₘ{ q }∗  l") : bi_scope.
 Notation "a ↦ₘ∗ l" := (mem_mapsto_array a (DfracOwn 1) l) (at level 20) : bi_scope.
+
+Notation "a ↦ₘ{ q }? n" := (mem_mapsto_uninit a q n)
+  (at level 20, q at level 50, format "a  ↦ₘ{ q }?  n") : bi_scope.
+Notation "a ↦ₘ? n" := (mem_mapsto_uninit a (DfracOwn 1) n) (at level 20) : bi_scope.
 
 Section instr.
   Context `{!heapG Σ}.
@@ -503,7 +515,7 @@ Section mem.
     iIntros "Hmem Ha". rewrite /read_mem.
     iDestruct (mem_mapsto_lookup_list with "Hmem Ha") as %[len [-> Hl]].
     iPureIntro. eexists _. split; [done|]. rewrite Hl /=. f_equal. apply bvn_eq.
-    split; [ done|]. rewrite bv_of_to_little_bv //; lia.
+    split; [ done|]. rewrite Z_to_bv_little_endian_to_bv_to_little_endian //; lia.
   Qed.
 
   Lemma mem_mapsto_update_list n mem a (w w' : bv n) :
@@ -549,6 +561,39 @@ Section mem.
   Proof.
     iIntros (??) "Hl". iDestruct (mem_mapsto_array_insert_acc with "Hl") as "[$ Hl]"; [done..|].
     iIntros "Hv". iDestruct ("Hl" with "Hv") as "Hl". by rewrite list_insert_id.
+  Qed.
+
+  Lemma mem_mapsto_uninit_split ns a q n:
+    0 ≤ ns ≤ n →
+    a ↦ₘ{q}? n -∗
+    a ↦ₘ{q}? ns ∗ (bv_add_Z a ns) ↦ₘ{q}? (n - ns).
+  Proof.
+    rewrite mem_mapsto_uninit_eq.
+    iIntros (?) "[%nn [% Hm]]"; subst.
+    rewrite -(take_drop (Z.to_nat ns) (replicate _ _)) big_sepL_app take_replicate drop_replicate.
+    iDestruct "Hm" as "[Hm1 Hm2]". iSplitL "Hm1".
+    - iExists _. iSplit; [|done]. iPureIntro. lia.
+    - iExists (nn - Z.to_nat ns)%nat. iSplit; [iPureIntro; lia|].
+      iApply (big_sepL_impl with "Hm2").
+      iIntros "!>" (???) "[%v ?]". rewrite replicate_length. iExists _.
+      suff -> : bv_add_Z a ((Z.to_nat ns `min` nn + k)%nat) = bv_add_Z (bv_add_Z a (ns)) (k) by done.
+      rewrite -bv_add_Z_add_l. f_equal. lia.
+  Qed.
+
+  Lemma mem_mapsto_uninit_to_mapsto a q n:
+    a ↦ₘ{q}? n -∗ ∃ n' (b : (bv n')), ⌜n' = (Z.to_N n * 8)%N⌝ ∗ a ↦ₘ{q} b.
+  Proof.
+    rewrite mem_mapsto_uninit_eq.
+    iIntros "[%nn [% Hm]]"; subst.
+    iDestruct (big_sepL_exist with "Hm") as (ls Hlen) "Hm".
+    rewrite replicate_length in Hlen. subst.
+    iExists _, (Z_to_bv _ (little_endian_to_bv _ ls)). iSplit; [done|].
+    rewrite mem_mapsto_eq. iExists (length ls). iSplit; [iPureIntro; lia|].
+    rewrite Z_to_bv_small ?bv_to_little_endian_to_bv //.
+    2: { pose proof (little_endian_to_bv_bound 8 ls).
+         unfold bv_modulus. rewrite N2Z.inj_mul Z2N.id; lia. }
+    iApply (big_sepL_impl' with "Hm"). { by rewrite replicate_length. }
+    iIntros "!>" (k ? ? ??) "[%y [% ?]]"; by simplify_eq.
   Qed.
 End mem.
 

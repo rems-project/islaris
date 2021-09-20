@@ -11,13 +11,13 @@ Class islaG Σ := IslaG {
 }.
 
 Instance isla_irisG `{!islaG Σ} : irisGS isla_lang Σ := {
-  iris_invG := islaG_invG;
+  iris_invGS := islaG_invG;
   state_interp σ _ κs _ := state_ctx σ κs;
   fork_post _ := True%I;
   num_laters_per_step _ := 0%nat;
   state_interp_mono _ _ _ _ := fupd_intro _ _;
 }.
-Global Opaque iris_invG.
+Global Opaque iris_invGS.
 
 Instance into_val_val e v `{!TCEq (seq_to_val e) (Some v)} : IntoVal e v.
 Proof. apply of_to_val. by apply TCEq_eq. Qed.

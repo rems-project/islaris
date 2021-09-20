@@ -8,6 +8,9 @@ Local Open Scope Z_scope.
 Lemma Z_lnot_opp a: Z.lnot a = - a - 1.
 Proof. pose proof (Z.add_lnot_diag a). lia. Qed.
 
+Definition bool_to_Z (b : bool) : Z :=
+  if b then 1 else 0.
+
 (** * Preliminary definitions *)
 Definition bv_modulus (n : N) : Z := 2 ^ (Z.of_N n).
 Definition bv_half_modulus (n : N) : Z := bv_modulus n `div` 2.
@@ -18,6 +21,10 @@ Local Definition bv_wf (n : N) (z : Z) : Prop := -1 < z < bv_modulus n.
 Lemma bv_modulus_pos n :
   0 < bv_modulus n.
 Proof. apply Z.pow_pos_nonneg; lia. Qed.
+Lemma bv_modulus_gt_1 n :
+  n ≠ 0%N →
+  1 < bv_modulus n.
+Proof. intros ?. apply Z.pow_gt_1; lia. Qed.
 Lemma bv_half_modulus_nonneg n :
   0 ≤ bv_half_modulus n.
 Proof. apply Z.div_pos; [|done]. pose proof bv_modulus_pos n. lia. Qed.
@@ -541,6 +548,10 @@ Definition bv_mul_Z {n} (x : bv n) (y : Z) : bv n :=
 Definition bv_seq {n} (x : bv n) (len : Z) : list (bv n) :=
   (bv_add_Z x) <$> seqZ 0 len.
 
+(** * Operations on [bv n] and bool *)
+Definition bool_to_bv (n : N) (b : bool) : bv n :=
+  Z_to_bv n (bool_to_Z b).
+
 (** * Lemmas about [bv n] operations *)
 
 (** ** Unfolding lemmas for the operations. *)
@@ -876,7 +887,16 @@ Section little.
     apply Nat2Z.inj. rewrite Z_to_little_endian_length, ?Z2Nat.id; try lia.
   Qed.
 
-  Lemma bv_of_to_little_bv x m n (b : bv x):
+  Lemma little_endian_to_bv_bound n bs :
+    0 ≤ little_endian_to_bv n bs < 2 ^ (Z.of_nat (length bs) * Z.of_N n).
+  Proof.
+    unfold little_endian_to_bv. rewrite <-(fmap_length bv_unsigned bs).
+    apply little_endian_to_Z_bound; [lia|].
+    apply Forall_forall. intros ? [? [-> ?]]%elem_of_list_fmap.
+    apply bv_unsigned_in_range.
+  Qed.
+
+  Lemma Z_to_bv_little_endian_to_bv_to_little_endian x m n (b : bv x):
     0 ≤ m →
     x = (Z.to_N m * n)%N →
     Z_to_bv x (little_endian_to_bv n (bv_to_little_endian m n (bv_unsigned b))) = b.
@@ -905,6 +925,33 @@ Section bv_seq.
     - f_equal. lia.
   Qed.
 End bv_seq.
+
+(** ** Lemmas about [bv] and [bool] *)
+Section bv_bool.
+  Implicit Types (b : bool).
+
+  Lemma bool_to_bv_unsigned n b:
+    n ≠ 0%N →
+    bv_unsigned (bool_to_bv n b) = bool_to_Z b.
+  Proof.
+    intros ?. pose proof (bv_modulus_gt_1 n).
+    apply Z_to_bv_small. destruct b; simpl; lia.
+  Qed.
+
+  Lemma bv_extract_bool_to_bv n n2 b:
+    n ≠ 0%N → n2 ≠ 0%N →
+    bv_extract 0 n (bool_to_bv n2 b) = bool_to_bv n b.
+  Proof.
+    intros ??. apply bv_eq. pose proof (bv_modulus_gt_1 n).
+    rewrite bv_extract_unsigned, !bool_to_bv_unsigned, Z.shiftr_0_r by done.
+    rewrite bv_wrap_small; [done|]. destruct b; simpl; lia.
+  Qed.
+
+  Lemma bv_not_bool_to_bv b:
+    bv_not (bool_to_bv 1 b) = bool_to_bv 1 (negb b).
+  Proof. apply bv_eq. by destruct b. Qed.
+End bv_bool.
+
 
 (** * [bvn] *)
 Record bvn := BVN {

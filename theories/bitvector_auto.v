@@ -9,7 +9,8 @@ Typeclasses Opaque Z_to_bv
        bv_shiftl bv_shiftr bv_ashiftr bv_or
        bv_and bv_xor bv_not bv_zero_extend
        bv_sign_extend bv_extract bv_concat
-       bv_add_Z bv_sub_Z bv_mul_Z.
+       bv_add_Z bv_sub_Z bv_mul_Z
+       bool_to_bv.
 Global Opaque Z_to_bv
        bv_0 bv_succ bv_pred
        bv_add bv_sub bv_opp
@@ -18,7 +19,13 @@ Global Opaque Z_to_bv
        bv_shiftl bv_shiftr bv_ashiftr bv_or
        bv_and bv_xor bv_not bv_zero_extend
        bv_sign_extend bv_extract bv_concat
-       bv_add_Z bv_sub_Z bv_mul_Z.
+       bv_add_Z bv_sub_Z bv_mul_Z
+       bool_to_bv.
+
+Lemma bool_to_Z_Z_of_bool:
+  bool_to_Z = Z_of_bool.
+Proof. done. Qed.
+Hint Rewrite bool_to_Z_Z_of_bool : lithium_rewrite.
 
 Hint Rewrite bv_unsigned_spec_high using lia : rewrite_bits_db.
 
@@ -39,11 +46,21 @@ Proof.
   bitblast.
 Qed.
 
+Lemma bool_decide_bool_to_bv_0 b:
+  (bool_decide (bv_unsigned (bool_to_bv 1 b) = 0)) = negb b.
+Proof. by destruct b. Qed.
+Lemma bool_decide_bool_to_bv_1 b:
+  (bool_decide (bv_unsigned (bool_to_bv 1 b) = 1)) = b.
+Proof. by destruct b. Qed.
+
 (** The [bv_simplify] database collects rewrite rules that rewrite
 bitvectors into other bitvectors. *)
 Create HintDb bv_simplify discriminated.
 Hint Rewrite @bv_concat_0 using done : bv_simplify.
 Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : bv_simplify.
+Hint Rewrite @bv_extract_bool_to_bv using lia : bv_simplify.
+Hint Rewrite @bv_not_bool_to_bv : bv_simplify.
+Hint Rewrite bool_decide_bool_to_bv_0 bool_decide_bool_to_bv_1 : bv_simplify.
 
 (* These rules are also useful for general simplification. *)
 Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : lithium_rewrite.
@@ -53,6 +70,9 @@ bv_unsigned and bv_signed and unfold the bitvector definitions. *)
 Create HintDb bv_unfold discriminated.
 Lemma bv_unsigned_BV n z Heq:
   bv_unsigned (BV n z Heq) = z.
+Proof. done. Qed.
+Lemma bv_signed_BV n z Heq:
+  bv_signed (BV n z Heq) = bv_swrap n z.
 Proof. done. Qed.
 
 (* Rules without sideconditions *)
@@ -82,7 +102,7 @@ Hint Rewrite
      @bv_add_Z_unsigned @bv_add_Z_signed
      @bv_sub_Z_unsigned @bv_sub_Z_signed
      @bv_mul_Z_unsigned @bv_mul_Z_signed
-     @bv_unsigned_BV
+     @bv_unsigned_BV @bv_signed_BV
   : bv_unfold.
 
 (* Rules with sideconditions *)
@@ -123,29 +143,47 @@ Ltac bv_simplify :=
   with length of lists of bytes. *)
   reduce_closed_N;
   autorewrite with bv_simplify;
-  try apply bv_eq_wrap;
+  try apply/bv_eq_wrap;
   autorewrite with bv_unfold;
   autorewrite with bv_unfolded_simplify.
 
 Ltac bv_simplify_hyp H :=
   unLET;
   autorewrite with bv_simplify in H;
-  first [ apply bv_eq in H | apply bv_neq in H | idtac ];
+  first [ move/bv_eq in H | idtac ];
   autorewrite with bv_unfold in H;
   autorewrite with bv_unfolded_simplify in H.
 Tactic Notation "bv_simplify_hyp" "select" open_constr(pat) :=
   select pat (fun H => bv_simplify_hyp H).
 
+Ltac bv_simplify_arith :=
+  bv_simplify;
+  autorewrite with bv_unfolded_to_arith.
+Ltac bv_simplify_arith_hyp H :=
+  bv_simplify_hyp H;
+  autorewrite with bv_unfolded_to_arith in H.
+Tactic Notation "bv_simplify_arith_hyp" "select" open_constr(pat) :=
+  select pat (fun H => bv_simplify_arith_hyp H).
+
 Ltac bv_solve_unfold_tac := idtac.
 
+(* TODO: upstream *)
+Ltac bv_saturate_unsigned :=
+  repeat match goal with b : bv _ |- _ => first [
+     learn_hyp (bv_unsigned_in_range _ b)
+  ] end.
+
 Ltac bv_solve :=
-  bv_simplify;
-  autorewrite with bv_unfolded_to_arith;
+  bv_simplify_arith;
   (* try lazymatch goal with *)
   (* | |- bv_wrap _ _ = bv_wrap _ _ => f_equal *)
   (* end; *)
-  bv_saturate;
+  (* we unfold signed so we just need to saturate unsigned *)
+  bv_saturate_unsigned;
   bv_solve_unfold_tac;
-  unfold bv_wrap, bv_modulus, bv_unsigned in *;
+  unfold bv_signed, bv_swrap, bv_wrap, bv_half_modulus, bv_modulus, bv_unsigned in *;
   simpl;
   lia.
+
+Class BvSolve (P : Prop) : Prop := bv_solve_proof : P.
+Global Hint Extern 1 (BvSolve ?P) => (change P; bv_solve) : typeclass_instances.

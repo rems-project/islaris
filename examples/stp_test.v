@@ -2,7 +2,7 @@ Require Import isla.base.
 Require Import isla.opsem.
 Require Import isla.automation.
 Require Import isla.instructions.stp.
-Require Import isla.examples.sys_regs.
+Require Import isla.sys_regs.
 
 Definition spec `{!islaG Σ} `{!threadG} a sp (v1 v2 : bv 64) : iProp Σ :=
   ∃ (vold1 vold2 : bv 64),

@@ -1,9 +1,0 @@
-DECLARE PLUGIN "gc_plugin"
-
-VERNAC COMMAND EXTEND GC CLASSIFIED AS QUERY
-| [ "GC" "Minor"     ] -> { Gc.minor () }
-| [ "GC" "Major"     ] -> { Gc.major () }
-| [ "GC" "FullMajor" ] -> { Gc.full_major () }
-| [ "GC" "Compact"   ] -> { Gc.compact () }
-| [ "GC" "Stats"     ] -> { Feedback.msg_info (Pp.str (Gc_lib.stats ())) }
-END

@@ -3,7 +3,6 @@
  (package coq-isla)
  (flags -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "Coq Isla")
- (libraries gc_plugin)
  (theories ))
 
 (rule

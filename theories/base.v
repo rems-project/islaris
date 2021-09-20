@@ -1,8 +1,7 @@
-Declare ML Module "gc_plugin".
-
 From Coq Require Export ssreflect.
 From stdpp Require Export prelude strings gmap.
 From RecordUpdate Require Export RecordSet.
+From iris.proofmode Require Import tactics.
 From refinedc.lang Require Export base.
 Require Export isla.bitvector.
 Export RecordSetNotations.
@@ -122,3 +121,17 @@ Section sep_map.
   Qed.
 End sep_map.
 End big_op.
+
+
+Lemma big_sepL_exist {PROP : bi} {A B} (l : list A) (Φ : _ → _ → _ → PROP) `{!BiAffine PROP} :
+  ([∗ list] i↦x∈l, ∃ y : B, Φ i x y) -∗
+   ∃ xs : list B, ⌜length xs = length l⌝ ∗ ([∗ list] i↦x∈l, ∃ y : B, ⌜xs !! i = Some y⌝ ∗ Φ i x y).
+Proof.
+  iIntros "Hl".
+  iInduction (l) as [|? l] "IH" forall (Φ).
+  { iExists []. iSplit; done. }
+  simpl. iDestruct "Hl" as "[[%x Hx] Hl]".
+  iDestruct ("IH" with "Hl") as (xs) "[%Heq ?]".
+  iExists (x::xs) => /=. iSplit; [by rewrite /= Heq|]. iFrame.
+  iExists _. by iFrame.
+Qed.
