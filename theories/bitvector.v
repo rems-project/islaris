@@ -1,3 +1,4 @@
+From isla Require Import lang.
 From stdpp Require Export numbers.
 From stdpp Require Import countable finite.
 From stdpp Require Import options.
@@ -903,10 +904,20 @@ Section bv_seq.
 End bv_seq.
 
 (** * [bvn] *)
-Record bvn := BVN {
+
+(** Definition of the bit vector type [bvn] (in two steps). *)
+Record bvn_aux := BVN {
   bvn_n : N;
   bvn_val : bv bvn_n;
 }.
+
+(* Module eventually used to apply the functor. *)
+Module BVModule : BV with Definition bvn := bvn_aux.
+  Definition bvn := bvn_aux.
+End BVModule.
+
+(* Exposes [bvn] to the top level, used in all lemmas. *)
+Export BVModule.
 
 Definition bvn_unsigned (b : bvn) := bv_unsigned (b.(bvn_val)).
 

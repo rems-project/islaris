@@ -1,6 +1,6 @@
 (coq.theory
- (name isla)
  (package coq-isla)
+ (name isla)
  (flags -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "Coq Isla")
  (libraries gc_plugin)
