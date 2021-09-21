@@ -19,13 +19,13 @@ Definition start_address := [BV{64} (0x0000000010300000 - 0x4)].
 Definition test_state_local := {|
   seq_trace  := [];
   seq_regs   :=
-    <[ "_PC" := Val_Bits start_address ]> $
-    <[ "__PC_changed" := Val_Bool false ]> $
-    <[ "R30" := Val_Poison ]> $
-    <[ "R1" := Val_Poison ]> $
-    <[ "R0" := Val_Poison ]> $
-    <[ "R27" := Val_Bits [BV{64} 0x101f1000] ]> $
-    <[ "R28" := Val_Poison ]> $
+    <[ "_PC" := RegVal_Base (Val_Bits start_address) ]> $
+    <[ "__PC_changed" := RegVal_Base (Val_Bool false) ]> $
+    <[ "R30" := RegVal_Poison ]> $
+    <[ "R1" := RegVal_Poison ]> $
+    <[ "R0" := RegVal_Poison ]> $
+    <[ "R27" := RegVal_Base (Val_Bits [BV{64} 0x101f1000]) ]> $
+    <[ "R28" := RegVal_Poison ]> $
      sys_regs_map;
   seq_nb_state  := false;
 |}.
@@ -56,13 +56,13 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300010 (Some a10) -∗
   instr 0x0000000010300014 (Some a14) -∗
   reg_col sys_regs -∗
-  "_PC" ↦ᵣ Val_Bits start_address -∗
-  "__PC_changed" ↦ᵣ Val_Bool false -∗
-  "R30" ↦ᵣ Val_Poison -∗
-  "R1" ↦ᵣ Val_Poison -∗
-  "R0" ↦ᵣ Val_Poison -∗
-  "R27" ↦ᵣ Val_Bits [BV{64} 0x101f1000] -∗
-  "R28" ↦ᵣ Val_Poison -∗
+  "_PC" ↦ᵣ RegVal_Base (Val_Bits start_address) -∗
+  "__PC_changed" ↦ᵣ RegVal_Base (Val_Bool false) -∗
+  "R30" ↦ᵣ RegVal_Poison -∗
+  "R1" ↦ᵣ RegVal_Poison -∗
+  "R0" ↦ᵣ RegVal_Poison -∗
+  "R27" ↦ᵣ RegVal_Base (Val_Bits [BV{64} 0x101f1000]) -∗
+  "R28" ↦ᵣ RegVal_Poison -∗
   mmio_range [BV{64} 0x101f1000] 8 -∗
   spec_trace test_state_spec -∗
   WPasm [].
@@ -116,12 +116,12 @@ Qed.
 
 Definition test_state_fn2_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   reg_col sys_regs ∗
-  "R30" ↦ᵣ Val_Poison ∗
-  "R1" ↦ᵣ Val_Poison ∗
-  "R0" ↦ᵣ Val_Poison ∗
-  "R27" ↦ᵣ Val_Bits [BV{64} 0x101f1000] ∗
+  "R30" ↦ᵣ RegVal_Poison ∗
+  "R1" ↦ᵣ RegVal_Poison ∗
+  "R0" ↦ᵣ RegVal_Poison ∗
+  "R27" ↦ᵣ RegVal_Base (Val_Bits [BV{64} 0x101f1000]) ∗
   mmio_range [BV{64} 0x101f1000] 8 ∗
-  "R28" ↦ᵣ Val_Poison ∗
+  "R28" ↦ᵣ RegVal_Poison ∗
   spec_trace test_state_spec.
 Arguments test_state_fn2_spec /.
 
@@ -188,9 +188,9 @@ Qed.
 Definition test_state2_local (n1 : Z) Hin := {|
   seq_trace  := [];
   seq_regs   :=
-    <[ "R1" := Val_Bits (BV 64 n1 Hin) ]> $
-    <[ "_PC" := Val_Bits start_address ]> $
-    <[ "__PC_changed" := Val_Bool false ]> $
+    <[ "R1" := RegVal_Base (Val_Bits (BV 64 n1 Hin)) ]> $
+    <[ "_PC" := RegVal_Base (Val_Bits start_address) ]> $
+    <[ "__PC_changed" := RegVal_Base (Val_Bool false) ]> $
     sys_regs_map;
   seq_nb_state  := false;
 |}.
@@ -225,10 +225,10 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   reg_col sys_regs -∗
   "_PC" ↦ᵣ Val_Bits [BV{64} (0x0000000010300018 - 0x4)] -∗
   "__PC_changed" ↦ᵣ Val_Bool false -∗
-  "R30" ↦ᵣ Val_Poison -∗
+  "R30" ↦ᵣ RegVal_Poison -∗
   "R1" ↦ᵣ Val_Bits (BV 64 n1 Hin) -∗
-  "R0" ↦ᵣ Val_Poison -∗
-  "R28" ↦ᵣ Val_Poison -∗
+  "R0" ↦ᵣ RegVal_Poison -∗
+  "R28" ↦ᵣ RegVal_Poison -∗
   "PSTATE" # "N" ↦ᵣ Val_Bits [BV{1} 0] -∗
   "PSTATE" # "Z" ↦ᵣ Val_Bits [BV{1} 0] -∗
   "PSTATE" # "C" ↦ᵣ Val_Bits [BV{1} 0] -∗

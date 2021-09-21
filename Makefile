@@ -2,22 +2,13 @@ all:
 	@dune build _build/default/coq-isla.install --display short
 .PHONY: all
 
-frontend/tests/dune: frontend/tests/gen.sh $(wildcard frontend/tests/*.isla)
-	./$^ > $@
-
-tests: frontend/tests/dune
+tests:
 	@dune runtest
 .PHONY: tests
 
 # It is important that tests comes first here as the timing infrastructure breaks otherwise
 all_and_tests: tests all
 .PHONY: all_and_tests
-
-frontend/tests/%.v.expected: frontend/tests/%.isla
-	@dune exec -- isla-coq -o $@ $<
-
-promote: $(patsubst %.isla,%.v.expected,$(wildcard frontend/tests/*.isla))
-.PHONY: promote
 
 generate:
 	export PATH=$$PWD/bin:$$PATH; dune exec -- isla-coq examples/memory_instructions.dump -d -o instructions  -n "a{op}" --coqdir=isla.instructions

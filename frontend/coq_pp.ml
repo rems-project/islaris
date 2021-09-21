@@ -1,4 +1,4 @@
-open Isla_lang
+open Isla_lang_if
 open Extra
 
 let pp_N ff i =
@@ -165,48 +165,48 @@ let pp_enum ff e =
   let pp fmt = Format.fprintf ff fmt in
   pp "(%a, %a)" pp_enum_id (fst e) pp_enum_ctor (snd e)
 
-let rec pp_valu ff v =
+let pp_base_val ff v =
   let pp fmt = Format.fprintf ff fmt in
   match v with
   | Ast.Val_Symbolic(i)  ->
       pp "Val_Symbolic %a" pp_var_name i
   | Ast.Val_Bool(b)      ->
       pp "Val_Bool %b" b
-  | Ast.Val_I(i,j)       ->
-      pp "Val_I %a %a" pp_Z i pp_Z j
   | Ast.Val_Bits(s)      ->
       pp "Val_Bits %a" pp_bv s
   | Ast.Val_Enum(e)      ->
       pp "Val_Enum %a" pp_enum e
-  | Ast.Val_String(s)    ->
-      pp "Val_String %a" pp_str s
-  | Ast.Val_Unit         ->
-      pp "Val_Unit"
-  | Ast.Val_NamedUnit(r) ->
+
+let rec pp_valu ff v =
+  let pp fmt = Format.fprintf ff fmt in
+  match v with
+  | Ast.RegVal_Base(v')  ->
+      pp "RegVal_Base (%a)" pp_base_val v'
+  | Ast.RegVal_I(i,j)       ->
+      pp "RegVal_I %a %a" pp_Z i pp_Z j
+  | Ast.RegVal_String(s)    ->
+      pp "RegVal_String %a" pp_str s
+  | Ast.RegVal_Unit         ->
+      pp "RegVal_Unit"
+  | Ast.RegVal_NamedUnit(r) ->
       pp "NamedUnit %a" pp_register_name r
-  | Ast.Val_Vector(l)    ->
-      pp "Val_Vector %a" (pp_list pp_valu) l
-  | Ast.Val_List(l)      ->
-      pp "Val_List %a" (pp_list pp_valu) l
-  | Ast.Val_Struct(l)    ->
+  | Ast.RegVal_Vector(l)    ->
+      pp "RegVal_Vector %a" (pp_list pp_valu) l
+  | Ast.RegVal_List(l)      ->
+      pp "RegVal_List %a" (pp_list pp_valu) l
+  | Ast.RegVal_Struct(l)    ->
       let pp_elt ff (r, v) =
         Format.fprintf ff "(%a, %a)" pp_register_name r pp_valu v
       in
-      pp "Val_Struct %a" (pp_list pp_elt) l
-  | Ast.Val_Poison       ->
-      pp "Val_Poison"
+      pp "RegVal_Struct %a" (pp_list pp_elt) l
+  | Ast.RegVal_Poison       ->
+      pp "RegVal_Poison"
 
 let rec pp_exp ff e =
   let pp fmt = Format.fprintf ff fmt in
   match e with
-  | Ast.Var(i,a)         ->
-      pp "Val (%a) %a" pp_valu (Ast.Val_Symbolic i) pp_lrng a
-  | Ast.Bits(bv,a)       ->
-      pp "Val (%a) %a" pp_valu (Ast.Val_Bits(bv)) pp_lrng a
-  | Ast.Bool(b,a)        ->
-      pp "Val (%a) %a" pp_valu (Ast.Val_Bool(b)) pp_lrng a
-  | Ast.Enum(e,a)        ->
-      pp "Val (%a) %a" pp_valu (Ast.Val_Enum(e)) pp_lrng a
+  | Ast.Val(v,a)         ->
+      pp "Val (%a) %a" pp_base_val v pp_lrng a
   | Ast.Unop(o,e,a)      ->
       pp "Unop (%a) (%a) %a" pp_unop o pp_exp e pp_lrng a
   | Ast.Binop(o,e1,e2,a) ->
@@ -247,7 +247,7 @@ let pp_event ff e =
         (pp_option (fun ff -> Format.fprintf ff "(%a)" pp_valu)) v pp_lrng a
   | Ast.WriteMem(i,v1,v2,v3,j,v,a) ->
       pp "WriteMem (%a) (%a) (%a) (%a) %a %a %a"
-        pp_valu (Ast.Val_Symbolic(i)) pp_valu v1 pp_valu v2 pp_valu v3 pp_N j
+        pp_valu i pp_valu v1 pp_valu v2 pp_valu v3 pp_N j
         (pp_option (fun ff -> Format.fprintf ff "(%a)" pp_valu)) v pp_lrng a
   | Ast.BranchAddress(v,a)         ->
       pp "BranchAddress (%a) %a" pp_valu v pp_lrng a

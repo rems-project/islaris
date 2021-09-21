@@ -5,7 +5,7 @@ Require Import isla.adequacy.
 Require Import isla.examples.sys_regs.
 From isla.instructions.binary_search Require Import instrs.
 
-Global Instance valu_inhabited : Inhabited valu := populate (Val_Bool true).
+Global Instance valu_inhabited : Inhabited valu := populate (RegVal_Base (Val_Bool true)).
 Definition bool_to_bv (n : N) (b : bool) : bv n :=
   Z_to_bv n (Z_of_bool b).
 
@@ -86,7 +86,7 @@ Definition c_call (P : list valu → ((list valu → iProp Σ) → iProp Σ) →
 Hint Unfold c_call : isla_unfold.
 
 Definition comp_spec : iProp Σ :=
-  (c_call (λ args R, R (λ rets, ∃ b : bool, ⌜rets !!! 0%nat = Val_Bits (bool_to_bv 64 b)⌝)))%I.
+  (c_call (λ args R, R (λ rets, ∃ b : bool, ⌜rets !!! 0%nat = RegVal_Base (Val_Bits (bool_to_bv 64 b))⌝)))%I.
 Hint Unfold comp_spec : isla_unfold.
 
 Definition a40_tst_imm_spec : iProp Σ :=

@@ -1,4 +1,4 @@
-module Ast = Isla_lang_ast
+module Ast = Isla_lang.AST
 
 type event = Ast.lrng Ast.event
 type trace = Ast.lrng Ast.trc
@@ -16,20 +16,20 @@ module Parser = struct
   exception Parse_error of string
 
   let parse_file : string -> traces = fun fname ->
-    let module L = Isla_lang_lexer in
-    let module P = Isla_lang_parser in
+    let module L = Isla_lang.Lexer in
+    let module P = Isla_lang.Parser in
     let fail fmt =
       let k _ = raise (Parse_error(Format.flush_str_formatter ())) in
       Format.kfprintf k Format.str_formatter fmt
     in
     let loc_pp ff loc =
       let open Lexing in
-      Format.fprintf ff "%s %i:%i" loc.pos_fname loc.pos_lnum loc.pos_bol
+      Format.fprintf ff "%s %i:%i" loc.pos_fname loc.pos_lnum (loc.pos_cnum - loc.pos_bol)
     in
     let range_pp ff (loc_start, loc_end) =
       let open Lexing in
       Format.fprintf ff "%a-%i:%i" loc_pp loc_start
-        loc_end.pos_lnum loc_end.pos_bol
+        loc_end.pos_lnum (loc_end.pos_cnum - loc_end.pos_bol)
     in
     let ic = try open_in fname with Sys_error(msg) -> fail "%s" msg in
     let lexbuf = Lexing.from_channel ic in
