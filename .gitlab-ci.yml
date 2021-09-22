@@ -30,11 +30,10 @@ variables:
   - api
 
 ## Build jobs
-# TODO: remove    z3 version 4.8.9-1 once https://github.com/Z3Prover/z3/issues/5405 and https://github.com/rems-project/cerberus/issues/180 are fixed
 build-coq.8.13.2-timing:
   <<: *template
   variables:
-    OPAM_PINS: "coq version 8.13.2   cerberus git git+https://github.com/rems-project/cerberus.git#7eb94d628845555cb5425f4f4b48890b345efdc5   z3 version 4.8.9-1"
+    OPAM_PINS: "coq version 8.13.2   cerberus git git+https://github.com/rems-project/cerberus.git#7eb94d628845555cb5425f4f4b48890b345efdc5   isla-lang git git+https://git@github.com/rems-project/isla-lang.git#e8ad028fb425092f006839fff1c1bbd04116e71a"
     DENY_WARNINGS: "1"
     # OPAM_PKG: "1"
   only:
@@ -47,7 +46,7 @@ build-coq.8.13.2-timing:
 build-coq.8.13.2:
   <<: *template
   variables:
-    OPAM_PINS: "coq version 8.13.2   cerberus git git+https://github.com/rems-project/cerberus.git#7eb94d628845555cb5425f4f4b48890b345efdc5   z3 version 4.8.9-1"
+    OPAM_PINS: "coq version 8.13.2   cerberus git git+https://github.com/rems-project/cerberus.git#7eb94d628845555cb5425f4f4b48890b345efdc5   isla-lang git git+https://git@github.com/rems-project/isla-lang.git#e8ad028fb425092f006839fff1c1bbd04116e71a"
     DENY_WARNINGS: "1"
   only:
   - /^ci/@iris/isla-coq
