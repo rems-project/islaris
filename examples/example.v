@@ -19,12 +19,12 @@ Definition start_address := [BV{64} (0x0000000010300000 - 0x4)].
 Definition test_state_local := {|
   seq_trace  := [];
   seq_regs   :=
-    <[ "_PC" := RegVal_Base (Val_Bits start_address) ]> $
-    <[ "__PC_changed" := RegVal_Base (Val_Bool false) ]> $
+    <[ "_PC" := RVal_Bits start_address ]> $
+    <[ "__PC_changed" := RVal_Bool false ]> $
     <[ "R30" := RegVal_Poison ]> $
     <[ "R1" := RegVal_Poison ]> $
     <[ "R0" := RegVal_Poison ]> $
-    <[ "R27" := RegVal_Base (Val_Bits [BV{64} 0x101f1000]) ]> $
+    <[ "R27" := RVal_Bits [BV{64} 0x101f1000] ]> $
     <[ "R28" := RegVal_Poison ]> $
      sys_regs_map;
   seq_nb_state  := false;
@@ -56,12 +56,12 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300010 (Some a10) -∗
   instr 0x0000000010300014 (Some a14) -∗
   reg_col sys_regs -∗
-  "_PC" ↦ᵣ RegVal_Base (Val_Bits start_address) -∗
-  "__PC_changed" ↦ᵣ RegVal_Base (Val_Bool false) -∗
+  "_PC" ↦ᵣ RVal_Bits start_address -∗
+  "__PC_changed" ↦ᵣ RVal_Bool false -∗
   "R30" ↦ᵣ RegVal_Poison -∗
   "R1" ↦ᵣ RegVal_Poison -∗
   "R0" ↦ᵣ RegVal_Poison -∗
-  "R27" ↦ᵣ RegVal_Base (Val_Bits [BV{64} 0x101f1000]) -∗
+  "R27" ↦ᵣ RVal_Bits [BV{64} 0x101f1000] -∗
   "R28" ↦ᵣ RegVal_Poison -∗
   mmio_range [BV{64} 0x101f1000] 8 -∗
   spec_trace test_state_spec -∗
@@ -97,11 +97,11 @@ Definition test_state_fn1_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ∃ (r : addr) v0,
     reg_col sys_regs ∗
     "R0" ↦ᵣ v0 ∗
-    "R30" ↦ᵣ Val_Bits r ∗
+    "R30" ↦ᵣ RVal_Bits r ∗
     instr_pre (bv_unsigned r) (
       reg_col sys_regs ∗
-      "R30" ↦ᵣ Val_Bits r ∗
-      "R0" ↦ᵣ Val_Bits [BV{64} 0] ∗ True
+      "R30" ↦ᵣ RVal_Bits r ∗
+      "R0" ↦ᵣ RVal_Bits [BV{64} 0] ∗ True
     ).
 Arguments test_state_fn1_spec /.
 
@@ -119,7 +119,7 @@ Definition test_state_fn2_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   "R30" ↦ᵣ RegVal_Poison ∗
   "R1" ↦ᵣ RegVal_Poison ∗
   "R0" ↦ᵣ RegVal_Poison ∗
-  "R27" ↦ᵣ RegVal_Base (Val_Bits [BV{64} 0x101f1000]) ∗
+  "R27" ↦ᵣ RVal_Bits [BV{64} 0x101f1000] ∗
   mmio_range [BV{64} 0x101f1000] 8 ∗
   "R28" ↦ᵣ RegVal_Poison ∗
   spec_trace test_state_spec.
@@ -188,9 +188,9 @@ Qed.
 Definition test_state2_local (n1 : Z) Hin := {|
   seq_trace  := [];
   seq_regs   :=
-    <[ "R1" := RegVal_Base (Val_Bits (BV 64 n1 Hin)) ]> $
-    <[ "_PC" := RegVal_Base (Val_Bits start_address) ]> $
-    <[ "__PC_changed" := RegVal_Base (Val_Bool false) ]> $
+    <[ "R1" := RVal_Bits (BV 64 n1 Hin) ]> $
+    <[ "_PC" := RVal_Bits start_address ]> $
+    <[ "__PC_changed" := RVal_Bool false ]> $
     sys_regs_map;
   seq_nb_state  := false;
 |}.
@@ -223,16 +223,16 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   instr 0x0000000010300038 (Some a38) -∗
 
   reg_col sys_regs -∗
-  "_PC" ↦ᵣ Val_Bits [BV{64} (0x0000000010300018 - 0x4)] -∗
-  "__PC_changed" ↦ᵣ Val_Bool false -∗
+  "_PC" ↦ᵣ RVal_Bits [BV{64} (0x0000000010300018 - 0x4)] -∗
+  "__PC_changed" ↦ᵣ RVal_Bool false -∗
   "R30" ↦ᵣ RegVal_Poison -∗
-  "R1" ↦ᵣ Val_Bits (BV 64 n1 Hin) -∗
+  "R1" ↦ᵣ RVal_Bits (BV 64 n1 Hin) -∗
   "R0" ↦ᵣ RegVal_Poison -∗
   "R28" ↦ᵣ RegVal_Poison -∗
-  "PSTATE" # "N" ↦ᵣ Val_Bits [BV{1} 0] -∗
-  "PSTATE" # "Z" ↦ᵣ Val_Bits [BV{1} 0] -∗
-  "PSTATE" # "C" ↦ᵣ Val_Bits [BV{1} 0] -∗
-  "PSTATE" # "V" ↦ᵣ Val_Bits [BV{1} 0] -∗
+  "PSTATE" # "N" ↦ᵣ RVal_Bits [BV{1} 0] -∗
+  "PSTATE" # "Z" ↦ᵣ RVal_Bits [BV{1} 0] -∗
+  "PSTATE" # "C" ↦ᵣ RVal_Bits [BV{1} 0] -∗
+  "PSTATE" # "V" ↦ᵣ RVal_Bits [BV{1} 0] -∗
   spec_trace test_state2_spec -∗
   WPasm [].
 Proof.

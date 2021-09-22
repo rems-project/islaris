@@ -43,9 +43,9 @@ Definition hello_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ⌜i + 1 < length hello_world_string⌝ ∗
   reg_col sys_regs ∗
   [BV{64} 0x0000000010300690] ↦ₘ∗ hello_world_string ∗
-  "R2" ↦ᵣ Val_Bits [BV{64} 0x101f1000] ∗
-  "R1" ↦ᵣ Val_Bits (bv_add_Z [BV{64} 0x0000000010300690] i) ∗
-  "R0" ↦ᵣ Val_Bits (bv_zero_extend 64 (hello_world_string !!! i)) ∗
+  "R2" ↦ᵣ RVal_Bits [BV{64} 0x101f1000] ∗
+  "R1" ↦ᵣ RVal_Bits (bv_add_Z [BV{64} 0x0000000010300690] i) ∗
+  "R0" ↦ᵣ RVal_Bits (bv_zero_extend 64 (hello_world_string !!! i)) ∗
   spec_trace (((λ b : byte, SWriteMem [BV{64} 0x101f1000] b) <$> (drop i hello_world_string_printed)) ++ [SInstrTrap [BV{64} 0x0000000010300020]]) ∗
   True
 .
@@ -103,8 +103,8 @@ Lemma hello `{!islaG Σ} `{!threadG} :
   instr_body 0x0000000010300000 (
     reg_col sys_regs ∗
     [BV{64} 0x0000000010300690] ↦ₘ∗ hello_world_string ∗
-    "_PC" ↦ᵣ Val_Bits [BV{64} 0x0000000010300000 - 0x4] ∗
-    "__PC_changed" ↦ᵣ Val_Bool false ∗
+    "_PC" ↦ᵣ RVal_Bits [BV{64} 0x0000000010300000 - 0x4] ∗
+    "__PC_changed" ↦ᵣ RVal_Bool false ∗
     "R0" ↦ᵣ RegVal_Poison ∗
     "R1" ↦ᵣ RegVal_Poison ∗
     "R2" ↦ᵣ RegVal_Poison ∗

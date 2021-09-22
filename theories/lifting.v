@@ -38,8 +38,8 @@ Definition next_instruction `{!islaG Σ} `{!threadG} (i : Z) : iProp Σ :=
   ∃ (bPC_changed : bool) (nPC : addr) a,
   ⌜i = (if bPC_changed : bool then bv_unsigned nPC else bv_unsigned nPC + instruction_size)%Z⌝ ∗
   ⌜Z_to_bv_checked 64 i = Some a⌝ ∗
-  "_PC" ↦ᵣ Val_Bits nPC ∗
-  "__PC_changed" ↦ᵣ Val_Bool bPC_changed.
+  "_PC" ↦ᵣ RVal_Bits nPC ∗
+  "__PC_changed" ↦ᵣ RVal_Bool bPC_changed.
 
 Definition instr_pre'_def `{!islaG Σ} `{!threadG} (is_later : bool) (i : Z) (P : iProp Σ) : iProp Σ :=
   ▷?is_later (
@@ -49,7 +49,7 @@ Definition instr_pre'_def `{!islaG Σ} `{!threadG} (is_later : bool) (i : Z) (P 
     instr i ins ∗
     match ins with
     | Some ins => ⌜ins ≠ []⌝ ∗
-        ∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm i
+        ∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ RVal_Bits newPC -∗ "__PC_changed" ↦ᵣ RVal_Bool false -∗ WPasm i
     | None => ∃ κs, ⌜head κs = Some (SInstrTrap newPC)⌝ ∗ spec_trace κs
     end
    ).
@@ -135,7 +135,7 @@ Section lifting.
     next_instruction i -∗
     instr i (Some ins) -∗
     (* TODO: We want some receptiveness property here like ⌜∃ i, i ∈ ins ∧ i can execute to the end⌝ *)
-    ▷ (∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm i) -∗
+    ▷ (∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ RVal_Bits newPC -∗ "__PC_changed" ↦ᵣ RVal_Bool false -∗ WPasm i) -∗
     WPasm [].
   Proof.
     iIntros (? Hchecked). iDestruct 1 as (??? -> ?) "[HPC Hchanged]".
@@ -242,7 +242,7 @@ Section lifting.
     ins ≠ [] →
     Z_to_bv_checked 64 a = Some newPC →
     instr a (Some ins) -∗
-    (∀ i, ⌜i ∈ ins⌝ -∗ P -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm i) -∗
+    (∀ i, ⌜i ∈ ins⌝ -∗ P -∗ "_PC" ↦ᵣ RVal_Bits newPC -∗ "__PC_changed" ↦ᵣ RVal_Bool false -∗ WPasm i) -∗
     instr_pre' l a P.
   Proof.
     rewrite instr_pre'_eq.
@@ -388,7 +388,7 @@ Section lifting.
     0 < Z.of_N len →
     a ↦ₘ{q} vmem -∗
     (⌜vread = vmem⌝ -∗ a ↦ₘ{q} vmem -∗ WPasm es) -∗
-    WPasm (ReadMem (Val_Bits (BVN n vread)) kind (Val_Bits (BVN 64 a)) len tag ann :: es).
+    WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :: es).
   Proof.
     iIntros (??) "Hm Hcont". setoid_rewrite wp_asm_unfold. subst.
     iIntros ([???]) "/= -> -> Hθ".
@@ -417,7 +417,7 @@ Section lifting.
     a = bv_add_Z a' (i * Z.of_N len) →
     a' ↦ₘ{q}∗ l -∗
     (⌜vread = vmem⌝ -∗ a' ↦ₘ{q}∗ l -∗ WPasm es) -∗
-    WPasm (ReadMem (Val_Bits (BVN n vread)) kind (Val_Bits (BVN 64 a)) len tag ann :: es).
+    WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :: es).
   Proof.
     iIntros (??? ->) "Hm Hcont".
     iDestruct (mem_mapsto_array_lookup_acc with "Hm") as "[Hv Hm]"; [done..|].
@@ -430,7 +430,7 @@ Section lifting.
     0 < Z.of_N len →
     a ↦ₘ vold -∗
     (a ↦ₘ vnew -∗ WPasm es) -∗
-    WPasm (WriteMem (Val_Bool res) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
+    WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :: es).
   Proof.
     iIntros (??) "Hm Hcont". subst. setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
@@ -459,7 +459,7 @@ Section lifting.
     a = bv_add_Z a' (i * Z.of_N len) →
     a' ↦ₘ∗ l -∗
     (a' ↦ₘ∗ <[i := vnew]> l -∗ WPasm es) -∗
-    WPasm (WriteMem (Val_Bool res) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
+    WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :: es).
   Proof.
     iIntros (??[??]%lookup_lt_is_Some_2 ->) "Hm Hcont".
     iDestruct (mem_mapsto_array_insert_acc with "Hm") as "[Hv Hm]"; [done..|].
@@ -473,7 +473,7 @@ Section lifting.
     mmio_range a (Z.of_N len) -∗
     spec_trace (SWriteMem a vnew::κs) -∗
     (spec_trace κs -∗ WPasm es) -∗
-    WPasm (WriteMem (Val_Bool res) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
+    WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :: es).
   Proof.
     iIntros (??) "Hm Hspec Hcont". subst. setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".

@@ -34,8 +34,8 @@ Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ∃ (tmp src dst i n : bv 64) (srcdata dstdata : list byte),
   reg_col sys_regs ∗
   reg_col CNVZ_regs ∗
-  "R0" ↦ᵣ Val_Bits dst ∗ "R1" ↦ᵣ Val_Bits src ∗ "R2" ↦ᵣ Val_Bits n ∗
-  "R3" ↦ᵣ Val_Bits i ∗ "R4" ↦ᵣ Val_Bits tmp ∗
+  "R0" ↦ᵣ RVal_Bits dst ∗ "R1" ↦ᵣ RVal_Bits src ∗ "R2" ↦ᵣ RVal_Bits n ∗
+  "R3" ↦ᵣ RVal_Bits i ∗ "R4" ↦ᵣ RVal_Bits tmp ∗
   src ↦ₘ∗ srcdata ∗ dst ↦ₘ∗ dstdata ∗
   ⌜bv_unsigned n = length srcdata⌝ ∗ ⌜bv_unsigned n = length dstdata⌝ ∗
   ⌜bv_unsigned i < bv_unsigned n⌝ ∗
@@ -46,8 +46,8 @@ Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
     ∃ (tmp n : bv 64),
       reg_col sys_regs ∗
       reg_col CNVZ_regs ∗
-      "R0" ↦ᵣ Val_Bits dst ∗ "R1" ↦ᵣ Val_Bits src ∗ "R2" ↦ᵣ Val_Bits n ∗
-      "R4" ↦ᵣ Val_Bits tmp ∗ "R3" ↦ᵣ Val_Bits n ∗
+      "R0" ↦ᵣ RVal_Bits dst ∗ "R1" ↦ᵣ RVal_Bits src ∗ "R2" ↦ᵣ RVal_Bits n ∗
+      "R4" ↦ᵣ RVal_Bits tmp ∗ "R3" ↦ᵣ RVal_Bits n ∗
       src ↦ₘ∗ srcdata ∗ dst ↦ₘ∗ srcdata ∗
       True
   )
@@ -126,9 +126,9 @@ Lemma memcpy `{!islaG Σ} `{!threadG} :
     ∃ (tmp1 tmp2 src dst n ret : bv 64) (srcdata dstdata : list byte),
     reg_col sys_regs ∗
     reg_col CNVZ_regs ∗
-    "R0" ↦ᵣ Val_Bits dst ∗ "R1" ↦ᵣ Val_Bits src ∗ "R2" ↦ᵣ Val_Bits n ∗
-    "R3" ↦ᵣ Val_Bits tmp2 ∗ "R4" ↦ᵣ Val_Bits tmp1 ∗
-    "R30" ↦ᵣ Val_Bits ret ∗
+    "R0" ↦ᵣ RVal_Bits dst ∗ "R1" ↦ᵣ RVal_Bits src ∗ "R2" ↦ᵣ RVal_Bits n ∗
+    "R3" ↦ᵣ RVal_Bits tmp2 ∗ "R4" ↦ᵣ RVal_Bits tmp1 ∗
+    "R30" ↦ᵣ RVal_Bits ret ∗
     src ↦ₘ∗ srcdata ∗ dst ↦ₘ∗ dstdata ∗
     ⌜bv_unsigned n = length srcdata⌝ ∗ ⌜bv_unsigned n = length dstdata⌝ ∗
     ⌜bv_unsigned src + bv_unsigned n < 2 ^ 52⌝ ∗
@@ -137,9 +137,9 @@ Lemma memcpy `{!islaG Σ} `{!threadG} :
     ∃ (tmp1 tmp2 n : bv 64),
       reg_col sys_regs ∗
       reg_col CNVZ_regs ∗
-      "R0" ↦ᵣ Val_Bits dst ∗ "R1" ↦ᵣ Val_Bits src ∗ "R2" ↦ᵣ Val_Bits n ∗
-      "R3" ↦ᵣ Val_Bits tmp2 ∗ "R4" ↦ᵣ Val_Bits tmp1 ∗
-      "R30" ↦ᵣ Val_Bits ret ∗
+      "R0" ↦ᵣ RVal_Bits dst ∗ "R1" ↦ᵣ RVal_Bits src ∗ "R2" ↦ᵣ RVal_Bits n ∗
+      "R3" ↦ᵣ RVal_Bits tmp2 ∗ "R4" ↦ᵣ RVal_Bits tmp1 ∗
+      "R30" ↦ᵣ RVal_Bits ret ∗
       src ↦ₘ∗ srcdata ∗ dst ↦ₘ∗ srcdata ∗
       True
   )).

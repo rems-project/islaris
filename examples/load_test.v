@@ -6,14 +6,14 @@ Require Import isla.sys_regs.
 
 Definition spec `{!islaG Σ} `{!threadG} a : iProp Σ :=
   ∃ (vold : bv 64),
-  "R1" ↦ᵣ Val_Bits [BV{64} 0x0000000000000008] ∗
+  "R1" ↦ᵣ RVal_Bits [BV{64} 0x0000000000000008] ∗
   [BV{64} 0x0000000000000008] ↦ₘ [BV{64} 0x00000000deadbeef] ∗
-  "R0" ↦ᵣ Val_Bits vold ∗
+  "R0" ↦ᵣ RVal_Bits vold ∗
   reg_col sys_regs ∗
   instr_pre a (
-    "R1" ↦ᵣ Val_Bits [BV{64} 0x0000000000000008] ∗
+    "R1" ↦ᵣ RVal_Bits [BV{64} 0x0000000000000008] ∗
     [BV{64} 0x0000000000000008] ↦ₘ [BV{64} 0x00000000deadbeef] ∗
-    "R0" ↦ᵣ Val_Bits [BV{64} 0x00000000deadbeef] ∗
+    "R0" ↦ᵣ RVal_Bits [BV{64} 0x00000000deadbeef] ∗
     reg_col sys_regs ∗
     True).
 

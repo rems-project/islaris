@@ -15,8 +15,8 @@ Definition c_call `{!islaG Σ} `{!threadG} (stack_size : Z) (P : list valu → b
   "R6" ↦ᵣ: λ r6, "R7" ↦ᵣ: λ r7, "R8" ↦ᵣ: λ r8, "R19" ↦ᵣ: λ r19, "R20" ↦ᵣ: λ r20, "R21" ↦ᵣ: λ r21,
   "R22" ↦ᵣ: λ r22, "R23" ↦ᵣ: λ r23, "R24" ↦ᵣ: λ r24, "R25" ↦ᵣ: λ r25, "R26" ↦ᵣ: λ r26, "R27" ↦ᵣ: λ r27,
   "R28" ↦ᵣ: λ r28, "R29" ↦ᵣ: λ r29,
-  "R30" ↦ᵣ Val_Bits ret ∗
-  "SP_EL2" ↦ᵣ Val_Bits sp ∗
+  "R30" ↦ᵣ RVal_Bits ret ∗
+  "SP_EL2" ↦ᵣ RVal_Bits sp ∗
   ⌜stack_size < bv_unsigned sp < 2 ^ 52⌝ ∗
   bv_sub_Z sp stack_size ↦ₘ? stack_size ∗
   P [r0; r1; r2; r3; r4; r5; r6; r7] sp (λ Q,
@@ -29,8 +29,8 @@ Definition c_call `{!islaG Σ} `{!threadG} (stack_size : Z) (P : list valu → b
       "R5" ↦ᵣ: λ r5', "R6" ↦ᵣ: λ r6', "R7" ↦ᵣ: λ r7', "R8" ↦ᵣ: λ r8',
       "R19" ↦ᵣ r19 ∗ "R20" ↦ᵣ r20 ∗ "R21" ↦ᵣ r21 ∗ "R22" ↦ᵣ r22 ∗ "R23" ↦ᵣ r23 ∗ "R24" ↦ᵣ r24 ∗
       "R25" ↦ᵣ r25 ∗ "R26" ↦ᵣ r26 ∗ "R27" ↦ᵣ r27 ∗ "R28" ↦ᵣ r28 ∗ "R29" ↦ᵣ r29 ∗
-      "R30" ↦ᵣ Val_Bits ret ∗
-      "SP_EL2" ↦ᵣ Val_Bits sp ∗
+      "R30" ↦ᵣ RVal_Bits ret ∗
+      "SP_EL2" ↦ᵣ RVal_Bits sp ∗
       bv_sub_Z sp stack_size ↦ₘ? stack_size ∗
       Q [r0'; r1'; r2'; r3'; r4'; r5'; r6'; r7'; r8']
   )).

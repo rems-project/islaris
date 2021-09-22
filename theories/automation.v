@@ -17,7 +17,7 @@ Proof. split; naive_solver. Qed.
 
 Global Instance simple_regval_to_base_val (v1 v2 : base_val) :
   SimplBoth (RegVal_Base v1 = RegVal_Base v2) (v1 = v2).
-Proof. split; congruence. Qed.
+Proof. split; naive_solver. Qed.
 
 Global Instance simpl_bvn_eq (b1 b2 : bvn) {Heq : TCEq b2.(bvn_n) b1.(bvn_n)}:
   SimplBoth (b1 = b2) (b1.(bvn_val) = TCEq_rect _ _ (λ x, bv x) b2.(bvn_val) _ Heq).
@@ -553,14 +553,14 @@ Section instances.
 
   Lemma li_wp_next_instr:
     (∃ (nPC : addr) bPC_changed,
-        "_PC" ↦ᵣ Val_Bits nPC ∗ "__PC_changed" ↦ᵣ Val_Bool bPC_changed ∗
+        "_PC" ↦ᵣ RVal_Bits nPC ∗ "__PC_changed" ↦ᵣ RVal_Bool bPC_changed ∗
      ∃ a newPC,
        ⌜a = (if (bPC_changed : bool) then (via_vm_compute bv_unsigned nPC) else (via_vm_compute (Z.add (bv_unsigned nPC)) 4)%Z)⌝ ∗
        ⌜Z_to_bv_checked 64 a = Some newPC⌝ ∗
      find_in_context (FindInstrKind a true) (λ ik,
      match ik with
      | IKInstr (Some ts) =>
-       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm t
+       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, "_PC" ↦ᵣ RVal_Bits newPC -∗ "__PC_changed" ↦ᵣ RVal_Bool false -∗ WPasm t
      | IKInstr (None) =>
        ∃ κs, spec_trace κs ∗ ⌜hd_error κs = Some (SInstrTrap newPC)⌝ ∗ True
      | IKPre l P => P
@@ -589,7 +589,7 @@ Section instances.
      find_in_context (FindInstrKind a l) (λ ik,
      match ik with
      | IKInstr (Some ts) =>
-       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, P -∗ "_PC" ↦ᵣ Val_Bits newPC -∗ "__PC_changed" ↦ᵣ Val_Bool false -∗ WPasm t
+       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, P -∗ "_PC" ↦ᵣ RVal_Bits newPC -∗ "__PC_changed" ↦ᵣ RVal_Bool false -∗ WPasm t
      | IKInstr None =>
        P -∗ ∃ κs, spec_trace κs ∗ ⌜hd_error κs = Some (SInstrTrap newPC)⌝ ∗ True
      | IKPre l' Q => ⌜implb l' l⌝ ∗ (P -∗ Q)
@@ -739,7 +739,7 @@ Section instances.
         (spec_trace (tail κs) -∗ WPasm es)
       end
     )) -∗
-    WPasm (WriteMem (Val_Bool success) kind (Val_Bits (BVN 64 a)) (Val_Bits (BVN n vnew)) len tag ann :: es).
+    WPasm (WriteMem (RVal_Bool success) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :: es).
   Proof.
     iDestruct 1 as (?? mk) "[HP Hcont]" => /=. case_match.
     - iApply (wp_write_mem with "HP Hcont"); [done | lia].
@@ -774,7 +774,7 @@ Section instances.
       | MKUninit _ a' n' => False
       | MKMMIO _ _ _ => False
       end)) -∗
-    WPasm (ReadMem (Val_Bits (BVN n vread)) kind (Val_Bits (BVN 64 a)) len tag ann :: es).
+    WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :: es).
   Proof.
     iDestruct 1 as (?? mk) "[Hmem Hcont]" => /=. case_match.
     - iApply (wp_read_mem with "Hmem Hcont"); [done|lia].

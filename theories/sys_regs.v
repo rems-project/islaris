@@ -2,21 +2,21 @@ Require Import isla.base.
 Require Import isla.automation.
 
 Definition sys_regs : list (reg_col_entry * option valu) := [
-  (RegColDirect "SCTLR_EL2" , Some (RegVal_Base (Val_Bits [BV{64} 0x0000000004000002]) ));
-  (RegColDirect "SCR_EL3" , Some (RegVal_Base (Val_Bits [BV{32} 0]) ));
-  (RegColDirect "TCR_EL2" , Some (RegVal_Base (Val_Bits [BV{64} 0]) ));
-  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL0" , Some (RegVal_Base (Val_Bits [BV{4} 1]) ));
-  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL1" , Some (RegVal_Base (Val_Bits [BV{4} 1]) ));
-  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL2" , Some (RegVal_Base (Val_Bits [BV{4} 1]) ));
-  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL3" , Some (RegVal_Base (Val_Bits [BV{4} 1]) ));
-  (RegColDirect "OSLSR_EL1" , Some (RegVal_Base (Val_Bits [BV{32} 0]) ));
-  (RegColDirect "OSDLR_EL1" , Some (RegVal_Base (Val_Bits [BV{32} 0]) ));
-  (RegColDirect "EDSCR" , Some (RegVal_Base (Val_Bits [BV{32} 0]) ));
-  (RegColDirect "MPIDR_EL1" , Some (RegVal_Base (Val_Bits [BV{64} 0]) ));
-  (RegColStruct "PSTATE" "SP" , Some (RegVal_Base (Val_Bits [BV{1} 1]) ));
-  (RegColStruct "PSTATE" "EL" , Some (RegVal_Base (Val_Bits [BV{2} 2]) ));
-  (RegColStruct "PSTATE" "nRW" , Some (RegVal_Base (Val_Bits [BV{1} 0]) ));
-  (RegColStruct "PSTATE" "D" , Some (RegVal_Base (Val_Bits [BV{1} 1])))
+  (RegColDirect "SCTLR_EL2" , Some (RVal_Bits [BV{64} 0x0000000004000002] ));
+  (RegColDirect "SCR_EL3" , Some (RVal_Bits [BV{32} 0] ));
+  (RegColDirect "TCR_EL2" , Some (RVal_Bits [BV{64} 0] ));
+  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL0" , Some (RVal_Bits [BV{4} 1] ));
+  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL1" , Some (RVal_Bits [BV{4} 1] ));
+  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL2" , Some (RVal_Bits [BV{4} 1] ));
+  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL3" , Some (RVal_Bits [BV{4} 1] ));
+  (RegColDirect "OSLSR_EL1" , Some (RVal_Bits [BV{32} 0] ));
+  (RegColDirect "OSDLR_EL1" , Some (RVal_Bits [BV{32} 0] ));
+  (RegColDirect "EDSCR" , Some (RVal_Bits [BV{32} 0] ));
+  (RegColDirect "MPIDR_EL1" , Some (RVal_Bits [BV{64} 0] ));
+  (RegColStruct "PSTATE" "SP" , Some (RVal_Bits [BV{1} 1] ));
+  (RegColStruct "PSTATE" "EL" , Some (RVal_Bits [BV{2} 2] ));
+  (RegColStruct "PSTATE" "nRW" , Some (RVal_Bits [BV{1} 0] ));
+  (RegColStruct "PSTATE" "D" , Some (RVal_Bits [BV{1} 1]))
 ].
 
 Definition CNVZ_regs : list (reg_col_entry * option valu) := [
@@ -27,29 +27,29 @@ Definition CNVZ_regs : list (reg_col_entry * option valu) := [
 ].
 
 Definition sys_regs_map : reg_map :=
-  <[ "SCTLR_EL2" := RegVal_Base (Val_Bits [BV{64} 0x0000000004000002]) ]> $
-  <[ "SCR_EL3" := RegVal_Base (Val_Bits [BV{32} 0]) ]> $
-  <[ "TCR_EL2" := RegVal_Base (Val_Bits [BV{64} 0]) ]> $
-  <[ "CFG_ID_AA64PFR0_EL1_EL0" := RegVal_Base (Val_Bits [BV{4} 1]) ]> $
-  <[ "CFG_ID_AA64PFR0_EL1_EL1" := RegVal_Base (Val_Bits [BV{4} 1]) ]> $
-  <[ "CFG_ID_AA64PFR0_EL1_EL2" := RegVal_Base (Val_Bits [BV{4} 1]) ]> $
-  <[ "CFG_ID_AA64PFR0_EL1_EL3" := RegVal_Base (Val_Bits [BV{4} 1]) ]> $
-  <[ "OSLSR_EL1" := RegVal_Base (Val_Bits [BV{32} 0]) ]> $
-  <[ "OSDLR_EL1" := RegVal_Base (Val_Bits [BV{32} 0]) ]> $
-  <[ "EDSCR" := RegVal_Base (Val_Bits [BV{32} 0]) ]> $
-  <[ "MPIDR_EL1" := RegVal_Base (Val_Bits [BV{64} 0]) ]> $
+  <[ "SCTLR_EL2" := RVal_Bits [BV{64} 0x0000000004000002] ]> $
+  <[ "SCR_EL3" := RVal_Bits [BV{32} 0] ]> $
+  <[ "TCR_EL2" := RVal_Bits [BV{64} 0] ]> $
+  <[ "CFG_ID_AA64PFR0_EL1_EL0" := RVal_Bits [BV{4} 1] ]> $
+  <[ "CFG_ID_AA64PFR0_EL1_EL1" := RVal_Bits [BV{4} 1] ]> $
+  <[ "CFG_ID_AA64PFR0_EL1_EL2" := RVal_Bits [BV{4} 1] ]> $
+  <[ "CFG_ID_AA64PFR0_EL1_EL3" := RVal_Bits [BV{4} 1] ]> $
+  <[ "OSLSR_EL1" := RVal_Bits [BV{32} 0] ]> $
+  <[ "OSDLR_EL1" := RVal_Bits [BV{32} 0] ]> $
+  <[ "EDSCR" := RVal_Bits [BV{32} 0] ]> $
+  <[ "MPIDR_EL1" := RVal_Bits [BV{64} 0] ]> $
   <[ "PSTATE" := (RegVal_Struct
     [("GE", RegVal_Poison); ("F", RegVal_Poison);
-    ("UAO", RegVal_Poison); ("C", RegVal_Base (Val_Bits [BV{1} 0]));
-    ("SP", RegVal_Base (Val_Bits [BV{1} 1])); ("N", RegVal_Base (Val_Bits [BV{1} 0]));
+    ("UAO", RegVal_Poison); ("C", RVal_Bits [BV{1} 0]);
+    ("SP", RVal_Bits [BV{1} 1]); ("N", RVal_Bits [BV{1} 0]);
     ("Q", RegVal_Poison); ("A", RegVal_Poison); ("SS", RegVal_Poison);
     ("E", RegVal_Poison); ("TCO", RegVal_Poison); ("I", RegVal_Poison);
-    ("PAN", RegVal_Poison); ("M", RegVal_Poison); ("D", RegVal_Base (Val_Bits [BV{1} 1]));
-    ("nRW", RegVal_Base (Val_Bits [BV{1} 0])); ("EL", RegVal_Base (Val_Bits [BV{2} 2]));
+    ("PAN", RegVal_Poison); ("M", RegVal_Poison); ("D", RVal_Bits [BV{1} 1]);
+    ("nRW", RVal_Bits [BV{1} 0]); ("EL", RVal_Bits [BV{2} 2]);
     ("IT", RegVal_Poison); ("IL", RegVal_Poison);
-    ("Z", RegVal_Base (Val_Bits [BV{1} 0])); ("BTYPE", RegVal_Poison);
+    ("Z", RVal_Bits [BV{1} 0]); ("BTYPE", RegVal_Poison);
     ("SSBS", RegVal_Poison); ("T", RegVal_Poison); ("J", RegVal_Poison);
-    ("V", RegVal_Base (Val_Bits [BV{1} 0])); ("DIT", RegVal_Poison)]) ]> $ ∅.
+    ("V", RVal_Bits [BV{1} 0]); ("DIT", RegVal_Poison)]) ]> $ ∅.
 
 Section sys_regs.
   Context `{!islaG Σ} `{!threadG}.

@@ -2,7 +2,7 @@ Require Export isla.isla_lang.
 From iris.program_logic Require Export language.
 Open Scope Z_scope.
 
-Global Instance valu_inhabited : Inhabited valu := populate (Val_Bool true).
+Global Instance valu_inhabited : Inhabited valu := populate (RVal_Bool true).
 
 Definition ite {A} (b : bool) (x y : A) : A :=
   if b then x else y.
@@ -184,12 +184,12 @@ Definition instruction_size : Z := 0x4.
 
 Definition next_pc (regs : reg_map) : option (addr * reg_map) :=
   a ← regs !! "_PC";
-  an ← if a is RegVal_Base (Val_Bits n) then bvn_to_bv 64 n else None;
+  an ← if a is RVal_Bits n then bvn_to_bv 64 n else None;
   c ← regs !! "__PC_changed";
-  cb ← if c is RegVal_Base (Val_Bool b) then Some b else None;
+  cb ← if c is RVal_Bool b then Some b else None;
   let new_pc := if cb : bool then bv_unsigned an else bv_unsigned an + instruction_size in
   n ← Z_to_bv_checked 64 new_pc;
-  Some (n, <["_PC" := RegVal_Base (Val_Bits (BVN _ n))]> $ <["__PC_changed" := RegVal_Base (Val_Bool false)]> regs).
+  Some (n, <["_PC" := RVal_Bits (BVN _ n)]> $ <["__PC_changed" := RVal_Bool false]> regs).
 
 Fixpoint read_accessor (al : accessor_list) (v : valu) : option valu :=
   match al with
@@ -274,8 +274,8 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
     | Some (LReadMem data kind addr len tag) =>
       (* Ignoring tags and kinds for the time being *)
       ∃ addr' data' data'',
-      addr = Val_Bits (BVN 64 addr') ∧
-      data = Val_Bits (BVN (8 * len) data') ∧
+      addr = RVal_Bits (BVN 64 addr') ∧
+      data = RVal_Bits (BVN (8 * len) data') ∧
       0 < Z.of_N len ∧
       read_mem σ.(seq_mem) addr' len = Some (BVN (8 * len) data'') ∧
       κ' = None ∧
@@ -285,8 +285,8 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
     | Some (LWriteMem res kind addr data len tag) =>
       (* Ignoring tags and kinds. *)
       (∃ mem' addr' data',
-      addr = Val_Bits (BVN 64 addr') ∧
-      data = Val_Bits (BVN (8 * len) data') ∧
+      addr = RVal_Bits (BVN 64 addr') ∧
+      data = RVal_Bits (BVN (8 * len) data') ∧
       0 < Z.of_N len ∧
       (* If there is memory, we write to that memory. *)
       if read_mem σ.(seq_mem) addr' len is Some _ then
