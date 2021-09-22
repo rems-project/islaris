@@ -91,16 +91,16 @@ Section definitions.
   Definition struct_reg_mapsto_pred_eq : @struct_reg_mapsto_pred = @struct_reg_mapsto_pred_def :=
     seal_eq struct_reg_mapsto_pred_aux.
 
-  Inductive reg_col_entry :=
-  | RegColDirect (r : string) | RegColStruct (r f : string).
-  Global Instance reg_col_entry_eq_decision : EqDecision reg_col_entry.
+  Inductive reg_col_key :=
+  | KeyReg (r : string) | KeyField (r f : string).
+  Global Instance reg_col_key_eq_decision : EqDecision reg_col_key.
   Proof. solve_decision. Defined.
 
-  Definition reg_col `{!threadG} (regs : list (reg_col_entry * option valu)) : iProp Σ :=
+  Definition reg_col `{!threadG} (regs : list (reg_col_key * option valu)) : iProp Σ :=
     [∗ list] v ∈ regs, ∃ vact, ⌜if v.2 is Some v' then vact = v' else True⌝ ∗
       match v.1 with
-      | RegColDirect r => reg_mapsto thread_regs_name r 1 vact
-      | RegColStruct r f => struct_reg_mapsto thread_struct_regs_name r f 1 vact
+      | KeyReg r => reg_mapsto thread_regs_name r 1 vact
+      | KeyField r f => struct_reg_mapsto thread_struct_regs_name r f 1 vact
       end.
 
   Definition regs_ctx `{!threadG} (regs : reg_map) : iProp Σ :=
@@ -357,8 +357,8 @@ Section reg.
 
   Lemma reg_col_cons_None r col :
     reg_col ((r, None)::col) ⊣⊢ (∃ v, match r with
-                                 | RegColDirect r => r ↦ᵣ v
-                                 | RegColStruct r f => r # f ↦ᵣ v
+                                 | KeyReg r => r ↦ᵣ v
+                                 | KeyField r f => r # f ↦ᵣ v
                                  end) ∗ reg_col col.
   Proof.
     rewrite /reg_col /=. f_equiv. iSplit.
@@ -368,8 +368,8 @@ Section reg.
 
   Lemma reg_col_cons_Some r v col :
     reg_col ((r, Some v)::col) ⊣⊢ match r with
-                                 | RegColDirect r => r ↦ᵣ v
-                                 | RegColStruct r f => r # f ↦ᵣ v
+                                 | KeyReg r => r ↦ᵣ v
+                                 | KeyField r f => r # f ↦ᵣ v
                                  end ∗ reg_col col.
   Proof.
     rewrite /reg_col /=. f_equiv. iSplit.

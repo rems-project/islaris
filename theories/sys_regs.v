@@ -1,29 +1,29 @@
 Require Import isla.base.
 Require Import isla.automation.
 
-Definition sys_regs : list (reg_col_entry * option valu) := [
-  (RegColDirect "SCTLR_EL2" , Some (RVal_Bits [BV{64} 0x0000000004000002] ));
-  (RegColDirect "SCR_EL3" , Some (RVal_Bits [BV{32} 0] ));
-  (RegColDirect "TCR_EL2" , Some (RVal_Bits [BV{64} 0] ));
-  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL0" , Some (RVal_Bits [BV{4} 1] ));
-  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL1" , Some (RVal_Bits [BV{4} 1] ));
-  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL2" , Some (RVal_Bits [BV{4} 1] ));
-  (RegColDirect "CFG_ID_AA64PFR0_EL1_EL3" , Some (RVal_Bits [BV{4} 1] ));
-  (RegColDirect "OSLSR_EL1" , Some (RVal_Bits [BV{32} 0] ));
-  (RegColDirect "OSDLR_EL1" , Some (RVal_Bits [BV{32} 0] ));
-  (RegColDirect "EDSCR" , Some (RVal_Bits [BV{32} 0] ));
-  (RegColDirect "MPIDR_EL1" , Some (RVal_Bits [BV{64} 0] ));
-  (RegColStruct "PSTATE" "SP" , Some (RVal_Bits [BV{1} 1] ));
-  (RegColStruct "PSTATE" "EL" , Some (RVal_Bits [BV{2} 2] ));
-  (RegColStruct "PSTATE" "nRW" , Some (RVal_Bits [BV{1} 0] ));
-  (RegColStruct "PSTATE" "D" , Some (RVal_Bits [BV{1} 1]))
+Definition sys_regs : list (reg_col_key * option valu) := [
+  (KeyReg "SCTLR_EL2" , Some (RVal_Bits [BV{64} 0x0000000004000002] ));
+  (KeyReg "SCR_EL3" , Some (RVal_Bits [BV{32} 0] ));
+  (KeyReg "TCR_EL2" , Some (RVal_Bits [BV{64} 0] ));
+  (KeyReg "CFG_ID_AA64PFR0_EL1_EL0" , Some (RVal_Bits [BV{4} 1] ));
+  (KeyReg "CFG_ID_AA64PFR0_EL1_EL1" , Some (RVal_Bits [BV{4} 1] ));
+  (KeyReg "CFG_ID_AA64PFR0_EL1_EL2" , Some (RVal_Bits [BV{4} 1] ));
+  (KeyReg "CFG_ID_AA64PFR0_EL1_EL3" , Some (RVal_Bits [BV{4} 1] ));
+  (KeyReg "OSLSR_EL1" , Some (RVal_Bits [BV{32} 0] ));
+  (KeyReg "OSDLR_EL1" , Some (RVal_Bits [BV{32} 0] ));
+  (KeyReg "EDSCR" , Some (RVal_Bits [BV{32} 0] ));
+  (KeyReg "MPIDR_EL1" , Some (RVal_Bits [BV{64} 0] ));
+  (KeyField "PSTATE" "SP" , Some (RVal_Bits [BV{1} 1] ));
+  (KeyField "PSTATE" "EL" , Some (RVal_Bits [BV{2} 2] ));
+  (KeyField "PSTATE" "nRW" , Some (RVal_Bits [BV{1} 0] ));
+  (KeyField "PSTATE" "D" , Some (RVal_Bits [BV{1} 1]))
 ].
 
-Definition CNVZ_regs : list (reg_col_entry * option valu) := [
-  (RegColStruct "PSTATE" "C", None);
-  (RegColStruct "PSTATE" "N", None);
-  (RegColStruct "PSTATE" "V", None);
-  (RegColStruct "PSTATE" "Z", None)
+Definition CNVZ_regs : list (reg_col_key * option valu) := [
+  (KeyField "PSTATE" "C", None);
+  (KeyField "PSTATE" "N", None);
+  (KeyField "PSTATE" "V", None);
+  (KeyField "PSTATE" "Z", None)
 ].
 
 Definition sys_regs_map : reg_map :=

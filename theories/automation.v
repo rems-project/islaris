@@ -120,7 +120,7 @@ Typeclasses Opaque FindInstrKind.
 (* If we ever need to support more than one reg_col, we can use
 a solver for finding the collection with the right r. *)
 Inductive reg_mapsto_kind : Type :=
-| RKMapsTo (v : valu) | RKCol (regs : list (reg_col_entry * option valu)).
+| RKMapsTo (v : valu) | RKCol (regs : list (reg_col_key * option valu)).
 Definition FindRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r : string) := {|
   fic_A := reg_mapsto_kind;
   fic_Prop rk :=
@@ -312,7 +312,7 @@ Section instances.
     λ T, i2p (find_in_context_reg_mapsto_col r T).
 
   Lemma tac_reg_mapsto_reg_col r regs1 regs2:
-    is_Some (list_find_idx (λ x, x.1 = RegColDirect r) regs1) →
+    is_Some (list_find_idx (λ x, x.1 = KeyReg r) regs1) →
     FindHypEqual (FICRegMapstoSemantic r) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
   Proof. done. Qed.
 
@@ -334,7 +334,7 @@ Section instances.
     λ T, i2p (find_in_context_struct_reg_mapsto_col r f T).
 
   Lemma tac_struct_reg_mapsto_reg_col r f regs1 regs2:
-    is_Some (list_find_idx (λ x, x.1 = RegColStruct r f) regs1) →
+    is_Some (list_find_idx (λ x, x.1 = KeyField r f) regs1) →
     FindHypEqual (FICStructRegMapstoSemantic r f) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
   Proof. done. Qed.
 
@@ -383,7 +383,7 @@ Section instances.
     λ G, i2p (subsume_struct_reg_reg_pred r f v P G).
 
   Lemma subsume_regcol_reg_pred regs r P G:
-    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColDirect r)) regs) = Some i⌝ ∗
+    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyReg r)) regs) = Some i⌝ ∗
       (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
          reg_col (delete i regs) -∗ P v' ∗ G)) -∗
     subsume (reg_col regs) (r ↦ᵣ: P) G.
@@ -400,7 +400,7 @@ Section instances.
     λ G, i2p (subsume_regcol_reg_pred regs r P G).
 
   Lemma subsume_struct_regcol_reg_pred regs r f P G:
-    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColStruct r f)) regs) = Some i⌝ ∗
+    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyField r f)) regs) = Some i⌝ ∗
       (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
          reg_col (delete i regs) -∗ P v' ∗ G)) -∗
     subsume (reg_col regs) (r # f ↦ᵣ: P) G.
@@ -420,7 +420,7 @@ Section instances.
     find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v => P v
-      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColDirect r)) regs) = Some i⌝ ∗
+      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyReg r)) regs) = Some i⌝ ∗
            (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
              reg_col (delete i regs) -∗ P v'))
       end) -∗
@@ -440,7 +440,7 @@ Section instances.
     find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v => P v
-      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColStruct r f)) regs) = Some i⌝ ∗
+      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyField r f)) regs) = Some i⌝ ∗
            (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
              reg_col (delete i regs) -∗ P v'))
       end) -∗
@@ -519,8 +519,8 @@ Section instances.
 
   Lemma simpl_goal_reg_col_cons_None r col T:
     (T (match r with
-        | RegColDirect r => r ↦ᵣ: (λ _, True)
-        | RegColStruct r f => r # f ↦ᵣ: (λ _, True)%I
+        | KeyReg r => r ↦ᵣ: (λ _, True)
+        | KeyField r f => r # f ↦ᵣ: (λ _, True)%I
         end ∗ reg_col col)) -∗
            simplify_goal (reg_col ((r, None)::col)) T.
   Proof.
@@ -534,7 +534,7 @@ Section instances.
     λ T, i2p (simpl_goal_reg_col_cons_None r col T).
 
   Lemma simpl_goal_reg_col_cons_Some r v col T:
-    (T (match r with | RegColDirect r => r ↦ᵣ v | RegColStruct r f => r # f ↦ᵣ v end ∗ reg_col col)) -∗
+    (T (match r with | KeyReg r => r ↦ᵣ v | KeyField r f => r # f ↦ᵣ v end ∗ reg_col col)) -∗
            simplify_goal (reg_col ((r, Some v)::col)) T.
   Proof.
     iIntros "?". iExists _. iFrame. rewrite reg_col_cons_Some. by iIntros "[? $]".
@@ -616,7 +616,7 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = RegColDirect r)) regs)⌝ ∗
+      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = KeyReg r)) regs)⌝ ∗
                       (reg_col regs -∗ WPasm es)
       end)) -∗
     WPasm (ReadReg r [] v ann :: es).
@@ -635,7 +635,7 @@ Section instances.
      (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜vread = v'⌝ -∗ r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = RegColStruct r f)) regs)⌝ ∗
+      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = KeyField r f)) regs)⌝ ∗
                       (reg_col regs -∗ WPasm es)
       end))) -∗
     WPasm (ReadReg r [Field f] v ann :: es).
@@ -653,7 +653,7 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (r ↦ᵣ v -∗ WPasm es)
-      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColDirect r)) regs) = Some i⌝ ∗
+      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyReg r)) regs) = Some i⌝ ∗
           (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r ↦ᵣ v -∗ WPasm es)
       end)) -∗
     WPasm (WriteReg r [] v ann :: es).
@@ -672,7 +672,7 @@ Section instances.
     (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (r # f ↦ᵣ vnew -∗ WPasm es)
-      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = RegColStruct r f)) regs) = Some i⌝ ∗
+      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyField r f)) regs) = Some i⌝ ∗
           (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r # f ↦ᵣ vnew -∗ WPasm es)
       end))) -∗
     WPasm (WriteReg r [Field f] v ann :: es).

@@ -205,7 +205,7 @@ Definition binary_search_loop_spec : iProp Σ :=
   ∃ stack_size R P,
   reg_col sys_regs ∗
   reg_col CNVZ_regs ∗
-  reg_col ((λ r, (RegColDirect r, None)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R25"; "R26"; "R27"; "R28"; "R29"; "R30" ]) ∗
+  reg_col ((λ r, (KeyReg r, None)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R25"; "R26"; "R27"; "R28"; "R29"; "R30" ]) ∗
   "R19" ↦ᵣ RVal_Bits x ∗
   "R20" ↦ᵣ RVal_Bits r ∗
   "R21" ↦ᵣ RVal_Bits xs ∗
@@ -227,7 +227,7 @@ Definition binary_search_loop_spec : iProp Σ :=
     ∃ (l' r' tmp2 : bv 64),
       reg_col sys_regs ∗
       reg_col CNVZ_regs ∗
-      reg_col ((λ r, (RegColDirect r, None)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R25"; "R26"; "R27"; "R28"; "R29"; "R30" ]) ∗
+      reg_col ((λ r, (KeyReg r, None)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R25"; "R26"; "R27"; "R28"; "R29"; "R30" ]) ∗
       "R19" ↦ᵣ RVal_Bits x ∗
       "R20" ↦ᵣ RVal_Bits r' ∗
       "R21" ↦ᵣ RVal_Bits xs ∗
