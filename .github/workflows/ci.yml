@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      OCAML: "ocaml-base-compiler.4.07.1"
+      OCAML: "ocaml-base-compiler.4.11.1"
       OPAM_PINS: "coq version 8.13.2   cerberus git git+https://github.com/rems-project/cerberus.git#7eb94d628845555cb5425f4f4b48890b345efdc5   isla-lang git git+https://git@github.com/rems-project/isla-lang.git#e8ad028fb425092f006839fff1c1bbd04116e71a"
       CPU_CORES: "1"
       DENY_WARNINGS: "1"
