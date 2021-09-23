@@ -13,6 +13,25 @@ Lemma ite_bv_unsigned n b (x1 x2 : bv n) :
 Proof. by destruct b. Qed.
 Hint Rewrite ite_bv_unsigned : bv_unfold.
 
+Inductive reg_kind :=
+| KindReg (r : string) | KindField (r f : string).
+Global Instance reg_kind_eq_decision : EqDecision reg_kind.
+Proof. solve_decision. Defined.
+
+Inductive valu_shape :=
+| ExactShape (v : valu) | BitsShape (n : N) | UnknownShape.
+Definition valu_has_shape (v : valu) (s : valu_shape) : Prop :=
+  match s with
+  | ExactShape v' => v = v'
+  | BitsShape n => if v is RVal_Bits b then b.(bvn_n) = n else False
+  | UnknownShape => True
+  end.
+Arguments valu_has_shape : simpl nomatch.
+
+Lemma valu_has_bits_shape v n:
+  valu_has_shape v (BitsShape n) → ∃ b : bv n, v = RVal_Bits b.
+Proof. destruct v as [[| |[]|]| | | | | | | |] => //= <-. naive_solver. Qed.
+
 Definition eval_unop (u : unop) (v : base_val) : option base_val :=
   match u, v with
   | Not, Val_Bool b => Some (Val_Bool (negb b))

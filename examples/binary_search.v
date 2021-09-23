@@ -26,11 +26,8 @@ Context `{!islaG Σ} `{!threadG}.
 (* TODO: allow the function to use the stack? *)
 Definition comp_spec (stack_size : Z) (R : bv 64 → bv 64 → Prop) (P : iProp Σ) : iProp Σ :=
   (c_call stack_size (λ args sp RET,
-     ∃ x y : bv 64,
-     ⌜args !!! 0%nat = RVal_Bits x⌝ ∗
-     ⌜args !!! 1%nat = RVal_Bits y⌝ ∗
      P ∗
-     RET (λ rets, ∃ b : bool, ⌜rets !!! 0%nat = RVal_Bits (bool_to_bv 64 b)⌝ ∗ ⌜b ↔ R x y⌝ ∗ P ∗ True)
+     RET (λ rets, ∃ b : bool, ⌜rets !!! 0%nat = bool_to_bv 64 b⌝ ∗ ⌜b ↔ R (args !!! 0%nat) (args !!! 1%nat)⌝ ∗ P ∗ True)
   ))%I.
 Typeclasses Opaque comp_spec.
 Global Instance : LithiumUnfold (comp_spec) := I.
@@ -205,7 +202,7 @@ Definition binary_search_loop_spec : iProp Σ :=
   ∃ stack_size R P,
   reg_col sys_regs ∗
   reg_col CNVZ_regs ∗
-  reg_col ((λ r, (KeyReg r, None)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R25"; "R26"; "R27"; "R28"; "R29"; "R30" ]) ∗
+  reg_col ((λ r, (KindReg r, BitsShape 64)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R25"; "R26"; "R27"; "R28"; "R29"; "R30" ]) ∗
   "R19" ↦ᵣ RVal_Bits x ∗
   "R20" ↦ᵣ RVal_Bits r ∗
   "R21" ↦ᵣ RVal_Bits xs ∗
@@ -227,7 +224,7 @@ Definition binary_search_loop_spec : iProp Σ :=
     ∃ (l' r' tmp2 : bv 64),
       reg_col sys_regs ∗
       reg_col CNVZ_regs ∗
-      reg_col ((λ r, (KeyReg r, None)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R25"; "R26"; "R27"; "R28"; "R29"; "R30" ]) ∗
+      reg_col ((λ r, (KindReg r, BitsShape 64)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R25"; "R26"; "R27"; "R28"; "R29"; "R30" ]) ∗
       "R19" ↦ᵣ RVal_Bits x ∗
       "R20" ↦ᵣ RVal_Bits r' ∗
       "R21" ↦ᵣ RVal_Bits xs ∗
@@ -259,7 +256,6 @@ Proof.
   contradict Hneg. by etrans.
 Qed.
 
-
 Lemma binary_search_loop :
   (* instr 0x000000001030002c (Some a2c) -∗ *)
   instr_body 0x000000001030002c (sub_R_R_R_spec 0x000000001030002c "R8" "R20" "R23") -∗
@@ -285,7 +281,8 @@ Proof.
   liInst Hevar (Z.to_nat (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2)).
   Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
-  all: try (rename select (_ ↔ R _ _) into HR; rewrite bv_or_0_l in HR; [|done]).
+  all: try (rename select (_ ↔ R _ _) into HR; rewrite bv_or_0_l in HR; [|done];
+            match type of HR with | (Is_true ?b) ↔ _ => rename b into bres end).
   - bv_simplify => /=.
     have -> : (bv_wrap 64 (bv_unsigned l) + bv_wrap 64 (bv_wrap 64 (bv_unsigned r - bv_unsigned l) ≫ 1))
              = (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2) by bv_solve.
@@ -293,29 +290,29 @@ Proof.
     bv_solve.
   - bv_solve.
   - bv_simplify_arith_hyp select (i < _).
-    destruct b; simpl in *; eauto.
+    destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
     bv_solve.
   - bv_simplify_arith_hyp select (¬ _ ≤ _).
     bv_simplify_arith_hyp select (_ ≤ i).
-    destruct b; simpl in *; bv_solve.
+    destruct bres; simpl in *; bv_solve.
   - bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
-    destruct b; simpl in *; bv_solve.
+    destruct bres; simpl in *; bv_solve.
   - bv_simplify_arith_hyp select (i < _).
-    destruct b; simpl in *; eauto.
+    destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
     bv_solve.
   - bv_simplify_arith_hyp select (_ ≤ i).
-    destruct b; simpl in *; eauto.
+    destruct bres; simpl in *; eauto.
     apply: binary_search_cond_2; [solve_goal..|].
     bv_solve.
   - bv_simplify_arith_hyp select (i < _).
-    destruct b; simpl in *; eauto.
+    destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
     bv_solve.
   - bv_simplify_arith_hyp select (ite _ _ _ = ite _ _ _).
     bv_simplify_arith_hyp select (_ ≤ i).
-    destruct b; simpl in *; [solve_goal|].
+    destruct bres; simpl in *; [solve_goal|].
     apply: binary_search_cond_2; [solve_goal..|].
     bv_solve.
 Time Qed.
@@ -344,7 +341,7 @@ Lemma binary_search stack_size :
   instr 0x0000000010300070 (Some a70) -∗
   □ instr_pre 0x000000001030002c binary_search_loop_spec -∗
   instr_body 0x0000000010300000 (c_call (stack_size + 64) (λ args sp RET,
-     RET (λ rets, ∃ r : bv 64, ⌜rets !!! 0%nat = RVal_Bits r⌝))
+     RET (λ rets, True))
   ).
 Proof.
   iStartProof.

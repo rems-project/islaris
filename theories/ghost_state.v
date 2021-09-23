@@ -91,16 +91,11 @@ Section definitions.
   Definition struct_reg_mapsto_pred_eq : @struct_reg_mapsto_pred = @struct_reg_mapsto_pred_def :=
     seal_eq struct_reg_mapsto_pred_aux.
 
-  Inductive reg_col_key :=
-  | KeyReg (r : string) | KeyField (r f : string).
-  Global Instance reg_col_key_eq_decision : EqDecision reg_col_key.
-  Proof. solve_decision. Defined.
-
-  Definition reg_col `{!threadG} (regs : list (reg_col_key * option valu)) : iProp Σ :=
-    [∗ list] v ∈ regs, ∃ vact, ⌜if v.2 is Some v' then vact = v' else True⌝ ∗
+  Definition reg_col `{!threadG} (regs : list (reg_kind * valu_shape)) : iProp Σ :=
+    [∗ list] v ∈ regs, ∃ vact, ⌜valu_has_shape vact v.2⌝ ∗
       match v.1 with
-      | KeyReg r => reg_mapsto thread_regs_name r 1 vact
-      | KeyField r f => struct_reg_mapsto thread_struct_regs_name r f 1 vact
+      | KindReg r => reg_mapsto thread_regs_name r 1 vact
+      | KindField r f => struct_reg_mapsto thread_struct_regs_name r f 1 vact
       end.
 
   Definition regs_ctx `{!threadG} (regs : reg_map) : iProp Σ :=
@@ -355,27 +350,13 @@ Section reg.
     reg_col [] ⊣⊢ True.
   Proof. done. Qed.
 
-  Lemma reg_col_cons_None r col :
-    reg_col ((r, None)::col) ⊣⊢ (∃ v, match r with
-                                 | KeyReg r => r ↦ᵣ v
-                                 | KeyField r f => r # f ↦ᵣ v
+  Lemma reg_col_cons r s col :
+    reg_col ((r, s)::col) ⊣⊢ (∃ v, ⌜valu_has_shape v s⌝ ∗
+                                 match r with
+                                 | KindReg r => r ↦ᵣ v
+                                 | KindField r f => r # f ↦ᵣ v
                                  end) ∗ reg_col col.
-  Proof.
-    rewrite /reg_col /=. f_equiv. iSplit.
-    - iIntros "[% [_ ?]]". by iExists _.
-    - iIntros "[% ?]". iExists _. by iFrame.
-  Qed.
-
-  Lemma reg_col_cons_Some r v col :
-    reg_col ((r, Some v)::col) ⊣⊢ match r with
-                                 | KeyReg r => r ↦ᵣ v
-                                 | KeyField r f => r # f ↦ᵣ v
-                                 end ∗ reg_col col.
-  Proof.
-    rewrite /reg_col /=. f_equiv. iSplit.
-    - iIntros "[% [-> $]]".
-    - iIntros "?". iExists _. by iFrame.
-  Qed.
+  Proof. done. Qed.
 End reg.
 
 Section mem.

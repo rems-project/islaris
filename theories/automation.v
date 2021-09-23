@@ -83,6 +83,10 @@ Global Instance simpl_SWriteMem a1 a2 v1 v2:
   SimplBoth (SWriteMem a1 v1 = SWriteMem a2 v2) (a1 = a2 ∧ v1 = v2).
 Proof. split; naive_solver. Qed.
 
+Global Instance simpl_impl_valu_has_shape_bits v n:
+  SimplImpl true (valu_has_shape v (BitsShape n)) (λ T, ∀ b : bv n, v = RVal_Bits b → T).
+Proof. move => ?. split; [| naive_solver]. move => Hb /valu_has_bits_shape. naive_solver. Qed.
+
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
@@ -91,6 +95,9 @@ Ltac normalize_tac ::= normalize_autorewrite.
 
 Ltac bv_solve_unfold_tac ::=
   unfold byte, addr in *.
+
+Ltac solve_protected_eq_unfold_tac ::=
+  reduce_closed_N.
 
 (* injection on bitvectors sometimes creates weird matches, so we disable it. *)
 Ltac li_impl_check_injection_tac ::=
@@ -120,7 +127,7 @@ Typeclasses Opaque FindInstrKind.
 (* If we ever need to support more than one reg_col, we can use
 a solver for finding the collection with the right r. *)
 Inductive reg_mapsto_kind : Type :=
-| RKMapsTo (v : valu) | RKCol (regs : list (reg_col_key * option valu)).
+| RKMapsTo (v : valu) | RKCol (regs : list (reg_kind * valu_shape)).
 Definition FindRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r : string) := {|
   fic_A := reg_mapsto_kind;
   fic_Prop rk :=
@@ -280,11 +287,11 @@ Section instances.
   Proof. done. Qed.
 
   Global Instance reg_related r v : RelatedTo (r ↦ᵣ v) := {|
-    rt_fic := FindDirect (λ v, r ↦ᵣ v)%I;
+    rt_fic := FindRegMapsTo r;
   |}.
 
   Global Instance struct_reg_related r f v : RelatedTo (r # f ↦ᵣ v) := {|
-    rt_fic := FindDirect (λ v, r # f ↦ᵣ v)%I;
+    rt_fic := FindStructRegMapsTo r f;
   |}.
 
   Global Instance reg_pred_related r P : RelatedTo (r ↦ᵣ: P) := {|
@@ -312,7 +319,7 @@ Section instances.
     λ T, i2p (find_in_context_reg_mapsto_col r T).
 
   Lemma tac_reg_mapsto_reg_col r regs1 regs2:
-    is_Some (list_find_idx (λ x, x.1 = KeyReg r) regs1) →
+    is_Some (list_find_idx (λ x, x.1 = KindReg r) regs1) →
     FindHypEqual (FICRegMapstoSemantic r) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
   Proof. done. Qed.
 
@@ -334,7 +341,7 @@ Section instances.
     λ T, i2p (find_in_context_struct_reg_mapsto_col r f T).
 
   Lemma tac_struct_reg_mapsto_reg_col r f regs1 regs2:
-    is_Some (list_find_idx (λ x, x.1 = KeyField r f) regs1) →
+    is_Some (list_find_idx (λ x, x.1 = KindField r f) regs1) →
     FindHypEqual (FICStructRegMapstoSemantic r f) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
   Proof. done. Qed.
 
@@ -366,6 +373,36 @@ Section instances.
     Subsume (r # f ↦ᵣ v1) (r # f ↦ᵣ v2) :=
     λ G, i2p (subsume_struct_reg r f v1 v2 G).
 
+  Lemma subsume_regcol_reg regs r v G:
+    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs) = Some i⌝ ∗
+      (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ ⌜vr.2 = ExactShape v⌝ ∗ G)) -∗
+    subsume (reg_col regs) (r ↦ᵣ v) G.
+  Proof.
+    rewrite via_vm_compute_eq.
+    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
+    rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
+    iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
+    iDestruct ("HG" with "[//] Hregs") as "[% $]"; by simplify_eq/=.
+  Qed.
+  Global Instance subsume_regcol_reg_inst regs r v:
+    Subsume (reg_col regs) (r ↦ᵣ v) :=
+    λ G, i2p (subsume_regcol_reg regs r v G).
+
+  Lemma subsume_struct_regcol_reg regs r f v G:
+    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs) = Some i⌝ ∗
+      (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ ⌜vr.2 = ExactShape v⌝ ∗ G)) -∗
+    subsume (reg_col regs) (r # f ↦ᵣ v) G.
+  Proof.
+    rewrite via_vm_compute_eq.
+    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
+    rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
+    iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
+    iDestruct ("HG" with "[//] Hregs") as "[% $]"; by simplify_eq/=.
+  Qed.
+  Global Instance subsume_struct_regcol_reg_inst regs r f v:
+    Subsume (reg_col regs) (r # f ↦ᵣ v) :=
+    λ G, i2p (subsume_struct_regcol_reg regs r f v G).
+
   Lemma subsume_reg_reg_pred r v P G:
     P v ∗ G -∗
     subsume (r ↦ᵣ v) (r ↦ᵣ: P) G.
@@ -383,8 +420,8 @@ Section instances.
     λ G, i2p (subsume_struct_reg_reg_pred r f v P G).
 
   Lemma subsume_regcol_reg_pred regs r P G:
-    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyReg r)) regs) = Some i⌝ ∗
-      (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
+    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs) = Some i⌝ ∗
+      (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
          reg_col (delete i regs) -∗ P v' ∗ G)) -∗
     subsume (reg_col regs) (r ↦ᵣ: P) G.
   Proof.
@@ -400,8 +437,8 @@ Section instances.
     λ G, i2p (subsume_regcol_reg_pred regs r P G).
 
   Lemma subsume_struct_regcol_reg_pred regs r f P G:
-    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyField r f)) regs) = Some i⌝ ∗
-      (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
+    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs) = Some i⌝ ∗
+      (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
          reg_col (delete i regs) -∗ P v' ∗ G)) -∗
     subsume (reg_col regs) (r # f ↦ᵣ: P) G.
   Proof.
@@ -420,8 +457,8 @@ Section instances.
     find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v => P v
-      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyReg r)) regs) = Some i⌝ ∗
-           (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
+      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs) = Some i⌝ ∗
+           (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
              reg_col (delete i regs) -∗ P v'))
       end) -∗
     r ↦ᵣ: P.
@@ -440,8 +477,8 @@ Section instances.
     find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v => P v
-      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyField r f)) regs) = Some i⌝ ∗
-           (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜if vr.2 is Some v'' then v' = v'' else True⌝ -∗
+      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs) = Some i⌝ ∗
+           (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
              reg_col (delete i regs) -∗ P v'))
       end) -∗
     r # f ↦ᵣ: P.
@@ -517,31 +554,21 @@ Section instances.
     SimplifyGoal (reg_col []) (Some 100%N) :=
     λ T, i2p (simpl_goal_reg_col_nil T).
 
-  Lemma simpl_goal_reg_col_cons_None r col T:
+  Lemma simpl_goal_reg_col_cons r col s T:
     (T (match r with
-        | KeyReg r => r ↦ᵣ: (λ _, True)
-        | KeyField r f => r # f ↦ᵣ: (λ _, True)%I
+        | KindReg r => r ↦ᵣ: (λ v, ⌜valu_has_shape v s⌝)
+        | KindField r f => r # f ↦ᵣ: (λ v, ⌜valu_has_shape v s⌝)
         end ∗ reg_col col)) -∗
-           simplify_goal (reg_col ((r, None)::col)) T.
+           simplify_goal (reg_col ((r, s)::col)) T.
   Proof.
     iIntros "?". iExists _. iFrame.
-    rewrite reg_col_cons_None. iIntros "[Hr $]". case_match.
-    - rewrite reg_mapsto_pred_eq. iDestruct "Hr" as (?) "[? _]". eauto with iFrame.
-    - rewrite struct_reg_mapsto_pred_eq. iDestruct "Hr" as (?) "[? _]". eauto with iFrame.
+    rewrite reg_col_cons. iIntros "[Hr $]". case_match.
+    - rewrite reg_mapsto_pred_eq. iDestruct "Hr" as (?) "[? %]". eauto with iFrame.
+    - rewrite struct_reg_mapsto_pred_eq. iDestruct "Hr" as (?) "[? %]". eauto with iFrame.
   Qed.
-  Global Instance simpl_goal_reg_col_cons_None_inst r col :
-    SimplifyGoal (reg_col ((r, None)::col)) (Some 100%N) :=
-    λ T, i2p (simpl_goal_reg_col_cons_None r col T).
-
-  Lemma simpl_goal_reg_col_cons_Some r v col T:
-    (T (match r with | KeyReg r => r ↦ᵣ v | KeyField r f => r # f ↦ᵣ v end ∗ reg_col col)) -∗
-           simplify_goal (reg_col ((r, Some v)::col)) T.
-  Proof.
-    iIntros "?". iExists _. iFrame. rewrite reg_col_cons_Some. by iIntros "[? $]".
-  Qed.
-  Global Instance simpl_goal_reg_col_cons_Some_inst r v col :
-    SimplifyGoal (reg_col ((r, Some v)::col)) (Some 100%N) :=
-    λ T, i2p (simpl_goal_reg_col_cons_Some r v col T).
+  Global Instance simpl_goal_reg_col_cons_inst r col s :
+    SimplifyGoal (reg_col ((r, s)::col)) (Some 100%N) :=
+    λ T, i2p (simpl_goal_reg_col_cons r col s T).
 
   Lemma simpl_hyp_uninit_0 a n G:
     G -∗
@@ -616,7 +643,7 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = KeyReg r)) regs)⌝ ∗
+      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs)⌝ ∗
                       (reg_col regs -∗ WPasm es)
       end)) -∗
     WPasm (ReadReg r [] v ann :: es).
@@ -635,7 +662,7 @@ Section instances.
      (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜vread = v'⌝ -∗ r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = KeyField r f)) regs)⌝ ∗
+      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs)⌝ ∗
                       (reg_col regs -∗ WPasm es)
       end))) -∗
     WPasm (ReadReg r [Field f] v ann :: es).
@@ -653,7 +680,7 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (r ↦ᵣ v -∗ WPasm es)
-      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyReg r)) regs) = Some i⌝ ∗
+      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs) = Some i⌝ ∗
           (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r ↦ᵣ v -∗ WPasm es)
       end)) -∗
     WPasm (WriteReg r [] v ann :: es).
@@ -672,7 +699,7 @@ Section instances.
     (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (r # f ↦ᵣ vnew -∗ WPasm es)
-      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KeyField r f)) regs) = Some i⌝ ∗
+      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs) = Some i⌝ ∗
           (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r # f ↦ᵣ vnew -∗ WPasm es)
       end))) -∗
     WPasm (WriteReg r [Field f] v ann :: es).
