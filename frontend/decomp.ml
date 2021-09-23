@@ -120,10 +120,6 @@ let gen_dune : string list -> Format.formatter -> unit = fun coq_prefix ff ->
 
 (* Entry point. *)
 let run name_template output_dir coq_prefix input_file =
-  (* FIXME start *)
-  let _ = Parse_dump.parse_and_pp_debug stdout input_file in
-  ignore (exit 0);
-  (* FIXME end *)
   (* Process the decompilation file and run isla-footprint. *)
   let lines = Parse_dump.parse input_file in
   List.iter (process_line name_template output_dir) lines;
