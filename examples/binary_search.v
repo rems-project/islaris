@@ -196,6 +196,68 @@ Proof.
   - rewrite bool_decide_false //=. by destruct pstatez using bv_1_ind.
 Qed.
 
+Definition stp_uninit_spec (pc : Z) (R1 R2 : string) (Rbase : string) (offset : Z) (incr : bool) : iProp Σ :=
+  ∃ (r1 r2 rbase : bv 64),
+  reg_col sys_regs ∗
+  R1 ↦ᵣ RVal_Bits r1 ∗
+  R2 ↦ᵣ RVal_Bits r2 ∗
+  Rbase ↦ᵣ RVal_Bits rbase ∗
+  (bv_add_Z rbase offset) ↦ₘ? 16 ∗
+  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + offset + 16 < 2 ^ 52⌝ ∗
+  instr_pre (pc + 4) (
+  reg_col sys_regs ∗
+    R1 ↦ᵣ RVal_Bits r1 ∗
+    R2 ↦ᵣ RVal_Bits r2 ∗
+    Rbase ↦ᵣ RVal_Bits (if incr then bv_add_Z rbase offset else rbase) ∗
+    (bv_add_Z rbase offset) ↦ₘ r1 ∗
+    (bv_add_Z rbase (offset + 8)) ↦ₘ r2 ∗
+    True
+  ).
+Global Instance : LithiumUnfold (stp_uninit_spec) := I.
+Lemma a0_has_stp_uninit_spec :
+  instr 0x0000000010300000 (Some a0) -∗
+  instr_body 0x0000000010300000 (stp_uninit_spec 0x0000000010300000 "R29" "R30" "SP_EL2" (-64) true).
+Proof.
+  iStartProof.
+  Time repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
+  all: try bv_solve.
+Qed.
+
+Lemma a4_has_stp_uninit_spec :
+  instr 0x0000000010300004 (Some a4) -∗
+  instr_body 0x0000000010300004 (stp_uninit_spec 0x0000000010300004 "R24" "R23" "SP_EL2" (16) false).
+Proof. Admitted.
+(* TODO: uncomment this once we are on coq 8.14
+  iStartProof.
+  repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
+  all: try bv_solve.
+Qed.
+*)
+Lemma a8_has_stp_uninit_spec :
+  instr 0x0000000010300008 (Some a8) -∗
+  instr_body 0x0000000010300008 (stp_uninit_spec 0x0000000010300008 "R22" "R21" "SP_EL2" (32) false).
+Proof. Admitted.
+(* TODO: uncomment this once we are on coq 8.14
+  iStartProof.
+  repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
+  all: try bv_solve.
+Qed.
+*)
+
+Lemma ac_has_stp_uninit_spec :
+  instr 0x000000001030000c (Some ac) -∗
+  instr_body 0x000000001030000c (stp_uninit_spec 0x000000001030000c "R20" "R19" "SP_EL2" (48) false).
+Proof. Admitted.
+(* TODO: uncomment this once we are on coq 8.14
+  iStartProof.
+  repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
+  all: try bv_solve.
+Qed.
+*)
 
 Definition binary_search_loop_spec : iProp Σ :=
   ∃ (x l r comp xs tmp2 sp : bv 64) (data : list (bv 64)),
@@ -319,10 +381,15 @@ Time Qed.
 
 
 Lemma binary_search stack_size :
-  instr 0x0000000010300000 (Some a0) -∗
-  instr 0x0000000010300004 (Some a4) -∗
-  instr 0x0000000010300008 (Some a8) -∗
-  instr 0x000000001030000c (Some ac) -∗
+  0 ≤ stack_size →
+  (* instr 0x0000000010300000 (Some a0) -∗ *)
+  instr_body 0x0000000010300000 (stp_uninit_spec 0x0000000010300000 "R29" "R30" "SP_EL2" (-64) true) -∗
+  (* instr 0x0000000010300004 (Some a4) -∗ *)
+  instr_body 0x0000000010300004 (stp_uninit_spec 0x0000000010300004 "R24" "R23" "SP_EL2" (16) false) -∗
+  (* instr 0x0000000010300008 (Some a8) -∗ *)
+  instr_body 0x0000000010300008 (stp_uninit_spec 0x0000000010300008 "R22" "R21" "SP_EL2" (32) false) -∗
+  (* instr 0x000000001030000c (Some ac) -∗ *)
+  instr_body 0x000000001030000c (stp_uninit_spec 0x000000001030000c "R20" "R19" "SP_EL2" (48) false) -∗
   instr 0x0000000010300010 (Some a10) -∗
   instr 0x0000000010300014 (Some a14) -∗
   instr 0x0000000010300018 (Some a18) -∗

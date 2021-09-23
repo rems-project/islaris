@@ -229,6 +229,10 @@ Section instances.
     rt_fic := FindDirect (λ l' : list (bv n), a ↦ₘ∗ l')%I;
   |}.
 
+  Global Instance mem_uninit_related a n : RelatedTo (a ↦ₘ? n) := {|
+    rt_fic := FindMemMapsTo a 8;
+  |}.
+
   Lemma find_in_context_mem_mapsto_id a n T:
     (∃ v : bv n, a ↦ₘ v ∗ T (MKMapsTo n v)) -∗
     find_in_context (FindMemMapsTo a n) T.
