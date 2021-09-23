@@ -1,6 +1,7 @@
 // Annotated decompilation of file "examples/binary_search.c".
 
 0000000000000000 <binary_search>:
+//@base_address: 0x0000000010300000
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: bvugt SP_EL2 0x0000000000000040
    0:	a9bc7bfd 	stp	x29, x30, [sp, #-64]!
@@ -20,6 +21,9 @@
   20:	aa0103f5 	mov	x21, x1
   24:	aa0003f6 	mov	x22, x0
   28:	aa1f03f7 	mov	x23, xzr
+// FIXME uncomment when dependencies are sorted out.
+////@spec: sub_R_R_R_spec 0x000000001030002c "R8" "R20" "R23"
+////@spec_tactic: all: bv_solve.
   2c:	cb170288 	sub	x8, x20, x23
   30:	8b4806f8 	add	x24, x23, x8, lsr #1
 //@constraint: = (bvand (bvadd R21 (bvmul R24 0x0000000000000008)) 0xfff0000000000007) 0x0000000000000000

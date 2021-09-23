@@ -201,6 +201,7 @@ type decomp_line = {
   dl_constrs   : (int * string * string) list; (* Holds: (line, orig, c). *)
   dl_instr     : string;
   dl_comment   : string option;
+  dl_spec      : (string * string list) option; (* Spec and tactics. *)
 }
 
 (** [parse input_file] parses file [input_file] to obtain a list of annotated,
@@ -217,8 +218,12 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
   let offset = ref UInt64.zero in
   let build_decomp_line annots line =
     (* Handle all annotations (effectful). *)
+    let base_addr_given = ref false in
     let constrs = ref [] in
+    let spec = ref None in
+    let spec_tactics = ref [] in
     let handle_annot annot =
+      let no_parse fmt = no_parse annot fmt in
       let tag = annot.line_data.annot_tag in
       let payload = annot.line_data.annot_payload in
       match (tag, payload) with
@@ -226,17 +231,30 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
           let constr = (annot.line_num, annot.line_orig, constr) in
           constrs := constr :: !constrs
       | ("base_address", Some(base)  ) ->
+          if !base_addr_given then
+            no_parse "A \"%s\" annotation has already been given." tag;
+          base_addr_given := true;
           let base =
             try UInt64.of_string base with Failure(_) ->
-              no_parse annot "Invalid payload for annotation \"%s\"." tag
+              no_parse "Invalid payload for annotation \"%s\"." tag
           in
-          (* TODO check for overflow? Check if already used/necessary? *)
+          (* TODO check for overflow? *)
           offset := UInt64.sub base line.line_data.instr_addr
+      | ("spec"        , Some(s)     ) ->
+          if !spec <> None then
+            no_parse "A \"%s\" annotation has already been given." tag;
+          spec := Some(s)
+      | ("spec_tactic" , Some(tac)   ) ->
+          if !spec = None then
+            no_parse "A \"spec\" annotation must appear before \"%s\"." tag;
+          spec_tactics := tac :: !spec_tactics
       | ("constraint"  , None        )
-      | ("base_address", None        ) ->
-          no_parse annot "Annotation \"%s\" must have a payload." tag
+      | ("base_address", None        )
+      | ("spec"        , None        )
+      | ("spec_tactic" , None        ) ->
+          no_parse "Annotation \"%s\" must have a payload." tag
       | (_             , _           ) ->
-          no_parse annot "Unknown annotation tag \"%s\"." tag
+          no_parse "Unknown annotation tag \"%s\"." tag
     in
     List.iter handle_annot annots;
     (* Then build the decompiled instruction data. *)
@@ -253,6 +271,7 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
       dl_constrs   = constrs;
       dl_instr     = line.line_data.instr_instr;
       dl_comment   = line.line_data.instr_comment;
+      dl_spec      = Option.map (fun s -> (s, List.rev !spec_tactics)) !spec
     }
   in
   let rec build annots acc lines =
@@ -317,7 +336,10 @@ let parse_and_pp_debug : out_channel -> Filename.filepath -> unit =
       info "  constr => %i (%s)" line orig;
       info "    -> [%s]" c
     in
-    List.iter print_constraint l.dl_constrs
+    List.iter print_constraint l.dl_constrs;
+    match l.dl_spec with None -> () | Some(spec, tacs) ->
+    info "  spec => %s" spec;
+    List.iter (info "    -> %s") tacs
   in
   List.iter print_line lines;
   info "======================"

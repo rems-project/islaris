@@ -22,6 +22,8 @@ type decomp_line = {
   (** Instruction. *)
   dl_comment   : string option;
   (** Possible comment. *)
+  dl_spec      : (string * string list) option;
+  (** Possible specification, together with a list of custom tactics. *)
 }
 
 (** [parse input_file] parses file [input_file] to obtain a list of annotated,

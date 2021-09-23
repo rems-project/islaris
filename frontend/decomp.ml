@@ -87,7 +87,7 @@ let process_line : Template.t -> string -> decomp_line -> unit =
   | 0 -> gen_coq name isla_file coq_file
   | i -> panic "Command [%s] terminated with code %i." command i
 
-let gen_instr_map : Template.t -> string list -> decomp_line list
+let gen_instr_file : Template.t -> string list -> decomp_line list
     -> Format.formatter -> unit = fun name_template coq_prefix lines ff ->
   let pp fmt = Format.fprintf ff fmt in
   (* Imports. *)
@@ -106,7 +106,23 @@ let gen_instr_map : Template.t -> string list -> decomp_line list
   in
   pp "%a" (Format.pp_print_list ~pp_sep pp_elt) lines;
   if lines <> [] then pp "@.";
-  pp "].@."
+  pp "].@.";
+  (* Instruction specifications. *)
+  let pp_spec_if_any d =
+    match d.dl_spec with None -> () | Some(spec, tacs) ->
+    let name = name_from_template name_template d in
+    let addr = d.dl_real_addr in
+    pp "@.Lemma %s_spec `{!islaG Σ} `{!threadG}:@." name;
+    pp "  instr 0x%s (Some %s) -∗@." addr name;
+    pp "  instr_body 0x%s (%s).@." addr spec;
+    pp "Proof.@.";
+    pp "  iStartProof.@.";
+    pp "  repeat liAStep; liShow.@.";
+    pp "  Unshelve. all: prepare_sidecond.@.";
+    List.iter (pp "  %s@.") tacs;
+    pp "Qed.@."
+  in
+  List.iter pp_spec_if_any lines
 
 let gen_dune : string list -> Format.formatter -> unit = fun coq_prefix ff ->
   let pp fmt = Format.fprintf ff fmt in
@@ -125,7 +141,7 @@ let run name_template output_dir coq_prefix input_file =
   List.iter (process_line name_template output_dir) lines;
   (* Generate ["instrs.v"] file. *)
   let instrs_file = Filename.concat output_dir "instrs.v" in
-  let writer = gen_instr_map name_template coq_prefix lines in
+  let writer = gen_instr_file name_template coq_prefix lines in
   Format.write_file instrs_file writer;
   (* Generate the ["dune"] file. *)
   let dune_file = Filename.concat output_dir "dune" in
