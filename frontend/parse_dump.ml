@@ -10,7 +10,7 @@ let uint64_to_hex_string : uint64 -> string = fun i ->
   let i2 = to_int (logand (shift_right i 32) chunk_mask) in
   let i3 = to_int (logand (shift_right i 16) chunk_mask) in
   let i4 = to_int (logand (shift_right i  0) chunk_mask) in
-  let is = Printf.sprintf "%x%x%x%x" i1 i2 i3 i4 in
+  let is = Printf.sprintf "%04x%04x%04x%04x" i1 i2 i3 i4 in
   let len = String.length is in
   let first_non_0 =
     let i = ref 0 in
@@ -195,6 +195,7 @@ type decomp_line = {
   dl_from_line : int;
   dl_line_orig : string;
   dl_addr      : string;
+  dl_real_addr : string; (* Take into account the base address. *)
   dl_opcode    : string; (* The opcode from objdump. *)
   dl_revopcode : string; (* Reversed version (other endianness). *)
   dl_constrs   : (int * string * string) list; (* Holds: (line, orig, c). *)
@@ -213,28 +214,44 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
     match annots with [] -> () | annot :: _ ->
     no_parse annot "This annotation is not attached to an instruction."
   in
+  let offset = ref UInt64.zero in
   let build_decomp_line annots line =
-    let constrs =
-      let build_constr annot =
-        let constr =
-          let tag = annot.line_data.annot_tag in
-          let payload = annot.line_data.annot_payload in
-          match (tag, payload) with
-          | ("constraint", Some(constr)) -> constr
-          | ("constraint", None        ) ->
-              no_parse annot "Annotation \"%s\" must have a payload." tag
-          | (_           , _           ) ->
-              no_parse annot "Unknown annotation tag \"%s\"." tag
-        in
-        (annot.line_num, annot.line_orig, constr)
-      in
-      List.map build_constr annots
+    (* Handle all annotations (effectful). *)
+    let constrs = ref [] in
+    let handle_annot annot =
+      let tag = annot.line_data.annot_tag in
+      let payload = annot.line_data.annot_payload in
+      match (tag, payload) with
+      | ("constraint"  , Some(constr)) ->
+          let constr = (annot.line_num, annot.line_orig, constr) in
+          constrs := constr :: !constrs
+      | ("base_address", Some(base)  ) ->
+          let base =
+            try UInt64.of_string base with Failure(_) ->
+              no_parse annot "Invalid payload for annotation \"%s\"." tag
+          in
+          (* TODO check for overflow? Check if already used/necessary? *)
+          offset := UInt64.sub base line.line_data.instr_addr
+      | ("constraint"  , None        )
+      | ("base_address", None        ) ->
+          no_parse annot "Annotation \"%s\" must have a payload." tag
+      | (_             , _           ) ->
+          no_parse annot "Unknown annotation tag \"%s\"." tag
     in
+    List.iter handle_annot annots;
+    (* Then build the decompiled instruction data. *)
+    let constrs = List.rev !constrs in
+    let real_addr = UInt64.add !offset line.line_data.instr_addr in
+    Printf.printf "%s + %s = %s\n"
+      (uint64_to_hex_string !offset)
+      (uint64_to_hex_string line.line_data.instr_addr)
+      (uint64_to_hex_string real_addr);
     {
       dl_from_file = line.line_file;
       dl_from_line = line.line_num;
       dl_line_orig = line.line_orig;
       dl_addr      = uint64_to_hex_string line.line_data.instr_addr;
+      dl_real_addr = uint64_to_hex_string real_addr;
       dl_opcode    = line.line_data.instr_opcode;
       dl_revopcode = line.line_data.instr_revopcode;
       dl_constrs   = constrs;
@@ -297,14 +314,14 @@ let parse_and_pp_debug : out_channel -> Filename.filepath -> unit =
   info "==== parsed lines ====";
   let print_line l =
     info "%s:%i [%s]" l.dl_from_file l.dl_from_line l.dl_line_orig;
-    info "  instr  => %s: %s/%s (%s)%s"
-      l.dl_addr l.dl_opcode l.dl_revopcode l.dl_instr
+    info "  instr  => %s[real: %s]: %s/%s (%s)%s"
+      l.dl_addr l.dl_real_addr l.dl_opcode l.dl_revopcode l.dl_instr
       (Option.get "" (Option.map (fun s -> " // " ^ s) l.dl_comment));
     let print_constraint (line, orig, c) =
       info "  constr => %i (%s)" line orig;
-      info "    -> [%s]\n" c
+      info "    -> [%s]" c
     in
     List.iter print_constraint l.dl_constrs
   in
   List.iter print_line lines;
-  info "======================\n"
+  info "======================"

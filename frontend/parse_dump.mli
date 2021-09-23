@@ -10,6 +10,8 @@ type decomp_line = {
   (** Full (original) instruction line from the file. *)
   dl_addr      : string;
   (** Address of the instruction. *)
+  dl_real_addr : string;
+  (** Real address of the instruction (using provided base address). *)
   dl_opcode    : string;
   (** Instruction opcode. *)
   dl_revopcode : string;
