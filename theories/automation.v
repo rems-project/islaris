@@ -861,6 +861,10 @@ End instances.
   ( apply tac_instr_eq; bv_solve) : typeclass_instances.
 
 (* TODO: upstream? *)
+Global Opaque FindHypEqual.
+
+
+(* TODO: upstream? *)
 Ltac liLetBindHint :=
   idtac;
   match goal with
