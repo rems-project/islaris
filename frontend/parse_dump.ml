@@ -1,4 +1,23 @@
 open Extra
+open Unsigned
+
+(** [uint64_to_hex_string i] converts integer [i] into its hexadecimal, string
+    representation. *)
+let uint64_to_hex_string : uint64 -> string = fun i ->
+  let open UInt64 in
+  let chunk_mask = of_int 0xFFFF in
+  let i1 = to_int (logand (shift_right i 48) chunk_mask) in
+  let i2 = to_int (logand (shift_right i 32) chunk_mask) in
+  let i3 = to_int (logand (shift_right i 16) chunk_mask) in
+  let i4 = to_int (logand (shift_right i  0) chunk_mask) in
+  let is = Printf.sprintf "%x%x%x%x" i1 i2 i3 i4 in
+  let len = String.length is in
+  let first_non_0 =
+    let i = ref 0 in
+    while !i < len && is.[!i] = '0' do incr i done; !i
+  in
+  if first_non_0 = len then "0" else
+    String.sub is first_non_0 (len - first_non_0)
 
 (** Hexadecimal address as a string. *)
 type address = string
@@ -8,7 +27,7 @@ type label = string
 
 (** Representation of a standard objdump line containing an instruction. *)
 type instr_line = {
-  instr_addr      : string;
+  instr_addr      : uint64;
   instr_opcode    : string;
   instr_revopcode : string;
   instr_instr     : string;
@@ -128,11 +147,13 @@ let pre_parse : Filename.filepath -> line list = fun input_file ->
           String.concat " " (String.split_on_char '\t' instr_instr)
         in
         (* Check the address. *)
-        let _ =
+        let instr_addr =
           if instr_addr = "" then
             no_parse "The address (before the ':') is empty.";
           if not (String.for_all is_hex instr_addr) then
             no_parse "The address (before the ':') should be a hex number.";
+          try UInt64.of_string ("0x" ^ instr_addr) with Failure(_) ->
+            no_parse "The address (before the ':') does not fit on 64 bits."
         in
         (* Check the opcode and create a version of the other endianness. *)
         let instr_revopcode =
@@ -213,7 +234,7 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
       dl_from_file = line.line_file;
       dl_from_line = line.line_num;
       dl_line_orig = line.line_orig;
-      dl_addr      = line.line_data.instr_addr;
+      dl_addr      = uint64_to_hex_string line.line_data.instr_addr;
       dl_opcode    = line.line_data.instr_opcode;
       dl_revopcode = line.line_data.instr_revopcode;
       dl_constrs   = constrs;
@@ -266,7 +287,8 @@ let parse_and_pp_debug : out_channel -> Filename.filepath -> unit =
     | Line_instr(i)       ->
         let comment = Option.get "NONE" i.instr_comment in
         info "instruction(%s, %s, %s, \"%s\", \"%s\")"
-          i.instr_addr i.instr_opcode i.instr_revopcode i.instr_instr comment
+          (uint64_to_hex_string i.instr_addr) i.instr_opcode i.instr_revopcode
+          i.instr_instr comment
   in
   List.iter print_line lines;
   info "======================";
