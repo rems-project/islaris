@@ -242,10 +242,6 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
     (* Then build the decompiled instruction data. *)
     let constrs = List.rev !constrs in
     let real_addr = UInt64.add !offset line.line_data.instr_addr in
-    Printf.printf "%s + %s = %s\n"
-      (uint64_to_hex_string !offset)
-      (uint64_to_hex_string line.line_data.instr_addr)
-      (uint64_to_hex_string real_addr);
     {
       dl_from_file = line.line_file;
       dl_from_line = line.line_num;
