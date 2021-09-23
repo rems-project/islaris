@@ -1,0 +1,31 @@
+open Extra
+
+(** Representation of an annotated, decompiled instruction. *)
+type decomp_line = {
+  dl_from_file : Filename.filepath;
+  (** Path to the file from which the instruction comes from. *)
+  dl_from_line : int;
+  (** Line number for the instruction in the file. *)
+  dl_line_orig : string;
+  (** Full (original) instruction line from the file. *)
+  dl_addr      : string;
+  (** Address of the instruction. *)
+  dl_opcode    : string;
+  (** Instruction opcode. *)
+  dl_revopcode : string;
+  (** Reversed instruction opcode (other endianness). *)
+  dl_constrs   : (int * string * string) list;
+  (** Annotated constraints (line number, original line, the constraint). *)
+  dl_instr     : string;
+  (** Instruction. *)
+  dl_comment   : string option;
+  (** Possible comment. *)
+}
+
+(** [parse input_file] parses file [input_file] to obtain a list of annotated,
+    decompiled instructions. *)
+val parse : Filename.filepath -> decomp_line list
+
+(** [parse_and_pp_debug oc input_file] parses file [input_file] and then print
+    various debugging information for the parser. *)
+val parse_and_pp_debug : out_channel -> Filename.filepath -> unit

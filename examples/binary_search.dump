@@ -1,35 +1,58 @@
-   0:	a9bc7bfd: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000 ; bvugt SP_EL2 0x0000000000000040 :stp	x29, x30, [sp, #-64]!
-   4:	a9015ff8: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000 ; = (bvand (bvadd SP_EL2 0x0000000000000018) 0xfff0000000000007) 0x0000000000000000 :stp	x24, x23, [sp, #16]
-   8:	a90257f6: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000 ; = (bvand (bvadd SP_EL2 0x0000000000000028) 0xfff0000000000007) 0x0000000000000000 :stp	x22, x21, [sp, #32]
-   c:	a9034ff4: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000 ; = (bvand (bvadd SP_EL2 0x0000000000000038) 0xfff0000000000007) 0x0000000000000000 :stp	x20, x19, [sp, #48]
-  10:	910003fd: :mov	x29, sp
-  14:	b4000222: :cbz	x2, 58 <binary_search+0x58>
-  18:	aa0303f3: :mov	x19, x3
-  1c:	aa0203f4: :mov	x20, x2
-  20:	aa0103f5: :mov	x21, x1
-  24:	aa0003f6: :mov	x22, x0
-  28:	aa1f03f7: :mov	x23, xzr
-  2c:	cb170288: :sub	x8, x20, x23
-  30:	8b4806f8: :add	x24, x23, x8, lsr #1
-  34:	f8787aa0: = (bvand (bvadd R21 (bvmul R24 0x0000000000000008)) 0xfff0000000000007) 0x0000000000000000 :ldr	x0, [x21, x24, lsl #3]
-  38:	aa1303e1: :mov	x1, x19
-  3c:	d63f02c0: :blr	x22
-  40:	7200001f: :tst	w0, #0x1
-  44:	9a981294: :csel	x20, x20, x24, ne  // ne = any
-  48:	9a9806f7: :csinc	x23, x23, x24, eq  // eq = none
-  4c:	eb17029f: :cmp	x20, x23
-  50:	54fffee8: :b.hi	2c <binary_search+0x2c>  // b.pmore
-  54:	14000002: :b	5c <binary_search+0x5c>
-  58:	aa1f03f7: :mov	x23, xzr
-  5c:	aa1703e0: :mov	x0, x23
-  60:	a9434ff4: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000; = (bvand (bvadd SP_EL2 0x0000000000000038) 0xfff0000000000007) 0x0000000000000000 :ldp	x20, x19, [sp, #48]
-  64:	a94257f6: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000; = (bvand (bvadd SP_EL2 0x0000000000000028) 0xfff0000000000007) 0x0000000000000000 :ldp	x22, x21, [sp, #32]
-  68:	a9415ff8: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000; = (bvand (bvadd SP_EL2 0x0000000000000018) 0xfff0000000000007) 0x0000000000000000 :ldp	x24, x23, [sp, #16]
-  6c:	a8c47bfd: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000; = (bvand (bvadd SP_EL2 0x0000000000000008) 0xfff0000000000007) 0x0000000000000000 :ldp	x29, x30, [sp], #64
-  70:	d65f03c0: :ret
+// Annotated decompilation of file "examples/binary_search.c".
 
-  74:	f9400008: = (bvand R0 0xfff0000000000007) 0x0000000000000000 :ldr	x8, [x0]
-  78:	f9400029: = (bvand R1 0xfff0000000000007) 0x0000000000000000 :ldr	x9, [x1]
-  7c:	eb09011f: :cmp	x8, x9
-  80:	1a9f87e0: :cset	w0, ls  // ls = plast
-  84:	d65f03c0: :ret
+0000000000000000 <binary_search>:
+//@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
+//@constraint: bvugt SP_EL2 0x0000000000000040
+   0:	a9bc7bfd 	stp	x29, x30, [sp, #-64]!
+//@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
+//@constraint: = (bvand (bvadd SP_EL2 0x0000000000000018) 0xfff0000000000007) 0x0000000000000000
+   4:	a9015ff8 	stp	x24, x23, [sp, #16]
+//@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
+//@constraint: = (bvand (bvadd SP_EL2 0x0000000000000028) 0xfff0000000000007) 0x0000000000000000
+   8:	a90257f6 	stp	x22, x21, [sp, #32]
+//@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
+//@constraint: = (bvand (bvadd SP_EL2 0x0000000000000038) 0xfff0000000000007) 0x0000000000000000
+   c:	a9034ff4 	stp	x20, x19, [sp, #48]
+  10:	910003fd 	mov	x29, sp
+  14:	b4000222 	cbz	x2, 58 <binary_search+0x58>
+  18:	aa0303f3 	mov	x19, x3
+  1c:	aa0203f4 	mov	x20, x2
+  20:	aa0103f5 	mov	x21, x1
+  24:	aa0003f6 	mov	x22, x0
+  28:	aa1f03f7 	mov	x23, xzr
+  2c:	cb170288 	sub	x8, x20, x23
+  30:	8b4806f8 	add	x24, x23, x8, lsr #1
+//@constraint: = (bvand (bvadd R21 (bvmul R24 0x0000000000000008)) 0xfff0000000000007) 0x0000000000000000
+  34:	f8787aa0 	ldr	x0, [x21, x24, lsl #3]
+  38:	aa1303e1 	mov	x1, x19
+  3c:	d63f02c0 	blr	x22
+  40:	7200001f 	tst	w0, #0x1
+  44:	9a981294 	csel	x20, x20, x24, ne  // ne = any
+  48:	9a9806f7 	csinc	x23, x23, x24, eq  // eq = none
+  4c:	eb17029f 	cmp	x20, x23
+  50:	54fffee8 	b.hi	2c <binary_search+0x2c>  // b.pmore
+  54:	14000002 	b	5c <binary_search+0x5c>
+  58:	aa1f03f7 	mov	x23, xzr
+  5c:	aa1703e0 	mov	x0, x23
+//@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
+//@constraint: = (bvand (bvadd SP_EL2 0x0000000000000038) 0xfff0000000000007) 0x0000000000000000
+  60:	a9434ff4 	ldp	x20, x19, [sp, #48]
+//@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
+//@constraint: = (bvand (bvadd SP_EL2 0x0000000000000028) 0xfff0000000000007) 0x0000000000000000
+  64:	a94257f6 	ldp	x22, x21, [sp, #32]
+//@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
+//@constraint: = (bvand (bvadd SP_EL2 0x0000000000000018) 0xfff0000000000007) 0x0000000000000000
+  68:	a9415ff8 	ldp	x24, x23, [sp, #16]
+//@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
+//@constraint: = (bvand (bvadd SP_EL2 0x0000000000000008) 0xfff0000000000007) 0x0000000000000000
+  6c:	a8c47bfd 	ldp	x29, x30, [sp], #64
+  70:	d65f03c0 	ret
+
+0000000000000074 <compare_int>:
+//@constraint: = (bvand R0 0xfff0000000000007) 0x0000000000000000
+  74:	f9400008 	ldr	x8, [x0]
+//@constraint: = (bvand R1 0xfff0000000000007) 0x0000000000000000
+  78:	f9400029 	ldr	x9, [x1]
+  7c:	eb09011f 	cmp	x8, x9
+  80:	1a9f87e0 	cset	w0, ls  // ls = plast
+  84:	d65f03c0 	ret

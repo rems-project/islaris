@@ -1,4 +1,7 @@
-
-   0:	a9bf07e0: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000 ; bvugt SP_EL2 0x0000000000000010 :stp	x0, x1, [sp, #-16]!
-   4:	f9400020: = (bvand R1 0xfff0000000000007) 0x0000000000000000 :ldr	x0, [x1]
-   8:	f9000029: = (bvand R1 0xfff0000000000007) 0x0000000000000000 :str	x9, [x1]
+//@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
+//@constraint: bvugt SP_EL2 0x0000000000000010
+   0:	a9bf07e0  stp	x0, x1, [sp, #-16]!
+//@constraint: = (bvand R1 0xfff0000000000007) 0x0000000000000000
+   4:	f9400020  ldr	x0, [x1]
+//@constraint: = (bvand R1 0xfff0000000000007) 0x0000000000000000
+   8:	f9000029  str	x9, [x1]

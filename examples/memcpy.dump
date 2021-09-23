@@ -1,8 +1,10 @@
-   0:	b40000e2: 	:cbz	x2, 1c <mcpy+0x1c>
-   4:	d2800003: 	:mov	x3, #0x0                   	// #0
-   8:	38636824: (= (bvand (bvadd R1 R3) 0xfff0000000000007) 0x0000000000000000) 	:ldrb	w4, [x1, x3]
-   c:	38236804: (= (bvand (bvadd R0 R3) 0xfff0000000000007) 0x0000000000000000)	:strb	w4, [x0, x3]
-  10:	91000463: 	:add	x3, x3, #0x1
-  14:	eb03005f: 	:cmp	x2, x3
-  18:	54ffff81: 	:b.ne	8 <mcpy+0x8>  // b.any
-  1c:	d65f03c0: 	:ret
+   0:	b40000e2  cbz	x2, 1c <mcpy+0x1c>
+   4:	d2800003  mov	x3, #0x0                   	// #0
+//@constraint: = (bvand (bvadd R1 R3) 0xfff0000000000007) 0x0000000000000000
+   8:	38636824  ldrb	w4, [x1, x3]
+//@constraint: = (bvand (bvadd R0 R3) 0xfff0000000000007) 0x0000000000000000
+   c:	38236804  strb	w4, [x0, x3]
+  10:	91000463  add	x3, x3, #0x1
+  14:	eb03005f  cmp	x2, x3
+  18:	54ffff81  b.ne	8 <mcpy+0x8>  // b.any
+  1c:	d65f03c0  ret
