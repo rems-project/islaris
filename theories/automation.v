@@ -147,19 +147,19 @@ Definition FindStructRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r f : string) := {
 |}.
 Typeclasses Opaque FindStructRegMapsTo.
 
-Inductive mem_mapsto_kind (n : N) : Type :=
-| MKMapsTo (v : bv n)
-| MKArray (a : addr) (l : list (bv n))
+Inductive mem_mapsto_kind : Type :=
+| MKMapsTo (n : N) (v : bv n)
+| MKArray (n : N) (a : addr) (l : list (bv n))
 | MKUninit (a : addr) (n : Z)
 | MKMMIO (a : addr) (l : Z).
-Definition FindMemMapsTo {Σ} `{!islaG Σ} `{!threadG} (a : addr) (n : N) := {|
-  fic_A := mem_mapsto_kind n;
+Definition FindMemMapsTo {Σ} `{!islaG Σ} `{!threadG} (a : addr) := {|
+  fic_A := mem_mapsto_kind;
   fic_Prop mk :=
   match mk with
   | MKMapsTo _ v => (a ↦ₘ v)%I
   | MKArray _ a' l => (a' ↦ₘ∗ l)%I
-  | MKUninit _ a' n => (a' ↦ₘ? n)%I
-  | MKMMIO _ a' l => mmio_range a' l
+  | MKUninit a' n => (a' ↦ₘ? n)%I
+  | MKMMIO a' l => mmio_range a' l
   end
 |}.
 
@@ -222,72 +222,73 @@ Section instances.
   Proof. by move => ->. Qed.
 
   Global Instance mem_related a n (v : bv n) : RelatedTo (a ↦ₘ v) := {|
-    rt_fic := FindMemMapsTo a n;
+    rt_fic := FindMemMapsTo a;
   |}.
 
   Global Instance mem_array_related a n (l : list (bv n)) : RelatedTo (a ↦ₘ∗ l) := {|
-    rt_fic := FindDirect (λ l' : list (bv n), a ↦ₘ∗ l')%I;
+    rt_fic := FindMemMapsTo a;
   |}.
 
   Global Instance mem_uninit_related a n : RelatedTo (a ↦ₘ? n) := {|
-    rt_fic := FindMemMapsTo a 8;
+    rt_fic := FindMemMapsTo a;
   |}.
 
-  Lemma find_in_context_mem_mapsto_id a n T:
-    (∃ v : bv n, a ↦ₘ v ∗ T (MKMapsTo n v)) -∗
-    find_in_context (FindMemMapsTo a n) T.
-  Proof. iDestruct 1 as (v) "[Hl HT]". iExists _ => /=. iFrame. Qed.
-  Global Instance find_in_context_mapsto_id_inst a n :
-    FindInContext (FindMemMapsTo a n) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_mem_mapsto_id a n T).
+  Lemma find_in_context_mem_mapsto_id a T:
+    (∃ n (v : bv n), a ↦ₘ v ∗ T (MKMapsTo n v)) -∗
+    find_in_context (FindMemMapsTo a) T.
+  Proof. iDestruct 1 as (? v) "[Hl HT]". iExists _ => /=. iFrame. Qed.
+  Global Instance find_in_context_mapsto_id_inst a :
+    FindInContext (FindMemMapsTo a) FICSyntactic | 1 :=
+    λ T, i2p (find_in_context_mem_mapsto_id a T).
 
-  Inductive FICMemMapstoSemantic (a : addr) (n : N) : Set :=.
-  Global Instance find_in_context_mem_mapsto_semantic_inst a n :
-    FindInContext (FindMemMapsTo a n) (FICMemMapstoSemantic a n) | 10 :=
-    λ T, i2p (find_in_context_mem_mapsto_id a n T).
+  Inductive FICMemMapstoSemantic (a : addr) : Set :=.
+  Global Instance find_in_context_mem_mapsto_semantic_inst a :
+    FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 10 :=
+    λ T, i2p (find_in_context_mem_mapsto_id a T).
 
-  Lemma tac_mem_mapsto_eq l1 l' n' n (v1 v2 : bv n) l2:
+  Lemma tac_mem_mapsto_eq l1 l' n (v1 v2 : bv n) l2:
     l1 = l2 →
-    FindHypEqual (FICMemMapstoSemantic l' n') (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
+    FindHypEqual (FICMemMapstoSemantic l') (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
   Proof. by move => ->. Qed.
 
-  Lemma find_in_context_mem_mapsto_array a n T:
-    (∃ a' l, a' ↦ₘ∗ l ∗ T (MKArray n a' l)) -∗
-    find_in_context (FindMemMapsTo a n) T.
-  Proof. iDestruct 1 as (a' l) "[Hl HT]". iExists _ => /=. by iFrame. Qed.
-  Global Instance find_in_context_mapsto_array_inst a n :
-    FindInContext (FindMemMapsTo a n) (FICMemMapstoSemantic a n) | 20 :=
-    λ T, i2p (find_in_context_mem_mapsto_array a n T).
+  Lemma find_in_context_mem_mapsto_array a T:
+    (∃ n a' l, a' ↦ₘ∗ l ∗ T (MKArray n a' l)) -∗
+    find_in_context (FindMemMapsTo a) T.
+  Proof. iDestruct 1 as (n a' l) "[Hl HT]". iExists _ => /=. by iFrame. Qed.
+  Global Instance find_in_context_mapsto_array_inst a :
+    FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 20 :=
+    λ T, i2p (find_in_context_mem_mapsto_array a T).
 
   Lemma tac_mem_mapsto_array_eq a n a1 a2 (l1 l2 : list (bv n)):
-    bv_unsigned a1 ≤ bv_unsigned a < bv_unsigned a1 + length l1 * Z.of_N (n `div` 8)%N →
-    FindHypEqual (FICMemMapstoSemantic a n) (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) (a2 ↦ₘ∗ l2).
+    bv_unsigned a1 ≤ bv_unsigned a < bv_unsigned a1 + length l1 * Z.of_N (n `div` 8)%N
+      ∨ bv_unsigned a1 = bv_unsigned a →
+    FindHypEqual (FICMemMapstoSemantic a) (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) (a2 ↦ₘ∗ l2).
   Proof. done. Qed.
 
-  Lemma find_in_context_mem_mapsto_uninit a n T:
-    (∃ a' n', a' ↦ₘ? n' ∗ T (MKUninit _ a' n')) -∗
-    find_in_context (FindMemMapsTo a n) T.
+  Lemma find_in_context_mem_mapsto_uninit a T:
+    (∃ a' n', a' ↦ₘ? n' ∗ T (MKUninit a' n')) -∗
+    find_in_context (FindMemMapsTo a) T.
   Proof. iDestruct 1 as (a' n') "[Hl HT]". iExists _ => /=. by iFrame. Qed.
-  Global Instance find_in_context_mapsto_uninit_inst a n :
-    FindInContext (FindMemMapsTo a n) (FICMemMapstoSemantic a n) | 30 :=
-    λ T, i2p (find_in_context_mem_mapsto_uninit a n T).
+  Global Instance find_in_context_mapsto_uninit_inst a :
+    FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 30 :=
+    λ T, i2p (find_in_context_mem_mapsto_uninit a T).
 
-  Lemma tac_mem_mapsto_uninit_eq a n a1 a2 n1 n2:
-    bv_unsigned a1 ≤ bv_unsigned a < bv_unsigned a1 + n1 * Z.of_N (n `div` 8)%N →
-    FindHypEqual (FICMemMapstoSemantic a n) (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) (a2 ↦ₘ? n2).
+  Lemma tac_mem_mapsto_uninit_eq a a1 a2 n1 n2:
+    bv_unsigned a1 ≤ bv_unsigned a < bv_unsigned a1 + n1 ∨ bv_unsigned a1 = bv_unsigned a →
+    FindHypEqual (FICMemMapstoSemantic a) (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) (a2 ↦ₘ? n2).
   Proof. done. Qed.
 
-  Lemma find_in_context_mem_mapsto_mmio a n T:
-    (∃ a' l, mmio_range a' l ∗ T (MKMMIO n a' l)) -∗
-    find_in_context (FindMemMapsTo a n) T.
+  Lemma find_in_context_mem_mapsto_mmio a T:
+    (∃ a' l, mmio_range a' l ∗ T (MKMMIO a' l)) -∗
+    find_in_context (FindMemMapsTo a) T.
   Proof. iDestruct 1 as (a' l) "[Hl HT]". iExists _ => /=. iFrame. Qed.
-  Global Instance find_in_context_mem_mapsto_mmio_semantic_inst a n :
-  FindInContext (FindMemMapsTo a n) (FICMemMapstoSemantic a n) | 40 :=
-  λ T, i2p (find_in_context_mem_mapsto_mmio a n T).
+  Global Instance find_in_context_mem_mapsto_mmio_semantic_inst a :
+  FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 40 :=
+  λ T, i2p (find_in_context_mem_mapsto_mmio a T).
 
-  Lemma tac_mem_mapsto_mmio a n a1 a2 l1 l2:
+  Lemma tac_mem_mapsto_mmio a a1 a2 l1 l2:
     bv_unsigned a1 ≤ bv_unsigned a ≤ bv_unsigned a1 + l1 →
-    FindHypEqual (FICMemMapstoSemantic a n) (mmio_range a1 l1) (mmio_range a2 l2) (mmio_range a2 l2).
+    FindHypEqual (FICMemMapstoSemantic a) (mmio_range a1 l1) (mmio_range a2 l2) (mmio_range a2 l2).
   Proof. done. Qed.
 
   Global Instance reg_related r v : RelatedTo (r ↦ᵣ v) := {|
@@ -354,7 +355,7 @@ Section instances.
   |}.
 
   Global Instance instr_pre'_related b a P : RelatedTo (instr_pre' b a P) := {|
-    rt_fic := FindDirect (λ '(b', P'), instr_pre' b' a P')%I;
+    rt_fic := FindInstrKind a b;
   |}.
 
   Global Instance spec_trace_related κs : RelatedTo (spec_trace κs) := {|
@@ -540,13 +541,33 @@ Section instances.
     Subsume (a ↦ₘ v1) (a ↦ₘ v2) :=
     λ G, i2p (subsume_mem a n v1 v2 G).
 
-  Lemma subsume_mem_array a n (l1 l2 : list (bv n)) G:
-    ⌜l1 = l2⌝ ∗ G -∗
-    subsume (a ↦ₘ∗ l1) (a ↦ₘ∗ l2) G.
-  Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
-  Global Instance subsume_mem_array_inst a n (l1 l2 : list (bv n)) :
-    Subsume (a ↦ₘ∗ l1) (a ↦ₘ∗ l2) :=
-    λ G, i2p (subsume_mem_array a n l1 l2 G).
+  Lemma subsume_mem_array a1 a2 n (l1 l2 : list (bv n)) G:
+    ⌜a1 = a2⌝ ∗ ⌜l1 = l2⌝ ∗ G -∗
+    subsume (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) G.
+  Proof. iDestruct 1 as (-> ->) "$". iIntros "$". Qed.
+  Global Instance subsume_mem_array_inst a1 a2 n (l1 l2 : list (bv n)) :
+    Subsume (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) :=
+    λ G, i2p (subsume_mem_array a1 a2 n l1 l2 G).
+
+  (* This handles the case where the goal is fully contained in the hypthesis. *)
+  Lemma subsume_mem_uninit_mem_uninit a1 a2 n1 n2 G
+        `{!BvSolve (0 ≤ n2 ∧ bv_unsigned a1 ≤ bv_unsigned a2 ∧
+                      bv_unsigned a2 + n2 ≤ bv_unsigned a1 + n1)}:
+    (a1 ↦ₘ? (bv_unsigned a2 - bv_unsigned a1) -∗
+     (bv_add_Z a2 n2) ↦ₘ? (n1 - n2 - (bv_unsigned a2 - bv_unsigned a1)) -∗ G) -∗
+     subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) G.
+  Proof.
+    unfold BvSolve in *. iIntros "HG Ha".
+    iDestruct (mem_mapsto_uninit_split (bv_unsigned a2 - bv_unsigned a1) with "Ha") as "[? Ha]"; [bv_solve|].
+    iDestruct (mem_mapsto_uninit_split n2 with "Ha") as "[? Ha]"; [bv_solve|].
+    have -> : bv_add_Z a1 (bv_unsigned a2 - bv_unsigned a1) = a2 by bv_solve.
+    have -> : (n1 - (bv_unsigned a2 - bv_unsigned a1) - n2) = (n1 - n2 - (bv_unsigned a2 - bv_unsigned a1)) by bv_solve.
+    iFrame. iApply ("HG" with "[$] [$]").
+  Qed.
+  Global Instance subsume_mem_uninit_mem_uninit_inst a1 a2 n1 n2
+         `{!BvSolve (0 ≤ n2 ∧ bv_unsigned a1 ≤ bv_unsigned a2 ∧ bv_unsigned a2 + n2 ≤ bv_unsigned a1 + n1)}:
+    Subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) :=
+    λ G, i2p (subsume_mem_uninit_mem_uninit a1 a2 n1 n2 G).
 
   Lemma simpl_goal_reg_col_nil T:
     (T True) -∗
@@ -753,18 +774,19 @@ Section instances.
   Lemma li_wp_write_mem len n success kind a (vnew : bv n) tag ann es:
     (⌜n = (8*len)%N⌝ ∗
     ⌜len ≠ 0%N⌝ ∗
-    find_in_context (FindMemMapsTo a n) (λ mk,
+    find_in_context (FindMemMapsTo a) (λ mk,
       match mk with
-      | MKMapsTo _ vold => (a ↦ₘ vnew -∗ WPasm es)
-      | MKArray _ a' l => ∃ i : nat, ⌜a = bv_add_Z a' (i * Z.of_N len)⌝ ∗ ⌜i < length l⌝%nat ∗
-         (a' ↦ₘ∗ <[i := vnew]>l -∗ WPasm es)
-      | MKUninit _ a' n' =>
+      | MKMapsTo n' vold => ⌜n' = n⌝ ∗ (a ↦ₘ vnew -∗ WPasm es)
+      | MKArray n' a' l =>
+          ∃ i : nat, ⌜a = bv_add_Z a' (i * Z.of_N len)⌝ ∗ ⌜i < length l⌝%nat ∗
+          ∃ Heq : n = n', (a' ↦ₘ∗ <[i := (eq_rect n bv vnew n' Heq)]>l -∗ WPasm es)
+      | MKUninit a' n' =>
         ⌜bv_unsigned a' ≤ bv_unsigned a⌝ ∗ ⌜bv_unsigned a + Z.of_N len ≤ bv_unsigned a' + n'⌝ ∗ (
         a ↦ₘ vnew -∗
         a' ↦ₘ? (bv_unsigned a - bv_unsigned a') -∗
         (bv_add_Z a (Z.of_N len)) ↦ₘ? (bv_unsigned a' + n' - (bv_unsigned a + Z.of_N len)) -∗
         WPasm es)
-      | MKMMIO _ a' l =>
+      | MKMMIO a' l =>
         ⌜bv_unsigned a' ≤ bv_unsigned a⌝ ∗ ⌜bv_unsigned a + Z.of_N len ≤ bv_unsigned a' + l⌝ ∗
         ∃ κs, spec_trace κs ∗ ⌜head κs = Some (SWriteMem a vnew)⌝ ∗
         (spec_trace (tail κs) -∗ WPasm es)
@@ -773,8 +795,8 @@ Section instances.
     WPasm (WriteMem (RVal_Bool success) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :: es).
   Proof.
     iDestruct 1 as (?? mk) "[HP Hcont]" => /=. case_match.
-    - iApply (wp_write_mem with "HP Hcont"); [done | lia].
-    - iDestruct "Hcont" as (i??) "Hcont".
+    - iDestruct "Hcont" as (->) "Hcont". iApply (wp_write_mem with "HP Hcont"); [done | lia].
+    - iDestruct "Hcont" as (i?? Heq) "Hcont". subst => /=.
       iApply (wp_write_mem_array with "HP [Hcont]"); [done|lia|done|done|].
       iIntros "Hl". by iApply "Hcont".
     - iDestruct "Hcont" as (??) "Hcont". subst n.
@@ -797,19 +819,19 @@ Section instances.
   Lemma li_wp_read_mem len n kind a vread tag ann es:
     (⌜n = (8 * len)%N⌝ ∗
     ⌜len ≠ 0%N⌝ ∗
-    find_in_context (FindMemMapsTo a n) (λ mk,
+    find_in_context (FindMemMapsTo a) (λ mk,
       match mk with
-      | MKMapsTo _ vmem => (⌜vread = vmem⌝ -∗ a ↦ₘ vmem -∗ WPasm es)
-      | MKArray _ a' l => ∃ i : nat, ⌜a = bv_add_Z a' (i * Z.of_N len)⌝ ∗ ⌜i < length l⌝%nat ∗
-         (∀ vmem, ⌜l !! i = Some vmem⌝ -∗ ⌜vread = vmem⌝ -∗ a' ↦ₘ∗ l -∗ WPasm es)
-      | MKUninit _ a' n' => False
-      | MKMMIO _ _ _ => False
+      | MKMapsTo n' vmem => ∃ Heq : n = n', (⌜(eq_rect n bv vread n' Heq) = vmem⌝ -∗ a ↦ₘ vmem -∗ WPasm es)
+      | MKArray n' a' l => ∃ i : nat, ⌜a = bv_add_Z a' (i * Z.of_N len)⌝ ∗ ⌜i < length l⌝%nat ∗
+         ∃ Heq : n = n', (∀ vmem, ⌜l !! i = Some vmem⌝ -∗ ⌜(eq_rect n bv vread n' Heq) = vmem⌝ -∗ a' ↦ₘ∗ l -∗ WPasm es)
+      | MKUninit a' n' => False
+      | MKMMIO _ _ => False
       end)) -∗
     WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :: es).
   Proof.
     iDestruct 1 as (?? mk) "[Hmem Hcont]" => /=. case_match.
-    - iApply (wp_read_mem with "Hmem Hcont"); [done|lia].
-    - iDestruct "Hcont" as (i?[??]%lookup_lt_is_Some_2) "Hcont".
+    - iDestruct "Hcont" as (?) "Hcont". subst => /=. iApply (wp_read_mem with "Hmem Hcont"); [done|lia].
+    - iDestruct "Hcont" as (i?[??]%lookup_lt_is_Some_2 ?) "Hcont". subst => /=.
       iApply (wp_read_mem_array with "Hmem [Hcont]"); [done|lia|done|done|].
       iIntros (?) "Hl". by iApply "Hcont".
     - done.
@@ -843,13 +865,13 @@ Section instances.
   Proof. apply: wpe_ite. Qed.
 End instances.
 
-#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _ _) (_ ↦ₘ _) (_ ↦ₘ _) _) =>
+#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ _) (_ ↦ₘ _) _) =>
   ( apply tac_mem_mapsto_eq; bv_solve) : typeclass_instances.
-#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _ _) (_ ↦ₘ∗ _) (_ ↦ₘ∗ _) _) =>
+#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ∗ _) (_ ↦ₘ∗ _) _) =>
   ( apply tac_mem_mapsto_array_eq; bv_solve) : typeclass_instances.
-#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _ _) (_ ↦ₘ? _) (_ ↦ₘ? _) _) =>
+#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ? _) (_ ↦ₘ? _) _) =>
   ( apply tac_mem_mapsto_uninit_eq; bv_solve) : typeclass_instances.
-#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _ _) (mmio_range _ _) (mmio_range _ _) _) =>
+#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (mmio_range _ _) (mmio_range _ _) _) =>
   ( apply tac_mem_mapsto_mmio; bv_solve) : typeclass_instances.
 #[ global ] Hint Extern 10 (FindHypEqual (FICRegMapstoSemantic _) (reg_col _) (reg_col _) _) =>
 ( apply tac_reg_mapsto_reg_col; vm_compute; eexists _; done) : typeclass_instances.
