@@ -163,3 +163,35 @@ module SSet = Set.Make(String)
 
 (** Maps of [string] keys. *)
 module SMap = Map.Make(String)
+
+module Parallel = struct
+  (** [iter j f tasks] concurrently calls function [f] on the elements of list
+      [tasks], using [j] threads. Note that the function [f] receives as first
+      argument a higher-order function [with_io_lock] which can be used to run
+      its argument function after having acquired a lock protecting the output
+      channels [stdout] and [stderr]. Note that function [with_io_lock] should
+      always be called with an argument that terminates. In the case where [j]
+      is strictly less than [1] then [Invalid_argument] is raised. *)
+  let iter : int -> (int -> ((unit -> unit) -> unit) -> 'a -> unit) -> 'a list
+      -> unit = fun j f tasks ->
+    if j < 1 then invalid_arg "Parallel.iter";
+    let io_mutex  = Mutex.create () in
+    let bag_mutex = Mutex.create () in
+    let bag = ref tasks in
+    let rec thread_fun i =
+      Mutex.lock bag_mutex;
+      let task =
+        match !bag with
+        | t :: ts -> bag := ts; Mutex.unlock bag_mutex; t
+        | []      -> Mutex.unlock bag_mutex; Thread.exit (); assert false
+      in
+      let with_io_loc protected_f =
+        Mutex.lock io_mutex;
+        try protected_f (); Mutex.unlock io_mutex with e ->
+          Mutex.unlock io_mutex; raise e
+      in
+      f i with_io_loc task; thread_fun i
+    in
+    let ths = Array.init j (Thread.create thread_fun) in
+    Array.iter Thread.join ths
+end

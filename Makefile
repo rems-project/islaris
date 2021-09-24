@@ -11,13 +11,19 @@ all_and_tests: tests all
 .PHONY: all_and_tests
 
 generate:
-	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memory_instructions.dump -o instructions  -n "instr_{instr}" --coqdir=isla.instructions
-	rm instructions/instrs.v
-	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/hello.dump -o instructions/hello --coqdir=isla.instructions.hello
-	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/example.dump -o instructions/example --coqdir=isla.instructions.example
-	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memcpy.dump -o instructions/memcpy --coqdir=isla.instructions.memcpy
-	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/binary_search.dump -o instructions/binary_search --coqdir=isla.instructions.binary_search
-	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq pkvm_handler/pkvm_handler.dump
+	@echo "[isla-coq] examples/memory_instructions.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memory_instructions.dump -j 8 -o instructions  -n "instr_{instr}" --coqdir=isla.instructions
+	@rm instructions/instrs.v
+	@echo "[isla-coq] examples/hello.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/hello.dump -j 8 -o instructions/hello --coqdir=isla.instructions.hello
+	@echo "[isla-coq] examples/example.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/example.dump -j 8 -o instructions/example --coqdir=isla.instructions.example
+	@echo "[isla-coq] examples/memcpy.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memcpy.dump -j 8 -o instructions/memcpy --coqdir=isla.instructions.memcpy
+	@echo "[isla-coq] examples/binary_search.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/binary_search.dump -j 8 -o instructions/binary_search --coqdir=isla.instructions.binary_search
+	@echo "[isla-coq] pkvm_handler/pkvm_handler.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq -j 8 pkvm_handler/pkvm_handler.dump
 .PHONY: generate
 
 
