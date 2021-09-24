@@ -1,8 +1,4 @@
-Require Import isla.base.
-Require Import isla.opsem.
-Require Import isla.automation.
-Require Import isla.adequacy.
-Require Import isla.sys_regs.
+Require Import isla.isla.
 From isla.instructions.hello Require Import instrs.
 
 (*

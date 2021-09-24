@@ -1,9 +1,4 @@
-Require Import isla.base.
-Require Import isla.opsem.
-Require Import isla.automation.
-Require Import isla.adequacy.
-Require Import isla.sys_regs.
-Require Import isla.calling_convention.
+Require Import isla.isla.
 From isla.instructions.binary_search Require Import instrs.
 
     Lemma bv_or_0_l n (b1 b2 : bv n) :
