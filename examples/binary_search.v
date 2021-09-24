@@ -1,20 +1,6 @@
 Require Import isla.isla.
 From isla.instructions.binary_search Require Import instrs.
 
-    Lemma bv_or_0_l n (b1 b2 : bv n) :
-      bv_unsigned b1 = 0 →
-      bv_or b1 b2 = b2.
-    Proof. Admitted.
-Lemma bv_signed_eq n (b1 b2 : bv n) :
-  b1 = b2 ↔ bv_signed b1 = bv_signed b2.
-Proof. split; [naive_solver |]. Admitted.
-
-Lemma bv_1_ind (P : bv 1 → Prop) :
-  P [BV{1} 1] → P [BV{1} 0] → ∀ b : bv 1, P b.
-Proof.
-  move => ???.
-Admitted.
-
 Section proof.
 Context `{!islaG Σ} `{!threadG}.
 
@@ -26,29 +12,6 @@ Definition comp_spec (stack_size : Z) (R : bv 64 → bv 64 → Prop) (P : iProp 
   ))%I.
 Typeclasses Opaque comp_spec.
 Global Instance : LithiumUnfold (comp_spec) := I.
-
-Definition sub_R_R_R_spec (pc : Z) (R1 R2 R3 : string) : iProp Σ :=
-  ∃ (r2 r3 : bv 64),
-  R1 ↦ᵣ: λ r1,
-  R2 ↦ᵣ RVal_Bits r2 ∗
-  R3 ↦ᵣ RVal_Bits r3 ∗
-  instr_pre (pc + 4) (
-    R1 ↦ᵣ RVal_Bits (bv_sub r2 r3) ∗
-    R2 ↦ᵣ RVal_Bits r2 ∗
-    R3 ↦ᵣ RVal_Bits r3 ∗
-    True
-  ).
-Global Instance : LithiumUnfold (sub_R_R_R_spec) := I.
-
-Lemma a2c_spec :
-  instr 0x000000001030002c (Some a2c) -∗
-  instr_body 0x000000001030002c (sub_R_R_R_spec 0x000000001030002c "R8" "R20" "R23").
-Proof.
-  iStartProof.
-  repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: bv_solve.
-Qed.
 
 Definition cmp_R_R_spec (pc : Z) (R1 R2 : string) : iProp Σ :=
   ∃ (r1 r2 : bv 64),
@@ -74,20 +37,21 @@ Proof.
   repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
   - bv_simplify => /=. do 2 f_equal. bv_solve.
-  - apply bv_eq. case_bool_decide as Hbv; case_bool_decide as Heq => //; subst; exfalso; contradict Hbv.
+  - apply bv_eq.
+    case_bool_decide as Hbv; case_bool_decide as Heq => //; subst; contradict Hbv.
     + move/bv_eq in Heq. bv_solve.
     + bv_solve.
   - apply bv_eq. case_bool_decide as Hbv; case_bool_decide => //; exfalso; contradict Hbv; bv_solve.
   - apply bv_eq.
     case_bool_decide as Hbv; case_bool_decide as Heq => //; exfalso; contradict Hbv.
-    + apply/bv_signed_eq. bv_simplify_arith.
+    + apply/bv_eq_signed. bv_simplify_arith.
       bv_simplify_arith_hyp Heq.
       rewrite (bv_wrap_small 128 (bv_unsigned _ + _)); [|bv_solve].
       rewrite (bv_wrap_small 128 (_ + 1)); [|bv_solve].
       rewrite (bv_swrap_small 128 (bv_signed _ + _)); [|bv_solve].
       have -> : bv_swrap 64 (bv_unsigned r1 + bv_wrap 64 (- bv_unsigned r2 - 1) + 1) = bv_swrap 64 (bv_unsigned r1 - bv_unsigned r2) by bv_solve.
       bv_solve.
-    + apply/bv_signed_eq. bv_simplify_arith.
+    + apply/bv_eq_signed. bv_simplify_arith.
       bv_simplify_arith_hyp Heq.
       rewrite (bv_wrap_small 128 (bv_unsigned _ + _)); [|bv_solve].
       rewrite (bv_wrap_small 128 (_ + 1)); [|bv_solve].
@@ -130,184 +94,6 @@ Proof.
     apply: Z.le_lt_trans; [apply Z.log2_land; bv_solve| bv_solve].
   - admit.
 Admitted.
-
-Definition a44_csel_spec : iProp Σ :=
-  ∃ (v1 v2 : bv 64) (pstaten pstatez pstatec pstatev : bv 1),
-  "PSTATE" # "N" ↦ᵣ RVal_Bits pstaten ∗
-  "PSTATE" # "Z" ↦ᵣ RVal_Bits pstatez ∗
-  "PSTATE" # "C" ↦ᵣ RVal_Bits pstatec ∗
-  "PSTATE" # "V" ↦ᵣ RVal_Bits pstatev ∗
-  "R20" ↦ᵣ RVal_Bits v1 ∗
-  "R24" ↦ᵣ RVal_Bits v2 ∗
-  instr_pre 0x0000000010300048 (
-    "R20" ↦ᵣ RVal_Bits (ite (bool_decide (bv_unsigned pstatez = 0)) v1 v2) ∗
-    "R24" ↦ᵣ RVal_Bits v2 ∗
-    "PSTATE" # "N" ↦ᵣ RVal_Bits pstaten ∗
-    "PSTATE" # "Z" ↦ᵣ RVal_Bits pstatez ∗
-    "PSTATE" # "C" ↦ᵣ RVal_Bits pstatec ∗
-    "PSTATE" # "V" ↦ᵣ RVal_Bits pstatev ∗
-    True
-  ).
-Global Instance : LithiumUnfold (a44_csel_spec) := I.
-
-Lemma a44_has_csel_spec :
-  instr 0x0000000010300044 (Some a44) -∗
-  instr_body 0x0000000010300044 (a44_csel_spec).
-Proof.
-  iStartProof.
-  repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: try bv_solve.
-  - rewrite bool_decide_true //. by destruct pstatez using bv_1_ind.
-Qed.
-
-Definition a48_csinc_spec : iProp Σ :=
-  ∃ (v1 v2 : bv 64) (pstaten pstatez pstatec pstatev : bv 1),
-  "PSTATE" # "N" ↦ᵣ RVal_Bits pstaten ∗
-  "PSTATE" # "Z" ↦ᵣ RVal_Bits pstatez ∗
-  "PSTATE" # "C" ↦ᵣ RVal_Bits pstatec ∗
-  "PSTATE" # "V" ↦ᵣ RVal_Bits pstatev ∗
-  "R23" ↦ᵣ RVal_Bits v1 ∗
-  "R24" ↦ᵣ RVal_Bits v2 ∗
-  instr_pre 0x000000001030004c (
-    "R23" ↦ᵣ RVal_Bits (ite (bool_decide (bv_unsigned pstatez = 1)) v1 (bv_add_Z v2 1)) ∗
-    "R24" ↦ᵣ RVal_Bits v2 ∗
-    "PSTATE" # "N" ↦ᵣ RVal_Bits pstaten ∗
-    "PSTATE" # "Z" ↦ᵣ RVal_Bits pstatez ∗
-    "PSTATE" # "C" ↦ᵣ RVal_Bits pstatec ∗
-    "PSTATE" # "V" ↦ᵣ RVal_Bits pstatev ∗
-    True
-  ).
-Global Instance : LithiumUnfold (a48_csinc_spec) := I.
-
-Lemma a48_has_csinc_spec :
-  instr 0x0000000010300048 (Some a48) -∗
-  instr_body 0x0000000010300048 (a48_csinc_spec).
-Proof.
-  iStartProof.
-  repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: try bv_solve.
-  - rewrite bool_decide_false //=. by destruct pstatez using bv_1_ind.
-Qed.
-
-Definition stp_uninit_spec (pc : Z) (R1 R2 : string) (Rbase : string) (offset : Z) (incr : bool) : iProp Σ :=
-  ∃ (r1 r2 rbase : bv 64),
-  reg_col sys_regs ∗
-  R1 ↦ᵣ RVal_Bits r1 ∗
-  R2 ↦ᵣ RVal_Bits r2 ∗
-  Rbase ↦ᵣ RVal_Bits rbase ∗
-  (bv_add_Z rbase offset) ↦ₘ? 16 ∗
-  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + offset + 16 < 2 ^ 52⌝ ∗
-  instr_pre (pc + 4) (
-  reg_col sys_regs ∗
-    R1 ↦ᵣ RVal_Bits r1 ∗
-    R2 ↦ᵣ RVal_Bits r2 ∗
-    Rbase ↦ᵣ RVal_Bits (if incr then bv_add_Z rbase offset else rbase) ∗
-    (bv_add_Z rbase offset) ↦ₘ r1 ∗
-    (bv_add_Z rbase (offset + 8)) ↦ₘ r2 ∗
-    True
-  ).
-Global Instance : LithiumUnfold (stp_uninit_spec) := I.
-Lemma a0_has_stp_uninit_spec :
-  instr 0x0000000010300000 (Some a0) -∗
-  instr_body 0x0000000010300000 (stp_uninit_spec 0x0000000010300000 "R29" "R30" "SP_EL2" (-64) true).
-Proof.
-  iStartProof.
-  Time repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: try bv_solve.
-Qed.
-
-Lemma a4_has_stp_uninit_spec :
-  instr 0x0000000010300004 (Some a4) -∗
-  instr_body 0x0000000010300004 (stp_uninit_spec 0x0000000010300004 "R24" "R23" "SP_EL2" (16) false).
-Proof. Admitted.
-(* TODO: uncomment this once we are on coq 8.14
-  iStartProof.
-  repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: try bv_solve.
-Qed.
-*)
-Lemma a8_has_stp_uninit_spec :
-  instr 0x0000000010300008 (Some a8) -∗
-  instr_body 0x0000000010300008 (stp_uninit_spec 0x0000000010300008 "R22" "R21" "SP_EL2" (32) false).
-Proof. Admitted.
-(* TODO: uncomment this once we are on coq 8.14
-  iStartProof.
-  repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: try bv_solve.
-Qed.
-*)
-
-Lemma ac_has_stp_uninit_spec :
-  instr 0x000000001030000c (Some ac) -∗
-  instr_body 0x000000001030000c (stp_uninit_spec 0x000000001030000c "R20" "R19" "SP_EL2" (48) false).
-Proof. Admitted.
-(* TODO: uncomment this once we are on coq 8.14
-  iStartProof.
-  repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: try bv_solve.
-Qed.
-*)
-
-Definition ldp_mapsto_spec (pc : Z) (R1 R2 : string) (Rbase : string) (offset : Z) (incr : option Z) : iProp Σ :=
-  ∃ (r1 r2 rbase : bv 64),
-  reg_col sys_regs ∗
-  reg_col [(KindReg R1, UnknownShape); (KindReg R2, UnknownShape)] ∗
-  Rbase ↦ᵣ RVal_Bits rbase ∗
-  (bv_add_Z rbase offset) ↦ₘ r1 ∗
-  (bv_add_Z rbase (offset + 8)) ↦ₘ r2 ∗
-  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + offset + 16 < 2 ^ 52⌝ ∗
-  instr_pre (pc + 4) (
-    reg_col sys_regs ∗
-    R1 ↦ᵣ RVal_Bits r1 ∗
-    R2 ↦ᵣ RVal_Bits r2 ∗
-    Rbase ↦ᵣ RVal_Bits (if incr is Some i then bv_add_Z rbase i else rbase) ∗
-    (bv_add_Z rbase offset) ↦ₘ r1 ∗
-    (bv_add_Z rbase (offset + 8)) ↦ₘ r2 ∗
-    True
-  ).
-Global Instance : LithiumUnfold (ldp_mapsto_spec) := I.
-Lemma a60_has_ldp_uninit_spec :
-  instr 0x0000000010300060 (Some a60) -∗
-  instr_body 0x0000000010300060 (ldp_mapsto_spec 0x0000000010300060 "R20" "R19" "SP_EL2" (48) None).
-Proof.
-  iStartProof.
-  Time repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: try bv_solve.
-Qed.
-Lemma a64_has_ldp_uninit_spec :
-  instr 0x0000000010300064 (Some a64) -∗
-  instr_body 0x0000000010300064 (ldp_mapsto_spec 0x0000000010300064 "R22" "R21" "SP_EL2" (32) None).
-Proof.
-  iStartProof.
-  Time repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: try bv_solve.
-Qed.
-Lemma a68_has_ldp_uninit_spec :
-  instr 0x0000000010300068 (Some a68) -∗
-  instr_body 0x0000000010300068 (ldp_mapsto_spec 0x0000000010300068 "R24" "R23" "SP_EL2" (16) None).
-Proof.
-  iStartProof.
-  Time repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: try bv_solve.
-Qed.
-Lemma a6c_has_ldp_uninit_spec :
-  instr 0x000000001030006c (Some a6c) -∗
-  instr_body 0x000000001030006c (ldp_mapsto_spec 0x000000001030006c "R29" "R30" "SP_EL2" (0) (Some 64)).
-Proof.
-  iStartProof.
-  Time repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: try bv_solve.
-Qed.
 
 Definition binary_search_loop_spec : iProp Σ :=
   ∃ (x l r comp xs tmp2 sp : bv 64) (data : list (bv 64)),
@@ -377,18 +163,15 @@ Proof.
 Qed.
 
 Lemma binary_search_loop :
-  (* instr 0x000000001030002c (Some a2c) -∗ *)
-  instr_body 0x000000001030002c (sub_R_R_R_spec 0x000000001030002c "R8" "R20" "R23") -∗
+  instr 0x000000001030002c (Some a2c) -∗
   instr 0x0000000010300030 (Some a30) -∗
   instr 0x0000000010300034 (Some a34) -∗
   instr 0x0000000010300038 (Some a38) -∗
   instr 0x000000001030003c (Some a3c) -∗
   (* instr 0x0000000010300040 (Some a40) -∗ *)
   instr_pre 0x0000000010300040 (a40_tst_imm_spec) -∗
-  (* instr 0x0000000010300044 (Some a44) -∗ *)
-  instr_pre 0x0000000010300044 (a44_csel_spec) -∗
-  (* instr 0x0000000010300048 (Some a48) -∗ *)
-  instr_pre 0x0000000010300048 (a48_csinc_spec) -∗
+  instr 0x0000000010300044 (Some a44) -∗
+  instr 0x0000000010300048 (Some a48) -∗
   (* instr 0x000000001030004c (Some a4c) -∗ *)
   instr_pre 0x000000001030004c (cmp_R_R_spec 0x000000001030004c "R20" "R23") -∗
   instr 0x0000000010300050 (Some a50) -∗
@@ -457,14 +240,10 @@ Global Instance : LithiumUnfold (binary_search_spec) := I.
 
 Lemma binary_search stack_size :
   0 ≤ stack_size →
-  (* instr 0x0000000010300000 (Some a0) -∗ *)
-  instr_body 0x0000000010300000 (stp_uninit_spec 0x0000000010300000 "R29" "R30" "SP_EL2" (-64) true) -∗
-  (* instr 0x0000000010300004 (Some a4) -∗ *)
-  instr_body 0x0000000010300004 (stp_uninit_spec 0x0000000010300004 "R24" "R23" "SP_EL2" (16) false) -∗
-  (* instr 0x0000000010300008 (Some a8) -∗ *)
-  instr_body 0x0000000010300008 (stp_uninit_spec 0x0000000010300008 "R22" "R21" "SP_EL2" (32) false) -∗
-  (* instr 0x000000001030000c (Some ac) -∗ *)
-  instr_body 0x000000001030000c (stp_uninit_spec 0x000000001030000c "R20" "R19" "SP_EL2" (48) false) -∗
+  instr 0x0000000010300000 (Some a0) -∗
+  instr 0x0000000010300004 (Some a4) -∗
+  instr 0x0000000010300008 (Some a8) -∗
+  instr 0x000000001030000c (Some ac) -∗
   instr 0x0000000010300010 (Some a10) -∗
   instr 0x0000000010300014 (Some a14) -∗
   instr 0x0000000010300018 (Some a18) -∗
@@ -476,14 +255,10 @@ Lemma binary_search stack_size :
   instr 0x0000000010300054 (Some a54) -∗
   instr 0x0000000010300058 (Some a58) -∗
   instr 0x000000001030005c (Some a5c) -∗
-  (* instr 0x0000000010300060 (Some a60) -∗ *)
-  instr_body 0x0000000010300060 (ldp_mapsto_spec 0x0000000010300060 "R20" "R19" "SP_EL2" (48) None) -∗
-  (* instr 0x0000000010300064 (Some a64) -∗ *)
-  instr_body 0x0000000010300064 (ldp_mapsto_spec 0x0000000010300064 "R22" "R21" "SP_EL2" (32) None) -∗
-  (* instr 0x0000000010300068 (Some a68) -∗ *)
-  instr_body 0x0000000010300068 (ldp_mapsto_spec 0x0000000010300068 "R24" "R23" "SP_EL2" (16) None) -∗
-  (* instr 0x000000001030006c (Some a6c) -∗ *)
-  instr_body 0x000000001030006c (ldp_mapsto_spec 0x000000001030006c "R29" "R30" "SP_EL2" (0) (Some 64)) -∗
+  instr 0x0000000010300060 (Some a60) -∗
+  instr 0x0000000010300064 (Some a64) -∗
+  instr 0x0000000010300068 (Some a68) -∗
+  instr 0x000000001030006c (Some a6c) -∗
   instr 0x0000000010300070 (Some a70) -∗
   □ instr_pre 0x000000001030002c binary_search_loop_spec -∗
   instr_body 0x0000000010300000 (binary_search_spec stack_size).

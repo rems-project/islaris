@@ -155,17 +155,26 @@ let gen_spec_file : Template.t -> string -> string list -> decomp_line
     let pp fmt = Format.fprintf ff fmt in
     (* Imports. *)
     pp "Require Import isla.isla.@.";
+    let build_mp name = String.concat "." (coq_prefix @ [name]) in
+    pp "Require Export %s.@." (build_mp name);
     List.iter (pp "Require Import %s.@.") spec.spec_imports;
     (* Lemma. *)
     pp "@.Lemma %s_spec `{!islaG Σ} `{!threadG}:@." name;
     pp "  instr 0x%s (Some %s) -∗@." d.dl_real_addr name;
     pp "  instr_body 0x%s (%s).@." d.dl_real_addr spec.spec_spec;
     pp "Proof.@.";
-    pp "  iStartProof.@.";
-    pp "  repeat liAStep; liShow.@.";
-    pp "  Unshelve. all: prepare_sidecond.@.";
-    List.iter (pp "  %s@.") spec.spec_tactics;
-    pp "%s.@." (if spec.spec_admitted then "Admitted" else "Qed")
+    if spec.spec_admitted then
+      pp "Admitted.@."
+    else begin
+      pp "  iStartProof.@.";
+      pp "  repeat liAStep; liShow.@.";
+      pp "  Unshelve. all: prepare_sidecond.@.";
+      List.iter (pp "  %s@.") spec.spec_tactics;
+      pp "Qed.@."
+    end;
+    (* SimplifyHyp rule. *)
+    pp "@.Definition %s_spec_inst `{!islaG Σ} `{!threadG} := entails_to_simplify_hyp 0 %s_spec.@." name name;
+    pp "Global Existing Instance %s_spec_inst.@." name
   in
   let spec_file = Filename.concat output_dir (name ^ "_spec.v") in
   Format.write_file spec_file write_spec

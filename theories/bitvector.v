@@ -251,6 +251,16 @@ Lemma bv_neq_wrap n (b1 b2 : bv n) :
   b1 ≠ b2 ↔ bv_wrap n b1.(bv_unsigned) ≠ bv_wrap n b2.(bv_unsigned).
 Proof. unfold not. by rewrite bv_eq_wrap. Qed.
 
+Lemma bv_eq_signed n (b1 b2 : bv n) :
+  b1 = b2 ↔ bv_signed b1 = bv_signed b2.
+Proof.
+  split; [naive_solver |].
+  unfold bv_signed, bv_swrap. intros ?.
+  assert (bv_wrap n (bv_unsigned b1 + bv_half_modulus n)
+          = bv_wrap n (bv_unsigned b2 + bv_half_modulus n)) as ?%bv_wrap_add_inj by lia.
+  by apply bv_eq_wrap.
+Qed.
+
 Lemma bv_signed_in_range n (b : bv n):
   n ≠ 0%N →
   - bv_half_modulus n ≤ bv_signed b < bv_half_modulus n.
@@ -309,6 +319,15 @@ Next Obligation.
   - apply lookup_seqZ. split; [done|]. rewrite Z2Nat.id; lia.
   - apply bv_eq. rewrite Z_to_bv_small; rewrite Z2Nat.id; lia.
 Qed.
+
+Lemma bv_1_ind (P : bv 1 → Prop) :
+  P (BV 1 1 ltac:(done)) → P (BV 1 0 ltac:(done)) → ∀ b : bv 1, P b.
+Proof.
+  intros ??. apply Forall_finite. repeat constructor.
+  - by assert ((BV 1 0 (conj eq_refl eq_refl)) = (Z_to_bv 1 (Z.of_nat 0 + 0))) as <- by by apply bv_eq.
+  - by assert ((BV 1 1 (conj eq_refl eq_refl)) = (Z_to_bv 1 (Z.of_nat 1 + 0))) as <- by by apply bv_eq.
+Qed.
+
 
 
 (** * Notation for [bv n] *)
@@ -835,6 +854,16 @@ Section properties.
     rewrite bv_not_unsigned, bv_sub_Z_unsigned, bv_opp_unsigned, Z_lnot_opp.
     bv_wrap_simplify_solve.
   Qed.
+
+  Lemma bv_or_0_l b1 b2 :
+    bv_unsigned b1 = 0 →
+    bv_or b1 b2 = b2.
+  Proof. intros Hb. apply bv_eq. by rewrite bv_or_unsigned, Hb, Z.lor_0_l. Qed.
+
+  Lemma bv_or_0_r b1 b2 :
+    bv_unsigned b2 = 0 →
+    bv_or b1 b2 = b1.
+  Proof. intros Hb. apply bv_eq. by rewrite bv_or_unsigned, Hb, Z.lor_0_r. Qed.
 
   Lemma bv_concat_0 m n2 b1 (b2 : bv n2) :
     bv_unsigned b1 = 0 →

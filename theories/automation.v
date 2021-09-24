@@ -938,6 +938,13 @@ End instances.
 (* TODO: upstream? *)
 Global Opaque FindHypEqual.
 
+(* TODO: upstream? *)
+Lemma tac_entails_to_simplify_hyp {Σ} (P Q : iProp Σ):
+  (P ⊢ Q)%I → ∀ G, (Q -∗ G) -∗ simplify_hyp P G.
+Proof. move => ??. by apply bi.wand_mono. Qed.
+Definition entails_to_simplify_hyp {Σ} (n : N) {P Q : iProp Σ} (Hent : (P ⊢ Q)%I) :
+  SimplifyHyp P (Some n) :=
+  λ G, i2p (tac_entails_to_simplify_hyp P Q Hent G).
 
 (* TODO: upstream? *)
 Ltac liLetBindHint :=
