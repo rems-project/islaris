@@ -11,7 +11,7 @@ all_and_tests: tests all
 .PHONY: all_and_tests
 
 generate:
-	export PATH=$$PWD/bin:$$PATH; dune exec -- isla-coq examples/memory_instructions.dump -d -o instructions  -n "a{op}" --coqdir=isla.instructions
+	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memory_instructions.dump -o instructions  -n "a{op}" --coqdir=isla.instructions
 	mv instructions/aa9bf07e0.isla instructions/stp.isla
 	mv instructions/aa9bf07e0.v instructions/stp.v
 	mv instructions/af9400020.isla instructions/load.isla
@@ -19,11 +19,11 @@ generate:
 	mv instructions/af9000029.isla instructions/store.isla
 	mv instructions/af9000029.v instructions/store.v
 	rm instructions/instrs.v
-	export PATH=$$PWD/bin:$$PATH; dune exec -- isla-coq examples/hello.dump -d -o instructions/hello  -n "a{addr}" --coqdir=isla.instructions.hello
-	export PATH=$$PWD/bin:$$PATH; dune exec -- isla-coq examples/example.dump -d -o instructions/example  -n "a{addr}" --coqdir=isla.instructions.example
-	export PATH=$$PWD/bin:$$PATH; dune exec -- isla-coq examples/memcpy.dump -d -o instructions/memcpy  -n "a{addr}" --coqdir=isla.instructions.memcpy
-	export PATH=$$PWD/bin:$$PATH; dune exec -- isla-coq examples/binary_search.dump -d -o instructions/binary_search  -n "a{addr}" --coqdir=isla.instructions.binary_search
-	export PATH=$$PWD/bin:$$PATH; dune exec -- isla-coq pkvm_handler/pkvm_handler.dump
+	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/hello.dump -o instructions/hello --coqdir=isla.instructions.hello
+	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/example.dump -o instructions/example --coqdir=isla.instructions.example
+	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memcpy.dump -o instructions/memcpy --coqdir=isla.instructions.memcpy
+	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/binary_search.dump -o instructions/binary_search --coqdir=isla.instructions.binary_search
+	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq pkvm_handler/pkvm_handler.dump
 .PHONY: generate
 
 
