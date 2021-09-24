@@ -55,15 +55,18 @@ let template_keys : (string * string) list = [
   ("addr" , "address of the instruction");
   ("op"   , "opcode of the instruction" );
   ("revop", "reversed opcode of the instruction");
+  ("instr", "instruction mnemonic");
 ]
 
 let default_template : string = "a{addr}"
 
 let name_from_template : Template.t -> decomp_line -> string = fun t d ->
+  let instr_mnem = List.hd (String.split_on_char ' ' d.dl_instr) in
   let map = SMap.empty in
   let map = SMap.add "addr"  d.dl_addr      map in
   let map = SMap.add "op"    d.dl_opcode    map in
   let map = SMap.add "revop" d.dl_revopcode map in
+  let map = SMap.add "instr" instr_mnem     map in
   try Template.subst t map with Invalid_argument(_) ->
     assert false (* Unreachable. *)
 

@@ -1,5 +1,5 @@
 Require Import isla.isla.
-Require Import isla.instructions.store.
+Require Import isla.instructions.instr_str.
 
 Definition spec `{!islaG Σ} `{!threadG} a : iProp Σ :=
   "R1" ↦ᵣ RVal_Bits [BV{64} 0x0000000000000008] ∗
@@ -14,7 +14,7 @@ Definition spec `{!islaG Σ} `{!threadG} a : iProp Σ :=
     True).
 
 Lemma store_wp `{!islaG Σ} `{!threadG}:
-  instr 0x0000000010300000 (Some af9000029) -∗
+  instr 0x0000000010300000 (Some instr_str) -∗
   instr_body 0x0000000010300000 (spec 0x0000000010300004).
 Proof.
   iStartProof.

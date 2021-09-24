@@ -1,5 +1,5 @@
 Require Import isla.isla.
-Require Import isla.instructions.load.
+Require Import isla.instructions.instr_ldr.
 
 Definition spec `{!islaG Σ} `{!threadG} a : iProp Σ :=
   ∃ (vold : bv 64),
@@ -15,7 +15,7 @@ Definition spec `{!islaG Σ} `{!threadG} a : iProp Σ :=
     True).
 
 Lemma load_wp `{!islaG Σ} `{!threadG}:
-  instr 0x0000000010300000 (Some af9400020) -∗
+  instr 0x0000000010300000 (Some instr_ldr) -∗
   instr_body 0x0000000010300000 (spec 0x0000000010300004).
 Proof.
   iStartProof.

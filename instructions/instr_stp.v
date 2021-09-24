@@ -1,6 +1,6 @@
 From isla Require Import isla_lang.
 
-Definition aa9bf07e0 : list trc := [
+Definition instr_stp : list trc := [
   [
     Smt (DeclareConst 6%Z (Ty_BitVec 1%N)) Mk_annot;
     Smt (DeclareConst 29%Z (Ty_BitVec 64%N)) Mk_annot;

@@ -11,13 +11,7 @@ all_and_tests: tests all
 .PHONY: all_and_tests
 
 generate:
-	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memory_instructions.dump -o instructions  -n "a{op}" --coqdir=isla.instructions
-	mv instructions/aa9bf07e0.isla instructions/stp.isla
-	mv instructions/aa9bf07e0.v instructions/stp.v
-	mv instructions/af9400020.isla instructions/load.isla
-	mv instructions/af9400020.v instructions/load.v
-	mv instructions/af9000029.isla instructions/store.isla
-	mv instructions/af9000029.v instructions/store.v
+	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memory_instructions.dump -o instructions  -n "instr_{instr}" --coqdir=isla.instructions
 	rm instructions/instrs.v
 	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/hello.dump -o instructions/hello --coqdir=isla.instructions.hello
 	PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/example.dump -o instructions/example --coqdir=isla.instructions.example
