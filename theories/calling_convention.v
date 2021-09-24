@@ -9,7 +9,6 @@ Definition tmp_registers : list string :=
 Definition c_call_ret `{!islaG Σ} `{!threadG} (stack_size : Z) (regs : list valu) (ret sp : bv 64) (Q : (list (bv 64) → iProp Σ)) : iProp Σ :=
   reg_col sys_regs ∗
   reg_col CNVZ_regs ∗
-  reg_col ((λ r, (KindReg r, BitsShape 64)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"]) ∗
   reg_col ((λ r, (KindReg r, BitsShape 64)) <$> tmp_registers) ∗
   reg_col (zip_with (λ r v, (KindReg r, ExactShape v)) ["R19"; "R20"; "R21"; "R22"; "R23"; "R24"; "R25"; "R26"; "R27"; "R28"; "R29"] regs) ∗
   "R0" ↦ᵣ: λ r0, ∃ b0 : bv 64, ⌜r0 = RVal_Bits b0⌝ ∗

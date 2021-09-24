@@ -549,7 +549,10 @@ Section instances.
     Subsume (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) :=
     λ G, i2p (subsume_mem_array a1 a2 n l1 l2 G).
 
-  (* This handles the case where the goal is fully contained in the hypthesis. *)
+  (* This handles the case where the goal is fully contained in the hypthesis. I.e.
+     |------ hyp ------|
+          |-- goal --|
+  *)
   Lemma subsume_mem_uninit_mem_uninit a1 a2 n1 n2 G
         `{!BvSolve (0 ≤ n2 ∧ bv_unsigned a1 ≤ bv_unsigned a2 ∧
                       bv_unsigned a2 + n2 ≤ bv_unsigned a1 + n1)}:
@@ -568,6 +571,64 @@ Section instances.
          `{!BvSolve (0 ≤ n2 ∧ bv_unsigned a1 ≤ bv_unsigned a2 ∧ bv_unsigned a2 + n2 ≤ bv_unsigned a1 + n1)}:
     Subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) :=
     λ G, i2p (subsume_mem_uninit_mem_uninit a1 a2 n1 n2 G).
+
+  (* This handles the case where the kypothesis does not fully containe the goal. I.e.
+     |--- hyp ---|
+          |-- goal --|
+  *)
+  Lemma subsume_mem_uninit_mem_uninit2 a1 a2 n1 n2 G
+        `{!BvSolve (0 ≤ n2 ∧ bv_unsigned a1 ≤ bv_unsigned a2 ∧ bv_unsigned a2 ≤ bv_unsigned a1 + n1 ∧
+                      bv_unsigned a1 + n1 ≤ bv_unsigned a2 + n2)}:
+    (a1 ↦ₘ? (bv_unsigned a2 - bv_unsigned a1) -∗
+    (bv_add_Z a2 (n1 - (bv_unsigned a2 - bv_unsigned a1))) ↦ₘ? (n2 - n1 + (bv_unsigned a2 - bv_unsigned a1)) ∗ G) -∗
+     subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) G.
+  Proof.
+    unfold BvSolve in *. iIntros "HG Ha".
+    iDestruct (mem_mapsto_uninit_split (bv_unsigned a2 - bv_unsigned a1) with "Ha") as "[? Ha]"; [bv_solve|].
+    iDestruct ("HG" with "[$]") as "[H1 $]".
+    have -> : bv_add_Z a1 (bv_unsigned a2 - bv_unsigned a1) = a2 by bv_solve.
+    iApply (mem_mapsto_uninit_combine with "Ha"); [bv_solve|].
+    have -> : (n2 - n1 + (bv_unsigned a2 - bv_unsigned a1)) = (n2 - (n1 - (bv_unsigned a2 - bv_unsigned a1))) by bv_solve.
+    done.
+  Qed.
+  Global Instance subsume_mem_uninit_mem_uninit2_inst a1 a2 n1 n2
+        `{!BvSolve (0 ≤ n2 ∧ bv_unsigned a1 ≤ bv_unsigned a2 ∧ bv_unsigned a2 ≤ bv_unsigned a1 + n1 ∧
+                      bv_unsigned a1 + n1 ≤ bv_unsigned a2 + n2)}:
+    Subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) :=
+    λ G, i2p (subsume_mem_uninit_mem_uninit2 a1 a2 n1 n2 G).
+
+  Lemma subsume_mem_mapsto_mem_uninit a1 a2 n (b : bv n) n2 G:
+    (⌜a1 = a2⌝ ∗ ⌜Z.of_N (n `div` 8) ≤ n2⌝ ∗
+    (bv_add_Z a2 (Z.of_N (n `div` 8))) ↦ₘ? (n2 - (Z.of_N (n `div` 8))) ∗ G) -∗
+     subsume (a1 ↦ₘ b) (a2 ↦ₘ? n2) G.
+  Proof.
+    iIntros "[-> [% [Ha2 $]]] Ha".
+    iDestruct (mem_mapsto_n_mult_8 with "Ha") as %[n' ?]; subst.
+    iDestruct (mem_mapsto_mapsto_to_uninit with "Ha") as "Ha".
+    by iApply (mem_mapsto_uninit_combine with "Ha"); [bv_solve|].
+  Qed.
+  Global Instance subsume_mem_mapsto_mem_uninit_inst a1 a2 n (b : bv n) n2:
+    Subsume (a1 ↦ₘ b) (a2 ↦ₘ? n2) :=
+    λ G, i2p (subsume_mem_mapsto_mem_uninit a1 a2 n b n2 G).
+
+  Lemma simpl_hyp_uninit_0 a n G:
+    G -∗
+    simplify_hyp (a ↦ₘ? n) G.
+  Proof. by iIntros "$ ?". Qed.
+  Global Instance simpl_hyp_uninit_0_inst a n `{!BvSolve (n = 0)}:
+    SimplifyHyp (a ↦ₘ? n) (Some 0%N) :=
+    λ G, i2p (simpl_hyp_uninit_0 a n G).
+
+  Lemma simpl_goal_uninit_0 a n G `{!BvSolve (n = 0)}:
+    G True -∗
+    simplify_goal (a ↦ₘ? n) G.
+  Proof.
+    unfold BvSolve in *. subst. iIntros "?". iExists _.
+    iFrame. iIntros "_". by rewrite mem_mapsto_uninit_0.
+  Qed.
+  Global Instance simpl_goal_uninit_0_inst a n `{!BvSolve (n = 0)}:
+    SimplifyGoal (a ↦ₘ? n) (Some 0%N) :=
+    λ G, i2p (simpl_goal_uninit_0 a n G).
 
   Lemma simpl_goal_reg_col_nil T:
     (T True) -∗
@@ -594,14 +655,6 @@ Section instances.
   Global Instance simpl_goal_reg_col_cons_inst r col s :
     SimplifyGoal (reg_col ((r, s)::col)) (Some 100%N) :=
     λ T, i2p (simpl_goal_reg_col_cons r col s T).
-
-  Lemma simpl_hyp_uninit_0 a n G:
-    G -∗
-    simplify_hyp (a ↦ₘ? n) G.
-  Proof. by iIntros "$ ?". Qed.
-  Global Instance simpl_hyp_uninit_0_inst a n `{!BvSolve (n = 0)}:
-    SimplifyHyp (a ↦ₘ? n) (Some 0%N) :=
-    λ G, i2p (simpl_hyp_uninit_0 a n G).
 
   Lemma li_wp_next_instr:
     (∃ (nPC : addr) bPC_changed,

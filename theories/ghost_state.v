@@ -477,6 +477,10 @@ Section mem.
     iApply ("IH" with "[] Hmem Hbs"). iPureIntro. lia.
   Qed.
 
+  Lemma mem_mapsto_n_mult_8 n a (w : bv n) q:
+    a ↦ₘ{q} w -∗ ⌜∃ len, n = (8 * len)%N⌝.
+  Proof. rewrite mem_mapsto_eq. iDestruct 1 as (len Hlen) "Hlist". iPureIntro. naive_solver. Qed.
+
   Lemma mem_mapsto_lookup_list n mem a (w : bv n) q:
     mem_ctx mem -∗ a ↦ₘ{q} w -∗
     ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
@@ -544,6 +548,14 @@ Section mem.
     iIntros "Hv". iDestruct ("Hl" with "Hv") as "Hl". by rewrite list_insert_id.
   Qed.
 
+  Lemma mem_mapsto_uninit_0 a:
+    a ↦ₘ? 0 ⊣⊢ True.
+  Proof.
+    iSplit; [by eauto with iFrame|]. iIntros "_".
+    rewrite mem_mapsto_uninit_eq. iExists 0%nat => /=.
+    done.
+  Qed.
+
   Lemma mem_mapsto_uninit_split ns a q n:
     0 ≤ ns ≤ n →
     a ↦ₘ{q}? n -∗
@@ -561,6 +573,22 @@ Section mem.
       rewrite -bv_add_Z_add_l. f_equal. lia.
   Qed.
 
+  Lemma mem_mapsto_uninit_combine ns a q n:
+    0 ≤ ns ≤ n →
+    a ↦ₘ{q}? ns -∗
+    (bv_add_Z a ns) ↦ₘ{q}? (n - ns) -∗
+    a ↦ₘ{q}? n.
+  Proof.
+    rewrite mem_mapsto_uninit_eq.
+    iIntros (?) "[%nn1 [% Hm1]] [%nn2 [% Hm2]]"; subst.
+    iExists (nn1 + nn2)%nat. iSplit; [iPureIntro; lia|].
+    rewrite replicate_plus big_sepL_app. iFrame.
+    iApply (big_sepL_impl with "Hm2").
+    iIntros "!>" (???) "[%v ?]". rewrite replicate_length. iExists _.
+    suff -> : (bv_add_Z (bv_add_Z a nn1) k) = (bv_add_Z a (nn1 + k)%nat) by done.
+    rewrite -bv_add_Z_add_l. f_equal. lia.
+  Qed.
+
   Lemma mem_mapsto_uninit_to_mapsto a q n:
     a ↦ₘ{q}? n -∗ ∃ n' (b : (bv n')), ⌜n' = (Z.to_N n * 8)%N⌝ ∗ a ↦ₘ{q} b.
   Proof.
@@ -575,6 +603,15 @@ Section mem.
          unfold bv_modulus. rewrite N2Z.inj_mul Z2N.id; lia. }
     iApply (big_sepL_impl' with "Hm"). { by rewrite replicate_length. }
     iIntros "!>" (k ? ? ??) "[%y [% ?]]"; by simplify_eq.
+  Qed.
+
+  Lemma mem_mapsto_mapsto_to_uninit a q n (b : bv n):
+    a ↦ₘ{q} b -∗ a ↦ₘ{q}? (Z.of_N (n `div` 8)).
+  Proof.
+    rewrite mem_mapsto_uninit_eq mem_mapsto_eq.
+    iIntros "[%len [-> Hm]]". iExists len. iSplit; [iPureIntro; lia|].
+    iApply (big_sepL_impl' with "Hm"). { rewrite replicate_length bv_to_little_endian_length; lia. }
+    iIntros "!>" (k ? ? ??) "?". eauto with iFrame.
   Qed.
 End mem.
 

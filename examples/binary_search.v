@@ -254,18 +254,77 @@ Proof. Admitted.
 Qed.
 *)
 
+Definition ldp_mapsto_spec (pc : Z) (R1 R2 : string) (Rbase : string) (offset : Z) (incr : option Z) : iProp Σ :=
+  ∃ (r1 r2 rbase : bv 64),
+  reg_col sys_regs ∗
+  reg_col [(KindReg R1, UnknownShape); (KindReg R2, UnknownShape)] ∗
+  Rbase ↦ᵣ RVal_Bits rbase ∗
+  (bv_add_Z rbase offset) ↦ₘ r1 ∗
+  (bv_add_Z rbase (offset + 8)) ↦ₘ r2 ∗
+  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + offset + 16 < 2 ^ 52⌝ ∗
+  instr_pre (pc + 4) (
+    reg_col sys_regs ∗
+    R1 ↦ᵣ RVal_Bits r1 ∗
+    R2 ↦ᵣ RVal_Bits r2 ∗
+    Rbase ↦ᵣ RVal_Bits (if incr is Some i then bv_add_Z rbase i else rbase) ∗
+    (bv_add_Z rbase offset) ↦ₘ r1 ∗
+    (bv_add_Z rbase (offset + 8)) ↦ₘ r2 ∗
+    True
+  ).
+Global Instance : LithiumUnfold (ldp_mapsto_spec) := I.
+Lemma a60_has_ldp_uninit_spec :
+  instr 0x0000000010300060 (Some a60) -∗
+  instr_body 0x0000000010300060 (ldp_mapsto_spec 0x0000000010300060 "R20" "R19" "SP_EL2" (48) None).
+Proof.
+  iStartProof.
+  Time repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
+  all: try bv_solve.
+Qed.
+Lemma a64_has_ldp_uninit_spec :
+  instr 0x0000000010300064 (Some a64) -∗
+  instr_body 0x0000000010300064 (ldp_mapsto_spec 0x0000000010300064 "R22" "R21" "SP_EL2" (32) None).
+Proof.
+  iStartProof.
+  Time repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
+  all: try bv_solve.
+Qed.
+Lemma a68_has_ldp_uninit_spec :
+  instr 0x0000000010300068 (Some a68) -∗
+  instr_body 0x0000000010300068 (ldp_mapsto_spec 0x0000000010300068 "R24" "R23" "SP_EL2" (16) None).
+Proof.
+  iStartProof.
+  Time repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
+  all: try bv_solve.
+Qed.
+Lemma a6c_has_ldp_uninit_spec :
+  instr 0x000000001030006c (Some a6c) -∗
+  instr_body 0x000000001030006c (ldp_mapsto_spec 0x000000001030006c "R29" "R30" "SP_EL2" (0) (Some 64)).
+Proof.
+  iStartProof.
+  Time repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
+  all: try bv_solve.
+Qed.
+
 Definition binary_search_loop_spec : iProp Σ :=
   ∃ (x l r comp xs tmp2 sp : bv 64) (data : list (bv 64)),
   ∃ stack_size R P,
   reg_col sys_regs ∗
   reg_col CNVZ_regs ∗
-  reg_col ((λ r, (KindReg r, BitsShape 64)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R25"; "R26"; "R27"; "R28"; "R29"; "R30" ]) ∗
+  reg_col ((λ r, (KindReg r, BitsShape 64)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R29"; "R30" ]) ∗
   "R19" ↦ᵣ RVal_Bits x ∗
   "R20" ↦ᵣ RVal_Bits r ∗
   "R21" ↦ᵣ RVal_Bits xs ∗
   "R22" ↦ᵣ RVal_Bits comp ∗
   "R23" ↦ᵣ RVal_Bits l ∗
   "R24" ↦ᵣ RVal_Bits tmp2 ∗
+  "R25" ↦ᵣ: λ r25, ⌜valu_has_shape r25 (BitsShape 64)⌝ ∗
+  "R26" ↦ᵣ: λ r26, ⌜valu_has_shape r26 (BitsShape 64)⌝ ∗
+  "R27" ↦ᵣ: λ r27, ⌜valu_has_shape r27 (BitsShape 64)⌝ ∗
+  "R28" ↦ᵣ: λ r28, ⌜valu_has_shape r28 (BitsShape 64)⌝ ∗
   "SP_EL2" ↦ᵣ RVal_Bits sp ∗
   xs ↦ₘ∗ data ∗
   □ instr_pre (bv_unsigned comp) (comp_spec stack_size R P) ∗
@@ -281,13 +340,17 @@ Definition binary_search_loop_spec : iProp Σ :=
     ∃ (l' r' tmp2 : bv 64),
       reg_col sys_regs ∗
       reg_col CNVZ_regs ∗
-      reg_col ((λ r, (KindReg r, BitsShape 64)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R25"; "R26"; "R27"; "R28"; "R29"; "R30" ]) ∗
+      reg_col ((λ r, (KindReg r, BitsShape 64)) <$> ["R0"; "R1"; "R2"; "R3"; "R4"; "R5"; "R6"; "R7"; "R8"; "R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"; "R29"; "R30" ]) ∗
       "R19" ↦ᵣ RVal_Bits x ∗
       "R20" ↦ᵣ RVal_Bits r' ∗
       "R21" ↦ᵣ RVal_Bits xs ∗
       "R22" ↦ᵣ RVal_Bits comp ∗
       "R23" ↦ᵣ RVal_Bits l' ∗
       "R24" ↦ᵣ RVal_Bits tmp2 ∗
+      "R25" ↦ᵣ r25 ∗
+      "R26" ↦ᵣ r26 ∗
+      "R27" ↦ᵣ r27 ∗
+      "R28" ↦ᵣ r28 ∗
       "SP_EL2" ↦ᵣ RVal_Bits sp ∗
       xs ↦ₘ∗ data ∗
       P ∗
@@ -332,7 +395,6 @@ Lemma binary_search_loop :
   □ instr_pre 0x000000001030002c binary_search_loop_spec -∗
   instr_body 0x000000001030002c binary_search_loop_spec.
 Proof.
-(* Admitted. *)
   iStartProof.
   Time repeat liAStep; liShow.
   liInst Hevar (Z.to_nat (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2)).
@@ -375,6 +437,24 @@ Proof.
 Time Qed.
 
 
+Definition binary_search_spec (stack_size : Z) : iProp Σ :=
+  (c_call (stack_size + 64) (λ args sp RET,
+    ∃ (data : list (bv 64)) R P,
+    □ instr_pre (bv_unsigned (args !!! 0%nat)) (comp_spec stack_size R P) ∗
+    (args !!! 1%nat) ↦ₘ∗ data ∗
+    P ∗
+    ⌜bv_unsigned (args !!! 2%nat) = length data⌝ ∗
+    ⌜bv_unsigned (args !!! 1%nat) + (length data) * 8 < 2 ^ 52⌝ ∗
+    ⌜StronglySorted R data⌝ ∗ ⌜Transitive R⌝ ∗
+    RET (λ rets,
+      (args !!! 1%nat) ↦ₘ∗ data ∗
+      P ∗
+      ⌜∀ (i : nat) y, i < bv_unsigned (rets !!! 0%nat) → data !! i = Some y → R y (args !!! 3%nat)⌝ ∗
+      ⌜∀ (i : nat) y, bv_unsigned (rets !!! 0%nat) ≤ i → data !! i = Some y → ¬ R y (args !!! 3%nat)⌝ ∗
+      True))
+  )%I.
+Global Instance : LithiumUnfold (binary_search_spec) := I.
+
 Lemma binary_search stack_size :
   0 ≤ stack_size →
   (* instr 0x0000000010300000 (Some a0) -∗ *)
@@ -396,65 +476,28 @@ Lemma binary_search stack_size :
   instr 0x0000000010300054 (Some a54) -∗
   instr 0x0000000010300058 (Some a58) -∗
   instr 0x000000001030005c (Some a5c) -∗
-  instr 0x0000000010300060 (Some a60) -∗
-  instr 0x0000000010300064 (Some a64) -∗
-  instr 0x0000000010300068 (Some a68) -∗
-  instr 0x000000001030006c (Some a6c) -∗
+  (* instr 0x0000000010300060 (Some a60) -∗ *)
+  instr_body 0x0000000010300060 (ldp_mapsto_spec 0x0000000010300060 "R20" "R19" "SP_EL2" (48) None) -∗
+  (* instr 0x0000000010300064 (Some a64) -∗ *)
+  instr_body 0x0000000010300064 (ldp_mapsto_spec 0x0000000010300064 "R22" "R21" "SP_EL2" (32) None) -∗
+  (* instr 0x0000000010300068 (Some a68) -∗ *)
+  instr_body 0x0000000010300068 (ldp_mapsto_spec 0x0000000010300068 "R24" "R23" "SP_EL2" (16) None) -∗
+  (* instr 0x000000001030006c (Some a6c) -∗ *)
+  instr_body 0x000000001030006c (ldp_mapsto_spec 0x000000001030006c "R29" "R30" "SP_EL2" (0) (Some 64)) -∗
   instr 0x0000000010300070 (Some a70) -∗
   □ instr_pre 0x000000001030002c binary_search_loop_spec -∗
-  instr_body 0x0000000010300000 (c_call (stack_size + 64) (λ args sp RET,
-     RET (λ rets, True))
-  ).
+  instr_body 0x0000000010300000 (binary_search_spec stack_size).
 Proof.
-  iStartProof.
+  move => ?. iStartProof.
 Admitted.
-
-(*
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  - do 100 liAStep; liShow.
-    do 100 liAStep; liShow.
-    do 100 liAStep; liShow.
-    do 100 liAStep; liShow.
-    do 100 liAStep; liShow.
-    do 100 liAStep; liShow.
-    do 100 liAStep; liShow.
-    do 100 liAStep; liShow.
-    + admit.
-    + done.
-  - do 100 liAStep; liShow.
-    do 100 liAStep; liShow.
-    do 100 liAStep; liShow.
-    do 100 liAStep; liShow.
-    do 100 liAStep; liShow.
-    repeat liAStep; liShow.
-
-Abort.
+(* TODO: uncomment this once we are on coq 8.14
+  Time repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
+  all: try rewrite ->bv_or_0_l in * by done.
+  all: try bv_solve.
+  - revert select (_ ≠ [BV{64} 0]) => /bv_eq. bv_solve.
+  - eauto.
+  - eauto.
+Time Qed.
 *)
 End proof.
