@@ -189,6 +189,14 @@ let pre_parse : Filename.filepath -> line list = fun input_file ->
   in
   List.mapi pre_parse_line lines
 
+(** Representation of an instruction specification. *)
+type spec = {
+  spec_imports  : string list;
+  spec_spec     : string;
+  spec_tactics  : string list;
+  spec_admitted : bool;
+}
+
 (** Representation of an annotated, decompiled instruction. *)
 type decomp_line = {
   dl_from_file : Filename.filepath;
@@ -201,7 +209,7 @@ type decomp_line = {
   dl_constrs   : (int * string * string) list; (* Holds: (line, orig, c). *)
   dl_instr     : string;
   dl_comment   : string option;
-  dl_spec      : (string * string list) option; (* Spec and tactics. *)
+  dl_spec      : spec option;
 }
 
 (** [parse input_file] parses file [input_file] to obtain a list of annotated,
@@ -222,6 +230,8 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
     let constrs = ref [] in
     let spec = ref None in
     let spec_tactics = ref [] in
+    let imports = ref [] in
+    let admitted = ref false in
     let handle_annot annot =
       let no_parse fmt = no_parse annot fmt in
       let tag = annot.line_data.annot_tag in
@@ -248,11 +258,25 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
           if !spec = None then
             no_parse "A \"spec\" annotation must appear before \"%s\"." tag;
           spec_tactics := tac :: !spec_tactics
+      | ("import"      , Some(mp)    ) ->
+          if !spec <> None then
+            no_parse "All \"%s\" annotation must appear before \"spec\"." tag;
+          (* TODO some validation for the module path? *)
+          imports := mp :: !imports
+      | ("admitted"    , None        ) ->
+          if !spec = None then
+            no_parse "A \"spec\" annotation must appear before \"%s\"." tag;
+          if !admitted then
+            no_parse "A \"%s\" annotation has already been given." tag;
+          admitted := true
       | ("constraint"  , None        )
       | ("base_address", None        )
       | ("spec"        , None        )
-      | ("spec_tactic" , None        ) ->
+      | ("spec_tactic" , None        )
+      | ("import"      , None        ) ->
           no_parse "Annotation \"%s\" must have a payload." tag
+      | ("admitted"    , Some(_)     ) ->
+          no_parse "Annotation \"%s\" does not expect a payload." tag
       | (_             , _           ) ->
           no_parse "Unknown annotation tag \"%s\"." tag
     in
@@ -260,6 +284,19 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
     (* Then build the decompiled instruction data. *)
     let constrs = List.rev !constrs in
     let real_addr = UInt64.add !offset line.line_data.instr_addr in
+    let spec =
+      match (!spec, !imports) with
+      | (None      , []     ) -> None
+      | (None      , _      ) ->
+          no_parse line "A \"spec\" annotation is required after \"import\"."
+      | (Some(spec), imports) ->
+      Some({
+        spec_imports  = List.rev imports;
+        spec_spec     = spec;
+        spec_tactics  = List.rev !spec_tactics;
+        spec_admitted = !admitted;
+      })
+    in
     {
       dl_from_file = line.line_file;
       dl_from_line = line.line_num;
@@ -271,7 +308,7 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
       dl_constrs   = constrs;
       dl_instr     = line.line_data.instr_instr;
       dl_comment   = line.line_data.instr_comment;
-      dl_spec      = Option.map (fun s -> (s, List.rev !spec_tactics)) !spec
+      dl_spec      = spec;
     }
   in
   let rec build annots acc lines =
@@ -337,9 +374,11 @@ let parse_and_pp_debug : out_channel -> Filename.filepath -> unit =
       info "    -> [%s]" c
     in
     List.iter print_constraint l.dl_constrs;
-    match l.dl_spec with None -> () | Some(spec, tacs) ->
-    info "  spec => %s" spec;
-    List.iter (info "    -> %s") tacs
+    match l.dl_spec with None -> () | Some(spec) ->
+    info "  spec => %s" spec.spec_spec;
+    List.iter (info "    -> import: %s") spec.spec_imports;
+    List.iter (info "    -> tactic: %s") spec.spec_tactics;
+    if spec.spec_admitted then info "    -> admitted"
   in
   List.iter print_line lines;
   info "======================"

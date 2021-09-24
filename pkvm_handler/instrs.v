@@ -1,4 +1,4 @@
-From isla Require Import isla_lang.
+Require Import isla.isla_lang.
 Require Export isla.examples.pkvm_handler.a7400.
 Require Export isla.examples.pkvm_handler.a7404.
 Require Export isla.examples.pkvm_handler.a7408.

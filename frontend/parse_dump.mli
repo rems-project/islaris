@@ -1,5 +1,17 @@
 open Extra
 
+(** Representation of an instruction specification. *)
+type spec = {
+  spec_imports  : string list;
+  (** List of module paths to import for the specification. *)
+  spec_spec     : string;
+  (** The specification itself. *)
+  spec_tactics  : string list;
+  (** A list of tactics to use, in order. *)
+  spec_admitted : bool;
+  (** Should the specification be admitted? *)
+}
+
 (** Representation of an annotated, decompiled instruction. *)
 type decomp_line = {
   dl_from_file : Filename.filepath;
@@ -22,8 +34,8 @@ type decomp_line = {
   (** Instruction. *)
   dl_comment   : string option;
   (** Possible comment. *)
-  dl_spec      : (string * string list) option;
-  (** Possible specification, together with a list of custom tactics. *)
+  dl_spec      : spec option;
+  (** Possible specification. *)
 }
 
 (** [parse input_file] parses file [input_file] to obtain a list of annotated,

@@ -1,4 +1,4 @@
-From isla Require Import isla_lang.
+Require Import isla.isla_lang.
 Require Export isla.instructions.hello.a0.
 Require Export isla.instructions.hello.a4.
 Require Export isla.instructions.hello.a8.
