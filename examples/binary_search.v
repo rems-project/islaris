@@ -268,7 +268,7 @@ Admitted.
 (* TODO: uncomment this once we are on coq 8.14
   Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
-  all: try rewrite ->bv_or_0_l in * by done.
+  all: try rewrite ->@bv_or_0_l in * by done.
   all: try bv_solve.
   - revert select (_ ≠ [BV{64} 0]) => /bv_eq. bv_solve.
   - eauto.
