@@ -307,8 +307,14 @@ Section instances.
   Global Instance reg_related r v : RelatedTo (r ↦ᵣ v) := {|
     rt_fic := FindRegMapsTo r;
   |}.
-
   Global Instance struct_reg_related r f v : RelatedTo (r # f ↦ᵣ v) := {|
+    rt_fic := FindStructRegMapsTo r f;
+  |}.
+
+  Global Instance reg_col_reg_related r s rs : RelatedTo (reg_col ((KindReg r, s)::rs)) := {|
+    rt_fic := FindRegMapsTo r;
+  |}.
+  Global Instance reg_col_struct_reg_related r f s rs : RelatedTo (reg_col ((KindField r f, s)::rs)) := {|
     rt_fic := FindStructRegMapsTo r f;
   |}.
 
@@ -420,6 +426,47 @@ Section instances.
   Global Instance subsume_struct_regcol_reg_inst regs r f v:
     Subsume (reg_col regs) (r # f ↦ᵣ v) :=
     λ G, i2p (subsume_struct_regcol_reg regs r f v G).
+
+  Lemma subsume_reg_regcol regs r v s G:
+    (⌜valu_has_shape v s⌝ ∗ reg_col regs ∗ G) -∗
+    subsume (r ↦ᵣ v) (reg_col ((KindReg r, s)::regs)) G.
+  Proof. iIntros "[% [Hregs $]] Hr". rewrite reg_col_cons. eauto with iFrame. Qed.
+  Global Instance subsume_reg_regcol_inst regs r v s:
+    Subsume (r ↦ᵣ v) (reg_col ((KindReg r, s)::regs)) :=
+    λ G, i2p (subsume_reg_regcol regs r v s G).
+  Lemma subsume_struct_reg_regcol regs r f v s G:
+    (⌜valu_has_shape v s⌝ ∗ reg_col regs ∗ G) -∗
+    subsume (r # f ↦ᵣ v) (reg_col ((KindField r f, s)::regs)) G.
+  Proof. iIntros "[% [Hregs $]] Hr". rewrite reg_col_cons. eauto with iFrame. Qed.
+  Global Instance subsume_struct_reg_regcol_inst regs r f v s:
+    Subsume (r # f ↦ᵣ v) (reg_col ((KindField r f, s)::regs)) :=
+    λ G, i2p (subsume_struct_reg_regcol regs r f v s G).
+
+  Fixpoint cancel_reg_col (regs1 regs2 : list (reg_kind * valu_shape)) (i2 : nat) : (list (nat * nat)) :=
+    match regs2 with
+    | (r, s)::rs =>
+        if list_find_idx (λ x, x.1 = r) regs1 is Some i1 then
+          (i1, i2)::cancel_reg_col (delete i1 regs1) rs (S i2)
+        else
+          cancel_reg_col regs1 rs (S i2)
+    | [] => []
+    end.
+  Lemma subsume_regcol_regcol regs1 regs2 G:
+    (∃ idxs, ⌜(via_vm_compute cancel_reg_col regs1 regs2 0%nat) = idxs⌝ ∗
+       ⌜foldr (λ '(i1,i2), and (valu_shape_implies (regs1 !!! i1).2 (regs2 !!! i2).2)) True idxs⌝ ∗
+       (reg_col (foldr delete regs1 idxs.*1) -∗ reg_col (foldr delete regs2 idxs.*2) ∗ G)) -∗
+    subsume (reg_col regs1) (reg_col regs2) G.
+  Proof.
+    rewrite via_vm_compute_eq.
+  Admitted.
+    (* iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr". *)
+    (* rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=. *)
+    (* iDestruct "Hr" as "[[%vact [% Hr]] Hregs]". *)
+    (* iDestruct ("HG" with "[//] Hregs") as "[% $]"; by simplify_eq/=. *)
+  (* Qed. *)
+  Global Instance subsume_regcol_regcol_inst regs1 regs2:
+    Subsume (reg_col regs1) (reg_col regs2) :=
+    λ G, i2p (subsume_regcol_regcol regs1 regs2 G).
 
   Lemma subsume_reg_reg_pred r v P G:
     P v ∗ G -∗
@@ -652,22 +699,6 @@ Section instances.
   Global Instance simpl_goal_reg_col_nil_inst :
     SimplifyGoal (reg_col []) (Some 100%N) :=
     λ T, i2p (simpl_goal_reg_col_nil T).
-
-  Lemma simpl_goal_reg_col_cons r col s T:
-    (T (match r with
-        | KindReg r => r ↦ᵣ: (λ v, ⌜valu_has_shape v s⌝)
-        | KindField r f => r # f ↦ᵣ: (λ v, ⌜valu_has_shape v s⌝)
-        end ∗ reg_col col)) -∗
-           simplify_goal (reg_col ((r, s)::col)) T.
-  Proof.
-    iIntros "?". iExists _. iFrame.
-    rewrite reg_col_cons. iIntros "[Hr $]". case_match.
-    - rewrite reg_mapsto_pred_eq. iDestruct "Hr" as (?) "[? %]". eauto with iFrame.
-    - rewrite struct_reg_mapsto_pred_eq. iDestruct "Hr" as (?) "[? %]". eauto with iFrame.
-  Qed.
-  Global Instance simpl_goal_reg_col_cons_inst r col s :
-    SimplifyGoal (reg_col ((r, s)::col)) (Some 100%N) :=
-    λ T, i2p (simpl_goal_reg_col_cons r col s T).
 
   Lemma li_wp_next_instr:
     (∃ (nPC : addr) bPC_changed,

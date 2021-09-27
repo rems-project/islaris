@@ -15,11 +15,13 @@ Hint Rewrite ite_bv_unsigned : bv_unfold.
 
 Inductive reg_kind :=
 | KindReg (r : string) | KindField (r f : string).
+Global Instance reg_kind_inhabited : Inhabited reg_kind := populate (KindReg "").
 Global Instance reg_kind_eq_decision : EqDecision reg_kind.
 Proof. solve_decision. Defined.
 
 Inductive valu_shape :=
 | ExactShape (v : valu) | BitsShape (n : N) | UnknownShape.
+Global Instance valu_shape_inhabited : Inhabited valu_shape := populate UnknownShape.
 Definition valu_has_shape (v : valu) (s : valu_shape) : Prop :=
   match s with
   | ExactShape v' => v = v'
@@ -31,6 +33,17 @@ Arguments valu_has_shape : simpl nomatch.
 Lemma valu_has_bits_shape v n:
   valu_has_shape v (BitsShape n) → ∃ b : bv n, v = RVal_Bits b.
 Proof. destruct v as [[| |[]|]| | | | | | | |] => //= <-. naive_solver. Qed.
+
+Definition valu_shape_implies (s1 s2 : valu_shape) : Prop :=
+    match s1, s2 with
+    | ExactShape v1, _ => valu_has_shape v1 s2
+    | BitsShape n1, BitsShape n2 => n1 = n2
+    | _, UnknownShape => True
+    | _, _ => False
+    end.
+Lemma valu_shape_implies_sound s1 s2 v:
+  valu_shape_implies s1 s2 → valu_has_shape v s1 → valu_has_shape v s2.
+Proof. destruct s1, s2 => //=; naive_solver. Qed.
 
 Definition eval_unop (u : unop) (v : base_val) : option base_val :=
   match u, v with
