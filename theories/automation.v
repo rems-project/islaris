@@ -447,10 +447,10 @@ Section instances.
     | (r, s)::rs =>
         let idxs := find_matching_regs regs1 rs (S i2) in
         if list_find_idx (λ x, x.1 = r) regs1 is Some i1 then
-          if decide (i1 ∉ idxs.*1) then
-            (i1, i2)::idxs
-          else
+          if list_find_idx (λ x, x.1 = i1) idxs is Some _ then
             idxs
+          else
+            (i1, i2)::idxs
         else
           idxs
     | [] => []
