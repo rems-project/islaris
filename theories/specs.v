@@ -14,6 +14,44 @@ Definition sub_R_R_R_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 R3 : string) 
   ).
 Global Instance : LithiumUnfold (@sub_R_R_R_spec) := I.
 
+Definition cmp_R_R_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) : iProp Σ :=
+  ∃ (r1 r2 : bv 64),
+  reg_col CNVZ_regs ∗
+  R1 ↦ᵣ RVal_Bits r1 ∗
+  R2 ↦ᵣ RVal_Bits r2 ∗
+  instr_pre (pc + 4) (
+    R1 ↦ᵣ RVal_Bits r1 ∗
+    R2 ↦ᵣ RVal_Bits r2 ∗
+    "PSTATE" # "N" ↦ᵣ RVal_Bits (bv_extract 63 1 (bv_sub r1 r2)) ∗
+    "PSTATE" # "Z" ↦ᵣ RVal_Bits (bool_to_bv 1 (bool_decide (r1 = r2))) ∗
+    "PSTATE" # "C" ↦ᵣ RVal_Bits (bool_to_bv 1 (bool_decide (bv_unsigned r2 ≤ bv_unsigned r1))) ∗
+    "PSTATE" # "V" ↦ᵣ RVal_Bits (bool_to_bv 1 (bool_decide (bv_signed (bv_sub r1 r2) ≠ bv_signed r1 - bv_signed r2))) ∗
+    True
+  ).
+Global Instance : LithiumUnfold (@cmp_R_R_spec) := I.
+Ltac cmp_spec_tac1 :=
+  bv_simplify => /=; do 2 f_equal; bv_solve.
+Ltac cmp_spec_tac2 :=
+  let Hbv := fresh in let Heq := fresh in
+  apply bv_eq; case_bool_decide as Hbv; case_bool_decide as Heq => //; subst; contradict Hbv;
+    try move/bv_eq in Heq; bv_solve.
+Ltac cmp_spec_tac3 :=
+  let Hbv := fresh in
+  apply bv_eq; case_bool_decide as Hbv; case_bool_decide => //; exfalso; contradict Hbv; bv_solve.
+Ltac cmp_spec_tac4 :=
+  let Hbv := fresh in let Heq := fresh in
+  apply bv_eq;
+  case_bool_decide as Hbv; case_bool_decide as Heq => //; exfalso; contradict Hbv;
+    apply/bv_eq_signed; bv_simplify_arith;
+    bv_simplify_arith_hyp Heq;
+    (* TODO: bv_solve can just solve this on Coq 8.14. *)
+    (rewrite (bv_wrap_small 128 (bv_unsigned _ + _)); [|bv_solve]);
+    (rewrite (bv_swrap_small 128 1); [|bv_solve]);
+    (rewrite !(bv_wrap_small 128 _); [|bv_solve..]);
+    (rewrite !(bv_swrap_small 128 _); [|bv_solve..]);
+    have -> : bv_swrap 64 (bv_unsigned r1 + bv_wrap 64 (- bv_unsigned r2 - 1) + 1) = bv_swrap 64 (bv_unsigned r1 - bv_unsigned r2) by [bv_solve];
+    bv_solve.
+
 (* TODO: generalize *)
 Definition csel_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) : iProp Σ :=
   ∃ (v1 v2 : bv 64) (pstaten pstatez pstatec pstatev : bv 1),

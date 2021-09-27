@@ -32,8 +32,6 @@ binary_search:                          // @binary_search
         ldp     x29, x30, [sp], #64             // 16-byte Folded Reload
         ret
 compare_int:                            // @compare_int
-        ldr     x8, [x0]
-        ldr     x9, [x1]
-        cmp     x8, x9
+        cmp     x0, x1
         cset    w0, ls
         ret

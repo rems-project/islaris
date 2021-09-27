@@ -26,6 +26,7 @@ Require Export isla.instructions.binary_search.a44_spec.
 Require Export isla.instructions.binary_search.a48.
 Require Export isla.instructions.binary_search.a48_spec.
 Require Export isla.instructions.binary_search.a4c.
+Require Export isla.instructions.binary_search.a4c_spec.
 Require Export isla.instructions.binary_search.a50.
 Require Export isla.instructions.binary_search.a54.
 Require Export isla.instructions.binary_search.a58.
@@ -40,10 +41,9 @@ Require Export isla.instructions.binary_search.a6c.
 Require Export isla.instructions.binary_search.a6c_spec.
 Require Export isla.instructions.binary_search.a70.
 Require Export isla.instructions.binary_search.a74.
+Require Export isla.instructions.binary_search.a74_spec.
 Require Export isla.instructions.binary_search.a78.
 Require Export isla.instructions.binary_search.a7c.
-Require Export isla.instructions.binary_search.a80.
-Require Export isla.instructions.binary_search.a84.
 
 Definition instr_map := [
   (0x0%Z, a0 (* stp x29, x30, [sp, #-64]! *));
@@ -75,9 +75,7 @@ Definition instr_map := [
   (0x68%Z, a68 (* ldp x24, x23, [sp, #16] *));
   (0x6c%Z, a6c (* ldp x29, x30, [sp], #64 *));
   (0x70%Z, a70 (* ret *));
-  (0x74%Z, a74 (* ldr x8, [x0] *));
-  (0x78%Z, a78 (* ldr x9, [x1] *));
-  (0x7c%Z, a7c (* cmp x8, x9 *));
-  (0x80%Z, a80 (* cset w0, ls *));
-  (0x84%Z, a84 (* ret *))
+  (0x74%Z, a74 (* cmp x0, x1 *));
+  (0x78%Z, a78 (* cset w0, ls *));
+  (0x7c%Z, a7c (* ret *))
 ].

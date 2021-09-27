@@ -3,6 +3,11 @@ From refinedc.lithium Require Export lithium tactics.
 From isla Require Export lifting bitvector_auto.
 Set Default Proof Using "Type".
 
+(* TODO: upstream *)
+(** ** [Done] *)
+Class Done (P : Prop) : Prop := done_proof : P.
+Global Hint Extern 1 (Done ?P) => (change P; done) : typeclass_instances.
+
 (** * Simplification and normalization hints *)
 
 (* TODO: upstream *)
@@ -64,18 +69,26 @@ Global Instance ite_0_1_neq_0_simpl b :
   SimplBoth (ite b [BV{1} 0] [BV{1} 1] ≠ [BV{1} 0]) (b = false).
 Proof. by destruct b. Qed.
 
-Global Instance simpl_bool_to_bv_1 b:
-  SimplBothRel (=) (bool_to_bv 1 b) [BV{1} 1] (b = true).
-Proof. split; rewrite bv_eq; by destruct b. Qed.
-Global Instance simpl_bool_to_bv_0 b:
-  SimplBothRel (=) (bool_to_bv 1 b) [BV{1} 0] (b = false).
-Proof. split; rewrite bv_eq; by destruct b. Qed.
-Global Instance simpl_bool_to_bv_neq_1 b:
-  SimplBoth (bool_to_bv 1 b ≠ [BV{1} 1]) (b = false).
-Proof. split; rewrite bv_eq; by destruct b. Qed.
-Global Instance simpl_bool_to_bv_neq_0 b:
-  SimplBoth (bool_to_bv 1 b ≠ [BV{1} 0]) (b = true).
-Proof. split; rewrite bv_eq; by destruct b. Qed.
+Global Instance simpl_bool_to_bv_1 n b1 b2 `{!Done (n ≠ 0%N ∧ bv_unsigned b2 = 1)}:
+  SimplBothRel (=) (bool_to_bv n b1) b2 (b1 = true).
+Proof.
+  unfold Done in *. split; rewrite bv_eq; rewrite bool_to_bv_unsigned //; destruct b1 => //=; lia.
+Qed.
+Global Instance simpl_bool_to_bv_0 n b1 b2 `{!Done (n ≠ 0%N ∧ bv_unsigned b2 = 0)}:
+  SimplBothRel (=) (bool_to_bv n b1) b2 (b1 = false).
+Proof.
+  unfold Done in *. split; rewrite bv_eq; rewrite bool_to_bv_unsigned //; destruct b1 => //=; lia.
+Qed.
+Global Instance simpl_bool_to_bv_neq_1 n b1 b2 `{!Done (n ≠ 0%N ∧ bv_unsigned b2 = 1)}:
+  SimplBoth (bool_to_bv n b1 ≠ b2) (b1 = false).
+Proof.
+  unfold Done in *. split; rewrite bv_eq; rewrite bool_to_bv_unsigned //; destruct b1 => //=; lia.
+Qed.
+Global Instance simpl_bool_to_bv_neq_0  n b1 b2 `{!Done (n ≠ 0%N ∧ bv_unsigned b2 = 0)}:
+  SimplBoth (bool_to_bv n b1 ≠ b2) (b1 = true).
+Proof.
+  unfold Done in *. split; rewrite bv_eq; rewrite bool_to_bv_unsigned //; destruct b1 => //=; lia.
+Qed.
 
 Hint Rewrite Z_to_bv_checked_bv_unsigned : lithium_rewrite.
 

@@ -13,54 +13,17 @@ Definition comp_spec (stack_size : Z) (R : bv 64 → bv 64 → Prop) (P : iProp 
 Typeclasses Opaque comp_spec.
 Global Instance : LithiumUnfold (comp_spec) := I.
 
-Definition cmp_R_R_spec (pc : Z) (R1 R2 : string) : iProp Σ :=
-  ∃ (r1 r2 : bv 64),
-  reg_col CNVZ_regs ∗
-  R1 ↦ᵣ RVal_Bits r1 ∗
-  R2 ↦ᵣ RVal_Bits r2 ∗
-  instr_pre (pc + 4) (
-    R1 ↦ᵣ RVal_Bits r1 ∗
-    R2 ↦ᵣ RVal_Bits r2 ∗
-    "PSTATE" # "N" ↦ᵣ RVal_Bits (bv_extract 63 1 (bv_sub r1 r2)) ∗
-    "PSTATE" # "Z" ↦ᵣ RVal_Bits (bool_to_bv 1 (bool_decide (r1 = r2))) ∗
-    "PSTATE" # "C" ↦ᵣ RVal_Bits (bool_to_bv 1 (bool_decide (bv_unsigned r2 ≤ bv_unsigned r1))) ∗
-    "PSTATE" # "V" ↦ᵣ RVal_Bits (bool_to_bv 1 (bool_decide (bv_signed (bv_sub r1 r2) ≠ bv_signed r1 - bv_signed r2))) ∗
-    True
-  ).
-Global Instance : LithiumUnfold (cmp_R_R_spec) := I.
-
-Lemma a4c_has_cmp_R_R_spec :
-  instr 0x000000001030004c (Some a4c) -∗
-  instr_body 0x000000001030004c (cmp_R_R_spec 0x000000001030004c "R20" "R23").
+Lemma compare_int_spec :
+  instr 0x0000000010300074 (Some a74) -∗
+  instr 0x0000000010300078 (Some a78) -∗
+  instr 0x000000001030007c (Some a7c) -∗
+  instr_body 0x0000000010300074 (comp_spec 0 (λ x y, bv_unsigned x ≤ bv_unsigned y) (True)).
 Proof.
   iStartProof.
-  repeat liAStep; liShow.
+  Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
-  - bv_simplify => /=. do 2 f_equal. bv_solve.
-  - apply bv_eq.
-    case_bool_decide as Hbv; case_bool_decide as Heq => //; subst; contradict Hbv.
-    + move/bv_eq in Heq. bv_solve.
-    + bv_solve.
-  - apply bv_eq. case_bool_decide as Hbv; case_bool_decide => //; exfalso; contradict Hbv; bv_solve.
-  - apply bv_eq.
-    case_bool_decide as Hbv; case_bool_decide as Heq => //; exfalso; contradict Hbv.
-    + apply/bv_eq_signed. bv_simplify_arith.
-      bv_simplify_arith_hyp Heq.
-      rewrite (bv_wrap_small 128 (bv_unsigned _ + _)); [|bv_solve].
-      rewrite (bv_wrap_small 128 (_ + 1)); [|bv_solve].
-      rewrite (bv_swrap_small 128 (bv_signed _ + _)); [|bv_solve].
-      have -> : bv_swrap 64 (bv_unsigned r1 + bv_wrap 64 (- bv_unsigned r2 - 1) + 1) = bv_swrap 64 (bv_unsigned r1 - bv_unsigned r2) by bv_solve.
-      bv_solve.
-    + apply/bv_eq_signed. bv_simplify_arith.
-      bv_simplify_arith_hyp Heq.
-      rewrite (bv_wrap_small 128 (bv_unsigned _ + _)); [|bv_solve].
-      rewrite (bv_wrap_small 128 (_ + 1)); [|bv_solve].
-      rewrite (bv_swrap_small 128 (bv_signed _ + _)); [|bv_solve].
-      rewrite (bv_swrap_small 128 (_ + _)); [|bv_solve].
-      rewrite (bv_swrap_small 128 1); [|bv_solve].
-      have -> : bv_swrap 64 (bv_unsigned r1 + bv_wrap 64 (- bv_unsigned r2 - 1) + 1)
-               = bv_swrap 64 (bv_unsigned r1 - bv_unsigned r2) by bv_solve.
-      bv_solve.
+  - revert select (_ ≠@{bv _} _) => /bv_eq. bv_solve.
+  - bv_solve.
 Qed.
 
 Definition a40_tst_imm_spec : iProp Σ :=
@@ -172,8 +135,8 @@ Lemma binary_search_loop :
   instr_pre 0x0000000010300040 (a40_tst_imm_spec) -∗
   instr 0x0000000010300044 (Some a44) -∗
   instr 0x0000000010300048 (Some a48) -∗
-  (* instr 0x000000001030004c (Some a4c) -∗ *)
-  instr_pre 0x000000001030004c (cmp_R_R_spec 0x000000001030004c "R20" "R23") -∗
+  instr 0x000000001030004c (Some a4c) -∗
+  (* instr_pre 0x000000001030004c (cmp_R_R_spec 0x000000001030004c "R20" "R23") -∗ *)
   instr 0x0000000010300050 (Some a50) -∗
   □ instr_pre 0x000000001030002c binary_search_loop_spec -∗
   instr_body 0x000000001030002c binary_search_loop_spec.

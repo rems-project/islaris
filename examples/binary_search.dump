@@ -50,6 +50,8 @@
 //@spec: csinc_spec 0x0000000010300048 "R23" "R24"
 //@spec_tactic: all: csinc_spec_tac.
   48:	9a9806f7 	csinc	x23, x23, x24, eq  // eq = none
+//@spec: cmp_R_R_spec 0x000000001030004c "R20" "R23"
+//@spec_tactic: 1: cmp_spec_tac1. 1: cmp_spec_tac2. 1: cmp_spec_tac3. 1: cmp_spec_tac4.
   4c:	eb17029f 	cmp	x20, x23
   50:	54fffee8 	b.hi	2c <binary_search+0x2c>  // b.pmore
   54:	14000002 	b	5c <binary_search+0x5c>
@@ -78,10 +80,8 @@
   70:	d65f03c0 	ret
 
 0000000000000074 <compare_int>:
-//@constraint: = (bvand R0 0xfff0000000000007) 0x0000000000000000
-  74:	f9400008 	ldr	x8, [x0]
-//@constraint: = (bvand R1 0xfff0000000000007) 0x0000000000000000
-  78:	f9400029 	ldr	x9, [x1]
-  7c:	eb09011f 	cmp	x8, x9
-  80:	1a9f87e0 	cset	w0, ls  // ls = plast
-  84:	d65f03c0 	ret
+//@spec: cmp_R_R_spec 0x0000000010300074 "R0" "R1"
+//@spec_tactic: 1: cmp_spec_tac1. 1: cmp_spec_tac2. 1: cmp_spec_tac3. 1: cmp_spec_tac4.
+  74:	eb01001f 	cmp	x0, x1
+  78:	1a9f87e0 	cset	w0, ls  // ls = plast
+  7c:	d65f03c0 	ret
