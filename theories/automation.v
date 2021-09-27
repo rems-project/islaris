@@ -442,20 +442,26 @@ Section instances.
     Subsume (r # f ↦ᵣ v) (reg_col ((KindField r f, s)::regs)) :=
     λ G, i2p (subsume_struct_reg_regcol regs r f v s G).
 
-  Fixpoint find_matching_regs_aux (regs1 regs2 : list (reg_kind * valu_shape)) (i2 : nat) : (list (nat * nat)) :=
+  Fixpoint find_matching_regs (regs1 regs2 : list (reg_kind * valu_shape)) (i2 : nat) : (list (nat * nat)) :=
     match regs2 with
     | (r, s)::rs =>
+        let idxs := find_matching_regs regs1 rs (S i2) in
         if list_find_idx (λ x, x.1 = r) regs1 is Some i1 then
-          (i1, i2)::find_matching_regs_aux regs1 rs (S i2)
+          if decide (i1 ∉ idxs.*1) then
+            (i1, i2)::idxs
+          else
+            idxs
         else
-          find_matching_regs_aux regs1 rs (S i2)
+          idxs
     | [] => []
     end.
-  Lemma find_matching_regs_aux_sound regs1 regs2 i2:
-    Forall (λ i, ∃ vr1 vr2, (i2 ≤ i.2)%nat ∧ regs1 !! i.1 = Some vr1 ∧ regs2 !! (i.2 - i2)%nat = Some vr2 ∧ vr1.1 = vr2.1) (find_matching_regs_aux regs1 regs2 i2).
+  Lemma find_matching_regs_sound regs1 regs2 i2:
+    Forall (λ i, ∃ vr1 vr2, (i2 ≤ i.2)%nat ∧ regs1 !! i.1 = Some vr1 ∧ regs2 !! (i.2 - i2)%nat = Some vr2 ∧ vr1.1 = vr2.1) (find_matching_regs regs1 regs2 i2).
   Proof.
     elim: regs2 regs1 i2 => //=.
     move => [??] regs2 IH regs1 i2. case_match.
+  Admitted.
+  (*
     - apply: Forall_cons.
       + revert select (list_find_idx _ _ = _) => /list_find_idx_Some[?[?[??]]]; simplify_eq.
         eexists _, _ => /=. rewrite -minus_n_n /=. done.
@@ -468,44 +474,89 @@ Section instances.
       eexists _, _. split_and! => //. { lia. }
       suff -> : (a2 - i2)%nat = S (a2 - S i2)%nat by done. lia.
   Qed.
+*)
+  Lemma find_matching_regs_sorted regs1 regs2 i:
+    Sorted le (find_matching_regs regs1 regs2 i).*2.
+  Proof.
+    elim: regs2 regs1 i => //= -[??] regs2 IH regs1 i. case_match => //; csimpl.
+    (* constructor; [done|]. *)
+  Admitted.
 
-  Definition list_deletes {A} (l : list A) (idxs : list nat) : list A :=
-    omap (λ x, x) (imap (λ i x, if decide (i ∈ idxs) then None else Some x) l).
-  Arguments list_deletes _ !_ !_ /.
+  Lemma foldr_delete_list_split {A} (l : list A) i `{!Inhabited A}:
+    Sorted (≤)%nat i →
+    NoDup i →
+    Forall (λ i, i < length l)%nat i →
+    l ≡ₚ ((λ i, l !!! i) <$> i) ++ (foldr delete l i).
+  Proof.
+    move => /Sorted_StronglySorted. elim: i l => //; csimpl.
+    move => i idxs IH l /(@StronglySorted_inv _ _ _)[??] /list.NoDup_cons[??] /(Forall_cons_1 _ _)[/lookup_lt_is_Some_2[? Hl] ?].
+    rewrite {1}(delete_Permutation l); [|done]. f_equiv. { by erewrite list_lookup_total_correct. }
+    etrans. { apply: IH; [done.. |]. admit. }
+    f_equiv.
+  Admitted.
 
-  Eval simpl in list_deletes ["A"; "B"; "C"; "D"] [0; 2]%nat.
+  Global Instance reg_col_permutation  :
+    Proper ((≡ₚ) ==> (≡)) reg_col.
+  Proof. unfold reg_col. by intros xs1 xs2 => ->. Qed.
+
+  Lemma reg_col_app regs1 regs2:
+    reg_col (regs1 ++ regs2) ⊣⊢ reg_col regs1 ∗ reg_col regs2.
+  Proof. apply: big_sepL_app. Qed.
+
+  Lemma reg_col_impl regs1 regs2:
+    length regs1 = length regs2 →
+    (∀ (k : nat) x y, regs1 !! k = Some x → regs2 !! k = Some y → x.1 = y.1 ∧ valu_shape_implies x.2 y.2) →
+    reg_col regs1 -∗
+    reg_col regs2.
+  Proof.
+    iIntros (? Hk) "Hregs".
+    iApply (big_sepL_impl' with "Hregs"); [done|].
+    iIntros "!>" (?????) "[%v [% ?]]". have [->?]:= Hk _ _ _ ltac:(done) ltac:(done).
+    iExists _. iSplit; [|done]. iPureIntro. by apply: valu_shape_implies_sound.
+  Qed.
+
+  (* Lemma reg_col_NoDup regs: *)
+  (*   reg_col regs -∗ ⌜NoDup regs.*1⌝. *)
+  (* Proof. *)
+  (*   rewrite NoDup_alt. *)
+  (*   iIntros "Hregs" (i j x [[??][? Hl1]]%list_lookup_fmap_inv [[??][? Hl2]]%list_lookup_fmap_inv); simplify_eq/=. *)
+  (*   iDestruct (big_sepL_delete _ _ i with "Hregs") as "[[%v1 [% Hr1]] Hregs]"; [done|]. *)
+  (*   iDestruct (big_sepL_delete _ _ j with "Hregs") as "[Hr2 _]"; [done|]. *)
+  (*   case_decide => //. *)
+  (*   "[[%v1 [% Hr1]] Hregs]"; [done|]. *)
+
+  (*   apply: big_sepL_app. Qed. *)
 
   Lemma subsume_regcol_regcol regs1 regs2 G:
-    (∃ idxs,
-       ⌜(via_vm_compute find_matching_regs_aux regs1 regs2 0%nat) = idxs⌝ ∗
+    (∃ idxs idxs1_sorted,
+       ⌜(via_vm_compute find_matching_regs regs1 regs2 0%nat) = idxs⌝ ∗
+       ⌜(via_vm_compute (λ l, merge_sort (≤)%nat l.*1) idxs) = idxs1_sorted⌝ ∗
        ⌜foldr (λ i, and (valu_shape_implies (regs1 !!! i.1).2 (regs2 !!! i.2).2)) True idxs⌝ ∗
-       (reg_col (list_deletes regs1 idxs.*1) -∗ reg_col (list_deletes regs2 idxs.*2) ∗ G)) -∗
+       (reg_col (foldr delete regs1 idxs1_sorted) -∗ reg_col (foldr delete regs2 idxs.*2) ∗ G)) -∗
     subsume (reg_col regs1) (reg_col regs2) G.
   Proof.
-    rewrite via_vm_compute_eq.
+    rewrite via_vm_compute_eq. iIntros "[%idxs [%idxs_sorted [% [%Hsorted [%Hall HG]]]]]".
+    rewrite via_vm_compute_eq in Hsorted. move: Hall => /Forall_fold_right/Forall_lookup Hall. rewrite /subsume.
+    have := find_matching_regs_sound regs1 regs2 0.
+    setoid_rewrite <-minus_n_O. move => /Forall_lookup Hmatch.
+    rewrite {2}(foldr_delete_list_split regs1 idxs_sorted).
+    2: { subst. apply Sorted_merge_sort. by apply _. }
+    2: { subst. rewrite merge_sort_Permutation. admit. }
+    2: { subst. rewrite merge_sort_Permutation. apply/Forall_lookup => ?? /(list_lookup_fmap_inv _ _ _ _)[[??]/=[??]]. apply: lookup_lt_is_Some_1.  naive_solver. }
+    rewrite {2}(foldr_delete_list_split regs2 idxs.*2).
+    2: { subst. apply find_matching_regs_sorted. }
+    2: { subst. admit. }
+    2: { subst. apply/Forall_lookup => ?? /(list_lookup_fmap_inv _ _ _ _)[[??]/=[??]]. apply: lookup_lt_is_Some_1.  naive_solver. }
+    rewrite !reg_col_app. subst.
+    iIntros "[Hr1 Hd1]". iDestruct ("HG" with "Hd1") as "[$ $]".
+    rewrite merge_sort_Permutation.
+    iApply (reg_col_impl with "Hr1").
+    { by rewrite !fmap_length. }
+    move => ??? /(list_lookup_fmap_inv _ _ _ _)[?[-> /(list_lookup_fmap_inv _ _ _ _)[[??]/=[??]]]].
+    move => /(list_lookup_fmap_inv _ _ _ _)[?[-> /(list_lookup_fmap_inv _ _ _ _)[[??]/=[??]]]]; simplify_eq.
+    split; [| naive_solver]. rewrite !list_lookup_total_alt.
+    by have /=[?[?[?[->[->?]]]]]:= Hmatch _ _ ltac:(done).
   Admitted.
-  (*
-    iIntros "[%idxs [<- [%Hall HG]]]". iStopProof. move: Hall => /Forall_fold_right.
-    have := find_matching_regs_aux_sound regs1 regs2 0. setoid_rewrite Nat.sub_0_r.
-    move: (find_matching_regs_aux regs1 regs2 0) => idxs.
-    elim: idxs regs1 regs2 => //; csimpl.
-    move => [??]/= idxs IH regs1 regs2.
-    move => /list.Forall_cons/=[[?[?[?[?[??]]]]]?] /list.Forall_cons/=[??].
-    iIntros "HG Hregs".
-    rewrite (reg_col_delete _ _ regs1); [|done].
-    rewrite (reg_col_delete _ _ regs2); [|done].
-    iDestruct "Hregs" as "[[%v [% Hr]] Hregs]".
-    iDestruct (IH with "[HG] Hregs") as "[$ $]".
-    iDestruct
-    _ _ _).
-      in Hcancel.
-  Admitted.
-*)
-    (* iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr". *)
-    (* rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=. *)
-    (* iDestruct "Hr" as "[[%vact [% Hr]] Hregs]". *)
-    (* iDestruct ("HG" with "[//] Hregs") as "[% $]"; by simplify_eq/=. *)
-  (* Qed. *)
   Global Instance subsume_regcol_regcol_inst regs1 regs2:
     Subsume (reg_col regs1) (reg_col regs2) :=
     λ G, i2p (subsume_regcol_regcol regs1 regs2 G).
