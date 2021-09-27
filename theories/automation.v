@@ -469,16 +469,17 @@ Section instances.
       suff -> : (a2 - i2)%nat = S (a2 - S i2)%nat by done. lia.
   Qed.
 
-  (* Definition list_deletes {A} (l : list A) (idxs : list nat) : list A := *)
-  (*   omap (λ x, x) (imap (λ i x, if decide (i)) *)
-  (*            delete *)
+  Definition list_deletes {A} (l : list A) (idxs : list nat) : list A :=
+    omap (λ x, x) (imap (λ i x, if decide (i ∈ idxs) then None else Some x) l).
+  Arguments list_deletes _ !_ !_ /.
+
+  Eval simpl in list_deletes ["A"; "B"; "C"; "D"] [0; 2]%nat.
 
   Lemma subsume_regcol_regcol regs1 regs2 G:
-    (∃ idxs idxs2_sorted,
+    (∃ idxs,
        ⌜(via_vm_compute find_matching_regs_aux regs1 regs2 0%nat) = idxs⌝ ∗
-       ⌜(via_vm_compute (λ l, merge_sort (≤)%nat l.*2) idxs) = idxs2_sorted⌝ ∗
        ⌜foldr (λ i, and (valu_shape_implies (regs1 !!! i.1).2 (regs2 !!! i.2).2)) True idxs⌝ ∗
-       (reg_col (foldr delete regs1 idxs.*1) -∗ reg_col (foldr delete regs2 idxs2_sorted) ∗ G)) -∗
+       (reg_col (list_deletes regs1 idxs.*1) -∗ reg_col (list_deletes regs2 idxs.*2) ∗ G)) -∗
     subsume (reg_col regs1) (reg_col regs2) G.
   Proof.
     rewrite via_vm_compute_eq.
