@@ -357,6 +357,15 @@ Section reg.
                                  | KindField r f => r # f ↦ᵣ v
                                  end) ∗ reg_col col.
   Proof. done. Qed.
+
+  Lemma reg_col_delete r i regs :
+    regs !! i = Some r →
+    reg_col regs ⊣⊢ (∃ v, ⌜valu_has_shape v r.2⌝ ∗
+                           match r.1 with
+                           | KindReg r => r ↦ᵣ v
+                           | KindField r f => r # f ↦ᵣ v
+                           end) ∗ reg_col (delete i regs).
+  Proof. move => ?. rewrite /reg_col big_sepL_delete''; [|done]. done. Qed.
 End reg.
 
 Section mem.

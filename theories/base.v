@@ -123,6 +123,24 @@ End sep_map.
 End big_op.
 
 
+Section big_op.
+Context {PROP : bi}.
+Implicit Types P Q : PROP.
+Implicit Types Ps Qs : list PROP.
+Implicit Types A : Type.
+
+(** ** Big ops over lists *)
+Section sep_list.
+  Context {A : Type}.
+  Implicit Types l : list A.
+  Implicit Types Φ Ψ : nat → A → PROP.
+  Lemma big_sepL_delete'' `{!BiAffine PROP} (Φ : A → PROP) l i x :
+    l !! i = Some x →
+    ([∗ list] y ∈ l, Φ y) ⊣⊢ Φ x ∗ [∗ list] y ∈ delete i l, Φ y.
+  Proof. intros. rewrite {1}(delete_Permutation l); [|done]. done. Qed.
+End sep_list.
+End big_op.
+
 Lemma big_sepL_exist {PROP : bi} {A B} (l : list A) (Φ : _ → _ → _ → PROP) `{!BiAffine PROP} :
   ([∗ list] i↦x∈l, ∃ y : B, Φ i x y) -∗
    ∃ xs : list B, ⌜length xs = length l⌝ ∗ ([∗ list] i↦x∈l, ∃ y : B, ⌜xs !! i = Some y⌝ ∗ Φ i x y).
