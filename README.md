@@ -124,19 +124,43 @@ PATH=$PWD/bin:$PATH dune exec -- isla-coq pkvm_handler/pkvm_handler.dump
       - https://github.com/rems-project/linux-pkvm-verif/blob/pkvm/arch/arm64/kvm/hyp/nvhe/host.S
         - more complex than the ones that Wedson looked at
     - Looking at Wedson's thesis
-  - [ ] Verify code that traps to pKVM and then pKVM returns to the code
+  - [ ] Verify code that traps to pKVM and then pKVM returns to the code (Rodolphe)
+    - Starting with very simple code in EL2 (e.g. incrementing a counter)
+  - [ ] Verify code that uses some special instructions like clz/vcnt
   - [ ] C algorithmic code (Michael)
     - goal: Reasoning about straightforward code stays feasible even
       though we use the realistic model (but probably not as nice as
       specialized C verification tools)
-      - binary search
-      - linked list
+      - [X] binary search
+      - [ ] linked list
 - [ ] Figure out right register values (Angus)
   - by looking at pKVM running in qEMU
   - running it up to a point where it turned of the MMU
 - [ ] Extend traces such that we prove the preconditions passed to isla (Brian)
 - [ ] Tree-shaped traces (Brian)
 - [ ] Compare isla generated traces against the Sail Coq model (Michael)
+
+# Paper notes
+
+- Constraints: 12 pages, excluding bibliography, in 10pt font, two-column
+- Deadline: Fri 19 Nov 2021 AOE
+
+- Selling point:
+  - More foundational than other models?
+  - Can verify more instructions that other models don't have?
+    - Code than can accesses exception level
+    - vcnt: count number of 1s in a word 
+      - corresponds __builtin_popcount
+      - clz: count leading zeros
+    - Vector instructions (e.g. a C function using a single vector instruction)
+
+- Related Work:
+  - Magnus' Thesis
+    - has some separation logic
+  - Thomas Sewell's translation validation
+  - CompCert's ARM model
+    - specifically targeted at what CompCert needs
+  - Look at Sail paper for references
 
 Old:
 
