@@ -25,7 +25,6 @@ Global Opaque Z_to_bv
 Lemma bool_to_Z_Z_of_bool:
   bool_to_Z = Z_of_bool.
 Proof. done. Qed.
-Hint Rewrite bool_to_Z_Z_of_bool : lithium_rewrite.
 
 Hint Rewrite bv_unsigned_spec_high using lia : rewrite_bits_db.
 
@@ -61,9 +60,6 @@ Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : bv_sim
 Hint Rewrite @bv_extract_bool_to_bv using lia : bv_simplify.
 Hint Rewrite @bv_not_bool_to_bv : bv_simplify.
 Hint Rewrite bool_decide_bool_to_bv_0 bool_decide_bool_to_bv_1 : bv_simplify.
-
-(* These rules are also useful for general simplification. *)
-Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : lithium_rewrite.
 
 (** The [bv_unfold] database contains rewrite rules that propagate
 bv_unsigned and bv_signed and unfold the bitvector definitions. *)

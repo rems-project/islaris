@@ -9,6 +9,15 @@ Class Done (P : Prop) : Prop := done_proof : P.
 Global Hint Extern 1 (Done ?P) => (change P; done) : typeclass_instances.
 
 (** * Simplification and normalization hints *)
+Create HintDb isla_coq_rewrite discriminated.
+Lemma ite_bits n b (n1 n2 : bv n) :
+  ite b (Val_Bits n1) (Val_Bits n2) = Val_Bits (ite b n1 n2).
+Proof. by destruct b. Qed.
+Hint Rewrite ite_bits : isla_coq_rewrite.
+Hint Rewrite Z_to_bv_checked_bv_unsigned : isla_coq_rewrite.
+
+Hint Rewrite bool_to_Z_Z_of_bool : isla_coq_rewrite.
+Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : isla_coq_rewrite.
 
 (* TODO: upstream *)
 Global Instance simpl_eqb_true b1 b2: SimplBothRel (=) (eqb b1 b2) true (b1 = b2).
@@ -44,10 +53,6 @@ Proof.
   - move => Hb. contradict Hb. subst. apply bv_eq. by destruct Heq.
 Qed.
 
-Lemma ite_bits n b (n1 n2 : bv n) :
-  ite b (Val_Bits n1) (Val_Bits n2) = Val_Bits (ite b n1 n2).
-Proof. by destruct b. Qed.
-Hint Rewrite ite_bits : lithium_rewrite.
 Global Instance ite_1_0_eq_1_simpl b :
   SimplBoth (ite b [BV{1} 1] [BV{1} 0] = [BV{1} 1]) (b = true).
 Proof. by destruct b. Qed.
@@ -93,8 +98,6 @@ Global Instance simpl_bool_to_bv_neq_0  n b1 b2 `{!Done (n ≠ 0%N ∧ bv_unsign
 Proof.
   unfold Done in *. split; rewrite bv_eq; rewrite bool_to_bv_unsigned //; destruct b1 => //=; lia.
 Qed.
-
-Hint Rewrite Z_to_bv_checked_bv_unsigned : lithium_rewrite.
 
 Global Instance simpl_SWriteMem a1 a2 v1 v2:
   SimplBoth (SWriteMem a1 v1 = SWriteMem a2 v2) (a1 = a2 ∧ v1 = v2).
@@ -156,13 +159,6 @@ Qed.
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
-
-Create HintDb isla_coq_rewrite discriminated.
-Hint Rewrite ite_bits : isla_coq_rewrite.
-Hint Rewrite Z_to_bv_checked_bv_unsigned : isla_coq_rewrite.
-
-Hint Rewrite bool_to_Z_Z_of_bool : isla_coq_rewrite.
-Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : isla_coq_rewrite.
 
 Ltac normalize_tac ::=
   autorewrite with isla_coq_rewrite; exact: eq_refl.
