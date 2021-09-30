@@ -157,7 +157,16 @@ Qed.
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
-Ltac normalize_tac ::= normalize_autorewrite.
+Create HintDb isla_coq_rewrite discriminated.
+Hint Rewrite ite_bits : isla_coq_rewrite.
+Hint Rewrite Z_to_bv_checked_bv_unsigned : isla_coq_rewrite.
+
+Hint Rewrite bool_to_Z_Z_of_bool : isla_coq_rewrite.
+Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : isla_coq_rewrite.
+
+Ltac normalize_tac ::=
+  autorewrite with isla_coq_rewrite; exact: eq_refl.
+(* Ltac normalize_tac ::= normalize_autorewrite. *)
 
 Ltac bv_solve_unfold_tac ::=
   unfold byte, addr in *.

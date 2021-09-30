@@ -68,21 +68,11 @@ Proof.
   Time repeat liAStep; liShow.
 
   Unshelve. all: prepare_sidecond.
+  all: try bv_simplify_arith_hyp select (bv_extract _ _ _ ≠ _).
+  all: try bv_simplify_arith_hyp select (bv_extract _ _ _ = _).
   all: try bv_solve.
-  - have ? : bv_unsigned i + 1 ≠ bv_unsigned n. {
-      rename select (bv_extract _ _ _ ≠ _) into Hextract.
-      rewrite bv_not_opp in Hextract.
-      bv_simplify_hyp Hextract.
-      bv_solve.
-    }
-    bv_solve.
-  - have ? : bv_unsigned i + 1 ≠ bv_unsigned n. {
-      rename select (bv_extract _ _ _ ≠ _) into Hextract.
-      rewrite bv_not_opp in Hextract.
-      bv_simplify_hyp Hextract.
-      bv_solve.
-    }
-    bv_simplify.
+  - rewrite insert_length. bv_solve.
+  - bv_simplify.
     rewrite (bv_wrap_small _ (bv_unsigned i)); [|bv_solve].
     rewrite (bv_wrap_small _ (bv_unsigned i + _)); [|bv_solve].
     have ->: (Z.to_nat (bv_unsigned i + 1)) = S ((Z.to_nat (bv_unsigned i))) by bv_solve.
@@ -90,26 +80,13 @@ Proof.
     erewrite take_S_r; [|done].
     rewrite take_insert; [|lia].
     f_equal; [done|]. f_equal. bv_solve.
-  - have ? : bv_unsigned i + 1 = bv_unsigned n. {
-      rename select (bv_extract _ _ _ = _) into Hextract.
-      rewrite bv_not_opp in Hextract.
-      bv_simplify_hyp Hextract.
-      bv_solve.
-    }
-    bv_solve.
-  - have ? : bv_unsigned i + 1 = bv_unsigned n. {
-      rename select (bv_extract _ _ _ = _) into Hextract.
-      rewrite bv_not_opp in Hextract.
-      bv_simplify_hyp Hextract.
-      bv_solve.
-    }
-    rewrite -(take_drop (Z.to_nat (bv_unsigned i)) (<[_ := _]> dstdata)).
+  - rewrite -(take_drop (Z.to_nat (bv_unsigned i)) (<[_ := _]> dstdata)).
     rewrite -(take_drop (Z.to_nat (bv_unsigned i)) srcdata).
     f_equal.
     + by rewrite take_insert.
     + erewrite drop_S. 2: { apply: list_lookup_insert. bv_solve. }
       erewrite (drop_S srcdata); [|done].
-      rewrite !drop_ge ?insert_length; [ |lia..].
+      rewrite !drop_ge ?insert_length; [ |bv_solve..].
       f_equal. bv_solve.
 Qed.
 
