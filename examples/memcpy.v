@@ -68,10 +68,11 @@ Proof.
   Time repeat liAStep; liShow.
 
   Unshelve. all: prepare_sidecond.
+  all: try bv_solve.
   all: try bv_simplify_arith_hyp select (bv_extract _ _ _ ≠ _).
   all: try bv_simplify_arith_hyp select (bv_extract _ _ _ = _).
-  all: try bv_solve.
   - rewrite insert_length. bv_solve.
+  - bv_solve.
   - bv_simplify.
     rewrite (bv_wrap_small _ (bv_unsigned i)); [|bv_solve].
     rewrite (bv_wrap_small _ (bv_unsigned i + _)); [|bv_solve].
@@ -80,6 +81,7 @@ Proof.
     erewrite take_S_r; [|done].
     rewrite take_insert; [|lia].
     f_equal; [done|]. f_equal. bv_solve.
+  - bv_solve.
   - rewrite -(take_drop (Z.to_nat (bv_unsigned i)) (<[_ := _]> dstdata)).
     rewrite -(take_drop (Z.to_nat (bv_unsigned i)) srcdata).
     f_equal.
