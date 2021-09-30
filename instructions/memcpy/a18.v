@@ -3,6 +3,9 @@ From isla Require Import isla_lang.
 Definition a18 : list trc := [
   [
     Smt (DeclareConst 27%Z (Ty_BitVec 1%N)) Mk_annot;
+    AssumeReg "PSTATE" [Field "EL"] (RegVal_Base (Val_Bits [BV{2%N} 0x2%Z])) Mk_annot;
+    AssumeReg "PSTATE" [Field "nRW"] (RegVal_Base (Val_Bits [BV{1%N} 0x0%Z])) Mk_annot;
+    AssumeReg "SCR_EL3" [] (RegVal_Base (Val_Bits [BV{32%N} 0x0%Z])) Mk_annot;
     ReadReg "PSTATE" [Field "Z"] (RegVal_Struct [("Z", RegVal_Base (Val_Symbolic 27%Z))]) Mk_annot;
     Smt (DefineConst 38%Z (Unop (Not) (Binop (Eq) (Val (Val_Symbolic 27%Z) Mk_annot) (Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot) Mk_annot)) Mk_annot;
     Branch 0%Z "model/aarch64.sail 12137:4 - 12139:5" Mk_annot;

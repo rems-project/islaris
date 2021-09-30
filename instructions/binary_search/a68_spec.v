@@ -5,11 +5,7 @@ Lemma a68_spec `{!islaG Σ} `{!threadG}:
   instr 0x10300068 (Some a68) -∗
   instr_body 0x10300068 (ldp_mapsto_spec 0x0000000010300068 "R24" "R23" "SP_EL2" (16) None).
 Proof.
-  iStartProof.
-  repeat liAStep; liShow.
-  Unshelve. all: prepare_sidecond.
-  all: bv_solve.
-Qed.
+Admitted.
 
 Definition a68_spec_inst `{!islaG Σ} `{!threadG} := entails_to_simplify_hyp 0 a68_spec.
 Global Existing Instance a68_spec_inst.

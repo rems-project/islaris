@@ -1,4 +1,9 @@
 (trace
+  (assume-reg |PSTATE| ((_ field |EL|)) #b10)
+  (assume-reg |PSTATE| ((_ field |SP|)) #b1)
+  (assume-reg |SCR_EL3| nil #x00000000)
+  (assume-reg |SCTLR_EL1| nil #x0000000004000002)
+  (assume-reg |SCTLR_EL2| nil #x0000000004000002)
   (cycle)
   (read-reg |SEE| nil (_ bv-1 128))
   (write-reg |SEE| nil (_ bv1800 128))

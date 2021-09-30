@@ -177,6 +177,18 @@ let pp_base_val ff v =
   | Ast.Val_Enum(e)      ->
       pp "Val_Enum %a" pp_enum e
 
+let pp_assume_val ff v =
+  let pp fmt = Format.fprintf ff fmt in
+  match v with
+  | Ast.AVal_Var(r,l)  ->
+      pp "AVal_Var %a %a" pp_register_name r pp_accessor_list l
+  | Ast.AVal_Bool(b)      ->
+      pp "AVal_Bool %b" b
+  | Ast.AVal_Bits(s)      ->
+      pp "AVal_Bits %a" pp_bv s
+  | Ast.AVal_Enum(e)      ->
+      pp "AVal_Enum %a" pp_enum e
+
 let rec pp_valu ff v =
   let pp fmt = Format.fprintf ff fmt in
   match v with
@@ -215,6 +227,20 @@ let rec pp_exp ff e =
       pp "Manyop %a %a %a" pp_manyop o (pp_list pp_exp) l pp_lrng a
   | Ast.Ite(i,t,e,a)     ->
       pp "Ite (%a) (%a) (%a) %a" pp_exp i pp_exp t pp_exp e pp_lrng a
+
+let rec pp_a_exp ff e =
+  let pp fmt = Format.fprintf ff fmt in
+  match e with
+  | Ast.AExp_Val(v,a)         ->
+      pp "AExp_Val (%a) %a" pp_assume_val v pp_lrng a
+  | Ast.AExp_Unop(o,e,a)      ->
+      pp "AExp_Unop (%a) (%a) %a" pp_unop o pp_a_exp e pp_lrng a
+  | Ast.AExp_Binop(o,e1,e2,a) ->
+      pp "AExp_Binop (%a) (%a) (%a) %a" pp_binop o pp_a_exp e1 pp_a_exp e2 pp_lrng a
+  | Ast.AExp_Manyop(o,l,a)    ->
+      pp "AExp_Manyop %a %a %a" pp_manyop o (pp_list pp_a_exp) l pp_lrng a
+  | Ast.AExp_Ite(i,t,e,a)     ->
+      pp "AExp_Ite (%a) (%a) (%a) %a" pp_a_exp i pp_a_exp t pp_a_exp e pp_lrng a
 
 let pp_smt ff e =
   let pp fmt = Format.fprintf ff fmt in
@@ -267,6 +293,11 @@ let pp_event ff e =
       pp "WakeRequest %a" pp_lrng a
   | Ast.SleepRequest(a)            ->
       pp "SleepRequest %a" pp_lrng a
+  | Ast.AssumeReg(r,l,v,a)         ->
+      pp "AssumeReg %a %a (%a) %a" pp_register_name r pp_accessor_list l
+        pp_valu v pp_lrng a
+  | Ast.Assume(e,a)               ->
+      pp "Assume (%a) %a" pp_a_exp e pp_lrng a
 
 (** [pp_trace_def name] is a pretty-printer for the Coq definition of a trace,
 with given definition name [name]. *)

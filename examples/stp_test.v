@@ -7,7 +7,8 @@ Definition spec `{!islaG Σ} `{!threadG} a sp (v1 v2 : bv 64) : iProp Σ :=
   "R1" ↦ᵣ RVal_Bits v2 ∗
   (bv_sub sp [BV{64} 16]) ↦ₘ vold1 ∗
   (bv_sub sp [BV{64} 8]) ↦ₘ vold2 ∗
-  ⌜bv_unsigned sp < 2 ^ 52⌝ ∗
+  ⌜bv_unsigned sp `mod` 8 = 0⌝ ∗
+  ⌜16 < bv_unsigned sp < 2 ^ 52⌝ ∗
   "SP_EL2" ↦ᵣ RVal_Bits sp ∗
   reg_col sys_regs ∗
   instr_pre a (

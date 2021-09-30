@@ -20,6 +20,10 @@ Global Instance simpl_val_bits_bv_to_bvn n (b1 b2 : bv n) :
   SimplBoth (Val_Bits b1 = Val_Bits b2) (b1 = b2).
 Proof. split; naive_solver. Qed.
 
+Global Instance simpl_val_bool b1 b2 :
+  SimplBoth (Val_Bool b1 = Val_Bool b2) (b1 = b2).
+Proof. split; naive_solver. Qed.
+
 Global Instance simple_regval_to_base_val (v1 v2 : base_val) :
   SimplBoth (RegVal_Base v1 = RegVal_Base v2) (v1 = v2).
 Proof. split; naive_solver. Qed.
@@ -99,6 +103,20 @@ Proof. split; naive_solver. Qed.
 Global Instance simpl_impl_valu_has_shape_bits v n:
   SimplImpl true (valu_has_shape v (BitsShape n)) (λ T, ∀ b : bv n, v = RVal_Bits b → T).
 Proof. move => ?. split; [| naive_solver]. move => Hb /valu_has_bits_shape. naive_solver. Qed.
+
+Global Instance simpl_and_bv_and_0xfff0000000000000 b :
+  SimplAnd (bv_and b [BV{64} 0xfff0000000000000] = [BV{64} 0]) (λ T, bv_unsigned b < 2 ^ 52 ∧ T).
+Proof.
+  split; move => [??]; split => //.
+  - bv_simplify.
+Admitted.
+
+Global Instance simpl_and_bv_and_0xfff0000000000007 b :
+  SimplAnd (bv_and b [BV{64} 0xfff0000000000007] = [BV{64} 0]) (λ T, bv_unsigned b < 2 ^ 52 ∧ bv_unsigned b `mod` 8 = 0 ∧ T).
+Proof.
+  split; move => [??]; split => //.
+  - bv_simplify.
+Admitted.
 
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
@@ -767,6 +785,44 @@ Section instances.
       iExists _. by iFrame.
   Qed.
 
+  Lemma li_wp_assume_reg r v ann es :
+    (find_in_context (FindRegMapsTo r) (λ rk,
+      match rk with
+      | RKMapsTo v' => (⌜v = v'⌝ ∗ (r ↦ᵣ v' -∗ WPasm es))
+      | RKCol regs => ∃ i : nat, ⌜via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs = Some i⌝ ∗
+                      ⌜(regs !!! i).2 = ExactShape v⌝ ∗ (reg_col regs -∗ WPasm es)
+      end)) -∗
+    WPasm (AssumeReg r [] v ann :: es).
+  Proof.
+    iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
+    - iDestruct "Hwp" as (->) "?". by iApply (wp_assume_reg with "Hr").
+    - rewrite via_vm_compute_eq.
+      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some Hr) "Hwp"; simplify_eq/=.
+      erewrite list_lookup_total_correct in Hr; [|done]; simplify_eq/=.
+      iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
+      iApply (wp_assume_reg with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs".
+      iExists _. by iFrame.
+  Qed.
+
+  Lemma li_wp_assume_reg_struct r f v ann es :
+    ((find_in_context (FindStructRegMapsTo r f) (λ rk,
+      match rk with
+      | RKMapsTo v' => ⌜v = v'⌝ ∗ (r # f ↦ᵣ v' -∗ WPasm es)
+      | RKCol regs => ∃ i, ⌜via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs = Some i⌝ ∗
+                      ⌜(regs !!! i).2 = ExactShape v⌝ ∗ (reg_col regs -∗ WPasm es)
+      end))) -∗
+    WPasm (AssumeReg r [Field f] v ann :: es).
+  Proof.
+    iDestruct 1 as (?) "[Hr Hwp]" => /=. case_match; simplify_eq.
+    - iDestruct "Hwp" as (->) "?". by iApply (wp_assume_reg_struct with "Hr").
+    - rewrite via_vm_compute_eq.
+      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some Hr) "Hwp"; simplify_eq/=.
+      erewrite list_lookup_total_correct in Hr; [|done]; simplify_eq/=.
+      iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
+      iApply (wp_assume_reg_struct with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs".
+      iExists _. by iFrame.
+  Qed.
+
   Lemma li_wp_write_reg r v ann es:
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
@@ -836,6 +892,11 @@ Section instances.
     WPexp e {{ v, ∃ b, ⌜v = Val_Bool b⌝ ∗ (⌜b = true⌝ -∗ WPasm es) }} -∗
     WPasm (Smt (Assert e) ann :: es).
   Proof. apply: wp_assert. Qed.
+
+  Lemma li_wp_assume es ann e:
+    WPaexp e {{ v, ⌜v = Val_Bool true⌝ ∗ WPasm es }} -∗
+    WPasm (Assume e ann :: es).
+  Proof. apply: wp_assume. Qed.
 
   Lemma li_wp_write_mem len n success kind a (vnew : bv n) tag ann es:
     (⌜n = (8*len)%N⌝ ∗
@@ -909,26 +970,95 @@ Section instances.
     WPexp (Val v ann) {{ Φ }}.
   Proof. apply: wpe_val. Qed.
 
+  Lemma li_wpae_var_reg r Φ ann :
+    (find_in_context (FindRegMapsTo r) (λ rk,
+      match rk with
+      | RKMapsTo v => (if v is RegVal_Base v' then r ↦ᵣ v -∗ Φ v' else False)
+      | RKCol regs => ∃ i : nat, ⌜via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs = Some i⌝ ∗
+                      if (regs !!! i).2 is ExactShape (RegVal_Base v') then reg_col regs -∗ Φ v' else False
+      end)) -∗
+    WPaexp (AExp_Val (AVal_Var r []) ann) {{ Φ }}.
+  Proof.
+    iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
+    - case_match => //; subst. by iApply (wpae_var_reg with "Hr").
+    - rewrite via_vm_compute_eq.
+      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+      erewrite list_lookup_total_correct; [|done]; simplify_eq/=.
+      do 2 case_match => //; subst.
+      iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
+      iApply (wpae_var_reg with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs".
+      iExists _. by iFrame.
+  Qed.
+  Lemma li_wpae_var_struct r f Φ ann :
+    (find_in_context (FindStructRegMapsTo r f) (λ rk,
+      match rk with
+      | RKMapsTo v => (if v is RegVal_Base v' then r # f ↦ᵣ v -∗ Φ v' else False)
+      | RKCol regs => ∃ i : nat, ⌜via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs = Some i⌝ ∗
+                      if (regs !!! i).2 is ExactShape (RegVal_Base v') then reg_col regs -∗ Φ v' else False
+      end)) -∗
+    WPaexp (AExp_Val (AVal_Var r [Field f]) ann) {{ Φ }}.
+  Proof.
+    iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
+    - case_match => //; subst. by iApply (wpae_var_struct with "Hr").
+    - rewrite via_vm_compute_eq.
+      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+      erewrite list_lookup_total_correct; [|done]; simplify_eq/=.
+      do 2 case_match => //; subst.
+      iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
+      iApply (wpae_var_struct with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs".
+      iExists _. by iFrame.
+  Qed.
+
+  Lemma li_wpae_bits b Φ ann:
+    Φ (Val_Bits b) -∗
+    WPaexp (AExp_Val (AVal_Bits b) ann) {{ Φ }}.
+  Proof. apply: wpae_bits. Qed.
+  Lemma li_wpae_bool b Φ ann:
+    Φ (Val_Bool b) -∗
+    WPaexp (AExp_Val (AVal_Bool b) ann) {{ Φ }}.
+  Proof. apply: wpae_bool. Qed.
+  Lemma li_wpae_enum b Φ ann:
+    Φ (Val_Enum b) -∗
+    WPaexp (AExp_Val (AVal_Enum b) ann) {{ Φ }}.
+  Proof. apply: wpae_enum. Qed.
+
   Lemma li_wpe_manyop op es Φ ann:
     foldr (λ e Ψ, λ vs, WPexp e {{ v, Ψ (vs ++ [v]) }}) (λ vs, ∃ v, ⌜eval_manyop op vs = Some v⌝ ∗ Φ v) es [] -∗
     WPexp (Manyop op es ann) {{ Φ }}.
   Proof. apply: wpe_manyop. Qed.
+  Lemma li_wpae_manyop op es Φ ann:
+    foldr (λ e Ψ, λ vs, WPaexp e {{ v, Ψ (vs ++ [v]) }}) (λ vs, ∃ v, ⌜eval_manyop op vs = Some v⌝ ∗ Φ v) es [] -∗
+    WPaexp (AExp_Manyop op es ann) {{ Φ }}.
+  Proof. apply: wpae_manyop. Qed.
 
   Lemma li_wpe_unop op e Φ ann:
     WPexp e {{ v1, ∃ v, ⌜eval_unop op v1 = Some v⌝ ∗ Φ v}} -∗
     WPexp (Unop op e ann) {{ Φ }}.
   Proof. apply: wpe_unop. Qed.
+  Lemma li_wpae_unop op e Φ ann:
+    WPaexp e {{ v1, ∃ v, ⌜eval_unop op v1 = Some v⌝ ∗ Φ v}} -∗
+    WPaexp (AExp_Unop op e ann) {{ Φ }}.
+  Proof. apply: wpae_unop. Qed.
 
   Lemma li_wpe_binop op e1 e2 Φ ann:
     WPexp e1 {{ v1, WPexp e2 {{ v2, ∃ v, ⌜eval_binop op v1 v2 = Some v⌝ ∗ Φ v}} }} -∗
     WPexp (Binop op e1 e2 ann) {{ Φ }}.
   Proof. apply: wpe_binop. Qed.
+  Lemma li_wpae_binop op e1 e2 Φ ann:
+    WPaexp e1 {{ v1, WPaexp e2 {{ v2, ∃ v, ⌜eval_binop op v1 v2 = Some v⌝ ∗ Φ v}} }} -∗
+    WPaexp (AExp_Binop op e1 e2 ann) {{ Φ }}.
+  Proof. apply: wpae_binop. Qed.
 
   Lemma li_wpe_ite e1 e2 e3 Φ ann:
     WPexp e1 {{ v1, WPexp e2 {{ v2, WPexp e3 {{ v3,
        ∃ b, ⌜v1 = Val_Bool b⌝ ∗ Φ (ite b v2 v3)}} }} }} -∗
     WPexp (Ite e1 e2 e3 ann) {{ Φ }}.
   Proof. apply: wpe_ite. Qed.
+  Lemma li_wpae_ite e1 e2 e3 Φ ann:
+    WPaexp e1 {{ v1, WPaexp e2 {{ v2, WPaexp e3 {{ v3,
+       ∃ b, ⌜v1 = Val_Bool b⌝ ∗ Φ (ite b v2 v3)}} }} }} -∗
+    WPaexp (AExp_Ite e1 e2 e3 ann) {{ Φ }}.
+  Proof. apply wpae_ite. Qed.
 End instances.
 
 #[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ _) (_ ↦ₘ _) _) =>
@@ -1000,6 +1130,10 @@ Ltac liAIntroduceLetInGoal :=
       let H := fresh "GOAL" in
       pose H := (LET_ID Φ);
       change_no_check (envs_entails Δ (wp_exp e H))
+    | wp_a_exp ?e ?Φ =>
+      let H := fresh "GOAL" in
+      pose H := (LET_ID Φ);
+      change_no_check (envs_entails Δ (wp_a_exp e H))
     | WPasm (?e::?es) =>
       let H := fresh "TRACE" in
       assert_fails (is_var es);
@@ -1032,6 +1166,8 @@ Ltac liAAsm :=
       lazymatch e with
       | ReadReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg _ _ _ _) _)
       | ReadReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg_struct _ _ _ _ _) _)
+      | AssumeReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume_reg _ _ _ _) _)
+      | AssumeReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume_reg_struct _ _ _ _ _) _)
       | WriteReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg _ _ _ _) _)
       | WriteReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg_struct _ _ _ _ _) _)
       | BranchAddress _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch_address _ _ _) _)
@@ -1042,6 +1178,7 @@ Ltac liAAsm :=
       | Smt (DeclareConst _ Ty_Bool) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bool _ _ _) _)
       | Smt (DefineConst _ _) _ => notypeclasses refine (tac_fast_apply (li_wp_define_const _ _ _ _) _)
       | Smt (Assert _) _ => notypeclasses refine (tac_fast_apply (li_wp_assert _ _ _) _)
+      | Assume _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume _ _ _) _)
       end
     | ?def => first [
                  iEval (unfold def); try clear def
@@ -1062,6 +1199,19 @@ Ltac liAExp :=
     | Binop _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wpe_binop _ _ _ _ _) _)
     | Ite _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wpe_ite _ _ _ _ _) _)
     | _ => fail "liAExp: unknown exp" e
+    end
+  | |- envs_entails ?Δ (wp_a_exp ?e _) =>
+    lazymatch e with
+    | AExp_Val (AVal_Var _ []) _ => notypeclasses refine (tac_fast_apply (li_wpae_var_reg _ _ _) _)
+    | AExp_Val (AVal_Var _ [Field _]) _ => notypeclasses refine (tac_fast_apply (li_wpae_var_struct _ _ _ _) _)
+    | AExp_Val (AVal_Bits _) _ => notypeclasses refine (tac_fast_apply (li_wpae_bits _ _ _) _)
+    | AExp_Val (AVal_Bool _) _ => notypeclasses refine (tac_fast_apply (li_wpae_bool _ _ _) _)
+    | AExp_Val (AVal_Enum _) _ => notypeclasses refine (tac_fast_apply (li_wpae_enum _ _ _) _)
+    | AExp_Manyop _ _ _ => notypeclasses refine (tac_fast_apply (li_wpae_manyop _ _ _ _) _)
+    | AExp_Unop _ _ _ => notypeclasses refine (tac_fast_apply (li_wpae_unop _ _ _ _) _)
+    | AExp_Binop _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wpae_binop _ _ _ _ _) _)
+    | AExp_Ite _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wpae_ite _ _ _ _ _) _)
+    | _ => fail "liAExp: unknown a_exp" e
     end
   end.
 

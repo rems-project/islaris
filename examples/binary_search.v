@@ -81,6 +81,7 @@ Definition binary_search_loop_spec : iProp Σ :=
   ⌜stack_size < bv_unsigned sp < 2 ^ 52⌝ ∗
   bv_sub_Z sp stack_size ↦ₘ? stack_size ∗
   ⌜bv_unsigned l < bv_unsigned r ≤ length data⌝ ∗
+  ⌜bv_unsigned xs `mod` 8 = 0⌝ ∗
   ⌜bv_unsigned xs + (length data) * 8 < 2 ^ 52⌝ ∗
   ⌜StronglySorted R data⌝ ∗ ⌜Transitive R⌝ ∗
   ⌜∀ (i : nat) y, i < bv_unsigned l → data !! i = Some y → R y x⌝ ∗
@@ -148,6 +149,8 @@ Proof.
   Unshelve. all: prepare_sidecond.
   all: try (rename select (_ ↔ R _ _) into HR; rewrite bv_or_0_l in HR; [|done];
             match type of HR with | (Is_true ?b) ↔ _ => rename b into bres end).
+  - bv_solve.
+  - bv_solve.
   - bv_simplify => /=.
     have -> : (bv_wrap 64 (bv_unsigned l) + bv_wrap 64 (bv_wrap 64 (bv_unsigned r - bv_unsigned l) ≫ 1))
              = (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2) by bv_solve.
@@ -161,6 +164,15 @@ Proof.
   - bv_simplify_arith_hyp select (¬ _ ≤ _).
     bv_simplify_arith_hyp select (_ ≤ i).
     destruct bres; simpl in *; bv_solve.
+  - bv_simplify_arith_hyp select (i < _).
+    destruct bres; simpl in *; eauto.
+    apply: binary_search_cond_1; [solve_goal..|].
+    bv_solve.
+  - bv_simplify_arith_hyp select (ite _ _ _ = ite _ _ _).
+    bv_simplify_arith_hyp select (_ ≤ i).
+    destruct bres; simpl in *; [solve_goal|].
+    apply: binary_search_cond_2; [solve_goal..|].
+    bv_solve.
   - bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
     destruct bres; simpl in *; bv_solve.
   - bv_simplify_arith_hyp select (i < _).
@@ -169,15 +181,6 @@ Proof.
     bv_solve.
   - bv_simplify_arith_hyp select (_ ≤ i).
     destruct bres; simpl in *; eauto.
-    apply: binary_search_cond_2; [solve_goal..|].
-    bv_solve.
-  - bv_simplify_arith_hyp select (i < _).
-    destruct bres; simpl in *; eauto.
-    apply: binary_search_cond_1; [solve_goal..|].
-    bv_solve.
-  - bv_simplify_arith_hyp select (ite _ _ _ = ite _ _ _).
-    bv_simplify_arith_hyp select (_ ≤ i).
-    destruct bres; simpl in *; [solve_goal|].
     apply: binary_search_cond_2; [solve_goal..|].
     bv_solve.
 Time Qed.
@@ -190,6 +193,8 @@ Definition binary_search_spec (stack_size : Z) : iProp Σ :=
     (args !!! 1%nat) ↦ₘ∗ data ∗
     P ∗
     ⌜bv_unsigned (args !!! 2%nat) = length data⌝ ∗
+    ⌜bv_unsigned sp `mod` 8 = 0⌝ ∗
+    ⌜bv_unsigned (args !!! 1%nat) `mod` 8 = 0⌝ ∗
     ⌜bv_unsigned (args !!! 1%nat) + (length data) * 8 < 2 ^ 52⌝ ∗
     ⌜StronglySorted R data⌝ ∗ ⌜Transitive R⌝ ∗
     RET (λ rets,

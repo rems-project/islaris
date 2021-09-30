@@ -3,10 +3,12 @@ Require Import isla.sys_regs.
 
 Definition sub_R_R_R_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 R3 : string) : iProp Σ :=
   ∃ (r2 r3 : bv 64),
+  reg_col sys_regs ∗
   R1 ↦ᵣ: λ r1,
   R2 ↦ᵣ RVal_Bits r2 ∗
   R3 ↦ᵣ RVal_Bits r3 ∗
   instr_pre (pc + 4) (
+    reg_col sys_regs ∗
     R1 ↦ᵣ RVal_Bits (bv_sub r2 r3) ∗
     R2 ↦ᵣ RVal_Bits r2 ∗
     R3 ↦ᵣ RVal_Bits r3 ∗
@@ -16,10 +18,12 @@ Global Instance : LithiumUnfold (@sub_R_R_R_spec) := I.
 
 Definition cmp_R_R_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) : iProp Σ :=
   ∃ (r1 r2 : bv 64),
+  reg_col sys_regs ∗
   reg_col CNVZ_regs ∗
   R1 ↦ᵣ RVal_Bits r1 ∗
   R2 ↦ᵣ RVal_Bits r2 ∗
   instr_pre (pc + 4) (
+    reg_col sys_regs ∗
     R1 ↦ᵣ RVal_Bits r1 ∗
     R2 ↦ᵣ RVal_Bits r2 ∗
     "PSTATE" # "N" ↦ᵣ RVal_Bits (bv_extract 63 1 (bv_sub r1 r2)) ∗
@@ -55,6 +59,7 @@ Ltac cmp_spec_tac4 :=
 (* TODO: generalize *)
 Definition csel_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) : iProp Σ :=
   ∃ (v1 v2 : bv 64) (pstaten pstatez pstatec pstatev : bv 1),
+  reg_col sys_regs ∗
   "PSTATE" # "N" ↦ᵣ RVal_Bits pstaten ∗
   "PSTATE" # "Z" ↦ᵣ RVal_Bits pstatez ∗
   "PSTATE" # "C" ↦ᵣ RVal_Bits pstatec ∗
@@ -62,6 +67,7 @@ Definition csel_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) : iProp 
   R1 ↦ᵣ RVal_Bits v1 ∗
   R2 ↦ᵣ RVal_Bits v2 ∗
   instr_pre (pc + 4) (
+    reg_col sys_regs ∗
     R1 ↦ᵣ RVal_Bits (ite (bool_decide (bv_unsigned pstatez = 0)) v1 v2) ∗
     R2 ↦ᵣ RVal_Bits v2 ∗
     "PSTATE" # "N" ↦ᵣ RVal_Bits pstaten ∗
@@ -79,6 +85,7 @@ Ltac csel_spec_tac :=
 (* TODO: generalize *)
 Definition csinc_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) : iProp Σ :=
   ∃ (v1 v2 : bv 64) (pstaten pstatez pstatec pstatev : bv 1),
+  reg_col sys_regs ∗
   "PSTATE" # "N" ↦ᵣ RVal_Bits pstaten ∗
   "PSTATE" # "Z" ↦ᵣ RVal_Bits pstatez ∗
   "PSTATE" # "C" ↦ᵣ RVal_Bits pstatec ∗
@@ -86,6 +93,7 @@ Definition csinc_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) : iProp
   R1 ↦ᵣ RVal_Bits v1 ∗
   R2 ↦ᵣ RVal_Bits v2 ∗
   instr_pre 0x000000001030004c (
+    reg_col sys_regs ∗
     R1 ↦ᵣ RVal_Bits (ite (bool_decide (bv_unsigned pstatez = 1)) v1 (bv_add_Z v2 1)) ∗
     R2 ↦ᵣ RVal_Bits v2 ∗
     "PSTATE" # "N" ↦ᵣ RVal_Bits pstaten ∗
@@ -107,7 +115,8 @@ Definition stp_uninit_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) (R
   R2 ↦ᵣ RVal_Bits r2 ∗
   Rbase ↦ᵣ RVal_Bits rbase ∗
   (bv_add_Z rbase offset) ↦ₘ? 16 ∗
-  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + offset + 16 < 2 ^ 52⌝ ∗
+  ⌜bv_unsigned rbase `mod` 8 = 0⌝ ∗
+  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + (offset `max` 0) + 16 < 2 ^ 52⌝ ∗
   instr_pre (pc + 4) (
   reg_col sys_regs ∗
     R1 ↦ᵣ RVal_Bits r1 ∗
@@ -126,7 +135,8 @@ Definition ldp_mapsto_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) (R
   Rbase ↦ᵣ RVal_Bits rbase ∗
   (bv_add_Z rbase offset) ↦ₘ r1 ∗
   (bv_add_Z rbase (offset + 8)) ↦ₘ r2 ∗
-  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + offset + 16 < 2 ^ 52⌝ ∗
+  ⌜bv_unsigned rbase `mod` 8 = 0⌝ ∗
+  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + (offset `max` 0) + 16 < 2 ^ 52⌝ ∗
   instr_pre (pc + 4) (
     reg_col sys_regs ∗
     R1 ↦ᵣ RVal_Bits r1 ∗

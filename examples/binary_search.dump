@@ -71,6 +71,8 @@
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000018) 0xfff0000000000007) 0x0000000000000000
 //@spec: ldp_mapsto_spec 0x0000000010300068 "R24" "R23" "SP_EL2" (16) None
 //@spec_tactic: all: bv_solve.
+//TODO: remove once we are on coq 8.14
+//@admitted
   68:	a9415ff8 	ldp	x24, x23, [sp, #16]
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000008) 0xfff0000000000007) 0x0000000000000000

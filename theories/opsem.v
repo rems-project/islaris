@@ -2,6 +2,8 @@ Require Export isla.isla_lang.
 From iris.program_logic Require Export language.
 Open Scope Z_scope.
 
+(* TODO: move to a separate file? *)
+(*** General facts and definitions about isla_lang. *)
 Global Instance valu_inhabited : Inhabited valu := populate (RVal_Bool true).
 
 Definition ite {A} (b : bool) (x y : A) : A :=
@@ -17,9 +19,11 @@ Inductive reg_kind :=
 | KindReg (r : string) | KindField (r f : string).
 Global Instance reg_kind_eq_decision : EqDecision reg_kind.
 Proof. solve_decision. Defined.
+Global Instance reg_kind_inhabited : Inhabited (reg_kind) := populate (KindReg "").
 
 Inductive valu_shape :=
 | ExactShape (v : valu) | BitsShape (n : N) | UnknownShape.
+Global Instance valu_shape_inhabited : Inhabited (valu_shape) := populate UnknownShape.
 Definition valu_has_shape (v : valu) (s : valu_shape) : Prop :=
   match s with
   | ExactShape v' => v = v'
@@ -31,6 +35,45 @@ Arguments valu_has_shape : simpl nomatch.
 Lemma valu_has_bits_shape v n:
   valu_has_shape v (BitsShape n) → ∃ b : bv n, v = RVal_Bits b.
 Proof. destruct v as [[| |[]|]| | | | | | | |] => //= <-. naive_solver. Qed.
+
+(*** operational sematics *)
+
+Definition addr := bv 64.
+Definition byte := bv 8.
+(* TODO: this should probably be a simpler type than valu:
+- take out poison and symbolic
+- take out list and (maybe) arbitrary integer and (maybe) enum
+- add unknown
+ *)
+
+Definition reg_map := gmap string valu.
+Definition mem_map := gmap addr byte.
+
+Fixpoint read_accessor (al : accessor_list) (v : valu) : option valu :=
+  match al with
+  | [] => Some v
+  | Field a :: al' =>
+    s ← (if v is RegVal_Struct s then Some s else None);
+    i ← (list_find_idx (λ x, x.1 = a) s);
+    v' ← s !! i;
+    read_accessor al' v'.2
+  end.
+
+Fixpoint write_accessor (al : accessor_list) (v : valu) (vnew : valu) : option valu :=
+  match al with
+  | [] => Some vnew
+  | Field a :: al' =>
+    s ← (if v is RegVal_Struct s then Some s else None);
+    i ← (list_find_idx (λ x, x.1 = a) s);
+    v' ← s !! i;
+    (λ vnew', RegVal_Struct (<[i := (a, vnew')]> s))
+      <$> write_accessor al' v'.2 vnew
+  end.
+
+Arguments write_accessor : simpl never.
+Arguments read_accessor : simpl never.
+Typeclasses Opaque write_accessor.
+Typeclasses Opaque read_accessor.
 
 Definition eval_unop (u : unop) (v : base_val) : option base_val :=
   match u, v with
@@ -150,6 +193,32 @@ Fixpoint eval_exp (e : exp) : option base_val :=
     end
   end.
 
+Definition eval_assume_val (regs : reg_map) (v : assume_val) : option base_val :=
+  match v with
+  | AVal_Var r l => v' ← regs !! r;
+                   v'' ← read_accessor l v';
+                   if v'' is RegVal_Base b then Some b else None
+  | AVal_Bool b => Some (Val_Bool b)
+  | AVal_Bits b => Some (Val_Bits b)
+  | AVal_Enum e => Some (Val_Enum e)
+  end.
+
+Fixpoint eval_a_exp (regs : reg_map) (e : a_exp) : option base_val :=
+  match e with
+  | AExp_Val x _ => eval_assume_val regs x
+  | AExp_Unop uo e' _ =>
+    eval_a_exp regs e' ≫= eval_unop uo
+  | AExp_Binop uo e1 e2 _ =>
+    v1 ← eval_a_exp regs e1; v2 ← eval_a_exp regs e2; eval_binop uo v1 v2
+  | AExp_Manyop m es _ => vs ← mapM (eval_a_exp regs) es; eval_manyop m vs
+  | AExp_Ite e1 e2 e3 _ =>
+    match eval_a_exp regs e1 with
+    | Some (Val_Bool true) => eval_a_exp regs e2
+    | Some (Val_Bool false) => eval_a_exp regs e3
+    | _ => None
+    end
+  end.
+
 Inductive trace_label : Set :=
 | LReadReg (r : register_name) (al : accessor_list) (v : valu)
 | LWriteReg (r : register_name) (al : accessor_list) (v : valu)
@@ -159,45 +228,41 @@ Inductive trace_label : Set :=
 | LBranch (c : Z) (desc : string)
 | LDone (next : trc)
 | LAssert (b : bool)
+| LAssume (b : bool)
+| LAssumeReg (r : register_name) (al : accessor_list) (v : valu)
 .
 
-Inductive trace_step : trc → option trace_label → trc → Prop :=
-| DeclareConstBitVecS x n ann es b Heq:
-    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) None (subst_val_event (Val_Bits (BV b n Heq)) x <$> es)
-| DeclareConstBoolS x ann es b:
-    trace_step (Smt (DeclareConst x Ty_Bool) ann :: es) None (subst_val_event (Val_Bool b) x <$> es)
-| DefineConstS x e v ann es:
+Inductive trace_step : trc → reg_map → option trace_label → trc → Prop :=
+| DeclareConstBitVecS x n ann es b Heq regs:
+    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) regs None (subst_val_event (Val_Bits (BV b n Heq)) x <$> es)
+| DeclareConstBoolS x ann es b regs:
+    trace_step (Smt (DeclareConst x Ty_Bool) ann :: es) regs None (subst_val_event (Val_Bool b) x <$> es)
+| DefineConstS x e v ann es regs:
     eval_exp e = Some v ->
-    trace_step (Smt (DefineConst x e) ann :: es) None (subst_val_event v x <$> es)
-| AssertS e b ann es:
+    trace_step (Smt (DefineConst x e) ann :: es) regs None (subst_val_event v x <$> es)
+| AssertS e b ann es regs:
     eval_exp e = Some (Val_Bool b) ->
-    trace_step (Smt (Assert e) ann :: es) (Some (LAssert b)) es
-| ReadRegS r al v ann es:
-    trace_step (ReadReg r al v ann :: es) (Some (LReadReg r al v)) es
-| WriteRegS r al v ann es:
-    trace_step (WriteReg r al v ann :: es) (Some (LWriteReg r al v)) es
-| ReadMemS data kind addr len tag ann es:
-    trace_step (ReadMem data kind addr len tag ann :: es) (Some (LReadMem data kind addr len tag)) es
-| WriteMemS res kind addr data len tag ann es:
-    trace_step (WriteMem res kind addr data len tag ann :: es) (Some (LWriteMem res kind addr data len tag)) es
-| BranchAddressS v ann es:
-    trace_step (BranchAddress v ann :: es) (Some (LBranchAddress v)) es
-| BranchS c desc ann es:
-    trace_step (Branch c desc ann :: es) (Some (LBranch c desc)) es
-| DoneES es:
-    trace_step [] (Some (LDone es)) es
+    trace_step (Smt (Assert e) ann :: es) regs (Some (LAssert b)) es
+| AssumeS e b ann es regs:
+    eval_a_exp regs e = Some (Val_Bool b) ->
+    trace_step (Assume e ann :: es) regs (Some (LAssume b)) es
+| AssumeRegS r al v ann es regs:
+    trace_step (AssumeReg r al v ann :: es) regs (Some (LAssumeReg r al v)) es
+| ReadRegS r al v ann es regs:
+    trace_step (ReadReg r al v ann :: es) regs (Some (LReadReg r al v)) es
+| WriteRegS r al v ann es regs:
+    trace_step (WriteReg r al v ann :: es) regs (Some (LWriteReg r al v)) es
+| ReadMemS data kind addr len tag ann es regs:
+    trace_step (ReadMem data kind addr len tag ann :: es) regs (Some (LReadMem data kind addr len tag)) es
+| WriteMemS res kind addr data len tag ann es regs:
+    trace_step (WriteMem res kind addr data len tag ann :: es) regs (Some (LWriteMem res kind addr data len tag)) es
+| BranchAddressS v ann es regs:
+    trace_step (BranchAddress v ann :: es) regs (Some (LBranchAddress v)) es
+| BranchS c desc ann es regs:
+    trace_step (Branch c desc ann :: es) regs (Some (LBranch c desc)) es
+| DoneES es regs:
+    trace_step [] regs (Some (LDone es)) es
 .
-
-Definition addr := bv 64.
-Definition byte := bv 8.
-(* TODO: this should probably be a simpler type than valu:
-- take out poison and symbolic
-- take out list and (maybe) arbitrary integer and (maybe) enum
-- add unknown
- *)
-
-Definition reg_map := gmap string valu.
-Definition mem_map := gmap addr byte.
 
 Definition instruction_size : Z := 0x4.
 
@@ -209,32 +274,6 @@ Definition next_pc (regs : reg_map) : option (addr * reg_map) :=
   let new_pc := if cb : bool then bv_unsigned an else bv_unsigned an + instruction_size in
   n ← Z_to_bv_checked 64 new_pc;
   Some (n, <["_PC" := RVal_Bits (BVN _ n)]> $ <["__PC_changed" := RVal_Bool false]> regs).
-
-Fixpoint read_accessor (al : accessor_list) (v : valu) : option valu :=
-  match al with
-  | [] => Some v
-  | Field a :: al' =>
-    s ← (if v is RegVal_Struct s then Some s else None);
-    i ← (list_find_idx (λ x, x.1 = a) s);
-    v' ← s !! i;
-    read_accessor al' v'.2
-  end.
-
-Fixpoint write_accessor (al : accessor_list) (v : valu) (vnew : valu) : option valu :=
-  match al with
-  | [] => Some vnew
-  | Field a :: al' =>
-    s ← (if v is RegVal_Struct s then Some s else None);
-    i ← (list_find_idx (λ x, x.1 = a) s);
-    v' ← s !! i;
-    (λ vnew', RegVal_Struct (<[i := (a, vnew')]> s))
-      <$> write_accessor al' v'.2 vnew
-  end.
-
-Arguments write_accessor : simpl never.
-Arguments read_accessor : simpl never.
-Typeclasses Opaque write_accessor.
-Typeclasses Opaque read_accessor.
 
 Record seq_global_state := {
   seq_instrs : gmap addr (list trc);
@@ -272,7 +311,7 @@ Definition write_mem (len : N) (mem : mem_map) (a : addr) (v : Z) : mem_map :=
 Inductive seq_step : seq_local_state → seq_global_state → list seq_label → seq_local_state → seq_global_state → list seq_local_state → Prop :=
 | SeqStep σ θ κ t' κ' θ' σ':
     θ.(seq_nb_state) = false →
-    trace_step θ.(seq_trace) κ t' →
+    trace_step θ.(seq_trace) θ.(seq_regs) κ t' →
     match κ with
     | None => κ' = None ∧ θ' = θ <| seq_trace := t'|> ∧ σ' = σ
     | Some (LReadReg r al v) =>
@@ -283,6 +322,13 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
         read_accessor al v = Some vread ∧
         σ' = σ ∧
         ((θ' = θ <| seq_trace := t'|> ∧ vread = v'') ∨ (θ' = θ <| seq_nb_state := true|>))
+    | Some (LAssumeReg r al v) =>
+      ∃ v',
+        θ.(seq_regs) !! r = Some v' ∧
+        κ' = None ∧
+        read_accessor al v' = Some v ∧
+        σ' = σ ∧
+        θ' = θ <| seq_trace := t'|>
     | Some (LWriteReg r al v) =>
       ∃ v' v'' vnew, θ.(seq_regs) !! r = Some v' ∧
       read_accessor al v = Some vnew ∧
@@ -340,6 +386,11 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       σ' = σ ∧
       κ' = None ∧
       θ' = θ <| seq_trace := t' |> <| seq_nb_state := negb b|>
+    | Some (LAssume b) =>
+      σ' = σ ∧
+      κ' = None ∧
+      b = true ∧
+      θ' = θ <| seq_trace := t' |> <| seq_nb_state := false|>
     end →
     seq_step θ σ (option_list κ') θ' σ' []
 .

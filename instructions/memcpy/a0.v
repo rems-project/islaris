@@ -2,6 +2,9 @@ From isla Require Import isla_lang.
 
 Definition a0 : list trc := [
   [
+    AssumeReg "PSTATE" [Field "EL"] (RegVal_Base (Val_Bits [BV{2%N} 0x2%Z])) Mk_annot;
+    AssumeReg "PSTATE" [Field "nRW"] (RegVal_Base (Val_Bits [BV{1%N} 0x0%Z])) Mk_annot;
+    AssumeReg "SCR_EL3" [] (RegVal_Base (Val_Bits [BV{32%N} 0x0%Z])) Mk_annot;
     Smt (DeclareConst 36%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "R2" [] (RegVal_Base (Val_Symbolic 36%Z)) Mk_annot;
     Smt (DefineConst 39%Z (Binop (Eq) (Binop (Eq) (Val (Val_Symbolic 36%Z) Mk_annot) (Val (Val_Bits [BV{64%N} 0x0%Z]) Mk_annot) Mk_annot) (Val (Val_Bool true) Mk_annot) Mk_annot)) Mk_annot;

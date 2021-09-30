@@ -2,6 +2,7 @@ Require Import isla.base.
 Require Import isla.automation.
 
 Definition sys_regs : list (reg_kind * valu_shape) := [
+  (KindReg "SCTLR_EL1" , ExactShape (RVal_Bits [BV{64} 0x0000000004000002] ));
   (KindReg "SCTLR_EL2" , ExactShape (RVal_Bits [BV{64} 0x0000000004000002] ));
   (KindReg "SCR_EL3" , ExactShape (RVal_Bits [BV{32} 0] ));
   (KindReg "TCR_EL2" , ExactShape (RVal_Bits [BV{64} 0] ));
@@ -39,6 +40,7 @@ Definition sys_regs_map : reg_map :=
     ("Z", RVal_Bits [BV{1} 0]); ("BTYPE", RegVal_Poison);
     ("SSBS", RegVal_Poison); ("T", RegVal_Poison); ("J", RegVal_Poison);
      ("V", RVal_Bits [BV{1} 0]); ("DIT", RegVal_Poison)]) ]> $
+  <[ "SCTLR_EL1" := RVal_Bits [BV{64} 0x0000000004000002] ]> $
   <[ "SCTLR_EL2" := RVal_Bits [BV{64} 0x0000000004000002] ]> $
   <[ "SCR_EL3" := RVal_Bits [BV{32} 0] ]> $
   <[ "TCR_EL2" := RVal_Bits [BV{64} 0] ]> $
