@@ -107,16 +107,51 @@ Proof. move => ?. split; [| naive_solver]. move => Hb /valu_has_bits_shape. naiv
 Global Instance simpl_and_bv_and_0xfff0000000000000 b :
   SimplAnd (bv_and b [BV{64} 0xfff0000000000000] = [BV{64} 0]) (λ T, bv_unsigned b < 2 ^ 52 ∧ T).
 Proof.
-  split; move => [??]; split => //.
+  split; move => [Hb ?]; split => //.
   - bv_simplify.
-Admitted.
+    rewrite !bv_wrap_land.
+    have -> : 0xfff0000000000000 = Z.ones 12 ≪ 52 by done.
+    bitblast. bv_saturate.
+    eapply Z_bounded_iff_bits_nonneg; [| |done|]; lia.
+  - rewrite -(bv_wrap_small 64 (bv_unsigned b)) ?bv_wrap_land; [|bv_solve].
+    eapply Z_bounded_iff_bits_nonneg; [lia | bv_solve|].
+    move => i Hi. bv_simplify_hyp Hb. move: Hb.
+    have -> : 0xfff0000000000000 = Z.ones 12 ≪ 52 by done.
+    move => /Z.bits_inj_iff' Hb.
+    move: (Hb i ltac:(lia)).
+    rewrite !Z.land_spec Z.shiftl_spec ?Z.bits_0 ?Z_ones_spec; [|lia..].
+    repeat case_bool_decide => //; lia.
+Qed.
 
 Global Instance simpl_and_bv_and_0xfff0000000000007 b :
   SimplAnd (bv_and b [BV{64} 0xfff0000000000007] = [BV{64} 0]) (λ T, bv_unsigned b < 2 ^ 52 ∧ bv_unsigned b `mod` 8 = 0 ∧ T).
 Proof.
-  split; move => [??]; split => //.
-  - bv_simplify.
-Admitted.
+  split.
+  - move => [Hb [Hmod ?]]; split => //.
+    bv_simplify.
+    rewrite !bv_wrap_land.
+    have -> : 0xfff0000000000007 = Z.lor (Z.ones 12 ≪ 52) (Z.ones 3) by done.
+    bitblast.
+    + move: Hmod. rewrite -(Z.land_ones _ 3) //. move => /Z.bits_inj_iff' Hmod.
+      move: (Hmod i ltac:(lia)).
+      rewrite !Z.land_spec Z.ones_spec_low ?Z.bits_0; [|lia].
+      by simplify_bool_eq.
+    + bv_saturate.
+      eapply Z_bounded_iff_bits_nonneg; [| |done|]; lia.
+  - move => [Hb ?]. rewrite -{1}(bv_wrap_small 64 (bv_unsigned b)) ?bv_wrap_land; [|bv_solve].
+    bv_simplify_hyp Hb. move: Hb.
+    have -> : 0xfff0000000000007 = Z.lor (Z.ones 12 ≪ 52) (Z.ones 3) by done.
+    move => /Z.bits_inj_iff' Hb.
+    split_and! => //.
+    + eapply Z_bounded_iff_bits_nonneg; [lia | bv_solve|].
+      move => i Hi. move: (Hb i ltac:(lia)).
+      rewrite !Z.land_spec Z.lor_spec Z.shiftl_spec ?Z.bits_0 ?Z_ones_spec; [|lia..].
+      repeat case_bool_decide => //; lia.
+    + rewrite -(Z.land_ones _ 3) //. bitblast.
+      move: (Hb i ltac:(lia)).
+      rewrite !Z.land_spec Z.lor_spec Z.shiftl_spec ?Z.bits_0 ?(Z.ones_spec_low 3); [|lia..].
+      by simplify_bool_eq.
+Qed.
 
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
