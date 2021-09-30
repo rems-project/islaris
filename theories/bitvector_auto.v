@@ -170,6 +170,7 @@ Ltac bv_solve_unfold_tac := idtac.
 (* TODO: upstream *)
 Ltac bv_saturate_unsigned :=
   repeat match goal with b : bv _ |- _ => first [
+     clear b |
      learn_hyp (bv_unsigned_in_range _ b)
   ] end.
 
