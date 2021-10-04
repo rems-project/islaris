@@ -28,9 +28,11 @@ Qed.
 
 Definition a40_tst_imm_spec : iProp Σ :=
   ∃ (v : bv 64),
+  reg_col sys_regs ∗
   reg_col CNVZ_regs ∗
   "R0" ↦ᵣ RVal_Bits v ∗
   instr_pre 0x0000000010300044 (
+    reg_col sys_regs ∗
     "R0" ↦ᵣ RVal_Bits v ∗
     "PSTATE" # "N" ↦ᵣ RVal_Bits [BV{1} 0] ∗
     "PSTATE" # "Z" ↦ᵣ RVal_Bits (bv_not (bv_extract 0 1 v)) ∗
@@ -51,7 +53,11 @@ Proof.
   - bv_simplify.
     rewrite Z.shiftr_eq_0 // ?Z.land_nonneg; [lia|].
     apply: Z.le_lt_trans; [apply Z.log2_land; bv_solve| bv_solve].
-  - admit.
+  - (* Teach bv_solve/bv_bits to turn ands into extracts, combine extracts and
+        rewrite arbitrary bitvecors that appear in the context and goal?*)
+    (* How to handle the bitwidth of the bv_and -> extract? Could be extract
+       and concat or could only support at the top level? *)
+    admit.
   - bv_simplify.
     rewrite Z.shiftr_eq_0 // ?Z.land_nonneg; [lia|].
     apply: Z.le_lt_trans; [apply Z.log2_land; bv_solve| bv_solve].
@@ -164,26 +170,30 @@ Proof.
   - bv_simplify_arith_hyp select (¬ _ ≤ _).
     bv_simplify_arith_hyp select (_ ≤ i).
     destruct bres; simpl in *; bv_solve.
-  - bv_simplify_arith_hyp select (i < _).
+  - admit. 
+    (* bv_simplify_arith_hyp select (i < _).
     destruct bres; simpl in *; eauto.
-    apply: binary_search_cond_1; [solve_goal..|].
-    bv_solve.
-  - bv_simplify_arith_hyp select (ite _ _ _ = ite _ _ _).
+    apply: binary_search_cond_1. [solve_goal..|].
+    bv_solve. *)
+  - admit.
+    (* bv_simplify_arith_hyp select (ite _ _ _ = ite _ _ _).
     bv_simplify_arith_hyp select (_ ≤ i).
     destruct bres; simpl in *; [solve_goal|].
     apply: binary_search_cond_2; [solve_goal..|].
-    bv_solve.
-  - bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
-    destruct bres; simpl in *; bv_solve.
+    bv_solve. *)
+  - admit.
+  (*bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
+    destruct bres; simpl in *; bv_solve. *)
   - bv_simplify_arith_hyp select (i < _).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
     bv_solve.
-  - bv_simplify_arith_hyp select (_ ≤ i).
+  - admit.
+    (* bv_simplify_arith_hyp select (_ ≤ i).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_2; [solve_goal..|].
-    bv_solve.
-Time Qed.
+    bv_solve. *)
+Time Admitted.
 
 
 Definition binary_search_spec (stack_size : Z) : iProp Σ :=

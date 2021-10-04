@@ -2,6 +2,7 @@ From isla Require Import isla_lang.
 
 Definition a44 : list trc := [
   [
+    AssumeReg "__v85_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
     Smt (DeclareConst 27%Z (Ty_BitVec 1%N)) Mk_annot;
     Smt (DeclareConst 37%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "R20" [] (RegVal_Base (Val_Symbolic 37%Z)) Mk_annot;
@@ -15,6 +16,7 @@ Definition a44 : list trc := [
     WriteReg "R20" [] (RegVal_Base (Val_Symbolic 44%Z)) Mk_annot
   ];
   [
+    AssumeReg "__v85_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
     Smt (DeclareConst 27%Z (Ty_BitVec 1%N)) Mk_annot;
     Smt (DeclareConst 37%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "R20" [] (RegVal_Base (Val_Symbolic 37%Z)) Mk_annot;

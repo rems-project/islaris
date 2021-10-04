@@ -184,3 +184,55 @@ Ltac bv_solve :=
 
 Class BvSolve (P : Prop) : Prop := bv_solve_proof : P.
 Global Hint Extern 1 (BvSolve ?P) => (change P; bv_solve) : typeclass_instances.
+
+Definition bv_unsigned_land {n} (v : bv n) := Z.land (bv_unsigned v) (Z.ones (Z.of_N n)).
+
+Lemma bv_and_ones {n} (v : bv n) : bv_unsigned v = bv_unsigned_land v.
+Proof.
+  unfold bv_unsigned_land.
+  rewrite Z.land_ones; [|lia].
+  symmetry.
+  apply Z.mod_small.
+  destruct v as [x wf].
+  unfold bitvector.bv_wf, bv_modulus in wf.
+  unfold bv_unsigned.
+  lia.
+Qed.
+
+Ltac onesify n :=
+  lazymatch n with
+  | O => idtac
+  | S ?n' => 
+    let m := eval vm_compute in (Z.of_nat n) in
+    let x := eval vm_compute in (Z.ones m) in
+    change x with (Z.ones m);
+    onesify n'
+  end.
+
+Hint Rewrite
+  Z.bits_0
+  Z.lor_0_l Z.lor_0_r
+  Z.land_spec Z.lor_spec
+  andb_false_l andb_false_r andb_true_l andb_true_r
+  orb_false_l orb_false_r orb_true_l orb_true_r : bits_simplify.
+
+Hint Rewrite
+  Z_ones_spec Z.testbit_neg_r Z.shiftl_spec Z.shiftr_spec using lia : bits_simplify.
+
+Ltac bits_solve :=
+  onesify (64%nat);
+  rewrite <- Z.land_ones; [|lia];
+  repeat match goal with b : bv _ |- _ => match goal with G : bv_unsigned b = _ |- _ => rewrite G; clear G end end;
+  repeat match goal with B : bv ?n |- _ => rewrite !(bv_and_ones B) end; unfold bv_unsigned_land;
+  apply Z.bits_inj_iff';
+  intros n Hn;
+  autorewrite with bits_simplify;
+  repeat match goal with 
+  |- context [bool_decide (?a < ?b)] => 
+    destruct (Z.lt_ge_cases a b);
+    [rewrite !(bool_decide_eq_true_2 (a < b))| rewrite !(bool_decide_eq_false_2 (a < b))]; try lia
+  end;
+  autorewrite with bits_simplify;
+  repeat (match goal with |- context [Z.testbit _ ?a] => rewrite (Z.testbit_neg_r _ a); [|lia] end);
+  (* Concievably you might want to try bv_solve or bitblast here *)
+  by autorewrite with bits_simplify.

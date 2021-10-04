@@ -15,11 +15,21 @@ Definition sys_regs : list (reg_kind * valu_shape) := [
   (KindReg "OSDLR_EL1" , ExactShape (RVal_Bits [BV{32} 0] ));
   (KindReg "EDSCR" , ExactShape (RVal_Bits [BV{32} 0] ));
   (KindReg "MPIDR_EL1" , ExactShape (RVal_Bits [BV{64} 0] ));
-  (KindReg "MDSCR_EL1" , ExactShape (RVal_Bits [BV{64} 0] ));
+  (KindReg "MDSCR_EL1" , ExactShape (RVal_Bits [BV{32} 0] ));
   (KindField "PSTATE" "SP" , ExactShape (RVal_Bits [BV{1} 1] ));
   (KindField "PSTATE" "EL" , ExactShape (RVal_Bits [BV{2} 2] ));
   (KindField "PSTATE" "nRW" , ExactShape (RVal_Bits [BV{1} 0] ));
-  (KindField "PSTATE" "D" , ExactShape (RVal_Bits [BV{1} 1]))
+  (KindField "PSTATE" "D" , ExactShape (RVal_Bits [BV{1} 1]));
+  (KindReg "__isla_monomorphize_writes", ExactShape (RVal_Bool false));
+  (KindReg "__isla_monomorphize_reads", ExactShape (RVal_Bool false));
+  (KindReg "__highest_el_aarch32", ExactShape (RVal_Bool false));
+  (KindReg "__CNTControlBase", ExactShape (RVal_Bits [BV{52} 0]));
+  (KindReg "__v85_implemented", ExactShape (RVal_Bool false));
+  (KindReg "__v84_implemented", ExactShape (RVal_Bool false));
+  (KindReg "__v83_implemented", ExactShape (RVal_Bool false));
+  (KindReg "__v82_implemented", ExactShape (RVal_Bool false));
+  (KindReg "__v81_implemented", ExactShape (RVal_Bool true));
+  (KindReg "__trickbox_enabled", ExactShape (RVal_Bool false))
 ].
 
 Definition CNVZ_regs : list (reg_kind * valu_shape) := [
@@ -55,7 +65,18 @@ Definition sys_regs_map : reg_map :=
   <[ "OSDLR_EL1" := RVal_Bits [BV{32} 0] ]> $
   <[ "EDSCR" := RVal_Bits [BV{32} 0] ]> $
   <[ "MPIDR_EL1" := RVal_Bits [BV{64} 0] ]> $
-  <[ "MDSCR_EL1" := RVal_Bits [BV{64} 0] ]> $ ∅.
+  <[ "MDSCR_EL1" := RVal_Bits [BV{32} 0] ]> $ 
+  <[ "__isla_monomorphize_writes" := RVal_Bool false ]> $
+  <[ "__isla_monomorphize_reads" := RVal_Bool false ]> $
+  <[ "__highest_el_aarch32" := RVal_Bool false ]> $
+  <[ "__CNTControlBase" := RVal_Bits [BV{52} 0] ]> $
+  <[ "__v85_implemented" := RVal_Bool false ]> $
+  <[ "__v84_implemented" := RVal_Bool false ]> $
+  <[ "__v83_implemented" := RVal_Bool false ]> $
+  <[ "__v82_implemented" := RVal_Bool false ]> $
+  <[ "__v81_implemented" := RVal_Bool true ]> $
+  <[ "__trickbox_enabled" := RVal_Bool false ]> $ ∅
+  .
 
 Section sys_regs.
   Context `{!islaG Σ} `{!threadG}.

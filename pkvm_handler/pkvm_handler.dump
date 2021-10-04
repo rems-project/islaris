@@ -1,4 +1,4 @@
-//@constraint: = (bvand (bvadd SP_EL2 0x0000000000000008) 0xfff0000000000007) 0x0000000000000000
+//@constraint: = (bvand (bvsub SP_EL2 0x0000000000000008) 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvsub SP_EL2 0x0000000000000010) 0xfff0000000000007) 0x0000000000000000
     7400:	a9bf07e0 	stp	x0, x1, [sp, #-16]!
     7404:	d53c5200 	mrs	x0, esr_el2

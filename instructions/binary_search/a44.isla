@@ -1,4 +1,5 @@
 (trace
+  (assume-reg |__v85_implemented| nil false)
   (declare-const v27 (_ BitVec 1))
   (cycle)
   (read-reg |SEE| nil (_ bv-1 128))
@@ -16,6 +17,7 @@
   (define-const v44 v37)
   (write-reg |R20| nil v44))
 (trace
+  (assume-reg |__v85_implemented| nil false)
   (declare-const v27 (_ BitVec 1))
   (cycle)
   (read-reg |SEE| nil (_ bv-1 128))
