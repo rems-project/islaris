@@ -170,30 +170,26 @@ Proof.
   - bv_simplify_arith_hyp select (¬ _ ≤ _).
     bv_simplify_arith_hyp select (_ ≤ i).
     destruct bres; simpl in *; bv_solve.
-  - admit. 
-    (* bv_simplify_arith_hyp select (i < _).
-    destruct bres; simpl in *; eauto.
-    apply: binary_search_cond_1. [solve_goal..|].
-    bv_solve. *)
-  - admit.
-    (* bv_simplify_arith_hyp select (ite _ _ _ = ite _ _ _).
-    bv_simplify_arith_hyp select (_ ≤ i).
-    destruct bres; simpl in *; [solve_goal|].
-    apply: binary_search_cond_2; [solve_goal..|].
-    bv_solve. *)
-  - admit.
-  (*bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
-    destruct bres; simpl in *; bv_solve. *)
+  - bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
+    destruct bres; simpl in *; bv_solve.
   - bv_simplify_arith_hyp select (i < _).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
     bv_solve.
-  - admit.
-    (* bv_simplify_arith_hyp select (_ ≤ i).
+  - bv_simplify_arith_hyp select (_ ≤ i).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_2; [solve_goal..|].
-    bv_solve. *)
-Time Admitted.
+    bv_solve.
+  - bv_simplify_arith_hyp select (i < _).
+    destruct bres; simpl in *; eauto.
+    apply: binary_search_cond_1; [solve_goal..|].
+    bv_solve.
+  - bv_simplify_arith_hyp select (ite _ _ _ = ite _ _ _).
+    bv_simplify_arith_hyp select (_ ≤ i).
+    destruct bres; simpl in *; [solve_goal|].
+    apply: binary_search_cond_2; [solve_goal..|].
+    bv_solve.
+Time Qed.
 
 
 Definition binary_search_spec (stack_size : Z) : iProp Σ :=
