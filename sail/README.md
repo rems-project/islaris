@@ -1,0 +1,19 @@
+# Installation
+
+This is a work in progress directory trying to link isla to the Coq model generated from Sail.
+
+One can install the Sail model with the following steps (NOT TESTED):
+```
+opam pin coq-bbv 1.2
+wget https://github.com/rems-project/sail-arm/archive/4a5dd2c7be96f593c2853b80902aaddf083a3c24.tar.gz -O sail.tar.gz
+tar xvf sail.tar.gz
+mv sail-arm-*/arm-v8.5-a/snapshots/coq/ sail-coq
+rm -r sail-arm-*/
+cd sail-coq
+./build
+mkdir ../../_opam/lib/coq/user-contrib/Sail
+cp lib/*.{v,vo} ../../_opam/lib/coq/user-contrib/Sail
+mkdir ../../_opam/lib/coq/user-contrib/aarch64
+cp *.{v,vo} ../../_opam/lib/coq/user-contrib/aarch64
+ln -s _dune dune
+```

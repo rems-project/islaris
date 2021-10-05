@@ -136,9 +136,10 @@ PATH=$PWD/bin:$PATH dune exec -- isla-coq pkvm_handler/pkvm_handler.dump
 - [ ] Figure out right register values (Angus)
   - by looking at pKVM running in qEMU
   - running it up to a point where it turned of the MMU
-- [ ] Extend traces such that we prove the preconditions passed to isla (Brian)
-- [ ] Tree-shaped traces (Brian)
 - [ ] Compare isla generated traces against the Sail Coq model (Michael)
+- [ ] Try using RISC-V
+- [ ] Tree-shaped traces (Brian)
+- [X] Extend traces such that we prove the preconditions passed to isla (Brian)
 
 # Paper notes
 
@@ -161,6 +162,8 @@ PATH=$PWD/bin:$PATH dune exec -- isla-coq pkvm_handler/pkvm_handler.dump
   - CompCert's ARM model
     - specifically targeted at what CompCert needs
   - Look at Sail paper for references
+  - Nick Benton's work
+  - CakeML ARM work
 
 Old:
 
