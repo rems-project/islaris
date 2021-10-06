@@ -10,6 +10,8 @@ tar xvf sail.tar.gz
 mv sail-arm-*/arm-v8.5-a/snapshots/coq/ sail-coq
 rm -r sail-arm-*/
 cd sail-coq
+< adjust build to pass the following flags to coqc: "-Q . aarch64 -Q lib Sail" >
+< adjust aarch64.v to use "Require Import aarch64.aarch64_types." and "Require Import aarch64.aarch64_extras." >
 ./build
 mkdir ../../_opam/lib/coq/user-contrib/Sail
 cp lib/*.{v,vo} ../../_opam/lib/coq/user-contrib/Sail
