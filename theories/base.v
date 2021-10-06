@@ -16,6 +16,7 @@ Global Set Default Goal Selector "!".
 Arguments set _ _ _ _ _ !_ /.
 
 Arguments N.mul : simpl never.
+Typeclasses Opaque prefix.
 
 Ltac unLET :=
   repeat match goal with

@@ -30,7 +30,7 @@ Definition hello_world_string : list byte :=
 Definition hello_world_string_printed : list byte :=
   take (length hello_world_string - 1) hello_world_string.
 
-Definition hello_spec_trace : list seq_label :=
+Definition hello_spec_trace : list seq_label → Prop := λ κs, κs `prefix_of`
   ((λ b : byte, SWriteMem [BV{64} 0x101f1000] b) <$> hello_world_string_printed) ++
   [SInstrTrap [BV{64} 0x0000000010300020]].
 
@@ -42,7 +42,7 @@ Definition hello_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   "R2" ↦ᵣ RVal_Bits [BV{64} 0x101f1000] ∗
   "R1" ↦ᵣ RVal_Bits (bv_add_Z [BV{64} 0x0000000010300690] i) ∗
   "R0" ↦ᵣ RVal_Bits (bv_zero_extend 64 (hello_world_string !!! i)) ∗
-  spec_trace (((λ b : byte, SWriteMem [BV{64} 0x101f1000] b) <$> (drop i hello_world_string_printed)) ++ [SInstrTrap [BV{64} 0x0000000010300020]]) ∗
+  spec_trace (λ κs, κs `prefix_of` ((λ b : byte, SWriteMem [BV{64} 0x101f1000] b) <$> (drop i hello_world_string_printed)) ++ [SInstrTrap [BV{64} 0x0000000010300020]]) ∗
   True
 .
 
@@ -73,11 +73,12 @@ Proof.
     by bv_simplify.
   - erewrite drop_S; csimpl.
     2: { apply: list_lookup_lookup_total_lt => /=. lia. }
-    rewrite drop_ge => //=.
-    rename select (bv_concat _ _ _ = _) into Heq.
-    bv_simplify_hyp Heq.
-    revert select (_ !! i = Some vmem). move: Heq. clear => ??.
-    by repeat (destruct i; simplify_eq/=).
+    have ? : i = 13%nat. {
+      rename select (bv_concat _ _ _ = _) into Heq.
+      revert select (_ !! i = Some vmem). move: Heq. clear => ??.
+      by repeat (destruct i; simplify_eq/=).
+    }
+    subst. rewrite drop_ge => //=. normalize_and_simpl_goal => //=; bv_solve.
   - rename select (bv_concat _ _ _ ≠ _) into Hneq.
     bv_simplify_hyp Hneq.
     revert select (_ !! i = Some vmem). move: Hneq. clear => ??.
@@ -85,7 +86,7 @@ Proof.
   - erewrite list_lookup_total_correct; [|done]. bv_solve.
   - erewrite drop_S; csimpl.
     2: { apply: list_lookup_lookup_total_lt => /=. lia. }
-    done.
+    rewrite lookup_total_take //. normalize_and_simpl_goal => //=; bv_solve.
 Time Qed.
 
 

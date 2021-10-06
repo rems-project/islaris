@@ -50,7 +50,7 @@ Definition instr_pre'_def `{!islaG Σ} `{!threadG} (is_later : bool) (i : Z) (P 
     match ins with
     | Some ins => ⌜ins ≠ []⌝ ∗
         ∀ i, ⌜i ∈ ins⌝ -∗ "_PC" ↦ᵣ RVal_Bits newPC -∗ "__PC_changed" ↦ᵣ RVal_Bool false -∗ WPasm i
-    | None => ∃ κs, ⌜head κs = Some (SInstrTrap newPC)⌝ ∗ spec_trace κs
+    | None => ∃ Pκs, ⌜Pκs [SInstrTrap newPC]⌝ ∗ spec_trace Pκs
     end
    ).
 Definition instr_pre'_aux `{!islaG Σ} `{!threadG} : seal (@instr_pre'_def Σ _ _). by eexists. Qed.
@@ -183,12 +183,12 @@ Section lifting.
     iFrame.
   Qed.
 
-  Lemma wp_next_instr_extern a newPC κs:
+  Lemma wp_next_instr_extern a newPC (Pκs : _ → Prop):
     Z_to_bv_checked 64 a = Some newPC →
-    head κs = Some (SInstrTrap newPC) →
+    Pκs [SInstrTrap newPC] →
     next_instruction a -∗
     instr a None -∗
-    ▷ spec_trace κs -∗
+    ▷ spec_trace Pκs -∗
     WPasm [].
   Proof.
     iIntros (Hchecked ?). iDestruct 1 as (??? -> ?) "[HPC Hchanged]".
@@ -212,9 +212,8 @@ Section lifting.
     revert select (∃ _, _) => -[?[?]].
     rewrite /next_pc HPC Hchanged.
     cbn -[next_pc]. rewrite /bvn_to_bv. cbn -[next_pc]. rewrite decide_True_pi. cbn -[next_pc].
-    rewrite Hchecked/= => -[[<- <-] ]. rewrite Hi => -[? ?].
-    destruct regs, κs => //. simplify_eq/=.
-    iMod (spec_ctx_cons with "Hsctx Hspec") as "[??]". iModIntro.
+    rewrite Hchecked/= => -[[<- <-] ]. rewrite Hi => -[? ?]. simplify_eq/=.
+    iMod (spec_ctx_cons with "Hsctx Hspec") as "[??]"; [done|]. iModIntro.
     iFrame. iSplitL; [|done].
     by iApply wp_value.
     Unshelve. apply: [].
@@ -269,7 +268,7 @@ Section lifting.
   Lemma instr_pre_intro_None a P newPC l:
     Z_to_bv_checked 64 a = Some newPC →
     instr a None -∗
-    (P -∗ ∃ κs, ⌜head κs = Some (SInstrTrap newPC)⌝ ∗ spec_trace κs) -∗
+    (P -∗ ∃ Pκs, ⌜Pκs [SInstrTrap newPC]⌝ ∗ spec_trace Pκs) -∗
     instr_pre' l a P.
   Proof.
     rewrite instr_pre'_eq.
@@ -536,15 +535,16 @@ Section lifting.
     iIntros "Hl". iApply ("Hcont"). by iApply "Hm".
   Qed.
 
-  Lemma wp_write_mmio n len a (vnew : bv n) es ann res kind tag κs:
+  Lemma wp_write_mmio n len a (vnew : bv n) es ann res kind tag (Pκs : _ → Prop):
     n = (8 * len)%N →
     0 < Z.of_N len →
+    Pκs [SWriteMem a vnew] →
     mmio_range a (Z.of_N len) -∗
-    spec_trace (SWriteMem a vnew::κs) -∗
-    (spec_trace κs -∗ WPasm es) -∗
+    spec_trace Pκs -∗
+    (spec_trace (λ κs, Pκs (SWriteMem a vnew::κs)) -∗ WPasm es) -∗
     WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :: es).
   Proof.
-    iIntros (??) "Hm Hspec Hcont". subst. setoid_rewrite wp_asm_unfold.
+    iIntros (???) "Hm Hspec Hcont". subst. setoid_rewrite wp_asm_unfold.
     iIntros ([???]) "/= -> -> Hθ".
     iApply wp_lift_step; [done|].
     iIntros (σ1 ????) "(Hctx&Hictx&Hmem)".
@@ -559,7 +559,7 @@ Section lifting.
     iIntros "!>" (????). iMod "HE" as "_".
     inv_seq_step.
     revert select (∃ _, _) => -[?[?[?[?[??]]]]]; simplify_option_eq; destruct_and!; simplify_eq.
-    iMod (spec_ctx_cons with "Hctx Hspec") as "[Hctx Hspec]".
+    iMod (spec_ctx_cons with "Hctx Hspec") as "[Hctx Hspec]"; [done|].
     iFrame. iModIntro. iSplitL; [|done].
     by iApply ("Hcont" with "Hspec").
   Qed.

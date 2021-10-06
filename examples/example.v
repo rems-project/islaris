@@ -39,7 +39,7 @@ Definition test_state_global := {|
 |}.
 
 
-Definition test_state_spec : list seq_label := [
+Definition test_state_spec : list seq_label → Prop := λ κs, κs `prefix_of` [
   SWriteMem [BV{64} 0x101f1000] [BV{64} 0];
   SInstrTrap ([BV{64} 0x000000001030000c])
 ].
@@ -73,11 +73,10 @@ Qed.
 Lemma test_state_adequate κs t2 σ2 n:
   nsteps n (initial_local_state <$> [test_state_local.(seq_regs)],
             test_state_global) κs (t2, σ2) →
-  (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧
-  κs `prefix_of` test_state_spec.
+  (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧ test_state_spec κs.
 Proof.
   set Σ : gFunctors := #[islaΣ].
-  apply: (isla_adequacy Σ) => //.
+  apply: (isla_adequacy Σ) => //. { apply: prefix_nil. }
   iIntros (?) "#Hi #Hbm Hspec /= !>". iSplitL => //.
   iIntros (?).
   do 7 (rewrite big_sepM_insert; [|by vm_compute]).
@@ -138,11 +137,10 @@ Qed.
 Lemma test_state_adequate' κs t2 σ2 n:
   nsteps n (initial_local_state <$> [test_state_local.(seq_regs)],
             test_state_global) κs (t2, σ2) →
-  (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧
-  κs `prefix_of` test_state_spec.
+  (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧ test_state_spec κs.
 Proof.
   set Σ : gFunctors := #[islaΣ].
-  apply: (isla_adequacy Σ) => //.
+  apply: (isla_adequacy Σ) => //. { apply: prefix_nil. }
   iIntros (?) "#Hi #Hbm Hspec /= !>". iSplitL => //.
   iIntros (?) "/=".
   do 7 (rewrite big_sepM_insert; [|by vm_compute]).
@@ -205,7 +203,7 @@ Definition test_state2_global  := {|
   seq_mem := ∅
 |}.
 
-Definition test_state2_spec : list seq_label := [ SInstrTrap [BV{64} 0x0000000010300030] ].
+Definition test_state2_spec : list seq_label → Prop := λ κs, κs `prefix_of` [ SInstrTrap [BV{64} 0x0000000010300030] ].
 
 Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   instr 0x0000000010300018 (Some a18) -∗
@@ -234,4 +232,5 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
 Proof.
   iStartProof.
   repeat liAStep; liShow.
+  Unshelve. all: prepare_sidecond.
 Qed.
