@@ -209,6 +209,16 @@ Ltac onesify n :=
     onesify n'
   end.
 
+Ltac onesify_hyp n H :=
+  lazymatch n with
+  | O => idtac
+  | S ?n' => 
+    let m := eval vm_compute in (Z.of_nat n) in
+    let x := eval vm_compute in (Z.ones m) in
+    change x with (Z.ones m) in H;
+    onesify_hyp n' H
+  end.
+
 Hint Rewrite
   Z.bits_0
   Z.lor_0_l Z.lor_0_r
@@ -217,22 +227,54 @@ Hint Rewrite
   orb_false_l orb_false_r orb_true_l orb_true_r : bits_simplify.
 
 Hint Rewrite
-  Z_ones_spec Z.testbit_neg_r Z.shiftl_spec Z.shiftr_spec using lia : bits_simplify.
+  Z_ones_spec Z.testbit_neg_r Z.shiftl_spec Z.shiftr_spec Z.lnot_spec using lia : bits_simplify.
 
-Ltac bits_solve :=
+Hint Rewrite <- Z.land_ones using lia : bits_simplify.
+
+Ltac bool_decide_split :=
+  repeat match goal with 
+  | |- context [bool_decide (?a < ?b)] => 
+    destruct (Z.lt_ge_cases a b);
+    [rewrite !(bool_decide_eq_true_2 (a < b)) | rewrite !(bool_decide_eq_false_2 (a < b)) ]; try lia
+  | G : context [bool_decide (?a < ?b)] |- _ =>
+    destruct (Z.lt_ge_cases a b);
+    [rewrite !(bool_decide_eq_true_2 (a < b)) in G | rewrite !(bool_decide_eq_false_2 (a < b)) in G ]; try lia
+  end.
+
+Ltac neg_bits_zero :=
+  repeat (match goal with |- context [Z.testbit _ ?a] => rewrite (Z.testbit_neg_r _ a); [|lia] end).
+
+
+Ltac bits_simplify :=
+  apply bv_eq;
+  autorewrite with bv_unfold;
+  unfold bv_wrap in *;
   onesify (64%nat);
-  rewrite <- Z.land_ones; [|lia];
   repeat match goal with b : bv _ |- _ => match goal with G : bv_unsigned b = _ |- _ => rewrite G; clear G end end;
   repeat match goal with B : bv ?n |- _ => rewrite !(bv_and_ones B) end; unfold bv_unsigned_land;
   apply Z.bits_inj_iff';
+  let n := fresh "n" in
+  let Hn := fresh "Hn" in
   intros n Hn;
-  autorewrite with bits_simplify;
-  repeat match goal with 
-  |- context [bool_decide (?a < ?b)] => 
-    destruct (Z.lt_ge_cases a b);
-    [rewrite !(bool_decide_eq_true_2 (a < b))| rewrite !(bool_decide_eq_false_2 (a < b))]; try lia
-  end;
-  autorewrite with bits_simplify;
-  repeat (match goal with |- context [Z.testbit _ ?a] => rewrite (Z.testbit_neg_r _ a); [|lia] end);
-  (* Concievably you might want to try bv_solve or bitblast here *)
-  by autorewrite with bits_simplify.
+  repeat (first [
+    progress autorewrite with bits_simplify | 
+    progress bool_decide_split |
+    progress neg_bits_zero |
+    progress simpl
+  ]).
+
+Ltac bitify_hyp H :=
+  rewrite -> bv_eq in H;
+  rewrite <- Z.bits_inj_iff' in H.
+
+Ltac bits_simplify_hyp H :=
+  autorewrite with bv_unfold in H;
+  unfold bv_wrap in H;
+  onesify_hyp (64%nat) H;
+  repeat match goal with B : bv ?n |- _ => rewrite !(bv_and_ones B) in H end;
+  unfold bv_unsigned_land in H;
+  repeat (first [
+    progress autorewrite with bits_simplify in H| 
+    progress bool_decide_split |
+    progress simpl in H
+  ]).

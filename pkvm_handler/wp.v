@@ -95,6 +95,7 @@ Definition spec_lsr `{!islaG Σ} `{!threadG} a (v vold : bv 64) : iProp Σ :=
     True
   ).
 
+
 Lemma lsr_wp `{!islaG Σ} `{!threadG} (v vold : bv 64):
   instr 0x7408 (Some a7408) -∗
   instr_body 0x7408 (spec_lsr 0x740c v vold).
@@ -104,8 +105,5 @@ Proof.
   repeat liAStep; liShow.
   Unshelve.
   all: prepare_sidecond.
-  apply bv_eq.
-  autorewrite with bv_unfold.
-  unfold bv_wrap in *.
-  bits_solve.
+  by bits_simplify.
 Qed.

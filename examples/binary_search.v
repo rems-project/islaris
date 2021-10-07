@@ -53,16 +53,27 @@ Proof.
   - bv_simplify.
     rewrite Z.shiftr_eq_0 // ?Z.land_nonneg; [lia|].
     apply: Z.le_lt_trans; [apply Z.log2_land; bv_solve| bv_solve].
-  - (* Teach bv_solve/bv_bits to turn ands into extracts, combine extracts and
-        rewrite arbitrary bitvecors that appear in the context and goal?*)
-    (* How to handle the bitwidth of the bv_and -> extract? Could be extract
-       and concat or could only support at the top level? *)
-    admit.
+  - bits_simplify.
+    bitify_hyp H0.
+    specialize (H0 n ltac:(lia)).
+    bits_simplify_hyp H0.
+    by rewrite H0.
   - bv_simplify.
     rewrite Z.shiftr_eq_0 // ?Z.land_nonneg; [lia|].
     apply: Z.le_lt_trans; [apply Z.log2_land; bv_solve| bv_solve].
-  - admit.
-Admitted.
+  - bits_simplify.
+    assert(H0' : Z.testbit (bv_unsigned (bv_and (bv_extract 0 32 v) [BV{32} 1])) 0 ≠ Z.testbit (bv_unsigned [BV{32} 0]) 0).
+    + contradict H0.
+      bits_simplify.
+      bits_simplify_hyp H0.
+      assert (Hz : n0 = 0); [lia|].
+      by rewrite Hz.
+    + bits_simplify_hyp H0'.
+      assert(Hz : n = 0); [lia|].
+      rewrite Hz.
+      apply not_false_is_true in H0'.
+      by rewrite H0'.
+Qed.
 
 Definition binary_search_loop_spec : iProp Σ :=
   ∃ (x l r comp xs tmp2 sp : bv 64) (data : list (bv 64)),
