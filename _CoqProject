@@ -12,3 +12,4 @@ INSTALLDEFAULTROOT = isla # silence multiple roots warning
 -Q _build/default/examples isla.examples
 -Q _build/default/pkvm_handler isla.examples.pkvm_handler
 -Q _build/default/sail isla.sail
+-Q _build/default/sail-riscv isla.sail_riscv
