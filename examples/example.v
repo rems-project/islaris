@@ -39,10 +39,11 @@ Definition test_state_global := {|
 |}.
 
 
-Definition test_state_spec : list seq_label → Prop := λ κs, κs `prefix_of` [
-  SWriteMem [BV{64} 0x101f1000] [BV{64} 0];
-  SInstrTrap ([BV{64} 0x000000001030000c])
-].
+Definition test_state_spec : spec :=
+  scons (SWriteMem [BV{64} 0x101f1000] [BV{64} 0]) $
+  scons (SInstrTrap ([BV{64} 0x000000001030000c])) $
+  snil
+.
 
 Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some a0) -∗
@@ -76,7 +77,7 @@ Lemma test_state_adequate κs t2 σ2 n:
   (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧ test_state_spec κs.
 Proof.
   set Σ : gFunctors := #[islaΣ].
-  apply: (isla_adequacy Σ) => //. { apply: prefix_nil. }
+  apply: (isla_adequacy Σ) => //. { unfold test_state_spec. spec_solver. }
   iIntros (?) "#Hi #Hbm Hspec /= !>". iSplitL => //.
   iIntros (?).
   do 7 (rewrite big_sepM_insert; [|by vm_compute]).
@@ -140,7 +141,7 @@ Lemma test_state_adequate' κs t2 σ2 n:
   (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧ test_state_spec κs.
 Proof.
   set Σ : gFunctors := #[islaΣ].
-  apply: (isla_adequacy Σ) => //. { apply: prefix_nil. }
+  apply: (isla_adequacy Σ) => //. { unfold test_state_spec. spec_solver. }
   iIntros (?) "#Hi #Hbm Hspec /= !>". iSplitL => //.
   iIntros (?) "/=".
   do 7 (rewrite big_sepM_insert; [|by vm_compute]).
@@ -203,7 +204,8 @@ Definition test_state2_global  := {|
   seq_mem := ∅
 |}.
 
-Definition test_state2_spec : list seq_label → Prop := λ κs, κs `prefix_of` [ SInstrTrap [BV{64} 0x0000000010300030] ].
+Definition test_state2_spec : spec :=
+  scons (SInstrTrap [BV{64} 0x0000000010300030]) snil.
 
 Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   instr 0x0000000010300018 (Some a18) -∗

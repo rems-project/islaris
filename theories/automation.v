@@ -113,6 +113,9 @@ Qed.
 Global Instance simpl_SWriteMem a1 a2 v1 v2:
   SimplBoth (SWriteMem a1 v1 = SWriteMem a2 v2) (a1 = a2 ∧ v1 = v2).
 Proof. split; naive_solver. Qed.
+Global Instance simpl_SReadMem a1 a2 v1 v2:
+  SimplBoth (SReadMem a1 v1 = SReadMem a2 v2) (a1 = a2 ∧ v1 = v2).
+Proof. split; naive_solver. Qed.
 
 Global Instance simpl_impl_valu_has_shape_bits v n:
   SimplImpl true (valu_has_shape v (BitsShape n)) (λ T, ∀ b : bv n, v = RVal_Bits b → T).
@@ -607,7 +610,7 @@ Section instances.
     Subsume (instr_pre' b1 a P1) (instr_pre' b2 a P2) :=
     λ G, i2p (subsume_instr_pre' a b1 b2 P1 P2 G).
 
-  Lemma subsume_spec_trace_protected (Pκs1 Pκs2 : _ → Prop) G `{!IsProtected Pκs2}:
+  Lemma subsume_spec_trace_protected Pκs1 Pκs2 G `{!IsProtected Pκs2}:
     ⌜Pκs1 = Pκs2⌝ ∗ G -∗
     subsume (spec_trace Pκs1) (spec_trace Pκs2) G.
   Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
@@ -615,8 +618,8 @@ Section instances.
     Subsume (spec_trace Pκs1) (spec_trace Pκs2) | 10 :=
     λ G, i2p (subsume_spec_trace_protected Pκs1 Pκs2 G).
 
-  Lemma subsume_spec_trace (Pκs1 Pκs2 : _ → Prop) G:
-    ⌜∀ κs, Pκs2 κs → Pκs1 κs⌝ ∗ G -∗
+  Lemma subsume_spec_trace Pκs1 Pκs2 G:
+    ⌜Pκs2 ⊆ Pκs1⌝ ∗ G -∗
     subsume (spec_trace Pκs1) (spec_trace Pκs2) G.
   Proof. iDestruct 1 as (?) "$". by iApply spec_trace_mono. Qed.
   Global Instance subsume_spec_trace_inst κs1 κs2 :
@@ -757,7 +760,7 @@ Section instances.
      | IKInstr (Some ts) =>
        ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, "_PC" ↦ᵣ RVal_Bits newPC -∗ "__PC_changed" ↦ᵣ RVal_Bool false -∗ WPasm t
      | IKInstr (None) =>
-       ∃ Pκs, spec_trace Pκs ∗ ⌜Pκs [SInstrTrap newPC]⌝ ∗ True
+       ∃ Pκs, spec_trace Pκs ∗ ⌜scons (SInstrTrap newPC) snil ⊆ Pκs⌝ ∗ True
      | IKPre l P => P
      end
     )) -∗
@@ -774,6 +777,7 @@ Section instances.
         iApply ("Hwp" with "[$] [$]").
     - iDestruct "Hwp" as (?) "(?&%&?)".
       iApply (wp_next_instr_extern with "[HPC Hchanged] [$] [$]") => //.
+      { spec_solver. }
       iExists _, _, _. rewrite ->!via_vm_compute_eq in *. by iFrame.
     - iApply (wp_next_instr_pre with "[$] [HPC Hchanged] [$]").
       iExists _, _, _. rewrite ->!via_vm_compute_eq in *. by iFrame.
@@ -786,7 +790,7 @@ Section instances.
      | IKInstr (Some ts) =>
        ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, P -∗ "_PC" ↦ᵣ RVal_Bits newPC -∗ "__PC_changed" ↦ᵣ RVal_Bool false -∗ WPasm t
      | IKInstr None =>
-       P -∗ ∃ Pκs, spec_trace Pκs ∗ ⌜Pκs [SInstrTrap newPC]⌝ ∗ True
+       P -∗ ∃ Pκs, spec_trace Pκs ∗ ⌜scons (SInstrTrap newPC) snil ⊆ Pκs⌝ ∗ True
      | IKPre l' Q => ⌜implb l' l⌝ ∗ (P -∗ Q)
      end
     )) -∗
@@ -802,7 +806,7 @@ Section instances.
     - iApply (instr_pre_intro_None with "[$]"); [done..|].
       iIntros "HP".
       iDestruct ("Hwp" with "HP") as (?) "[? [% _]]".
-      iExists _. by iFrame.
+      iExists _. iFrame. iPureIntro. spec_solver.
     - iDestruct "Hwp" as (?) "Hwand".
       by iApply (instr_pre_wand with "Hinstr").
   Qed.
@@ -974,8 +978,8 @@ Section instances.
         WPasm es)
       | MKMMIO a' l =>
         ⌜bv_unsigned a' ≤ bv_unsigned a⌝ ∗ ⌜bv_unsigned a + Z.of_N len ≤ bv_unsigned a' + l⌝ ∗
-        ∃ Pκs, spec_trace Pκs ∗ ⌜Pκs [SWriteMem a vnew]⌝ ∗
-        (spec_trace (λ κs, Pκs (SWriteMem a vnew::κs)) -∗ WPasm es)
+        ∃ Pκs Pκs', spec_trace Pκs ∗ ⌜scons (SWriteMem a vnew) Pκs' ⊆ Pκs⌝ ∗
+        (spec_trace Pκs' -∗ WPasm es)
       end
     )) -∗
     WPasm (WriteMem (RVal_Bool success) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :: es).
@@ -996,10 +1000,11 @@ Section instances.
       have -> : (n0 - (bv_unsigned a - bv_unsigned a0) - Z.of_N len) =
                (bv_unsigned a0 + n0 - (bv_unsigned a + Z.of_N len)) by bv_solve.
       done.
-    - iDestruct "Hcont" as (?? Pκs) "[Hκs [% Hcont]]"; simplify_eq/=.
-      iApply (wp_write_mmio with "[HP] Hκs"); [done | lia| done| | ].
+    - iDestruct "Hcont" as (?? Pκs Pκs') "[Hκs [% Hcont]]"; simplify_eq/=.
+      iApply (wp_write_mmio with "[HP] Hκs"); [done | lia| spec_solver | | ].
       { iApply (mmio_range_shorten with "HP"); lia. }
-      done.
+      iIntros "Hspec". iApply "Hcont". iApply (spec_trace_mono with "Hspec").
+      spec_solver.
   Qed.
 
   Lemma li_wp_read_mem len n kind a vread tag ann es:
@@ -1011,7 +1016,10 @@ Section instances.
       | MKArray n' a' l => ∃ i : nat, ⌜a = bv_add_Z a' (i * Z.of_N len)⌝ ∗ ⌜i < length l⌝%nat ∗
          ∃ Heq : n = n', (∀ vmem, ⌜l !! i = Some vmem⌝ -∗ ⌜(eq_rect n bv vread n' Heq) = vmem⌝ -∗ a' ↦ₘ∗ l -∗ WPasm es)
       | MKUninit a' n' => False
-      | MKMMIO _ _ => False
+      | MKMMIO a' l =>
+        ⌜bv_unsigned a' ≤ bv_unsigned a⌝ ∗ ⌜bv_unsigned a + Z.of_N len ≤ bv_unsigned a' + l⌝ ∗
+        ∃ Pκs Pκs', spec_trace Pκs ∗ ⌜scons (SReadMem a vread) Pκs' ⊆ Pκs⌝ ∗
+        (spec_trace Pκs' -∗ WPasm es)
       end)) -∗
     WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :: es).
   Proof.
@@ -1021,7 +1029,11 @@ Section instances.
       iApply (wp_read_mem_array with "Hmem [Hcont]"); [done|lia|done|done|].
       iIntros (?) "Hl". by iApply "Hcont".
     - done.
-    - done.
+    - iDestruct "Hcont" as (?? Pκs Pκs') "[Hκs [% Hcont]]"; simplify_eq/=.
+      iApply (wp_read_mmio with "[Hmem] Hκs"); [done | lia| spec_solver | | ].
+      { iApply (mmio_range_shorten with "Hmem"); lia. }
+      iIntros "Hspec". iApply "Hcont". iApply (spec_trace_mono with "Hspec").
+      spec_solver.
   Qed.
 
   Lemma li_wpe_val v Φ ann:

@@ -1,0 +1,7 @@
+(trace
+  (assume-reg |__v85_implemented| nil false)
+  (cycle)
+  (read-reg |SEE| nil (_ bv-1 128))
+  (write-reg |SEE| nil (_ bv1106 128))
+  (write-reg |__unconditional| nil true)
+  (read-reg |__v85_implemented| nil false))

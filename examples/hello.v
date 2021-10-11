@@ -30,9 +30,10 @@ Definition hello_world_string : list byte :=
 Definition hello_world_string_printed : list byte :=
   take (length hello_world_string - 1) hello_world_string.
 
-Definition hello_spec_trace : list seq_label → Prop := λ κs, κs `prefix_of`
-  ((λ b : byte, SWriteMem [BV{64} 0x101f1000] b) <$> hello_world_string_printed) ++
-  [SInstrTrap [BV{64} 0x0000000010300020]].
+Definition hello_spec_trace : list seq_label → Prop :=
+  sapp ((λ b : byte, SWriteMem [BV{64} 0x101f1000] b) <$> hello_world_string_printed) $
+  scons (SInstrTrap [BV{64} 0x0000000010300020]) $
+  snil.
 
 Definition hello_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ∃ (i : nat),
@@ -42,7 +43,7 @@ Definition hello_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   "R2" ↦ᵣ RVal_Bits [BV{64} 0x101f1000] ∗
   "R1" ↦ᵣ RVal_Bits (bv_add_Z [BV{64} 0x0000000010300690] i) ∗
   "R0" ↦ᵣ RVal_Bits (bv_zero_extend 64 (hello_world_string !!! i)) ∗
-  spec_trace (λ κs, κs `prefix_of` ((λ b : byte, SWriteMem [BV{64} 0x101f1000] b) <$> (drop i hello_world_string_printed)) ++ [SInstrTrap [BV{64} 0x0000000010300020]]) ∗
+  spec_trace (sapp ((λ b : byte, SWriteMem [BV{64} 0x101f1000] b) <$> (drop i hello_world_string_printed)) $ scons (SInstrTrap [BV{64} 0x0000000010300020]) snil) ∗
   True
 .
 
@@ -59,6 +60,9 @@ Lemma hello_loop `{!islaG Σ} `{!threadG} :
 Proof.
   iStartProof.
   Time repeat liAStep; liShow.
+  erewrite drop_S; csimpl.
+  2: { apply: list_lookup_lookup_total_lt => /=. lia. }
+  Time repeat liAStep; liShow.
   liInst Hevar (S i)%nat.
   Time repeat liAStep; liShow.
   liInst Hevar (S i)%nat.
@@ -66,27 +70,18 @@ Proof.
 
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
-  - erewrite drop_S => /=.
-    2: { apply: list_lookup_lookup_total_lt => /=. lia. }
-    normalize_and_simpl_goal => //=. { bv_solve. }
-    rewrite lookup_total_take /=; [|lia].
-    by bv_simplify.
-  - erewrite drop_S; csimpl.
-    2: { apply: list_lookup_lookup_total_lt => /=. lia. }
-    have ? : i = 13%nat. {
+  - rewrite lookup_total_take /=; [|lia]. bv_solve.
+  - have ? : i = 13%nat. {
       rename select (bv_concat _ _ _ = _) into Heq.
       revert select (_ !! i = Some vmem). move: Heq. clear => ??.
       by repeat (destruct i; simplify_eq/=).
     }
-    subst. rewrite drop_ge => //=. normalize_and_simpl_goal => //=; bv_solve.
+    subst. by rewrite drop_ge.
   - rename select (bv_concat _ _ _ ≠ _) into Hneq.
     bv_simplify_hyp Hneq.
     revert select (_ !! i = Some vmem). move: Hneq. clear => ??.
     by repeat (destruct i; simplify_eq/=).
   - erewrite list_lookup_total_correct; [|done]. bv_solve.
-  - erewrite drop_S; csimpl.
-    2: { apply: list_lookup_lookup_total_lt => /=. lia. }
-    rewrite lookup_total_take //. normalize_and_simpl_goal => //=; bv_solve.
 Time Qed.
 
 

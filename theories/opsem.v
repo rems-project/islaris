@@ -288,6 +288,7 @@ Record seq_local_state := {
 Instance eta_seq_local_state : Settable _ := settable! Build_seq_local_state <seq_trace; seq_regs; seq_nb_state>.
 
 Inductive seq_label : Set :=
+| SReadMem (a : addr) (v : bvn)
 | SWriteMem (a : addr) (v : bvn)
 | SInstrTrap (pc : addr)
 .
@@ -342,11 +343,19 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       addr = RVal_Bits (BVN 64 addr') ∧
       data = RVal_Bits (BVN (8 * len) data') ∧
       0 < Z.of_N len ∧
-      read_mem σ.(seq_mem) addr' len = Some (BVN (8 * len) data'') ∧
-      κ' = None ∧
-      σ' = σ ∧
-       ((θ' = θ <| seq_trace := t' |> ∧ data' = data'')
-        ∨ (θ' = θ <| seq_nb_state := true|>))
+      (* If there is memory, we read from that memory. *)
+      if read_mem σ.(seq_mem) addr' len is Some _ then
+        read_mem σ.(seq_mem) addr' len = Some (BVN (8 * len) data'') ∧
+        κ' = None ∧
+        σ' = σ ∧
+         ((θ' = θ <| seq_trace := t' |> ∧ data' = data'')
+          ∨ (θ' = θ <| seq_nb_state := true|>))
+      (* If there is no memory, we emit an event. *)
+      else
+        set_Forall (λ a, ¬ (bv_unsigned addr' ≤ bv_unsigned a < bv_unsigned addr' + Z.of_N len)) (dom (gset _) σ.(seq_mem)) ∧
+        κ' = Some (SReadMem addr' data') ∧
+        σ' = σ ∧
+        θ' = θ <| seq_trace := t' |>
     | Some (LWriteMem res kind addr data len tag) =>
       (* Ignoring tags and kinds. *)
       (∃ mem' addr' data',

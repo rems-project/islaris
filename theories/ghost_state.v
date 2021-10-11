@@ -6,7 +6,7 @@ From iris.bi Require Import fractional.
 From iris.base_logic Require Export lib.own.
 From iris.base_logic.lib Require Import ghost_map ghost_var.
 From iris.proofmode Require Export tactics.
-From isla Require Export opsem.
+From isla Require Export opsem spec.
 Set Default Proof Using "Type".
 Import uPred.
 
@@ -28,7 +28,7 @@ Class heapG Σ := HeapG {
   heap_backed_mem_name : gname;
   heap_full_trace : list seq_label;
   heap_spec_trace : list seq_label → Prop;
-  heap_spec_trace_inG :> inG Σ (frac_agreeR $ (list seq_label -d> PropO));
+  heap_spec_trace_inG :> inG Σ (frac_agreeR specO);
   heap_spec_trace_name : gname;
 }.
 
@@ -158,24 +158,24 @@ Section definitions.
   Definition mem_ctx (mem : mem_map) : iProp Σ :=
     ghost_map_auth heap_mem_name 1 mem ∗ backed_mem (dom _ mem).
 
-  Definition spec_trace_raw_def (Pκs: list seq_label → Prop) : iProp Σ :=
-    own heap_spec_trace_name (to_frac_agree (A:=list seq_label -d> PropO) (1/2) Pκs).
+  Definition spec_trace_raw_def (Pκs: spec) : iProp Σ :=
+    own heap_spec_trace_name (to_frac_agree (A:=specO) (1/2) Pκs).
   Definition spec_trace_raw_aux : seal (@spec_trace_raw_def). by eexists. Qed.
   Definition spec_trace_raw := unseal spec_trace_raw_aux.
   Definition spec_trace_raw_eq : @spec_trace_raw = @spec_trace_raw_def :=
     seal_eq spec_trace_raw_aux.
 
-  Definition spec_trace_def (Pκs: list seq_label → Prop) : iProp Σ :=
-    ∃ Pκs' : _ → Prop, ⌜∀ x, Pκs x → Pκs' x⌝ ∗ spec_trace_raw Pκs'.
+  Definition spec_trace_def (Pκs: spec) : iProp Σ :=
+    ∃ Pκs', ⌜Pκs ⊆ Pκs'⌝ ∗ spec_trace_raw Pκs'.
   Definition spec_trace_aux : seal (@spec_trace_def). by eexists. Qed.
   Definition spec_trace := unseal spec_trace_aux.
   Definition spec_trace_eq : @spec_trace = @spec_trace_def :=
     seal_eq spec_trace_aux.
 
   Definition spec_ctx (κs : list seq_label) : iProp Σ :=
-    ∃ (Pκs : _ → Prop) κscur, ⌜heap_full_trace = κscur ++ κs⌝ ∗
+    ∃ Pκs κscur, ⌜heap_full_trace = κscur ++ κs⌝ ∗
     ⌜heap_spec_trace κscur⌝ ∗
-    ⌜∀ κs, Pκs κs → heap_spec_trace (κscur ++ κs)⌝ ∗
+    ⌜Pκs ⊆ λ κs, heap_spec_trace (κscur ++ κs)⌝ ∗
     spec_trace_raw Pκs.
 
   Definition state_ctx (σ : seq_global_state) (κs : list seq_label) : iProp Σ :=
@@ -636,19 +636,19 @@ Section spec.
     spec_trace_raw Pκs1 -∗ spec_trace_raw Pκs2.
   Proof.
     rewrite spec_trace_raw_eq /spec_trace_raw_def => ?.
-    by have ->: Pκs1 ≡@{_ -d> PropO} Pκs2.
+    by have ->: Pκs1 ≡@{specO} Pκs2.
   Qed.
 
-  Lemma spec_trace_mono (Pκs1 Pκs2 : _ → Prop) :
-    (∀ x, Pκs2 x → Pκs1 x) →
+  Lemma spec_trace_mono Pκs1 Pκs2 :
+    Pκs2 ⊆ Pκs1 →
     spec_trace Pκs1 -∗ spec_trace Pκs2.
   Proof.
     rewrite spec_trace_eq /spec_trace_def => ?.
-    iDestruct 1 as (Pκs' ?) "Hspec". iExists _. iFrame. iPureIntro. naive_solver.
+    iDestruct 1 as (Pκs' ?) "Hspec". iExists _. iFrame. iPureIntro. spec_solver.
   Qed.
 
   Lemma spec_trace_raw_agree Pκs1 Pκs2 :
-    spec_trace_raw Pκs1 -∗ spec_trace_raw Pκs2 -∗ ⌜∀ x, Pκs1 x ↔ Pκs2 x⌝.
+    spec_trace_raw Pκs1 -∗ spec_trace_raw Pκs2 -∗ ⌜Pκs1 ≡ Pκs2⌝.
   Proof.
     rewrite spec_trace_raw_eq. iIntros "Ht1 Ht2".
     iDestruct (own_valid_2 with "Ht1 Ht2") as %[Hq Ha]%frac_agree_op_valid.
@@ -663,13 +663,13 @@ Section spec.
     iDestruct (spec_trace_raw_mono with "H1") as "H1"; [done|].
     rewrite spec_trace_raw_eq /spec_trace_raw_def.
     iCombine "H1 H2" as "H". rewrite -frac_agree_op Qp_half_half.
-    iMod (own_update _ _ (to_frac_agree (A:= _ -d> _) 1 Pκs) with "H") as "H".
+    iMod (own_update _ _ (to_frac_agree (A:=specO) 1 Pκs) with "H") as "H".
     { by apply cmra_update_exclusive. }
     rewrite -{1}Qp_half_half frac_agree_op own_op.
     by iFrame.
   Qed.
 
-  Lemma spec_ctx_cons κ κs (Pκs : _ → Prop):
+  Lemma spec_ctx_cons κ κs (Pκs : spec):
     Pκs [κ] →
     spec_ctx (κ :: κs) -∗ spec_trace Pκs ==∗
     spec_ctx κs ∗ spec_trace (λ κs, Pκs (κ::κs)).
@@ -679,11 +679,11 @@ Section spec.
     rewrite spec_trace_eq. iDestruct 1 as (Pκs' HPκs') "Hs".
     iDestruct (spec_trace_raw_agree with "Hsc Hs") as %HPκs.
     iMod (spec_trace_raw_update with "Hsc Hs") as "[Ht ?]".
-    iModIntro. iSplitR "Ht". 2: { iExists (λ κs, Pκs (κ :: κs)). by iFrame. }
+    iModIntro. iSplitR "Ht". 2: { iExists (λ κs, Pκs (κ :: κs)). iFrame. iPureIntro => ?. done. }
     iExists _, (κscur ++ [κ]). iFrame. iPureIntro. split_and!.
     - by rewrite -app_assoc -cons_middle.
-    - naive_solver.
-    - move => ?. rewrite -app_assoc -cons_middle. naive_solver.
+    - spec_solver.
+    - move => ?. rewrite -app_assoc -cons_middle. spec_solver.
   Qed.
 
 End spec.

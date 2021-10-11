@@ -183,7 +183,7 @@ Section lifting.
     iFrame.
   Qed.
 
-  Lemma wp_next_instr_extern a newPC (Pκs : _ → Prop):
+  Lemma wp_next_instr_extern a newPC (Pκs : spec):
     Z_to_bv_checked 64 a = Some newPC →
     Pκs [SInstrTrap newPC] →
     next_instruction a -∗
@@ -466,12 +466,13 @@ Section lifting.
     iDestruct (mem_mapsto_lookup with "Hmem Hm") as %[len' [??]].
     have ? : len' = len by lia. subst.
     iSplit. {
-      iPureIntro. eexists _, _, _, _. simpl. econstructor; [done | by econstructor |].
-      naive_solver.
+      iPureIntro. eexists _, _, _, _. simpl. econstructor; [done | by econstructor |] => /=.
+      eexists _, _, _. simplify_option_eq. naive_solver.
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
     inv_seq_step.
-    revert select (∃ _, _) => -[?[?[?[?[?[?[?[?[?[[??]|?]]]]]]]]]]; simplify_eq/=. 2:{
+    revert select (∃ _, _) => -[?[?[?[?[?[??]]]]]];
+      simplify_option_eq; destruct_and!; destruct_or!; destruct_and?; simplify_eq. 2:{
       iFrame. iSplitL; [|done]. by iApply wp_value.
     }
     iFrame. iSplit; [|done].
@@ -491,6 +492,35 @@ Section lifting.
     iDestruct (mem_mapsto_array_lookup_acc with "Hm") as "[Hv Hm]"; [done..|].
     iApply (wp_read_mem with "Hv"); [lia..|].
     iIntros (?) "Hl". iApply ("Hcont" with "[//]"). by iApply "Hm".
+  Qed.
+
+  Lemma wp_read_mmio n len a (vread : bv _) es ann kind tag (Pκs : spec):
+    n = (8 * len)%N →
+    0 < Z.of_N len →
+    Pκs [SReadMem a vread] →
+    mmio_range a (Z.of_N len) -∗
+    spec_trace Pκs -∗
+    (spec_trace (λ κs, Pκs (SReadMem a vread::κs)) -∗ WPasm es) -∗
+    WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :: es).
+  Proof.
+    iIntros (???) "Hm Hspec Hcont". subst. setoid_rewrite wp_asm_unfold.
+    iIntros ([???]) "/= -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ????) "(Hctx&Hictx&Hmem)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iDestruct (mmio_range_lookup with "Hmem Hm") as %Hread; [done|].
+    rewrite N2Z.id in Hread.
+    iDestruct (mmio_range_Forall with "Hmem Hm") as %?.
+    iSplit. {
+      iPureIntro. eexists _, _, _, _. simpl. econstructor; [done | by econstructor |] => /=.
+      eexists _, _, (bv_0 _). simplify_option_eq. naive_solver.
+    }
+    iIntros "!>" (????). iMod "HE" as "_".
+    inv_seq_step.
+    revert select (∃ _, _) => -[?[?[?[?[??]]]]]; simplify_option_eq; destruct_and!; simplify_eq.
+    iMod (spec_ctx_cons with "Hctx Hspec") as "[Hctx Hspec]"; [done|].
+    iFrame. iModIntro. iSplitL; [|done].
+    by iApply ("Hcont" with "Hspec").
   Qed.
 
   Lemma wp_write_mem n len a (vold vnew : bv n) es ann res kind tag:
@@ -535,7 +565,7 @@ Section lifting.
     iIntros "Hl". iApply ("Hcont"). by iApply "Hm".
   Qed.
 
-  Lemma wp_write_mmio n len a (vnew : bv n) es ann res kind tag (Pκs : _ → Prop):
+  Lemma wp_write_mmio n len a (vnew : bv n) es ann res kind tag (Pκs : spec):
     n = (8 * len)%N →
     0 < Z.of_N len →
     Pκs [SWriteMem a vnew] →

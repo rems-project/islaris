@@ -1,0 +1,18 @@
+0000000000080168 <uart1_putc>:
+   80168:	d28a0a82 	mov	x2, #0x5054                	// #20564
+   8016c:	12001c00 	and	w0, w0, #0xff
+   80170:	f2a7e422 	movk	x2, #0x3f21, lsl #16
+//@constraint: = (bvand R2 0xfff0000000000003) 0x0000000000000000
+   80174:	b9400041 	ldr	w1, [x2]
+   80178:	372800a1 	tbnz	w1, #5, 8018c <uart1_putc+0x24>
+   8017c:	d503201f 	nop
+   80180:	d503201f 	nop
+//@constraint: = (bvand R2 0xfff0000000000003) 0x0000000000000000
+   80184:	b9400041 	ldr	w1, [x2]
+   80188:	362fffc1 	tbz	w1, #5, 80180 <uart1_putc+0x18>
+   8018c:	d28a0801 	mov	x1, #0x5040                	// #20544
+   80190:	f2a7e421 	movk	x1, #0x3f21, lsl #16
+//@constraint: = (bvand R1 0xfff0000000000003) 0x0000000000000000
+   80194:	b9000020 	str	w0, [x1]
+   80198:	d65f03c0 	ret
+   8019c:	d503201f 	nop

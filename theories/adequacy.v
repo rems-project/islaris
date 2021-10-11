@@ -12,7 +12,7 @@ Class islaPreG Σ := PreIslaG {
   heap_pre_struct_regs_inG :> ghost_mapG Σ (string * string) valu;
   heap_pre_mem_inG :> ghost_mapG Σ addr byte;
   heap_pre_backed_mem_inG :> inG Σ (backed_memUR);
-  heap_pre_spec_inG :> inG Σ (frac_agreeR $ (list seq_label -d> PropO));
+  heap_pre_spec_inG :> inG Σ (frac_agreeR specO);
 }.
 
 Definition islaΣ : gFunctors :=
@@ -21,7 +21,7 @@ Definition islaΣ : gFunctors :=
    ghost_mapΣ (string * string) valu;
    ghost_mapΣ addr byte;
    GFunctor (constRF backed_memUR);
-   GFunctor (frac_agreeR $ (list seq_label -d> PropO))].
+   GFunctor (frac_agreeR specO)].
 
 Instance subG_islaPreG {Σ} : subG islaΣ Σ → islaPreG Σ.
 Proof. solve_inG. Qed.
@@ -32,7 +32,7 @@ Definition initial_local_state (regs : reg_map) : seq_local_state := {|
   seq_nb_state := false;
 |}.
 
-Lemma isla_adequacy Σ `{!islaPreG Σ} (instrs : gmap addr (list trc)) (mem : mem_map) (regs : list reg_map) (Pκs : _ → Prop) t2 σ2 κs n:
+Lemma isla_adequacy Σ `{!islaPreG Σ} (instrs : gmap addr (list trc)) (mem : mem_map) (regs : list reg_map) (Pκs : spec) t2 σ2 κs n:
   Pκs [] →
   (∀ {HG : islaG Σ},
     ⊢ instr_table instrs -∗ backed_mem (dom _ mem) -∗ spec_trace Pκs
