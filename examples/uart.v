@@ -4,8 +4,7 @@ From isla.instructions.uart Require Import instrs.
 Section proof.
 Context `{!islaG Σ} `{!threadG}.
 
-Definition bus_to_reg32 (b : Z) : Z :=
-  b - 0x3f000000.
+Notation bus_to_reg32 b := (b - 0x3f000000) (only parsing).
 Definition AUX_MU_LSR_REG : addr := [BV{64} bus_to_reg32 0x7e215054].
 Definition AUX_MU_IO_REG : addr := [BV{64} bus_to_reg32 0x7e215040].
 
@@ -102,20 +101,14 @@ Lemma uart1_putc :
 Proof.
   iStartProof.
   Time repeat liAStep; liShow.
-  have -> : LET3 = AUX_MU_LSR_REG by apply/bv_eq; done.
-  Time repeat liAStep; liShow.
-  - have -> : LET11 = AUX_MU_IO_REG by apply/bv_eq; done.
-    Time repeat liAStep; liShow.
-    rewrite sif_true; [|li_shelve_sidecond].
+  - rewrite sif_true; [|li_shelve_sidecond].
     Time repeat liAStep; liShow.
   - rewrite sif_false; [|li_shelve_sidecond].
     liInst Hevar (scons (SWriteMem AUX_MU_IO_REG (bv_zero_extend 32 (bv_extract 0 8 c))) P).
     Time repeat liAStep; liShow.
-    have -> : LET10 = AUX_MU_IO_REG by apply/bv_eq; done.
-    Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
+  all: try by bv_solve.
   all: try by bits_simplify.
-  + apply/bv_eq. done.
   + rename select (_ = [BV{1} 1]) into Hn.
     bitify_hyp Hn. move: (Hn 0 ltac:(done)) => {}Hn.
     by bits_simplify_hyp Hn.

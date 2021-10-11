@@ -130,6 +130,20 @@ Ltac reduce_closed_N :=
   | H : context [N.add ?a ?b] |- _ => progress reduce_closed (N.add a b)
   end.
 
+Ltac reduce_closed_bv_simplify_tac := idtac.
+Ltac reduce_closed_bv_simplify :=
+  idtac;
+  reduce_closed_bv_simplify_tac;
+  (* reduce closed logical operators that lia does not understand *)
+  repeat match goal with
+  | |- context [Z.lor ?a ?b] => progress reduce_closed (Z.lor a b)
+  | H : context [Z.lor ?a ?b] |- _ => progress reduce_closed (Z.lor a b)
+  | |- context [Z.land ?a ?b] => progress reduce_closed (Z.land a b)
+  | H : context [Z.land ?a ?b] |- _ => progress reduce_closed (Z.land a b)
+  | |- context [Z.lxor ?a ?b] => progress reduce_closed (Z.lxor a b)
+  | H : context [Z.lxor ?a ?b] |- _ => progress reduce_closed (Z.lxor a b)
+  end.
+
 
 Ltac bv_simplify :=
   unLET;
@@ -154,10 +168,12 @@ Tactic Notation "bv_simplify_hyp" "select" open_constr(pat) :=
 
 Ltac bv_simplify_arith :=
   bv_simplify;
-  autorewrite with bv_unfolded_to_arith.
+  autorewrite with bv_unfolded_to_arith;
+  reduce_closed_bv_simplify.
 Ltac bv_simplify_arith_hyp H :=
   bv_simplify_hyp H;
-  autorewrite with bv_unfolded_to_arith in H.
+  autorewrite with bv_unfolded_to_arith in H;
+  reduce_closed_bv_simplify.
 Tactic Notation "bv_simplify_arith_hyp" "select" open_constr(pat) :=
   select pat (fun H => bv_simplify_arith_hyp H).
 
@@ -202,7 +218,7 @@ Qed.
 Ltac onesify n :=
   lazymatch n with
   | O => idtac
-  | S ?n' => 
+  | S ?n' =>
     let m := eval vm_compute in (Z.of_nat n) in
     let x := eval vm_compute in (Z.ones m) in
     change x with (Z.ones m);
@@ -212,7 +228,7 @@ Ltac onesify n :=
 Ltac onesify_hyp n H :=
   lazymatch n with
   | O => idtac
-  | S ?n' => 
+  | S ?n' =>
     let m := eval vm_compute in (Z.of_nat n) in
     let x := eval vm_compute in (Z.ones m) in
     change x with (Z.ones m) in H;
@@ -232,8 +248,8 @@ Hint Rewrite
 Hint Rewrite <- Z.land_ones using lia : bits_simplify.
 
 Ltac bool_decide_split :=
-  repeat match goal with 
-  | |- context [bool_decide (?a < ?b)] => 
+  repeat match goal with
+  | |- context [bool_decide (?a < ?b)] =>
     destruct (Z.lt_ge_cases a b);
     [rewrite !(bool_decide_eq_true_2 (a < b)) | rewrite !(bool_decide_eq_false_2 (a < b)) ]; try lia
   | G : context [bool_decide (?a < ?b)] |- _ =>
@@ -257,7 +273,7 @@ Ltac bits_simplify :=
   let Hn := fresh "Hn" in
   intros n Hn;
   repeat (first [
-    progress autorewrite with bits_simplify | 
+    progress autorewrite with bits_simplify |
     progress bool_decide_split |
     progress neg_bits_zero |
     progress simpl
@@ -274,7 +290,7 @@ Ltac bits_simplify_hyp H :=
   repeat match goal with B : bv ?n |- _ => rewrite !(bv_and_ones B) in H end;
   unfold bv_unsigned_land in H;
   repeat (first [
-    progress autorewrite with bits_simplify in H| 
+    progress autorewrite with bits_simplify in H|
     progress bool_decide_split |
     progress simpl in H
   ]).
