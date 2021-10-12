@@ -1,4 +1,4 @@
 (install
- (files aarch64_isla_coq.toml)
+ (files aarch64_isla_coq.toml riscv64_isla_coq.toml)
  (section etc)
  (package coq-isla))

@@ -28,6 +28,10 @@ generate:
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq -j 8 pkvm_handler/pkvm_handler.dump
 .PHONY: generate
 
+generate_riscv:
+	@echo "[isla-coq] examples/riscv64_test.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/riscv64_test.dump -j 8 -o instructions/riscv64_test --coqdir=isla.instructions.riscv64_test
+.PHONY: generate_riscv
 
 clean:
 	@dune clean

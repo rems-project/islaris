@@ -583,16 +583,27 @@ Section instances.
       iExists _. iFrame. iApply ("Hwp" with "[//] [//] Hregs").
   Qed.
 
-  Lemma simpl_hyp_regcol_reg_pred r P G:
+  Lemma simpl_hyp_reg_pred r P G:
     (∀ v, r ↦ᵣ v -∗ P v -∗ G) -∗
     simplify_hyp (r ↦ᵣ: P) G.
   Proof.
     rewrite reg_mapsto_pred_eq /reg_mapsto_pred_def.
     iIntros "HG [%v [? ?]]". by iApply ("HG" with "[$]").
   Qed.
-  Global Instance simpl_hyp_regcol_reg_pred_inst r P:
+  Global Instance simpl_hyp_reg_pred_inst r P:
     SimplifyHyp (r ↦ᵣ: P) (Some 0%N) :=
-    λ G, i2p (simpl_hyp_regcol_reg_pred r P G).
+    λ G, i2p (simpl_hyp_reg_pred r P G).
+
+  Lemma simpl_hyp_struct_reg_pred r f P G:
+    (∀ v, r # f ↦ᵣ v -∗ P v -∗ G) -∗
+    simplify_hyp (r # f ↦ᵣ: P) G.
+  Proof.
+    rewrite struct_reg_mapsto_pred_eq /struct_reg_mapsto_pred_def.
+    iIntros "HG [%v [? ?]]". by iApply ("HG" with "[$]").
+  Qed.
+  Global Instance simpl_hyp_struct_reg_pred_inst r f P:
+    SimplifyHyp (r # f ↦ᵣ: P) (Some 0%N) :=
+    λ G, i2p (simpl_hyp_struct_reg_pred r f P G).
 
   Lemma subsume_instr a i1 i2 G:
     ⌜i1 = i2⌝ ∗ G -∗

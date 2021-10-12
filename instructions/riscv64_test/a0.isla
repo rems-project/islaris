@@ -1,0 +1,9 @@
+(trace
+  (cycle)
+  (declare-const v0 (_ BitVec 64))
+  (read-reg |PC| nil v0)
+  (define-const v1 (bvadd v0 #x0000000000000004))
+  (write-reg |nextPC| nil v1)
+  (write-reg |x10| nil #x0000000000000000)
+  (read-reg |nextPC| nil v1)
+  (write-reg |PC| nil v1))

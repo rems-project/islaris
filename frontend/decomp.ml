@@ -2,35 +2,61 @@ open Isla_lang_if
 open Parse_dump
 open Extra
 
-(** [ignored_registers] is a list of registers for which read and write events
-    are removed from the trace. *)
-let ignored_registers = [
-  "SEE";
-  "BTypeNext";
-  "__currentInstrLength";
-  "__PC_changed";
-  "__unconditional";
-  "__v81_implemented";
-  "__v82_implemented";
-  "__v83_implemented";
-  "__v84_implemented";
-  "__v85_implemented";
-  "__trickbox_enabled";
-  "__CNTControlBase";
-  "__defaultRAM";
-  "__isla_monomorphize_reads";
-  "__isla_monomorphize_writes";
-  "__highest_el_aarch32";
-]
+type arch = {
+  arch_ignored_registers : string list;
+  (** List of registers for which read and write events
+      are removed from the trace. *)
+  arch_isla_config       : Filename.filepath;
+  (** Absolute path to the isla configuration file. *)
+  arch_snapshot_file     : string;
+  (** Name of the snapshot file for this architecture. *)
+  arch_coq_name          : string
+  (** Name of Coq the module for this architecture. *)
+}
+
+let aarch64 : arch = {
+  arch_ignored_registers = [
+    "SEE";
+    "BTypeNext";
+    "__currentInstrLength";
+    "__PC_changed";
+    "__unconditional";
+    "__v81_implemented";
+    "__v82_implemented";
+    "__v83_implemented";
+    "__v84_implemented";
+    "__v85_implemented";
+    "__trickbox_enabled";
+    "__CNTControlBase";
+    "__defaultRAM";
+    "__isla_monomorphize_reads";
+    "__isla_monomorphize_writes";
+    "__highest_el_aarch32";
+  ];
+  arch_isla_config = Filename.concat Config.etc "aarch64_isla_coq.toml";
+  arch_snapshot_file = "aarch64-pc.ir";
+  arch_coq_name = "aarch64"
+}
+
+let riscv64 : arch = {
+  arch_ignored_registers = [
+    "nextPC";
+  ];
+  arch_isla_config = Filename.concat Config.etc "riscv64_isla_coq.toml";
+  arch_snapshot_file = "riscv64.ir";
+  arch_coq_name = "riscv64"
+}
+
+let current_arch = aarch64
 
 (** [event_filter e] returns true for all events that are not "Cycle" and that
-    are not register operations for registers in [ignored_registers]. *)
+    are not register operations for registers in [arch_ignored_registers]. *)
 let event_filter : event -> bool = fun e ->
   let open Ast in
   match e with
   | AssumeReg(n,_,_,_)
   | ReadReg(n,_,_,_)
-  | WriteReg(n,_,_,_) -> not (List.mem n ignored_registers)
+  | WriteReg(n,_,_,_) -> not (List.mem n current_arch.arch_ignored_registers)
   | Cycle(_)          -> false
   | MarkReg(_, _, _)  -> false
   | _                 -> true
@@ -48,10 +74,6 @@ let gen_coq : string -> string -> string -> unit = fun name isla_f coq_f ->
   let trs = filter_events event_filter trs in
   (* Generating the Coq file. *)
   Coq_pp.write_traces name trs (Some(coq_f))
-
-(** Absolute path to the aarch64 isla configuration file. *)
-let aarch64_isla_coq : Filename.filepath =
-  Filename.concat Config.etc "aarch64_isla_coq.toml"
 
 (** Keys allowed in name templates. *)
 let template_keys : (string * string) list = [
@@ -96,9 +118,10 @@ let build_task : Template.t -> string -> decomp_line -> task =
     String.concat " " (List.map constr_to_string d.dl_constrs)
   in
   let task_command =
-    Printf.sprintf "isla-footprint aarch64-pc.ir -f isla_footprint_no_init \
+    Printf.sprintf "isla-footprint %s -f isla_footprint_no_init \
       -C %s --simplify-registers -s -x -i %s %s > %s 2> /dev/null"
-      aarch64_isla_coq d.dl_revopcode constrs task_isla_file
+      current_arch.arch_snapshot_file current_arch.arch_isla_config
+      d.dl_revopcode constrs task_isla_file
   in
   {task_command; task_name = name; task_isla_file; task_coq_file}
 
@@ -158,7 +181,7 @@ let gen_spec_file : Template.t -> string -> string list -> decomp_line
     let pp fmt = Format.fprintf ff fmt in
     (* Imports. *)
     pp "Require Import isla.isla.@.";
-    pp "Require Import isla.aarch64.aarch64.@.";
+    pp "Require Import isla.%s.%s.@." current_arch.arch_coq_name current_arch.arch_coq_name;
     let build_mp name = String.concat "." (coq_prefix @ [name]) in
     pp "Require Export %s.@." (build_mp name);
     List.iter (pp "Require Import %s.@.") spec.spec_imports;
@@ -191,7 +214,7 @@ let gen_dune : string list -> Format.formatter -> unit = fun coq_prefix ff ->
   pp " (package coq-isla)@.";
   pp " (flags -w -notation-overridden -w -redundant-canonical-projection)@.";
   pp " (synopsis \"Generated file\")@.";
-  pp " (theories isla isla.aarch64))@."
+  pp " (theories isla isla.%s))@." current_arch.arch_coq_name
 
 (* Entry point. *)
 let run name_template output_dir coq_prefix nb_jobs input_file =

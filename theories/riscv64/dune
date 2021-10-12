@@ -1,5 +1,5 @@
 (coq.theory
- (name isla.RV64)
+ (name isla.riscv64)
  (package coq-isla)
  (flags -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "???")

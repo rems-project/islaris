@@ -2,7 +2,7 @@ Require Export isla.sail_riscv.base.
 Require Export isla.sail_riscv.RV64.
 Require Export isla.opsem.
 Require Import isla.adequacy.
-Require Import isla.RV64.arch.
+Require Import isla.riscv64.arch.
 
 (*** Relating values *)
 Definition bv_to_mword {n1 n2} (b : bv n1) `{H:ArithFact (n2 >=? 0)} : mword n2 :=
