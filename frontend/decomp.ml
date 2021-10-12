@@ -96,7 +96,7 @@ let build_task : Template.t -> string -> decomp_line -> task =
     String.concat " " (List.map constr_to_string d.dl_constrs)
   in
   let task_command =
-    Printf.sprintf "isla-footprint -f isla_footprint_no_init \
+    Printf.sprintf "isla-footprint aarch64-pc.ir -f isla_footprint_no_init \
       -C %s --simplify-registers -s -x -i %s %s > %s 2> /dev/null"
       aarch64_isla_coq d.dl_revopcode constrs task_isla_file
   in

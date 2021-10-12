@@ -26,8 +26,10 @@ else
   ISLA_SNAP_ROOT="$(realpath "$ISLA_SNAP_REPO")"
 fi
 
-# Architecture file.
-IR_FILE="$ISLA_SNAP_ROOT/aarch64-pc.ir"
+# The name of the architecture file is the first argument to isla-footprint.
+IR_FILE="$ISLA_SNAP_ROOT/$1"
+# remove the first argument from $@
+shift
 
 # Check that the architecture file exists.
 if [ ! -e "$IR_FILE" ]; then
