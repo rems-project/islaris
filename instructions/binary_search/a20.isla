@@ -1,4 +1,5 @@
 (trace
+  (assume-reg |__currentInstrLength| nil (_ bv4 128))
   (assume-reg |__v85_implemented| nil false)
   (cycle)
   (read-reg |SEE| nil (_ bv-1 128))
@@ -8,4 +9,10 @@
   (declare-const v48 (_ BitVec 64))
   (read-reg |R1| nil v48)
   (define-const v54 (bvor #x0000000000000000 v48))
-  (write-reg |R21| nil v54))
+  (write-reg |R21| nil v54)
+  (read-reg |__PC_changed| nil false)
+  (declare-const v55 (_ BitVec 64))
+  (read-reg |_PC| nil v55)
+  (read-reg |__currentInstrLength| nil (_ bv4 128))
+  (define-const v56 (bvadd v55 #x0000000000000004))
+  (write-reg |_PC| nil v56))

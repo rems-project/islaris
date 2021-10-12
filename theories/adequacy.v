@@ -26,13 +26,14 @@ Definition islaΣ : gFunctors :=
 Instance subG_islaPreG {Σ} : subG islaΣ Σ → islaPreG Σ.
 Proof. solve_inG. Qed.
 
-Definition initial_local_state (regs : reg_map) : seq_local_state := {|
+Definition initial_local_state `{!Arch} (regs : reg_map) : seq_local_state := {|
   seq_trace := [];
   seq_regs := regs;
+  seq_pc_reg := arch_pc_reg;
   seq_nb_state := false;
 |}.
 
-Lemma isla_adequacy Σ `{!islaPreG Σ} (instrs : gmap addr (list trc)) (mem : mem_map) (regs : list reg_map) (Pκs : spec) t2 σ2 κs n:
+Lemma isla_adequacy Σ `{!Arch} `{!islaPreG Σ} (instrs : gmap addr (list trc)) (mem : mem_map) (regs : list reg_map) (Pκs : spec) t2 σ2 κs n:
   Pκs [] →
   (∀ {HG : islaG Σ},
     ⊢ instr_table instrs -∗ backed_mem (dom _ mem) -∗ spec_trace Pκs
@@ -69,7 +70,7 @@ Proof.
     iMod (ghost_map_alloc (∅ : gmap (string * string) valu)) as (γsr) "[Hsr1 Hsr2]".
     set (HthreadG := ThreadG γr γsr).
     setoid_rewrite wp_asm_unfold.
-    iApply ("Hwp" with "[Hr2]"); [|done|done|].
+    iApply ("Hwp" with "[Hr2]"); [|done..|].
     + iApply (big_sepM_impl with "Hr2").
       iIntros "!>" (???) "?". by rewrite reg_mapsto_eq.
     + iExists _, _. iFrame. iPureIntro. split_and! => //.

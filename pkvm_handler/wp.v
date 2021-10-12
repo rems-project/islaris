@@ -1,8 +1,5 @@
-Require Import isla.base.
-Require Import isla.opsem.
-Require Import isla.automation.
+Require Import isla.aarch64.aarch64.
 Require Import isla.examples.pkvm_handler.instrs.
-Require Import isla.sys_regs.
 
 Definition instrs_iprop `{!islaG Σ} `{!threadG} := ([∗ list] i ∈ instr_map, instr i.1 (Some i.2))%I.
 
@@ -41,7 +38,7 @@ Proof.
 Qed.
 
 Definition mrs_regs_32 :=
-  (λ r, (KindReg r, BitsShape 64)) <$> 
+  (λ r, (KindReg r, BitsShape 64)) <$>
   ["CPTR_EL2"; "CPTR_EL3"; "CPACR_EL1";
   "CNTHCTL_EL2"; "MDCR_EL2"; "ICC_SRE_EL2";
   "CNTKCTL_EL1"; "MDCR_EL3";
@@ -52,7 +49,7 @@ Definition mrs_regs_32 :=
 Definition mrs_regs_64 :=
   (λ r, (KindReg r, BitsShape 64)) <$>
   ["MPAM2_EL2"; "MPAMIDR_EL1"; "MPAM3_EL3"].
-  
+
 
 Definition exists_reg r :=
   [(KindReg r, BitsShape 64)].
@@ -82,7 +79,7 @@ Proof.
   Unshelve.
   (* TODO: Check if bv_solve on the latest branch solves this, otherwise fix it *)
   all: prepare_sidecond.
-  bv_solve. 
+  bv_solve.
 Qed.
 
 Definition spec_lsr `{!islaG Σ} `{!threadG} a (v vold : bv 64) : iProp Σ :=

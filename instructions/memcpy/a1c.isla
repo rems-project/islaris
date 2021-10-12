@@ -39,4 +39,5 @@
   (read-reg |TCR_EL2| nil #x0000000000000000)
   (read-reg |__v83_implemented| nil false)
   (write-reg |_PC| nil v52)
-  (write-reg |__PC_changed| nil true))
+  (write-reg |__PC_changed| nil true)
+  (read-reg |__PC_changed| nil true))

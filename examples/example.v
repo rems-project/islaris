@@ -1,4 +1,4 @@
-Require Import isla.isla.
+Require Import isla.aarch64.aarch64.
 From isla.instructions.example Require Import instrs.
 
 (*
@@ -11,19 +11,19 @@ compiled via GCC:
         ret
  *)
 
-Definition start_address := [BV{64} (0x0000000010300000 - 0x4)].
+Definition start_address := [BV{64} (0x0000000010300000)].
 Definition test_state_local := {|
   seq_trace  := [];
   seq_regs   :=
     <[ "_PC" := RVal_Bits start_address ]> $
-    <[ "__PC_changed" := RVal_Bool false ]> $
     <[ "R30" := RegVal_Poison ]> $
     <[ "R1" := RegVal_Poison ]> $
     <[ "R0" := RegVal_Poison ]> $
     <[ "R27" := RVal_Bits [BV{64} 0x101f1000] ]> $
     <[ "R28" := RegVal_Poison ]> $
      sys_regs_map;
-  seq_nb_state  := false;
+   seq_pc_reg := "_PC";
+   seq_nb_state  := false;
 |}.
 
 Definition test_state_global := {|
@@ -54,7 +54,6 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300014 (Some a14) -∗
   reg_col sys_regs -∗
   "_PC" ↦ᵣ RVal_Bits start_address -∗
-  "__PC_changed" ↦ᵣ RVal_Bool false -∗
   "R30" ↦ᵣ RegVal_Poison -∗
   "R1" ↦ᵣ RegVal_Poison -∗
   "R0" ↦ᵣ RegVal_Poison -∗
@@ -80,11 +79,11 @@ Proof.
   apply: (isla_adequacy Σ) => //. { unfold test_state_spec. spec_solver. }
   iIntros (?) "#Hi #Hbm Hspec /= !>". iSplitL => //.
   iIntros (?).
-  do 7 (rewrite big_sepM_insert; [|by vm_compute]).
-  iIntros "(?&?&?&?&?&?&?&Hregs)".
+  do 6 (rewrite big_sepM_insert; [|by vm_compute]).
+  iIntros "(?&?&?&?&?&?&Hregs)".
   iApply wp_asm_thread_ctx. iIntros (?) "Hctx".
   iMod (sys_regs_init with "Hctx Hregs") as "(?&?&?)". iModIntro. iFrame.
-  iApply (test_state_iris with "[] [] [] [] [] [] [$] [$] [$] [$] [$] [$] [$] [$] [] [$]").
+  iApply (test_state_iris with "[] [] [] [] [] [] [$] [$] [$] [$] [$] [$] [$] [] [$]").
   all: try by unshelve iApply (instr_intro with "Hi").
   all: try by iApply (mmio_range_intro with "[//]").
 Qed.
@@ -144,8 +143,8 @@ Proof.
   apply: (isla_adequacy Σ) => //. { unfold test_state_spec. spec_solver. }
   iIntros (?) "#Hi #Hbm Hspec /= !>". iSplitL => //.
   iIntros (?) "/=".
-  do 7 (rewrite big_sepM_insert; [|by vm_compute]).
-  iIntros "(HPC&Hchanged&?&?&?&?&?&Hregs)".
+  do 6 (rewrite big_sepM_insert; [|by vm_compute]).
+  iIntros "(HPC&?&?&?&?&?&Hregs)".
   iApply wp_asm_thread_ctx. iIntros (?) "Hctx".
   iMod (sys_regs_init with "Hctx Hregs") as "(?&?&?)". iModIntro. iFrame.
 
@@ -162,8 +161,8 @@ Proof.
     - iApply test_state_iris_fn1.
       all: try by unshelve iApply (instr_intro with "Hi").
   }
-  iApply (wp_next_instr_pre with "Hmain [HPC Hchanged]").
-  - iExists _, _, _. by iFrame.
+  iApply (wp_next_instr_pre with "[$HPC] [Hmain]").
+  - by rewrite /bv_unsigned/=.
   - iFrame. by iApply (mmio_range_intro with "[//]").
 Qed.
 
@@ -185,8 +184,8 @@ Definition test_state2_local (n1 : Z) Hin := {|
   seq_regs   :=
     <[ "R1" := RVal_Bits (BV 64 n1 Hin) ]> $
     <[ "_PC" := RVal_Bits start_address ]> $
-    <[ "__PC_changed" := RVal_Bool false ]> $
     sys_regs_map;
+  seq_pc_reg := "_PC";
   seq_nb_state  := false;
 |}.
 Definition test_state2_global  := {|
@@ -219,8 +218,7 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   instr 0x0000000010300038 (Some a38) -∗
 
   reg_col sys_regs -∗
-  "_PC" ↦ᵣ RVal_Bits [BV{64} (0x0000000010300018 - 0x4)] -∗
-  "__PC_changed" ↦ᵣ RVal_Bool false -∗
+  "_PC" ↦ᵣ RVal_Bits [BV{64} 0x0000000010300018] -∗
   "R30" ↦ᵣ RegVal_Poison -∗
   "R1" ↦ᵣ RVal_Bits (BV 64 n1 Hin) -∗
   "R0" ↦ᵣ RegVal_Poison -∗

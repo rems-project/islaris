@@ -290,6 +290,13 @@ Proof.
   - f_equal. by apply bv_eq.
   - by pose proof bv_is_wf b.
 Qed.
+Lemma Z_to_bv_checked_Some n a (b : bv n):
+  Z_to_bv_checked n a = Some b ↔ a = bv_unsigned b.
+Proof.
+  split.
+  - unfold Z_to_bv_checked. case_option_guard; [|done]. intros ?. by simplify_eq.
+  - intros ->. apply Z_to_bv_checked_bv_unsigned.
+Qed.
 
 
 Global Program Instance bv_eq_dec n : EqDecision (bv n) := λ '(BV _ v1 p1) '(BV _ v2 p2),

@@ -2,7 +2,6 @@ From isla Require Import isla_lang.
 
 Definition a14 : list trc := [
   [
-    AssumeReg "__v85_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
     Smt (DeclareConst 42%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "R2" [] (RegVal_Base (Val_Symbolic 42%Z)) Mk_annot;
     Smt (DefineConst 43%Z (Val (Val_Symbolic 42%Z) Mk_annot)) Mk_annot;
@@ -19,6 +18,10 @@ Definition a14 : list trc := [
     Smt (DefineConst 76%Z (Unop (Extract 1%N 1%N) (Val (Val_Symbolic 72%Z) Mk_annot) Mk_annot)) Mk_annot;
     WriteReg "PSTATE" [Field "C"] (RegVal_Struct [("C", RegVal_Base (Val_Symbolic 76%Z))]) Mk_annot;
     Smt (DefineConst 77%Z (Unop (Extract 0%N 0%N) (Val (Val_Symbolic 72%Z) Mk_annot) Mk_annot)) Mk_annot;
-    WriteReg "PSTATE" [Field "V"] (RegVal_Struct [("V", RegVal_Base (Val_Symbolic 77%Z))]) Mk_annot
+    WriteReg "PSTATE" [Field "V"] (RegVal_Struct [("V", RegVal_Base (Val_Symbolic 77%Z))]) Mk_annot;
+    Smt (DeclareConst 78%Z (Ty_BitVec 64%N)) Mk_annot;
+    ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 78%Z)) Mk_annot;
+    Smt (DefineConst 79%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 78%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0x4%Z]) Mk_annot] Mk_annot)) Mk_annot;
+    WriteReg "_PC" [] (RegVal_Base (Val_Symbolic 79%Z)) Mk_annot
   ]
 ].

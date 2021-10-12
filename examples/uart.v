@@ -1,4 +1,4 @@
-Require Import isla.isla.
+Require Import isla.aarch64.aarch64.
 From isla.instructions.uart Require Import instrs.
 
 Section proof.

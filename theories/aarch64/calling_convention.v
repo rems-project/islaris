@@ -1,7 +1,8 @@
 Require Import isla.base.
 Require Import isla.opsem.
 Require Import isla.automation.
-Require Import isla.sys_regs.
+Require Import isla.aarch64.arch.
+Require Import isla.aarch64.sys_regs.
 
 Definition tmp_registers : list string :=
   ["R9"; "R10"; "R11"; "R12"; "R13"; "R14"; "R15"; "R16"; "R17"].

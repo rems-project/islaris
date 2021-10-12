@@ -2,15 +2,6 @@ From isla Require Import isla_lang.
 
 Definition ac : list trc := [
   [
-    AssumeReg "__isla_monomorphize_writes" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__highest_el_aarch32" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__CNTControlBase" [] (RegVal_Base (Val_Bits [BV{52%N} 0x0%Z])) Mk_annot;
-    AssumeReg "__v85_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__v84_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__v83_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__v82_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__v81_implemented" [] (RegVal_Base (Val_Bool true)) Mk_annot;
-    AssumeReg "__trickbox_enabled" [] (RegVal_Base (Val_Bool false)) Mk_annot;
     AssumeReg "HCR_EL2" [] (RegVal_Base (Val_Bits [BV{64%N} 0x0%Z])) Mk_annot;
     AssumeReg "CFG_ID_AA64PFR0_EL1_EL3" [] (RegVal_Base (Val_Bits [BV{4%N} 0x1%Z])) Mk_annot;
     AssumeReg "CFG_ID_AA64PFR0_EL1_EL2" [] (RegVal_Base (Val_Bits [BV{4%N} 0x1%Z])) Mk_annot;
@@ -60,6 +51,10 @@ Definition ac : list trc := [
     Smt (DeclareConst 1341%Z (Ty_BitVec 56%N)) Mk_annot;
     Smt (DefineConst 1354%Z (Unop (ZeroExtend 8%N) (Manyop Concat [Val (Val_Bits [BV{4%N} 0x0%Z]) Mk_annot; Unop (Extract 51%N 0%N) (Val (Val_Symbolic 103%Z) Mk_annot) Mk_annot] Mk_annot) Mk_annot)) Mk_annot;
     Smt (DeclareConst 1355%Z Ty_Bool) Mk_annot;
-    WriteMem (RegVal_Base (Val_Symbolic 1355%Z)) (RegVal_Base (Val_Enum ((Mk_enum_id 7%nat), Mk_enum_ctor 0%nat))) (RegVal_Base (Val_Symbolic 1354%Z)) (RegVal_Base (Val_Symbolic 105%Z)) 1%N None Mk_annot
+    WriteMem (RegVal_Base (Val_Symbolic 1355%Z)) (RegVal_Base (Val_Enum ((Mk_enum_id 7%nat), Mk_enum_ctor 0%nat))) (RegVal_Base (Val_Symbolic 1354%Z)) (RegVal_Base (Val_Symbolic 105%Z)) 1%N None Mk_annot;
+    Smt (DeclareConst 1356%Z (Ty_BitVec 64%N)) Mk_annot;
+    ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 1356%Z)) Mk_annot;
+    Smt (DefineConst 1357%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 1356%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0x4%Z]) Mk_annot] Mk_annot)) Mk_annot;
+    WriteReg "_PC" [] (RegVal_Base (Val_Symbolic 1357%Z)) Mk_annot
   ]
 ].

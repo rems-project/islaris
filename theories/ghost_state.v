@@ -259,6 +259,13 @@ Section instr.
     by iDestruct (instr_table_agree with "Htbl Hf") as %->.
   Qed.
 
+  Lemma instr_lookup_unsigned instrs i (a : bv 64) :
+    instr_ctx instrs -∗ instr (bv_unsigned a) i -∗ ⌜instrs !! a = i⌝.
+  Proof.
+    iIntros "Hctx Hinstr". iDestruct (instr_lookup with "Hctx Hinstr") as %[b [Hb ?]].
+    iPureIntro. unfold Z_to_bv_checked in *. case_option_guard => //; by simplify_eq.
+  Qed.
+
 End instr.
 
 Section reg.

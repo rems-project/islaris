@@ -266,26 +266,18 @@ Inductive trace_step : trc → reg_map → option trace_label → trc → Prop :
 
 Definition instruction_size : Z := 0x4.
 
-Definition next_pc (regs : reg_map) : option (addr * reg_map) :=
-  a ← regs !! "_PC";
-  an ← if a is RVal_Bits n then bvn_to_bv 64 n else None;
-  c ← regs !! "__PC_changed";
-  cb ← if c is RVal_Bool b then Some b else None;
-  let new_pc := if cb : bool then bv_unsigned an else bv_unsigned an + instruction_size in
-  n ← Z_to_bv_checked 64 new_pc;
-  Some (n, <["_PC" := RVal_Bits (BVN _ n)]> $ <["__PC_changed" := RVal_Bool false]> regs).
-
 Record seq_global_state := {
   seq_instrs : gmap addr (list trc);
   seq_mem    : mem_map;
 }.
 Instance eta_seq_global_state : Settable _ := settable! Build_seq_global_state <seq_instrs; seq_mem>.
 Record seq_local_state := {
-  seq_trace  : trc;
-  seq_regs   : reg_map;
+  seq_trace    : trc;
+  seq_regs     : reg_map;
+  seq_pc_reg   : register_name;
   seq_nb_state : bool;
 }.
-Instance eta_seq_local_state : Settable _ := settable! Build_seq_local_state <seq_trace; seq_regs; seq_nb_state>.
+Instance eta_seq_local_state : Settable _ := settable! Build_seq_local_state <seq_trace; seq_regs; seq_pc_reg ;seq_nb_state>.
 
 Inductive seq_label : Set :=
 | SReadMem (a : addr) (v : bvn)
@@ -386,10 +378,10 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       σ' = σ
     | Some (LDone es) =>
       σ' = σ ∧
-      ∃ pc regs', next_pc θ.(seq_regs) = Some (pc, regs') ∧
+      ∃ pc : bv 64, θ.(seq_regs) !! θ.(seq_pc_reg) = Some (RVal_Bits pc) ∧
       match σ.(seq_instrs) !! pc with
-      | Some trcs => θ' = θ <| seq_trace := t'|> <| seq_regs := regs' |> ∧ es ∈ trcs ∧ κ' = None
-      | None => κ' = Some (SInstrTrap pc) ∧ θ' = θ <| seq_nb_state := true|> <| seq_regs := regs' |>
+      | Some trcs => θ' = θ <| seq_trace := t'|> ∧ es ∈ trcs ∧ κ' = None
+      | None => κ' = Some (SInstrTrap pc) ∧ θ' = θ <| seq_nb_state := true|>
       end
     | Some (LAssert b) =>
       σ' = σ ∧
@@ -407,10 +399,12 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
 Record seq_val := {
   seq_val_trace  : trc;
   seq_val_regs   : reg_map;
+  seq_val_pc_reg : register_name;
 }.
 Definition seq_of_val (v : seq_val) : seq_local_state := {|
   seq_trace := v.(seq_val_trace);
   seq_regs := v.(seq_val_regs);
+  seq_pc_reg := v.(seq_val_pc_reg);
   seq_nb_state := true;
 |}.
 Definition seq_to_val (e : seq_local_state) : option seq_val :=
@@ -418,6 +412,7 @@ Definition seq_to_val (e : seq_local_state) : option seq_val :=
     Some ({|
      seq_val_trace := e.(seq_trace);
      seq_val_regs := e.(seq_regs);
+     seq_val_pc_reg := e.(seq_pc_reg);
     |})
   else None.
 
@@ -425,7 +420,7 @@ Lemma seq_lang_mixin : LanguageMixin seq_of_val seq_to_val seq_step.
 Proof.
   split => //.
   - by case.
-  - move => [??[]] [??] //= [ -> ->]. done.
-  - move => [???] ?????. inversion 1; simplify_eq/=. done.
+  - move => [???[]] [???] //= [ -> -> ->]. done.
+  - move => [????] ?????. inversion 1; simplify_eq/=. done.
 Qed.
 Canonical Structure isla_lang := Language seq_lang_mixin.

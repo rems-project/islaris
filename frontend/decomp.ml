@@ -7,6 +7,8 @@ open Extra
 let ignored_registers = [
   "SEE";
   "BTypeNext";
+  "__currentInstrLength";
+  "__PC_changed";
   "__unconditional";
   "__v81_implemented";
   "__v82_implemented";
@@ -26,6 +28,7 @@ let ignored_registers = [
 let event_filter : event -> bool = fun e ->
   let open Ast in
   match e with
+  | AssumeReg(n,_,_,_)
   | ReadReg(n,_,_,_)
   | WriteReg(n,_,_,_) -> not (List.mem n ignored_registers)
   | Cycle(_)          -> false
@@ -155,6 +158,7 @@ let gen_spec_file : Template.t -> string -> string list -> decomp_line
     let pp fmt = Format.fprintf ff fmt in
     (* Imports. *)
     pp "Require Import isla.isla.@.";
+    pp "Require Import isla.aarch64.aarch64.@.";
     let build_mp name = String.concat "." (coq_prefix @ [name]) in
     pp "Require Export %s.@." (build_mp name);
     List.iter (pp "Require Import %s.@.") spec.spec_imports;
@@ -187,7 +191,7 @@ let gen_dune : string list -> Format.formatter -> unit = fun coq_prefix ff ->
   pp " (package coq-isla)@.";
   pp " (flags -w -notation-overridden -w -redundant-canonical-projection)@.";
   pp " (synopsis \"Generated file\")@.";
-  pp " (theories isla))@."
+  pp " (theories isla isla.aarch64))@."
 
 (* Entry point. *)
 let run name_template output_dir coq_prefix nb_jobs input_file =

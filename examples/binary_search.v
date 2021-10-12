@@ -1,4 +1,4 @@
-Require Import isla.isla.
+Require Import isla.aarch64.aarch64.
 From isla.instructions.binary_search Require Import instrs.
 
 Section proof.
@@ -174,13 +174,6 @@ Proof.
     rewrite (bv_wrap_small 61 _); [|bv_solve].
     bv_solve.
   - bv_solve.
-  - bv_simplify_arith_hyp select (i < _).
-    destruct bres; simpl in *; eauto.
-    apply: binary_search_cond_1; [solve_goal..|].
-    bv_solve.
-  - bv_simplify_arith_hyp select (¬ _ ≤ _).
-    bv_simplify_arith_hyp select (_ ≤ i).
-    destruct bres; simpl in *; bv_solve.
   - bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
     destruct bres; simpl in *; bv_solve.
   - bv_simplify_arith_hyp select (i < _).
@@ -200,6 +193,13 @@ Proof.
     destruct bres; simpl in *; [solve_goal|].
     apply: binary_search_cond_2; [solve_goal..|].
     bv_solve.
+  - bv_simplify_arith_hyp select (i < _).
+    destruct bres; simpl in *; eauto.
+    apply: binary_search_cond_1; [solve_goal..|].
+    bv_solve.
+  - bv_simplify_arith_hyp select (¬ _ ≤ _).
+    bv_simplify_arith_hyp select (_ ≤ i).
+    destruct bres; simpl in *; bv_solve.
 Time Qed.
 
 

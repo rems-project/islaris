@@ -2,7 +2,6 @@ From isla Require Import isla_lang.
 
 Definition a40 : list trc := [
   [
-    AssumeReg "__v85_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
     Smt (DeclareConst 53%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "R0" [] (RegVal_Base (Val_Symbolic 53%Z)) Mk_annot;
     Smt (DefineConst 55%Z (Manyop (Bvmanyarith Bvand) [Unop (Extract 31%N 0%N) (Val (Val_Symbolic 53%Z) Mk_annot) Mk_annot; Val (Val_Bits [BV{32%N} 0x1%Z]) Mk_annot] Mk_annot)) Mk_annot;
@@ -17,10 +16,13 @@ Definition a40 : list trc := [
     Smt (DefineConst 63%Z (Unop (Extract 1%N 1%N) (Val (Val_Symbolic 60%Z) Mk_annot) Mk_annot)) Mk_annot;
     WriteReg "PSTATE" [Field "C"] (RegVal_Struct [("C", RegVal_Base (Val_Symbolic 63%Z))]) Mk_annot;
     Smt (DefineConst 64%Z (Unop (Extract 0%N 0%N) (Val (Val_Symbolic 60%Z) Mk_annot) Mk_annot)) Mk_annot;
-    WriteReg "PSTATE" [Field "V"] (RegVal_Struct [("V", RegVal_Base (Val_Symbolic 64%Z))]) Mk_annot
+    WriteReg "PSTATE" [Field "V"] (RegVal_Struct [("V", RegVal_Base (Val_Symbolic 64%Z))]) Mk_annot;
+    Smt (DeclareConst 65%Z (Ty_BitVec 64%N)) Mk_annot;
+    ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 65%Z)) Mk_annot;
+    Smt (DefineConst 66%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 65%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0x4%Z]) Mk_annot] Mk_annot)) Mk_annot;
+    WriteReg "_PC" [] (RegVal_Base (Val_Symbolic 66%Z)) Mk_annot
   ];
   [
-    AssumeReg "__v85_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
     Smt (DeclareConst 53%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "R0" [] (RegVal_Base (Val_Symbolic 53%Z)) Mk_annot;
     Smt (DefineConst 55%Z (Manyop (Bvmanyarith Bvand) [Unop (Extract 31%N 0%N) (Val (Val_Symbolic 53%Z) Mk_annot) Mk_annot; Val (Val_Bits [BV{32%N} 0x1%Z]) Mk_annot] Mk_annot)) Mk_annot;
@@ -35,6 +37,10 @@ Definition a40 : list trc := [
     Smt (DefineConst 63%Z (Unop (Extract 1%N 1%N) (Val (Val_Symbolic 60%Z) Mk_annot) Mk_annot)) Mk_annot;
     WriteReg "PSTATE" [Field "C"] (RegVal_Struct [("C", RegVal_Base (Val_Symbolic 63%Z))]) Mk_annot;
     Smt (DefineConst 64%Z (Unop (Extract 0%N 0%N) (Val (Val_Symbolic 60%Z) Mk_annot) Mk_annot)) Mk_annot;
-    WriteReg "PSTATE" [Field "V"] (RegVal_Struct [("V", RegVal_Base (Val_Symbolic 64%Z))]) Mk_annot
+    WriteReg "PSTATE" [Field "V"] (RegVal_Struct [("V", RegVal_Base (Val_Symbolic 64%Z))]) Mk_annot;
+    Smt (DeclareConst 65%Z (Ty_BitVec 64%N)) Mk_annot;
+    ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 65%Z)) Mk_annot;
+    Smt (DefineConst 66%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 65%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0x4%Z]) Mk_annot] Mk_annot)) Mk_annot;
+    WriteReg "_PC" [] (RegVal_Base (Val_Symbolic 66%Z)) Mk_annot
   ]
 ].

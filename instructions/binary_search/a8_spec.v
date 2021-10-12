@@ -1,4 +1,5 @@
 Require Import isla.isla.
+Require Import isla.aarch64.aarch64.
 Require Export isla.instructions.binary_search.a8.
 
 Lemma a8_spec `{!islaG Σ} `{!threadG}:

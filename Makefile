@@ -22,6 +22,8 @@ generate:
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memcpy.dump -j 8 -o instructions/memcpy --coqdir=isla.instructions.memcpy
 	@echo "[isla-coq] examples/binary_search.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/binary_search.dump -j 8 -o instructions/binary_search --coqdir=isla.instructions.binary_search
+	@echo "[isla-coq] examples/uart.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/uart.dump -j 8 -o instructions/uart --coqdir=isla.instructions.uart
 	@echo "[isla-coq] pkvm_handler/pkvm_handler.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq -j 8 pkvm_handler/pkvm_handler.dump
 .PHONY: generate

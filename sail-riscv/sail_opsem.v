@@ -2,6 +2,7 @@ Require Export isla.sail_riscv.base.
 Require Export isla.sail_riscv.RV64.
 Require Export isla.opsem.
 Require Import isla.adequacy.
+Require Import isla.RV64.arch.
 
 (*** Relating values *)
 Definition bv_to_mword {n1 n2} (b : bv n1) `{H:ArithFact (n2 >=? 0)} : mword n2 :=
@@ -123,11 +124,11 @@ Definition sim {A E} (Σ : sim_state) (e1 : monad register_value A E) (K : mctx 
       dom (gset _) isla_regs' = dom _ isla_regs →
       raw_sim sail_module (iris_module isla_lang) n
           (SAIL (Done tt) sail_regs' mem' sail_instrs false)
-          ({| seq_trace := []; seq_regs := isla_regs'; seq_nb_state := false|},
+          ({| seq_trace := []; seq_regs := isla_regs'; seq_nb_state := false; seq_pc_reg := arch_pc_reg|},
            {| seq_instrs := isla_instrs; seq_mem := mem' |})) →
   raw_sim sail_module (iris_module isla_lang) n
           (SAIL (mctx_interp K e1) Σ.(sim_regs) mem sail_instrs false)
-          ({| seq_trace := e2; seq_regs := isla_regs; seq_nb_state := false|},
+          ({| seq_trace := e2; seq_regs := isla_regs; seq_nb_state := false; seq_pc_reg := arch_pc_reg|},
            {| seq_instrs := isla_instrs; seq_mem := mem |}).
 
 Definition sim_instr (si : encoded_instruction) (ii : list trc) :=
@@ -143,6 +144,13 @@ Proof.
   move => Hdom Hregs Hsim. apply: raw_sim_implies_refines => n.
   elim/lt_wf_ind: n sail_regs isla_regs mem Hregs.
   move => n IH sail_regs isla_regs mem Hregs.
+  apply: raw_sim_safe_here => /= Hsafe.
+  have {Hsafe} ? : isla_regs !! "PC" = Some (RVal_Bits (mword_to_bv (n2:=64) (PC sail_regs))). {
+    destruct (isla_regs !! "PC") eqn: HPC.
+    - have ->:= Hregs "PC" _ _ ltac:(done) ltac:(done). done.
+    - move: Hsafe => [[]|]// [?[?[?[? Hsafe]]]]. inv_seq_step.
+      revert select (∃ x, _) => -[?[??]]; unfold register_name in *; simplify_eq.
+  }
   destruct (sail_instrs !! mword_to_bv (PC sail_regs)) as [si|] eqn: Hsi.
   - move: (Hsi) => /(elem_of_dom_2 _ _ _). rewrite -Hdom. move => /elem_of_dom[ii Hii]. clear Hdom.
     have [i[Hi {}Hsim]]:= Hsim _ _ _ ltac:(done) ltac:(done) sail_regs.
@@ -150,8 +158,7 @@ Proof.
     move => ???? Hstep. inversion_clear Hstep; simplify_eq. split; [done|].
     apply: raw_sim_step_s. {
       econstructor. econstructor; [done| econstructor |] => /=. split; [done|].
-      eexists (mword_to_bv (PC sail_regs)), isla_regs. split. { admit. }
-      rewrite Hii. naive_solver.
+      eexists _; simplify_option_eq. naive_solver.
     }
     apply: Hsim; [done|].
     move => sail_regs' isla_regs' mem' Hwf' ?.
@@ -161,12 +168,12 @@ Proof.
     move => ???? Hstep. inversion_clear Hstep; simplify_eq. eexists _. split. {
       apply: (steps_l _ _ _ _ (Some _)); [| by apply: steps_refl].
       constructor. econstructor; [done| econstructor |] => /=. split; [done|].
-      eexists (mword_to_bv (PC sail_regs)), isla_regs. split. { admit. }
-      rewrite Hii. naive_solver.
+      eexists _; simplify_option_eq. naive_solver.
     }
     apply: raw_sim_step_i. { by left. }
     move => ???? Hstep. inversion Hstep.
-Admitted.
+    Unshelve. exact: inhabitant.
+Qed.
 
 (*** Lemmas about [sim] *)
 Lemma sim_done Σ:

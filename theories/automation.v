@@ -199,7 +199,7 @@ Definition let_bind_hint {A B} (x : A) (f : A → B) : B :=
 
 Inductive instr_kind {Σ} : Type :=
 | IKInstr (ins : option (list trc)) | IKPre (l : bool) (P : iProp Σ).
-Definition FindInstrKind {Σ} `{!islaG Σ} `{!threadG} (a : Z) (l : bool) := {|
+Definition FindInstrKind {Σ} `{!Arch} `{!islaG Σ} `{!threadG} (a : Z) (l : bool) := {|
   fic_A := @instr_kind Σ;
   fic_Prop ik :=
     match ik with
@@ -249,7 +249,7 @@ Definition FindMemMapsTo {Σ} `{!islaG Σ} `{!threadG} (a : addr) := {|
 |}.
 
 Section instances.
-  Context `{!islaG Σ} `{!threadG}.
+  Context `{!Arch} `{!islaG Σ} `{!threadG}.
 
   Global Instance instr_intro_pers i a : IntroPersistent (instr a i) (instr a i).
   Proof. constructor. iIntros "#$". Qed.
@@ -750,15 +750,14 @@ Section instances.
     λ T, i2p (simpl_goal_reg_col_cons r col s T).
 
   Lemma li_wp_next_instr:
-    (∃ (nPC : addr) bPC_changed,
-        "_PC" ↦ᵣ RVal_Bits nPC ∗ "__PC_changed" ↦ᵣ RVal_Bool bPC_changed ∗
-     ∃ a newPC,
-       ⌜a = (if (bPC_changed : bool) then (via_vm_compute bv_unsigned nPC) else (via_vm_compute (Z.add (bv_unsigned nPC)) 4)%Z)⌝ ∗
-       ⌜Z_to_bv_checked 64 a = Some newPC⌝ ∗
+    (∃ a (nPC newPC : addr),
+     arch_pc_reg ↦ᵣ RVal_Bits nPC ∗
+     ⌜a = via_vm_compute bv_unsigned nPC⌝ ∗
+     ⌜Z_to_bv_checked 64 a = Some newPC⌝ ∗
      find_in_context (FindInstrKind a true) (λ ik,
      match ik with
      | IKInstr (Some ts) =>
-       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, "_PC" ↦ᵣ RVal_Bits newPC -∗ "__PC_changed" ↦ᵣ RVal_Bool false -∗ WPasm t
+       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, arch_pc_reg ↦ᵣ RVal_Bits newPC -∗ WPasm t
      | IKInstr (None) =>
        ∃ Pκs, spec_trace Pκs ∗ ⌜scons (SInstrTrap newPC) snil ⊆ Pκs⌝ ∗ True
      | IKPre l P => P
@@ -766,21 +765,19 @@ Section instances.
     )) -∗
     WPasm [].
   Proof.
-    iDestruct 1 as (??) "(HPC&Hchanged&Hwp)".
-    iDestruct "Hwp" as (???? ins) "[Hi Hwp]". subst.
+    iDestruct 1 as (???) "(HPC&->&%Hchecked&Hwp)".
+    rewrite ->!via_vm_compute_eq, Z_to_bv_checked_bv_unsigned in *; simplify_eq.
+    iDestruct "Hwp" as (ins) "[Hi Hwp]".
     destruct ins as [[?|]|?] => /=.
     - iDestruct "Hwp" as (?) "Hl".
-      iApply (wp_next_instr with "[HPC Hchanged] Hi [Hl]") => //.
-      + iExists _, _, _. rewrite ->!via_vm_compute_eq in *. by iFrame.
-      + iIntros "!>" (i Hi) "? ?".
-        iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
-        iApply ("Hwp" with "[$] [$]").
+      iApply (wp_next_instr with "HPC Hi [Hl]") => //.
+      iIntros "!>" (i Hi) "?".
+      iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
+      iApply ("Hwp" with "[$]").
     - iDestruct "Hwp" as (?) "(?&%&?)".
-      iApply (wp_next_instr_extern with "[HPC Hchanged] [$] [$]") => //.
-      { spec_solver. }
-      iExists _, _, _. rewrite ->!via_vm_compute_eq in *. by iFrame.
-    - iApply (wp_next_instr_pre with "[$] [HPC Hchanged] [$]").
-      iExists _, _, _. rewrite ->!via_vm_compute_eq in *. by iFrame.
+      iApply (wp_next_instr_extern with "HPC [$] [$]") => //.
+      spec_solver.
+    - by iApply (wp_next_instr_pre with "[$] [$]").
   Qed.
 
   Lemma li_instr_pre l a P:
@@ -788,7 +785,7 @@ Section instances.
      find_in_context (FindInstrKind a l) (λ ik,
      match ik with
      | IKInstr (Some ts) =>
-       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, P -∗ "_PC" ↦ᵣ RVal_Bits newPC -∗ "__PC_changed" ↦ᵣ RVal_Bool false -∗ WPasm t
+       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, P -∗ arch_pc_reg ↦ᵣ RVal_Bits newPC -∗ WPasm t
      | IKInstr None =>
        P -∗ ∃ Pκs, spec_trace Pκs ∗ ⌜scons (SInstrTrap newPC) snil ⊆ Pκs⌝ ∗ True
      | IKPre l' Q => ⌜implb l' l⌝ ∗ (P -∗ Q)
@@ -796,13 +793,13 @@ Section instances.
     )) -∗
     instr_pre' l a P.
   Proof.
-    iDestruct 1 as (?? ins) "[Hinstr Hwp]".
+    iDestruct 1 as (?->%Z_to_bv_checked_Some ins) "[Hinstr Hwp]".
     destruct ins as [[?|]|?] => /=.
     - iDestruct "Hwp" as (?) "Hl".
       iApply (instr_pre_intro_Some with "[$]"); [done..|].
-      iIntros (i Hi) "???".
+      iIntros (i Hi) "??".
       iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
-      iApply ("Hwp" with "[$] [$] [$]").
+      iApply ("Hwp" with "[$] [$]").
     - iApply (instr_pre_intro_None with "[$]"); [done..|].
       iIntros "HP".
       iDestruct ("Hwp" with "HP") as (?) "[? [% _]]".

@@ -27,7 +27,7 @@ else
 fi
 
 # Architecture file.
-IR_FILE="$ISLA_SNAP_ROOT/aarch64.ir"
+IR_FILE="$ISLA_SNAP_ROOT/aarch64-pc.ir"
 
 # Check that the architecture file exists.
 if [ ! -e "$IR_FILE" ]; then

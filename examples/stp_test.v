@@ -1,4 +1,4 @@
-Require Import isla.isla.
+Require Import isla.aarch64.aarch64.
 Require Import isla.instructions.instr_stp.
 
 Definition spec `{!islaG Σ} `{!threadG} a sp (v1 v2 : bv 64) : iProp Σ :=

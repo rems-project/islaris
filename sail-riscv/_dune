@@ -3,4 +3,4 @@
  (package coq-isla)
  (flags -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "???")
- (theories isla isla.instructions))
+ (theories isla isla.instructions isla.RV64))

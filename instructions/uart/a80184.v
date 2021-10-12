@@ -2,15 +2,6 @@ From isla Require Import isla_lang.
 
 Definition a80184 : list trc := [
   [
-    AssumeReg "__isla_monomorphize_reads" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__highest_el_aarch32" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__CNTControlBase" [] (RegVal_Base (Val_Bits [BV{52%N} 0x0%Z])) Mk_annot;
-    AssumeReg "__v85_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__v84_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__v83_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__v82_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__v81_implemented" [] (RegVal_Base (Val_Bool true)) Mk_annot;
-    AssumeReg "__trickbox_enabled" [] (RegVal_Base (Val_Bool false)) Mk_annot;
     AssumeReg "HCR_EL2" [] (RegVal_Base (Val_Bits [BV{64%N} 0x0%Z])) Mk_annot;
     AssumeReg "CFG_ID_AA64PFR0_EL1_EL3" [] (RegVal_Base (Val_Bits [BV{4%N} 0x1%Z])) Mk_annot;
     AssumeReg "CFG_ID_AA64PFR0_EL1_EL2" [] (RegVal_Base (Val_Bits [BV{4%N} 0x1%Z])) Mk_annot;
@@ -55,6 +46,10 @@ Definition a80184 : list trc := [
     Smt (DeclareConst 1329%Z (Ty_BitVec 32%N)) Mk_annot;
     ReadMem (RegVal_Base (Val_Symbolic 1329%Z)) (RegVal_Base (Val_Enum ((Mk_enum_id 6%nat), Mk_enum_ctor 0%nat))) (RegVal_Base (Val_Symbolic 1328%Z)) 4%N None Mk_annot;
     Smt (DefineConst 1333%Z (Manyop Concat [Val (Val_Bits [BV{32%N} 0x0%Z]) Mk_annot; Val (Val_Symbolic 1329%Z) Mk_annot] Mk_annot)) Mk_annot;
-    WriteReg "R1" [] (RegVal_Base (Val_Symbolic 1333%Z)) Mk_annot
+    WriteReg "R1" [] (RegVal_Base (Val_Symbolic 1333%Z)) Mk_annot;
+    Smt (DeclareConst 1334%Z (Ty_BitVec 64%N)) Mk_annot;
+    ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 1334%Z)) Mk_annot;
+    Smt (DefineConst 1335%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 1334%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0x4%Z]) Mk_annot] Mk_annot)) Mk_annot;
+    WriteReg "_PC" [] (RegVal_Base (Val_Symbolic 1335%Z)) Mk_annot
   ]
 ].

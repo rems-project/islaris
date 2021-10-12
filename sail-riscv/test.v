@@ -2,7 +2,6 @@ Require Import Sail.Base.
 Require Import Sail.State_monad.
 Require Import Sail.State_lifting.
 Require Import isla.sail_riscv.sail_opsem.
-Require Import isla.sys_regs.
 From isla.instructions.example Require Import instrs.
 
 (* Eval hnf in riscv.decode (Ox"00a5b533") >>= execute. *)

@@ -1,0 +1,6 @@
+(coq.theory
+ (name isla.aarch64)
+ (package coq-isla)
+ (flags -w -notation-overridden -w -redundant-canonical-projection)
+ (synopsis "???")
+ (theories isla))

@@ -1,5 +1,6 @@
 Require Import isla.automation.
-Require Import isla.sys_regs.
+Require Import isla.aarch64.arch.
+Require Import isla.aarch64.sys_regs.
 
 Definition sub_R_R_R_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 R3 : string) : iProp Σ :=
   ∃ (r2 r3 : bv 64),

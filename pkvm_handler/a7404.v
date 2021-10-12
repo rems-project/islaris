@@ -2,9 +2,6 @@ From isla Require Import isla_lang.
 
 Definition a7404 : list trc := [
   [
-    AssumeReg "__highest_el_aarch32" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__v85_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
-    AssumeReg "__v83_implemented" [] (RegVal_Base (Val_Bool false)) Mk_annot;
     AssumeReg "MDSCR_EL1" [] (RegVal_Base (Val_Bits [BV{32%N} 0x0%Z])) Mk_annot;
     AssumeReg "HCR_EL2" [] (RegVal_Base (Val_Bits [BV{64%N} 0x0%Z])) Mk_annot;
     AssumeReg "CFG_ID_AA64PFR0_EL1_EL3" [] (RegVal_Base (Val_Bits [BV{4%N} 0x1%Z])) Mk_annot;
@@ -68,6 +65,10 @@ Definition a7404 : list trc := [
     Smt (DeclareConst 216%Z (Ty_BitVec 32%N)) Mk_annot;
     ReadReg "ESR_EL2" [] (RegVal_Base (Val_Symbolic 216%Z)) Mk_annot;
     Smt (DefineConst 218%Z (Manyop Concat [Val (Val_Bits [BV{32%N} 0x0%Z]) Mk_annot; Val (Val_Symbolic 216%Z) Mk_annot] Mk_annot)) Mk_annot;
-    WriteReg "R0" [] (RegVal_Base (Val_Symbolic 218%Z)) Mk_annot
+    WriteReg "R0" [] (RegVal_Base (Val_Symbolic 218%Z)) Mk_annot;
+    Smt (DeclareConst 219%Z (Ty_BitVec 64%N)) Mk_annot;
+    ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 219%Z)) Mk_annot;
+    Smt (DefineConst 220%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 219%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0x4%Z]) Mk_annot] Mk_annot)) Mk_annot;
+    WriteReg "_PC" [] (RegVal_Base (Val_Symbolic 220%Z)) Mk_annot
   ]
 ].
