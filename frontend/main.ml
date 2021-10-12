@@ -13,6 +13,7 @@ let default_def_name : string = "trace"
 
 (** Options required in [Dump] mode. *)
 type dump_config = {
+  arch : Arch.t; (** Target architecture. *)
   name_template : Template.t; (** File and definition name template. *)
   output_dir : string; (** Directory where to write the generated files. *)
   coq_prefix : string list; (** Coq module path prefix for generated files. *)
@@ -42,7 +43,8 @@ let run_isla : isla_config -> string -> unit = fun cfg input_file ->
 (** [run_dump cfg input_file] runs the Dump mode on the file [input_file] with
     the configuration [cfg]. *)
 let run_dump : dump_config -> string -> unit = fun cfg ->
-  Decomp.run cfg.name_template cfg.output_dir cfg.coq_prefix cfg.nb_jobs
+  Decomp.run cfg.arch cfg.name_template cfg.output_dir cfg.coq_prefix
+    cfg.nb_jobs
 
 (** [run cfg] runs the program in the mode specified by [cfg]. Any error leads
     to the program being terminated cleanly. *)
@@ -71,6 +73,15 @@ let is_valid_coq_ident : string -> bool = fun s ->
 
 let default_coq_dir : string -> string list = fun base ->
   ["isla"; "examples"; base]
+
+let arch =
+  let doc =
+    Printf.sprintf "Specifies the $(docv) for the input file. Note that this \
+      option only makes a difference in Dump mode. Currently supported \
+      values for $(docv) are: %s." (String.concat ", " Arch.arch_list)
+  in
+  let i = Arg.(info ["a"; "arch"] ~docv:"ARCH" ~doc) in
+  Arg.(value & opt string "aarch64" & i)
 
 let output =
   let doc =
@@ -212,7 +223,11 @@ let opts_config : config Term.t =
     in
     {def_name; output_file}
   in
-  let build_dump_config output def_name coq_prefix j input_file =
+  let build_dump_config arch output def_name coq_prefix j input_file =
+    let arch =
+      try Arch.find_arch arch with Not_found ->
+        panic "Unknown architecture name \"%s\"." arch
+    in
     let name_template =
       let def_name = Option.get Decomp.default_template def_name in
       let keys =
@@ -267,9 +282,9 @@ let opts_config : config Term.t =
           input file, use the --coqdir option.";
       default_coq_dir base
     in
-    {name_template; output_dir; coq_prefix; nb_jobs = j}
+    {arch; name_template; output_dir; coq_prefix; nb_jobs = j}
   in
-  let build output def_name mode_flag coq_prefix j input_file =
+  let build arch output def_name mode_flag coq_prefix j input_file =
     let mode_name =
       match mode_flag with
       | Some(m) -> m
@@ -290,12 +305,13 @@ let opts_config : config Term.t =
       | Isla_mode                        ->
           panic "Option --coqdir is only available in Dump mode.";
       | Dump_mode                        ->
-          Dump(build_dump_config output def_name coq_prefix j input_file)
+          Dump(build_dump_config arch output def_name coq_prefix j input_file)
     in
     {input_file; mode}
   in
   let open Term in
-  pure build $ output $ def_name $ mode_flag $ coq_prefix $ j $ input_file
+  pure build $ arch $ output $ def_name $ mode_flag $ coq_prefix $ j
+    $ input_file
 
 let cmd =
   let doc =

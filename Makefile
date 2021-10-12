@@ -10,7 +10,7 @@ tests:
 all_and_tests: tests all
 .PHONY: all_and_tests
 
-generate:
+generate_aarch64:
 	@echo "[isla-coq] examples/memory_instructions.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memory_instructions.dump -j 8 -o instructions  -n "instr_{instr}" --coqdir=isla.instructions
 	@rm instructions/instrs.v
@@ -26,12 +26,15 @@ generate:
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/uart.dump -j 8 -o instructions/uart --coqdir=isla.instructions.uart
 	@echo "[isla-coq] pkvm_handler/pkvm_handler.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq -j 8 pkvm_handler/pkvm_handler.dump
-.PHONY: generate
+.PHONY: generate_aarch64
 
-generate_riscv:
+generate_riscv64:
 	@echo "[isla-coq] examples/riscv64_test.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/riscv64_test.dump -j 8 -o instructions/riscv64_test --coqdir=isla.instructions.riscv64_test
-.PHONY: generate_riscv
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/riscv64_test.dump -j 8 -o instructions/riscv64_test --coqdir=isla.instructions.riscv64_test --arch=riscv64
+.PHONY: generate_riscv64
+
+generate: generate_aarch64 generate_riscv64
+.PHONY: generate
 
 clean:
 	@dune clean
