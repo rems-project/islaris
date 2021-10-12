@@ -12,5 +12,6 @@ Proof.
   all: bv_solve.
 Qed.
 
-Definition a60_spec_inst `{!islaG Σ} `{!threadG} := entails_to_simplify_hyp 0 a60_spec.
+Definition a60_spec_inst `{!islaG Σ} `{!threadG} :=
+  entails_to_simplify_hyp 0 a60_spec.
 Global Existing Instance a60_spec_inst.

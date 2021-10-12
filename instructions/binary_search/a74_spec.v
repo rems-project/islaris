@@ -12,5 +12,6 @@ Proof.
   1: cmp_spec_tac1. 1: cmp_spec_tac2. 1: cmp_spec_tac3. 1: cmp_spec_tac4.
 Qed.
 
-Definition a74_spec_inst `{!islaG Σ} `{!threadG} := entails_to_simplify_hyp 0 a74_spec.
+Definition a74_spec_inst `{!islaG Σ} `{!threadG} :=
+  entails_to_simplify_hyp 0 a74_spec.
 Global Existing Instance a74_spec_inst.

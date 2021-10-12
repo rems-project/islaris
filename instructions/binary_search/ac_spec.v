@@ -8,5 +8,6 @@ Lemma ac_spec `{!islaG Σ} `{!threadG}:
 Proof.
 Admitted.
 
-Definition ac_spec_inst `{!islaG Σ} `{!threadG} := entails_to_simplify_hyp 0 ac_spec.
+Definition ac_spec_inst `{!islaG Σ} `{!threadG} :=
+  entails_to_simplify_hyp 0 ac_spec.
 Global Existing Instance ac_spec_inst.

@@ -3,7 +3,7 @@ From isla Require Import isla_lang.
 Definition a8 : list trc := [
   [
     Smt (DeclareConst 0%Z (Ty_BitVec 64%N)) Mk_annot;
-    Assume (AExp_Binop (Eq) (AExp_Unop (Extract 2%N 2%N) (AExp_Val (AVal_Var "zmisa" [Field "bits"]) Mk_annot) Mk_annot) (AExp_Val (AVal_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot) Mk_annot;
+    Assume (AExp_Binop (Eq) (AExp_Unop (Extract 2%N 2%N) (AExp_Val (AVal_Var "misa" [Field "bits"]) Mk_annot) Mk_annot) (AExp_Val (AVal_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot) Mk_annot;
     Smt (Assert (Binop (Eq) (Unop (Extract 2%N 2%N) (Val (Val_Symbolic 0%Z) Mk_annot) Mk_annot) (Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot)) Mk_annot;
     Smt (DeclareConst 1%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "PC" [] (RegVal_Base (Val_Symbolic 1%Z)) Mk_annot;
@@ -19,7 +19,7 @@ Definition a8 : list trc := [
   ];
   [
     Smt (DeclareConst 0%Z (Ty_BitVec 64%N)) Mk_annot;
-    Assume (AExp_Binop (Eq) (AExp_Unop (Extract 2%N 2%N) (AExp_Val (AVal_Var "zmisa" [Field "bits"]) Mk_annot) Mk_annot) (AExp_Val (AVal_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot) Mk_annot;
+    Assume (AExp_Binop (Eq) (AExp_Unop (Extract 2%N 2%N) (AExp_Val (AVal_Var "misa" [Field "bits"]) Mk_annot) Mk_annot) (AExp_Val (AVal_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot) Mk_annot;
     Smt (Assert (Binop (Eq) (Unop (Extract 2%N 2%N) (Val (Val_Symbolic 0%Z) Mk_annot) Mk_annot) (Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot)) Mk_annot;
     Smt (DeclareConst 1%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "PC" [] (RegVal_Base (Val_Symbolic 1%Z)) Mk_annot;
@@ -42,7 +42,7 @@ Definition a8 : list trc := [
   ];
   [
     Smt (DeclareConst 0%Z (Ty_BitVec 64%N)) Mk_annot;
-    Assume (AExp_Binop (Eq) (AExp_Unop (Extract 2%N 2%N) (AExp_Val (AVal_Var "zmisa" [Field "bits"]) Mk_annot) Mk_annot) (AExp_Val (AVal_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot) Mk_annot;
+    Assume (AExp_Binop (Eq) (AExp_Unop (Extract 2%N 2%N) (AExp_Val (AVal_Var "misa" [Field "bits"]) Mk_annot) Mk_annot) (AExp_Val (AVal_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot) Mk_annot;
     Smt (Assert (Binop (Eq) (Unop (Extract 2%N 2%N) (Val (Val_Symbolic 0%Z) Mk_annot) Mk_annot) (Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot)) Mk_annot;
     Smt (DeclareConst 1%Z (Ty_BitVec 64%N)) Mk_annot;
     ReadReg "PC" [] (RegVal_Base (Val_Symbolic 1%Z)) Mk_annot;

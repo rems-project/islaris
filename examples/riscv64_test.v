@@ -11,7 +11,7 @@ Lemma test `{!islaG Σ} `{!threadG} :
     ∃ x11 : bv 64,
     "x10" ↦ᵣ: λ _,
     "x11" ↦ᵣ RVal_Bits x11 ∗
-    "zmisa" # "bits" ↦ᵣ RVal_Bits (bv_0 64) ∗
+    "misa" # "bits" ↦ᵣ RVal_Bits (bv_0 64) ∗
     spec_trace (sif (bv_unsigned x11 = 1)
                (scons (SInstrTrap [BV{64} 0x0000000010300010]) snil)
                (scons (SInstrTrap [BV{64} 0x000000001030000c]) snil)) ∗

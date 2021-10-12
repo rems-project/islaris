@@ -8,5 +8,6 @@ Lemma a68_spec `{!islaG Σ} `{!threadG}:
 Proof.
 Admitted.
 
-Definition a68_spec_inst `{!islaG Σ} `{!threadG} := entails_to_simplify_hyp 0 a68_spec.
+Definition a68_spec_inst `{!islaG Σ} `{!threadG} :=
+  entails_to_simplify_hyp 0 a68_spec.
 Global Existing Instance a68_spec_inst.

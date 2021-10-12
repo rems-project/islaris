@@ -1,6 +1,6 @@
 (trace
   (declare-const v0 (_ BitVec 64))
-  (assume (= ((_ extract 2 2) (|zmisa| ((_ field |bits|) ))) #b1))
+  (assume (= ((_ extract 2 2) (|misa| ((_ field |bits|) ))) #b1))
   (assert (= ((_ extract 2 2) v0) #b1))
   (cycle)
   (declare-const v1 (_ BitVec 64))
@@ -18,7 +18,7 @@
   (write-reg |PC| nil v2))
 (trace
   (declare-const v0 (_ BitVec 64))
-  (assume (= ((_ extract 2 2) (|zmisa| ((_ field |bits|) ))) #b1))
+  (assume (= ((_ extract 2 2) (|misa| ((_ field |bits|) ))) #b1))
   (assert (= ((_ extract 2 2) v0) #b1))
   (cycle)
   (declare-const v1 (_ BitVec 64))
@@ -44,7 +44,7 @@
   (write-reg |PC| nil v17))
 (trace
   (declare-const v0 (_ BitVec 64))
-  (assume (= ((_ extract 2 2) (|zmisa| ((_ field |bits|) ))) #b1))
+  (assume (= ((_ extract 2 2) (|misa| ((_ field |bits|) ))) #b1))
   (assert (= ((_ extract 2 2) v0) #b1))
   (cycle)
   (declare-const v1 (_ BitVec 64))

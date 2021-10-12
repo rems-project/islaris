@@ -12,5 +12,6 @@ Proof.
   all: csinc_spec_tac.
 Qed.
 
-Definition a48_spec_inst `{!islaG Σ} `{!threadG} := entails_to_simplify_hyp 0 a48_spec.
+Definition a48_spec_inst `{!islaG Σ} `{!threadG} :=
+  entails_to_simplify_hyp 0 a48_spec.
 Global Existing Instance a48_spec_inst.

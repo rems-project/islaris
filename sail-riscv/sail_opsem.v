@@ -37,6 +37,7 @@ Arguments add_vec : simpl never.
 Definition register_value_to_valu (v : register_value) : valu :=
   match v with
   | Regval_bitvector_64_dec m => RVal_Bits (mword_to_bv (n2:=64) m)
+  | Regval_Misa m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Misa_Misa_chunk_0)))]
   | _ => RegVal_Poison
   end.
 
@@ -52,13 +53,25 @@ Record sail_state := SAIL {
   sail_stopped : bool;
 }.
 
+Definition instruction_length (i : encoded_instruction) : mword 64 :=
+  match i with
+   | Uncompressed ie => mword_of_int 4
+   | Compressed ie => mword_of_int 2
+   end.
+
 Definition step_cpu (i : encoded_instruction) : M () :=
   (match i with
    | Uncompressed ie => riscv.decode (bv_to_mword ie)
    | Compressed ie => riscv.decodeCompressed (bv_to_mword ie)
-   end) >>=
-   λ dec, execute dec >>=
-   λ R, if R is RETIRE_SUCCESS then Done tt else Fail "execution failed!".
+   end) >>= λ dec,
+   read_reg PC_ref >>= λ PC,
+   write_reg nextPC_ref (add_vec PC (instruction_length i)) >>
+   execute dec >>= λ R, if R is RETIRE_SUCCESS then
+                          read_reg nextPC_ref >>= λ nextPC,
+                          write_reg PC_ref nextPC >>
+                          Done tt
+                        else
+                          Fail "execution failed!".
 
 
 Inductive sail_step : sail_state → option seq_label → sail_state → Prop :=
@@ -110,6 +123,9 @@ Proof. elim: K e1 => //=. Qed.
 Definition isla_regs_wf (regs : regstate) (isla_regs : reg_map) : Prop :=
   ∀ r vi vs, isla_regs !! r = Some vi → get_regval r regs = Some vs → vi = (register_value_to_valu vs).
 
+Definition private_regs_wf (isla_regs : reg_map) : Prop :=
+  isla_regs !! "nextPC" = None.
+
 Record sim_state := SIM {
   sim_regs : regstate;
 }.
@@ -119,8 +135,10 @@ Instance eta_sim_state : Settable _ := settable! SIM <sim_regs>.
 Definition sim {A E} (Σ : sim_state) (e1 : monad register_value A E) (K : mctx A E) (e2 : trc) : Prop :=
   ∀ n isla_regs mem sail_instrs isla_instrs,
   isla_regs_wf Σ.(sim_regs) isla_regs →
+  private_regs_wf isla_regs →
   (∀ sail_regs' isla_regs' mem',
       isla_regs_wf sail_regs' isla_regs' →
+      private_regs_wf isla_regs' →
       dom (gset _) isla_regs' = dom _ isla_regs →
       raw_sim sail_module (iris_module isla_lang) n
           (SAIL (Done tt) sail_regs' mem' sail_instrs false)
@@ -137,13 +155,14 @@ Definition sim_instr (si : encoded_instruction) (ii : list trc) :=
 Lemma sim_implies_refines sail_instrs isla_instrs sail_regs isla_regs mem :
   dom (gset _) isla_instrs = dom (gset _) sail_instrs →
   isla_regs_wf sail_regs isla_regs →
+  private_regs_wf isla_regs →
   (∀ a si ii, sail_instrs !! a = Some si → isla_instrs !! a = Some ii → sim_instr si ii) →
   refines sail_module (SAIL (Done tt) sail_regs mem sail_instrs false)
           (iris_module isla_lang) (initial_local_state isla_regs, {| seq_instrs := isla_instrs; seq_mem := mem |}).
 Proof.
-  move => Hdom Hregs Hsim. apply: raw_sim_implies_refines => n.
-  elim/lt_wf_ind: n sail_regs isla_regs mem Hregs.
-  move => n IH sail_regs isla_regs mem Hregs.
+  move => Hdom Hregs Hpriv Hsim. apply: raw_sim_implies_refines => n.
+  elim/lt_wf_ind: n sail_regs isla_regs mem Hregs Hpriv.
+  move => n IH sail_regs isla_regs mem Hregs Hpriv.
   apply: raw_sim_safe_here => /= Hsafe.
   have {Hsafe} ? : isla_regs !! "PC" = Some (RVal_Bits (mword_to_bv (n2:=64) (PC sail_regs))). {
     destruct (isla_regs !! "PC") eqn: HPC.
@@ -160,9 +179,9 @@ Proof.
       econstructor. econstructor; [done| econstructor |] => /=. split; [done|].
       eexists _; simplify_option_eq. naive_solver.
     }
-    apply: Hsim; [done|].
-    move => sail_regs' isla_regs' mem' Hwf' ?.
-    apply IH; [lia|done].
+    apply: Hsim; [done..|].
+    move => sail_regs' isla_regs' mem' Hwf' ??.
+    apply IH; [lia|done..].
   - move: (Hsi) => /(not_elem_of_dom). rewrite -Hdom. move => /not_elem_of_dom Hii. clear Hdom.
     constructor => Hsafe. split. { right. eexists _, _. by econstructor. }
     move => ???? Hstep. inversion_clear Hstep; simplify_eq. eexists _. split. {
@@ -178,7 +197,7 @@ Qed.
 (*** Lemmas about [sim] *)
 Lemma sim_done Σ:
   sim Σ (Done tt) NilMCtx [].
-Proof. move => ?????? Hdone. by apply: Hdone. Qed.
+Proof. move => ??????? Hdone. by apply: Hdone. Qed.
 
 Lemma sim_mctx_impl A1 A2 E1 E2 Σ e11 e12 K1 K2 e2:
   sim (A:=A1) (E:=E1) Σ e11 K1 e2 →
@@ -217,7 +236,7 @@ Lemma sim_Choose {A E} Σ s e1 e2 K:
   (∀ b, sim Σ (e1 b) K e2) →
   sim (A:=A) (E:=E) Σ (Choose s e1) K e2.
 Proof.
-  move => Hsim ???????/=. rewrite mctx_interp_Choose.
+  move => Hsim ????????/=. rewrite mctx_interp_Choose.
   apply: raw_sim_step_i. { right. eexists _, _. unshelve constructor. by apply: true. }
   move => ????/= Hstep. inversion Hstep; simplify_eq. split; [done|].
   apply: raw_sim_weaken; [by apply: Hsim| lia].
@@ -228,7 +247,7 @@ Lemma sim_Read_reg_l {A E} Σ r e1 e2 v K:
   sim Σ (e1 v) K e2 →
   sim (A:=A) (E:=E) Σ (Read_reg r e1) K e2.
 Proof.
-  move => ? Hsim ???????. rewrite mctx_interp_Read_reg.
+  move => ? Hsim ????????. rewrite mctx_interp_Read_reg.
   apply: raw_sim_step_i. { right. eexists _, _. by constructor. }
   move => ????/= Hstep. inversion Hstep; simplify_eq. split; [done|].
   apply: raw_sim_weaken; [by apply: Hsim| lia].
@@ -252,7 +271,7 @@ Lemma sim_read_reg A E Σ K e2 ann r v v':
   sim (A:=A) (E:=E) Σ (read_reg r) K (ReadReg (name r) [] v ann :: e2).
 Proof.
   move => Hget Hof -> Hsim. apply: sim_read_reg_l; [ by simplify_option_eq|].
-  move => ? isla_regs ??? Hwf?.
+  move => ? isla_regs ??? Hwf??.
   apply: raw_sim_safe_here => /= -[|Hsafe]. { unfold seq_to_val. by case. }
   have [vi Hvi]: is_Some (isla_regs !! (name r)). {
     move: Hsafe => [?[?[?[? Hstep]]]]. inv_seq_step. naive_solver.
@@ -271,7 +290,7 @@ Lemma sim_write_reg {A E} Σ (r : register_ref _ _ A) e2 v K v' ann:
   sim (E:=E) Σ (write_reg r v) K (WriteReg (name r) [] v' ann :: e2).
 Proof.
   destruct Σ => /=.
-  move => Hset -> Hsim ? isla_regs ? ?? Hwf Hdone. rewrite mctx_interp_Write_reg.
+  move => Hset -> Hsim ? isla_regs ? ?? Hwf ? Hdone. rewrite mctx_interp_Write_reg.
   apply: raw_sim_step_i. { right. eexists _, _. by constructor. }
   move => ????/= Hstep. inversion_clear Hstep; simplify_eq. split; [done|].
   apply: raw_sim_safe_here => /= -[|Hsafe]. { unfold seq_to_val. by case. }
@@ -286,9 +305,27 @@ Proof.
   - move => r' vi' vs'. destruct (decide (r' = name r)); simplify_eq.
     + rewrite lookup_insert. move: Hset => /get_set_regval. naive_solver.
     + rewrite lookup_insert_ne //. erewrite get_set_regval_ne; [|done..]. by apply: Hwf.
-  - move => ???? Hdom. apply: Hdone; [done|]. by rewrite Hdom dom_insert_lookup_L.
+  - apply/lookup_insert_None. unfold private_regs_wf in *.
+    split; [done|]. move => Hn. rewrite Hn in Hvi. naive_solver.
+  - move => ????? Hdom. apply: Hdone; [done..|]. by rewrite Hdom dom_insert_lookup_L.
   - lia.
 Qed.
+
+Lemma sim_write_reg_private {A E} Σ (r : register_ref _ _ A) e2 v K:
+  set_regval (name r) (regval_of r v) Σ.(sim_regs) = Some (write_to r v Σ.(sim_regs)) →
+  name r = "nextPC" →
+  sim (Σ <|sim_regs := write_to r v Σ.(sim_regs)|>) (Done tt) K e2 →
+  sim (E:=E) Σ (write_reg r v) K e2.
+Proof.
+  destruct Σ => /=.
+  move => Hset Heq Hsim ? isla_regs ? ?? Hwf ? Hdone. rewrite mctx_interp_Write_reg.
+  apply: raw_sim_step_i. { right. eexists _, _. by constructor. }
+  move => ????/= Hstep. inversion_clear Hstep; simplify_eq. split; [done|].
+  apply: raw_sim_weaken; [apply Hsim => /=; [|done..]| lia].
+  move => ??? Hisla ?. apply: Hwf; [done|]. erewrite (get_set_regval_ne _ (name r)); [done| |].
+  { admit. }
+  move => ?. subst. unfold private_regs_wf in *. rewrite Heq in Hisla. naive_solver.
+Admitted.
 
 Lemma sim_assert_exp' E Σ b K e2 s:
   b = true →
@@ -306,7 +343,7 @@ Lemma sim_DeclareConstBitVec A E Σ K e1 e2 ann x b (v : bv b):
   sim (A:=A) (E:=E) Σ e1 K (subst_val_event (Val_Bits v) x <$> e2) →
   sim (A:=A) (E:=E) Σ e1 K (Smt (DeclareConst x (Ty_BitVec b)) ann :: e2).
 Proof.
-  move => Hsim ???????. destruct v.
+  move => Hsim ????????. destruct v.
   apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor.  done. }
   by apply: Hsim.
 Qed.
@@ -316,7 +353,62 @@ Lemma sim_DefineConst A E Σ K e1 e2 ann x v e:
   sim (A:=A) (E:=E) Σ e1 K (subst_val_event v x <$> e2) →
   sim (A:=A) (E:=E) Σ e1 K (Smt (DefineConst x e) ann :: e2).
 Proof.
-  move => ? Hsim ???????.
+  move => ? Hsim ????????.
   apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. done. }
   by apply: Hsim.
 Qed.
+
+Lemma sim_Branch A E Σ K e1 e2 ann n s:
+  sim (A:=A) (E:=E) Σ e1 K e2 →
+  sim (A:=A) (E:=E) Σ e1 K (Branch n s ann :: e2).
+Proof.
+  move => Hsim ????????.
+  apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. done. }
+  by apply: Hsim.
+Qed.
+
+Lemma sim_Assert A E Σ K e1 e2 ann e:
+  eval_exp e = Some (Val_Bool true) →
+  sim (A:=A) (E:=E) Σ e1 K e2 →
+  sim (A:=A) (E:=E) Σ e1 K (Smt (Assert e) ann :: e2).
+Proof.
+  move => ? Hsim ????????.
+  apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. done. }
+  by apply: Hsim.
+Qed.
+
+Definition eval_assume_val' (regs : regstate) (v : assume_val) : option base_val :=
+  match v with
+  | AVal_Var r l => v' ← get_regval r regs;
+                   v'' ← read_accessor l (register_value_to_valu v');
+                   if v'' is RegVal_Base b then Some b else None
+  | AVal_Bool b => Some (Val_Bool b)
+  | AVal_Bits b => Some (Val_Bits b)
+  | AVal_Enum e => Some (Val_Enum e)
+  end.
+
+Fixpoint eval_a_exp' (regs : regstate) (e : a_exp) : option base_val :=
+  match e with
+  | AExp_Val x _ => eval_assume_val' regs x
+  | AExp_Unop uo e' _ =>
+    eval_a_exp' regs e' ≫= eval_unop uo
+  | AExp_Binop uo e1 e2 _ =>
+    v1 ← eval_a_exp' regs e1; v2 ← eval_a_exp' regs e2; eval_binop uo v1 v2
+  | AExp_Manyop m es _ => vs ← mapM (eval_a_exp' regs) es; eval_manyop m vs
+  | AExp_Ite e1 e2 e3 _ =>
+    match eval_a_exp' regs e1 with
+    | Some (Val_Bool true) => eval_a_exp' regs e2
+    | Some (Val_Bool false) => eval_a_exp' regs e3
+    | _ => None
+    end
+  end.
+
+Lemma sim_Assume A E Σ K e1 e2 ann e:
+  (eval_a_exp' Σ.(sim_regs) e = Some (Val_Bool true) → sim (A:=A) (E:=E) Σ e1 K e2) →
+  sim (A:=A) (E:=E) Σ e1 K (Assume e ann :: e2).
+Proof.
+  move => Hsim ????????.
+  apply: raw_sim_safe_here => -[[??//]|[?[?[?[??]]]]]. inv_seq_step.
+  apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. done. }
+  apply: Hsim; [|done..].
+Admitted.

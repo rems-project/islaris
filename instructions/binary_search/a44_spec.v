@@ -12,5 +12,6 @@ Proof.
   all: csel_spec_tac.
 Qed.
 
-Definition a44_spec_inst `{!islaG Σ} `{!threadG} := entails_to_simplify_hyp 0 a44_spec.
+Definition a44_spec_inst `{!islaG Σ} `{!threadG} :=
+  entails_to_simplify_hyp 0 a44_spec.
 Global Existing Instance a44_spec_inst.
