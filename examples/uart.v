@@ -101,18 +101,18 @@ Lemma uart1_putc :
 Proof.
   iStartProof.
   Time repeat liAStep; liShow.
+  - rewrite sif_true; [|li_shelve_sidecond].
+    Time repeat liAStep; liShow.
   - rewrite sif_false; [|li_shelve_sidecond].
     liInst Hevar (scons (SWriteMem AUX_MU_IO_REG (bv_zero_extend 32 (bv_extract 0 8 c))) P).
-    Time repeat liAStep; liShow.
-  - rewrite sif_true; [|li_shelve_sidecond].
     Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
   all: try by bv_solve.
   all: try by bits_simplify.
-  + rename select (_ ≠ [BV{1} 1]) into Hn. contradict Hn. bits_simplify.
-    by have -> : n1 = 0 by lia.
   + rename select (_ = [BV{1} 1]) into Hn.
     bitify_hyp Hn. move: (Hn 0 ltac:(done)) => {}Hn.
     by bits_simplify_hyp Hn.
+  + rename select (_ ≠ [BV{1} 1]) into Hn. contradict Hn. bits_simplify.
+    by have -> : n1 = 0 by lia.
 Time Qed.
 End proof.

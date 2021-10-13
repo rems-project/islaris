@@ -316,8 +316,6 @@ let pp_trace : trace Format.pp = fun ff (Trace events) ->
   pp ("@]" ^^ (if events = [] then "" else "@;") ^^ "]")
 
 let pp_traces_def : string -> traces Format.pp = fun id ff (Traces trcs) ->
-  (* We sort the traces to ensure deterministic output. *)
-  let trcs = List.sort compare trcs in
   let pp fmt = Format.fprintf ff fmt in
   pp "@[<v 2>Definition %s : list trc := [" id;
   let print_trace =
