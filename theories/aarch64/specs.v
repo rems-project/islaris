@@ -117,7 +117,7 @@ Definition stp_uninit_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) (R
   Rbase ↦ᵣ RVal_Bits rbase ∗
   (bv_add_Z rbase offset) ↦ₘ? 16 ∗
   ⌜bv_unsigned rbase `mod` 8 = 0⌝ ∗
-  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + (offset `max` 0) + 16 < 2 ^ 52⌝ ∗
+  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + offset + 16 < 2 ^ 52⌝ ∗
   instr_pre (pc + 4) (
   reg_col sys_regs ∗
     R1 ↦ᵣ RVal_Bits r1 ∗
@@ -137,7 +137,7 @@ Definition ldp_mapsto_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) (R
   (bv_add_Z rbase offset) ↦ₘ r1 ∗
   (bv_add_Z rbase (offset + 8)) ↦ₘ r2 ∗
   ⌜bv_unsigned rbase `mod` 8 = 0⌝ ∗
-  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + (offset `max` 0) + 16 < 2 ^ 52⌝ ∗
+  ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + offset + 16 < 2 ^ 52⌝ ∗
   instr_pre (pc + 4) (
     reg_col sys_regs ∗
     R1 ↦ᵣ RVal_Bits r1 ∗
