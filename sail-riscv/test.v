@@ -331,12 +331,22 @@ Proof.
   - simpl. destruct regs => /=. rewrite mword_to_bv_add_vec //.
 Qed.
 
+Lemma getBit_testbit n z (w : Word.word (S n)):
+  getBit w z = Z.testbit (Z.of_N (Word.wordToN w)) (Z.of_nat z).
+Proof.
+  simpl.
+Admitted.
+
 Lemma getBit_get_word_testbit n2 n z (w : mword n):
   n = Z.of_N n2 → (0 < n) →
   getBit (get_word w) z = Z.testbit (bv_unsigned (mword_to_bv (n2:=n2) w)) (Z.of_nat z).
 Proof.
-  move => Heq ?. unfold getBit.
+  move => Heq ?. destruct n => //=.
+  revert w. unfold mword.
 Admitted.
+  (* have {1}->: (Pos.to_nat p = S (Z.to_nat (Z.pos p))). *)
+  (* rewrite  *)
+  (* rewrite getBit_testbit. *)
 
 Lemma sim_instr_a8:
   sim_instr (Uncompressed [BV{32} 0x00b50463]) a8.
@@ -370,9 +380,6 @@ Proof.
     | |- context [@mword_to_bv ?n1 ?n2 ?b] => reduce_closed (@mword_to_bv n1 n2 b)
     end.
     rewrite bv_add_unsigned bv_wrap_spec_low // Z.add_bit1 /=.
-    repeat match goal with
-    | |- context [Z.testbit ?n1 ?n2] => reduce_closed (Z.testbit n1 n2)
-    end.
     have -> : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. { admit. }
     by rewrite andb_false_r.
   - rewrite mword_to_bv_add_vec //.
@@ -400,9 +407,9 @@ Proof.
   { apply riscv_test_adequate. }
   apply: sim_implies_refines.
   - rewrite !dom_insert_L !dom_empty_L. set_solver.
-  - move => ???.
+  - move => ??.
     repeat move => /lookup_insert_Some[[??]|[? ]]; simplify_map_eq => //.
-    all: unfold get_regval; simpl => ?; simplify_eq.
+    all: unfold get_regval; simpl; eexists _; split; [done|].
     + by rewrite HPC.
     + done.
     + rewrite Hx11 /= mword_to_bv_to_mword //.

@@ -148,7 +148,7 @@ Proof. elim: K e1 => //=. Qed.
 
 (*** [sim]: Simulation relation *)
 Definition isla_regs_wf (regs : regstate) (isla_regs : reg_map) : Prop :=
-  ∀ r vi vs, isla_regs !! r = Some vi → get_regval r regs = Some vs → vi = (register_value_to_valu vs).
+  ∀ r vi, isla_regs !! r = Some vi → ∃ vs, get_regval r regs = Some vs ∧ vi = (register_value_to_valu vs).
 
 Definition private_regs_wf (isla_regs : reg_map) : Prop :=
   isla_regs !! "nextPC" = None.
@@ -193,7 +193,7 @@ Proof.
   apply: raw_sim_safe_here => /= Hsafe.
   have {Hsafe} ? : isla_regs !! "PC" = Some (RVal_Bits (mword_to_bv (n2:=64) (PC sail_regs))). {
     destruct (isla_regs !! "PC") eqn: HPC.
-    - have ->:= Hregs "PC" _ _ ltac:(done) ltac:(done). done.
+    - have [? [[<-] ->]]:= Hregs "PC" _ ltac:(done). done.
     - move: Hsafe => [[]|]// [?[?[?[? Hsafe]]]]. inv_seq_step.
       revert select (∃ x, _) => -[?[??]]; unfold register_name in *; simplify_eq.
   }
@@ -305,7 +305,7 @@ Proof.
   }
   apply: raw_sim_step_s. {
     econstructor. econstructor => //=. 1: by econstructor.
-    simpl. have ?:= Hwf (name r) _ _ ltac:(done) ltac:(done). simplify_eq.
+    simpl. have [?[??]]:= Hwf (name r) _ ltac:(done). simplify_eq.
     eexists _, _, _. split_and! => //. by left. }
   by apply: Hsim.
 Qed.
@@ -329,7 +329,7 @@ Proof.
     eexists _, _, _. done.
   }
   apply: raw_sim_weaken; [apply Hsim => /=| ].
-  - move => r' vi' vs'. destruct (decide (r' = name r)); simplify_eq.
+  - move => r' vi'. destruct (decide (r' = name r)); simplify_eq.
     + rewrite lookup_insert. move: Hset => /get_set_regval. naive_solver.
     + rewrite lookup_insert_ne //. erewrite get_set_regval_ne; [|done..]. by apply: Hwf.
   - apply/lookup_insert_None. unfold private_regs_wf in *.
@@ -349,10 +349,10 @@ Proof.
   apply: raw_sim_step_i. { right. eexists _, _. by constructor. }
   move => ????/= Hstep. inversion_clear Hstep; simplify_eq. split; [done|].
   apply: raw_sim_weaken; [apply Hsim => /=; [|done..]| lia].
-  move => ??? Hisla ?. apply: Hwf; [done|]. erewrite (get_set_regval_ne _ (name r)); [done| |].
-  { admit. }
+  move => ?? Hisla. have [?[??]]:= Hwf _ _ ltac:(done).
+  eexists _. split; [|done]. erewrite get_set_regval_ne; [done.. |].
   move => ?. subst. unfold private_regs_wf in *. rewrite Heq in Hisla. naive_solver.
-Admitted.
+Qed.
 
 Lemma sim_assert_exp' E Σ b K e2 s:
   b = true →
@@ -439,6 +439,37 @@ Fixpoint eval_a_exp' (regs : regstate) (e : a_exp) : option base_val :=
     end
   end.
 
+Lemma eval_assume_val'_sound isla_regs sail_regs e v:
+  eval_assume_val isla_regs e = Some v →
+  isla_regs_wf sail_regs isla_regs →
+  eval_assume_val' sail_regs e = Some v.
+Proof.
+  destruct e => //=.
+  move => /bind_Some[?[? ?]] Hwf.
+  have [?[-> ?]]:= Hwf _ _ ltac:(done). by subst.
+Qed.
+
+Lemma eval_a_exp'_sound isla_regs sail_regs e v:
+  eval_a_exp isla_regs e = Some v →
+  isla_regs_wf sail_regs isla_regs →
+  eval_a_exp' sail_regs e = Some v.
+Proof.
+  (* TODO: use a proper induction principled instead of a_exp_ott_ind such that it can be used with induction *)
+  revert e v. match goal with | |- ∀ e, @?P e => eapply (a_exp_ott_ind (λ es, Forall P es) P) end => /=.
+  - move => ????. by apply: eval_assume_val'_sound.
+  - move => ?? IH ?? /bind_Some[?[/IH He ?]] ?. by rewrite He.
+  - move => ?? IH1 ? IH2 ?? /bind_Some[?[/IH1 He1 /bind_Some[?[/IH2 He2 ?]]]] ?. by rewrite He1 ?He2.
+  - move => es /Forall_lookup IHes ??? /bind_Some[?[/mapM_Some /Forall2_same_length_lookup [? Hes] ?]] ?.
+    apply/bind_Some. eexists _. split; [|done]. apply/mapM_Some. apply/Forall2_same_length_lookup.
+    naive_solver.
+  - move => e1 IH1 e2 IH2 e3 IH3 ??.
+    destruct (eval_a_exp isla_regs e1) eqn: He1 => // Hb ?.
+    have -> := IH1 _ ltac:(done) ltac:(done).
+    destruct b as [| [] | |] => //; naive_solver.
+  - constructor.
+  - move => ????. by constructor.
+Qed.
+
 Lemma sim_Assume A E Σ K e1 e2 ann e:
   (eval_a_exp' Σ.(sim_regs) e = Some (Val_Bool true) → sim (A:=A) (E:=E) Σ e1 K e2) →
   sim (A:=A) (E:=E) Σ e1 K (Assume e ann :: e2).
@@ -447,4 +478,5 @@ Proof.
   apply: raw_sim_safe_here => -[[??//]|[?[?[?[??]]]]]. inv_seq_step.
   apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. done. }
   apply: Hsim; [|done..].
-Admitted.
+  by apply: eval_a_exp'_sound.
+Qed.
