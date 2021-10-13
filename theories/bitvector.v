@@ -192,6 +192,21 @@ Qed.
 Lemma bv_wrap_land n z :
   bv_wrap n z = Z.land z (Z.ones (Z.of_N n)).
 Proof. by rewrite Z.land_ones by lia. Qed.
+Lemma bv_wrap_spec n z i:
+  0 ≤ i →
+  Z.testbit (bv_wrap n z) i = bool_decide (i < Z.of_N n) && Z.testbit z i.
+Proof.
+  intros ?. rewrite bv_wrap_land, Z.land_spec, Z_ones_spec by lia.
+  case_bool_decide; simpl; by rewrite ?andb_true_r, ?andb_false_r.
+Qed.
+Lemma bv_wrap_spec_low n z i:
+  0 ≤ i < Z.of_N n →
+  Z.testbit (bv_wrap n z) i = Z.testbit z i.
+Proof. intros ?. rewrite bv_wrap_spec; [|lia]. case_bool_decide; [done|]. lia. Qed.
+Lemma bv_wrap_spec_high n z i:
+  Z.of_N n ≤ i →
+  Z.testbit (bv_wrap n z) i = false.
+Proof. intros ?. rewrite bv_wrap_spec; [|lia]. case_bool_decide; [|done]. lia. Qed.
 
 (** * Definition of [bv n] *)
 Record bv (n : N) := BV {

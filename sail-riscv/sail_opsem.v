@@ -7,8 +7,10 @@ Require Import isla.riscv64.arch.
 (*** Relating values *)
 Definition bv_to_mword {n1 n2} (b : bv n1) `{H:ArithFact (n2 >=? 0)} : mword n2 :=
   word_to_mword (Word.NToWord _ (Z.to_N $ bv_unsigned b)).
+Arguments bv_to_mword : simpl never.
 Definition mword_to_bv {n1 n2} (b : mword n1) : bv n2 :=
   default (bv_0 _) (Z_to_bv_checked _ (Z.of_N $ Word.wordToN (get_word b))).
+Arguments mword_to_bv : simpl never.
 
 Lemma mword_to_bv_unsigned {n1 n2} (b : mword n1):
   n1 = Z.of_N n2 →
@@ -16,8 +18,29 @@ Lemma mword_to_bv_unsigned {n1 n2} (b : mword n1):
 Proof.
   move => Heq. rewrite /mword_to_bv/Z_to_bv_checked. case_option_guard as Hn => //=.
   contradict Hn. apply/bv_wf_in_range. unfold bv_modulus.
-  have := Word.wordToN_bound (get_word b). rewrite -Npow2_pow Z_nat_N {3}Heq N2Z.id.
-  rewrite -(N2Z.inj_pow 2). lia.
+  have /lt_Npow2:= Word.wordToN_bound (get_word b). subst. lia.
+Qed.
+
+Lemma mword_to_bv_to_mword {n1 n2} (b : bv n1) `{!ArithFact (n2 >=? 0)} :
+  n2 = Z.of_N n1 →
+  (@mword_to_bv n2 n1 (bv_to_mword b)) = b.
+Proof.
+  move => Heq. apply bv_eq. rewrite mword_to_bv_unsigned //.
+  rewrite /bv_to_mword/word_to_mword get_word_to_word Word.wordToN_NToWord_2.
+  - bv_saturate. lia.
+  - apply/lt_Npow2; [lia|]. bv_saturate. unfold bv_modulus in *. rewrite Heq. lia.
+Qed.
+
+Lemma eq_vec_to_bv n1 {n2} (b1 b2 : mword n2) :
+  n2 = Z.of_N n1 →
+  eq_vec b1 b2 = (bool_decide (mword_to_bv b1 =@{bv n1} mword_to_bv b2)).
+Proof.
+  move => Heq.
+  case_bool_decide as Hb.
+  - apply Word.weqb_eq. move: Hb => /bv_eq.
+    by rewrite !mword_to_bv_unsigned // => /N2Z.inj/Word.wordToN_inj.
+  - apply Word.weqb_ne. contradict Hb. apply bv_eq.
+    by rewrite !mword_to_bv_unsigned // Hb.
 Qed.
 
 Lemma mword_to_bv_add_vec {n1 : Z} {n2 : N} (b1 b2 : mword n1) :
@@ -40,6 +63,10 @@ Definition register_value_to_valu (v : register_value) : valu :=
   | Regval_Misa m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Misa_Misa_chunk_0)))]
   | _ => RegVal_Poison
   end.
+
+Lemma iris_module_wf_isla_lang :
+  iris_module_wf isla_lang.
+Proof. move => ?????? Hstep. inv_seq_step; split => //; try destruct κ' => /=; lia. Qed.
 
 (*** operational semantics for [monad] *)
 Inductive encoded_instruction :=
@@ -361,6 +388,15 @@ Qed.
 Lemma sim_Branch A E Σ K e1 e2 ann n s:
   sim (A:=A) (E:=E) Σ e1 K e2 →
   sim (A:=A) (E:=E) Σ e1 K (Branch n s ann :: e2).
+Proof.
+  move => Hsim ????????.
+  apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. done. }
+  by apply: Hsim.
+Qed.
+
+Lemma sim_BranchAddress A E Σ K e1 e2 ann v:
+  sim (A:=A) (E:=E) Σ e1 K e2 →
+  sim (A:=A) (E:=E) Σ e1 K (BranchAddress v ann :: e2).
 Proof.
   move => Hsim ????????.
   apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. done. }

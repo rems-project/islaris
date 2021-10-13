@@ -1,7 +1,9 @@
    0:	00000513          	li	a0,0
    4:	00150513          	addi	a0,a0,1
 //TODO: make the following unnecessary
-//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//this should encode MXL 2 and extensions A,C,D,F,I,M,N,Q,S,U
+//constraint: = misa.bits 0b1000000000000000000000000000000000000000000101010011000100101101
+//@constraint: = ((_ extract 1 1) PC) 0b0
    8:	00b50463          	beq	a0,a1,10 <.END>
 //   c:	00000013          	nop
 
