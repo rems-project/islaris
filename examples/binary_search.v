@@ -22,8 +22,8 @@ Proof.
   iStartProof.
   Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
-  - revert select (_ ≠@{bv _} _) => /bv_eq. bv_solve.
   - bv_solve.
+  - revert select (_ ≠@{bv _} _) => /bv_eq. bv_solve.
 Qed.
 
 Definition a40_tst_imm_spec : iProp Σ :=
@@ -174,16 +174,6 @@ Proof.
     rewrite (bv_wrap_small 61 _); [|bv_solve].
     bv_solve.
   - bv_solve.
-  - bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
-    destruct bres; simpl in *; bv_solve.
-  - bv_simplify_arith_hyp select (i < _).
-    destruct bres; simpl in *; eauto.
-    apply: binary_search_cond_1; [solve_goal..|].
-    bv_solve.
-  - bv_simplify_arith_hyp select (_ ≤ i).
-    destruct bres; simpl in *; eauto.
-    apply: binary_search_cond_2; [solve_goal..|].
-    bv_solve.
   - bv_simplify_arith_hyp select (i < _).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
@@ -200,6 +190,16 @@ Proof.
   - bv_simplify_arith_hyp select (¬ _ ≤ _).
     bv_simplify_arith_hyp select (_ ≤ i).
     destruct bres; simpl in *; bv_solve.
+  - bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
+    destruct bres; simpl in *; bv_solve.
+  - bv_simplify_arith_hyp select (i < _).
+    destruct bres; simpl in *; eauto.
+    apply: binary_search_cond_1; [solve_goal..|].
+    bv_solve.
+  - bv_simplify_arith_hyp select (_ ≤ i).
+    destruct bres; simpl in *; eauto.
+    apply: binary_search_cond_2; [solve_goal..|].
+    bv_solve.
 Time Qed.
 
 
