@@ -43,6 +43,11 @@ Proof.
     by rewrite !mword_to_bv_unsigned // Hb.
 Qed.
 
+Lemma getBit_get_word_testbit n2 n z (w : mword n):
+  n = Z.of_N n2 → (0 < n) →
+  getBit (get_word w) z = Z.testbit (bv_unsigned (mword_to_bv (n2:=n2) w)) (Z.of_nat z).
+Proof. etrans; [apply getBit_testbit|]; [lia|]. by rewrite mword_to_bv_unsigned. Qed.
+
 Lemma mword_to_bv_add_vec {n1 : Z} {n2 : N} (b1 b2 : mword n1) :
   n1 = Z.of_N n2 →
   mword_to_bv (n2:=n2) (add_vec b1 b2) = bv_add (mword_to_bv b1) (mword_to_bv b2).

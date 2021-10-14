@@ -236,6 +236,11 @@ Proof.
   (* all: clear Hcase; move => ?; subst r; simpl; move: Hset; repeat (apply Hcase2; [shelve|]); done. *)
 Admitted.
 
+Lemma getBit_testbit n z (w : Word.word n):
+  n ≠ 0%nat →
+  getBit w z = Z.testbit (Z.of_N (Word.wordToN w)) (Z.of_nat z).
+Proof. destruct n => //=. Admitted.
+
 Lemma bit_to_bool_false b:
   b = B0 →
   bit_to_bool b = Done false.
