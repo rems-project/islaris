@@ -363,12 +363,20 @@ Proof.
   all: rewrite /= ?x10_nextPC ?x11_nextPC ?PC_nextPC ?nextPC_nextPC; simpl; try done.
   - rewrite (eq_vec_to_bv 64) // in Hb1. by rewrite Hb1.
   - move: Hassume. normalize_and_simpl_goal => //= Hb.
-    have Hbit : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. { admit. }
+    have Hbit : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. {
+      rename select (bv_extract 1 1 _ = _) into He.
+      bitify_hyp He. move: (He 0 ltac:(done)) => {}He.
+      by bits_simplify_hyp He.
+    }
     bitify_hyp Hb. move: (Hb 0 ltac:(done)) => {}Hb.
     bits_simplify_hyp Hb.
     rewrite Z.add_bit1 Hbit andb_false_r in Hb. done.
   - move: Hassume. normalize_and_simpl_goal => //=.
-    have Hbit : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. { admit. }
+    have Hbit : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. {
+      rename select (bv_extract 1 1 _ = _) into He.
+      bitify_hyp He. move: (He 0 ltac:(done)) => {}He.
+      by bits_simplify_hyp He.
+    }
     bits_simplify. have ? : n = 0 by lia. subst.
     by rewrite Z.add_bit1 Hbit andb_false_r.
   - rewrite (eq_vec_to_bv 64) // in Hb1. by rewrite Hb1.
@@ -380,10 +388,14 @@ Proof.
     | |- context [@mword_to_bv ?n1 ?n2 ?b] => reduce_closed (@mword_to_bv n1 n2 b)
     end.
     rewrite bv_add_unsigned bv_wrap_spec_low // Z.add_bit1 /=.
-    have -> : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. { admit. }
+    have -> : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. {
+      rename select (bv_extract 1 1 _ = _) into He.
+      bitify_hyp He. move: (He 0 ltac:(done)) => {}He.
+      by bits_simplify_hyp He.
+    }
     by rewrite andb_false_r.
   - rewrite mword_to_bv_add_vec //.
-Admitted.
+Qed.
 
 Definition riscv_test_sail_instrs : gmap addr encoded_instruction :=
   <[ [BV{64} 0x0000000010300000] := Uncompressed [BV{32} 0x00000513]]> $

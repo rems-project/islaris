@@ -185,7 +185,7 @@ Ltac solve_protected_eq_unfold_tac ::=
   reduce_closed_N.
 
 (* injection on bitvectors sometimes creates weird matches, so we disable it. *)
-Ltac li_impl_check_injection_tac ::=
+Ltac check_injection_tac ::=
   lazymatch goal with
   | |- @eq (bv _) _ _ → _ => fail
   | |- _ => idtac
