@@ -260,4 +260,5 @@ Admitted.
   - eauto.
 Time Qed.
 *)
+
 End proof.

@@ -750,15 +750,21 @@ Section exp_lifting.
     WPexp (Val v ann) {{ Φ }}.
   Proof. rewrite wp_exp_unfold. iIntros "?". iExists _. by iFrame. Qed.
 
+  Lemma wpae_var_reg_acc r q v v' Φ ann al :
+    read_accessor al v = Some (RegVal_Base v') →
+    r ↦ᵣ{q} v -∗
+    (r ↦ᵣ{q} v -∗ Φ v') -∗
+    WPaexp (AExp_Val (AVal_Var r al) ann) {{ Φ }}.
+  Proof.
+    rewrite wp_a_exp_unfold. iIntros (?) "Hr HΦ". iIntros (?) "Hregs" => /=.
+    iDestruct (reg_mapsto_lookup with "Hregs Hr") as %->.
+    iExists _ => /=. simplify_option_eq. iSplit; [done|]. iFrame. by iApply "HΦ".
+  Qed.
   Lemma wpae_var_reg r q v Φ ann :
     r ↦ᵣ{q} RegVal_Base v -∗
     (r ↦ᵣ{q} RegVal_Base v -∗ Φ v) -∗
     WPaexp (AExp_Val (AVal_Var r []) ann) {{ Φ }}.
-  Proof.
-    rewrite wp_a_exp_unfold. iIntros "Hr HΦ" (?) "Hregs" => /=.
-    iDestruct (reg_mapsto_lookup with "Hregs Hr") as %->.
-    iExists _ => /=. iSplit; [done|]. iFrame. by iApply "HΦ".
-  Qed.
+  Proof. by apply: wpae_var_reg_acc. Qed.
   Lemma wpae_var_struct r f q v Φ ann :
     r # f ↦ᵣ{q} RegVal_Base v -∗
     (r # f ↦ᵣ{q} RegVal_Base v -∗ Φ v) -∗

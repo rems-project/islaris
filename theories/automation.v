@@ -209,8 +209,6 @@ Definition FindInstrKind {Σ} `{!Arch} `{!islaG Σ} `{!threadG} (a : Z) (l : boo
 |}.
 Typeclasses Opaque FindInstrKind.
 
-(* If we ever need to support more than one reg_col, we can use
-a solver for finding the collection with the right r. *)
 Inductive reg_mapsto_kind : Type :=
 | RKMapsTo (v : valu) | RKCol (regs : list (reg_kind * valu_shape)).
 Definition FindRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r : string) := {|
@@ -464,12 +462,12 @@ Section instances.
     λ G, i2p (subsume_struct_reg r f v1 v2 G).
 
   Lemma subsume_regcol_reg regs r v G:
-    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs) = Some i⌝ ∗
-      (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ ⌜vr.2 = ExactShape v⌝ ∗ G)) -∗
+    (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ si, if si is Some i then
+      ∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ ⌜vr.2 = ExactShape v⌝ ∗ G else False)) -∗
     subsume (reg_col regs) (r ↦ᵣ v) G.
   Proof.
-    rewrite via_vm_compute_eq.
-    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
+    iIntros "HG". unfold vm_compute_hint. case_match as Hi => //.
+    move: Hi => /list_find_idx_Some [[??][?[??]]]; simplify_eq/=. iIntros "Hr".
     rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
     iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
     iDestruct ("HG" with "[//] Hregs") as "[% $]"; by simplify_eq/=.
@@ -479,12 +477,12 @@ Section instances.
     λ G, i2p (subsume_regcol_reg regs r v G).
 
   Lemma subsume_struct_regcol_reg regs r f v G:
-    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs) = Some i⌝ ∗
-      (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ ⌜vr.2 = ExactShape v⌝ ∗ G)) -∗
+    (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs (λ si, if si is Some i then
+      (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ ⌜vr.2 = ExactShape v⌝ ∗ G) else False)) -∗
     subsume (reg_col regs) (r # f ↦ᵣ v) G.
   Proof.
-    rewrite via_vm_compute_eq.
-    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
+    iIntros "HG". unfold vm_compute_hint. case_match as Hi => //.
+    move: Hi => /list_find_idx_Some [[??][?[??]]]; simplify_eq/=. iIntros "Hr".
     rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
     iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
     iDestruct ("HG" with "[//] Hregs") as "[% $]"; by simplify_eq/=.
@@ -510,13 +508,13 @@ Section instances.
     λ G, i2p (subsume_struct_reg_reg_pred r f v P G).
 
   Lemma subsume_regcol_reg_pred regs r P G:
-    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs) = Some i⌝ ∗
+    (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ si, if si is Some i then
       (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
-         reg_col (delete i regs) -∗ P v' ∗ G)) -∗
+         reg_col (delete i regs) -∗ P v' ∗ G) else False)) -∗
     subsume (reg_col regs) (r ↦ᵣ: P) G.
   Proof.
-    rewrite via_vm_compute_eq.
-    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
+    iIntros "HG". unfold vm_compute_hint. case_match as Hi => //.
+    move: Hi => /list_find_idx_Some [[??][?[??]]]; simplify_eq/=. iIntros "Hr".
     rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
     iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
     iDestruct ("HG" with "[//] [//] Hregs") as "[? $]".
@@ -527,13 +525,13 @@ Section instances.
     λ G, i2p (subsume_regcol_reg_pred regs r P G).
 
   Lemma subsume_struct_regcol_reg_pred regs r f P G:
-    (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs) = Some i⌝ ∗
+    (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs (λ si, if si is Some i then
       (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
-         reg_col (delete i regs) -∗ P v' ∗ G)) -∗
+         reg_col (delete i regs) -∗ P v' ∗ G) else False)) -∗
     subsume (reg_col regs) (r # f ↦ᵣ: P) G.
   Proof.
-    rewrite via_vm_compute_eq.
-    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
+    iIntros "HG". unfold vm_compute_hint. case_match as Hi => //.
+    move: Hi => /list_find_idx_Some [[??][?[??]]]; simplify_eq/=. iIntros "Hr".
     rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
     iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
     iDestruct ("HG" with "[//] [//] Hregs") as "[? $]".
@@ -547,17 +545,17 @@ Section instances.
     find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v => P v
-      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs) = Some i⌝ ∗
+      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ si, if si is Some i then
            (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
-             reg_col (delete i regs) -∗ P v'))
+             reg_col (delete i regs) -∗ P v') else False)
       end) -∗
     r ↦ᵣ: P.
   Proof.
     rewrite reg_mapsto_pred_eq /reg_mapsto_pred_def.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - eauto with iFrame.
-    - rewrite via_vm_compute_eq.
-      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+    - unfold vm_compute_hint. case_match as Hi => //.
+      move: Hi => /list_find_idx_Some [[??][?[??]]]; simplify_eq/=.
       rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
       iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
       iExists _. iFrame. iApply ("Hwp" with "[//] [//] Hregs").
@@ -567,17 +565,17 @@ Section instances.
     find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v => P v
-      | RKCol regs => (∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs) = Some i⌝ ∗
+      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs (λ si, if si is Some i then
            (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
-             reg_col (delete i regs) -∗ P v'))
+             reg_col (delete i regs) -∗ P v') else False)
       end) -∗
     r # f ↦ᵣ: P.
   Proof.
     rewrite struct_reg_mapsto_pred_eq /struct_reg_mapsto_pred_def.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - eauto with iFrame.
-    - rewrite via_vm_compute_eq.
-      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+    - unfold vm_compute_hint. case_match as Hi => //.
+      move: Hi => /list_find_idx_Some [[??][?[??]]]; simplify_eq/=.
       rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
       iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
       iExists _. iFrame. iApply ("Hwp" with "[//] [//] Hregs").
@@ -761,9 +759,9 @@ Section instances.
     λ T, i2p (simpl_goal_reg_col_cons r col s T).
 
   Lemma li_wp_next_instr:
-    (∃ a (nPC newPC : addr),
+    (∃ (nPC newPC : addr),
      arch_pc_reg ↦ᵣ RVal_Bits nPC ∗
-     ⌜a = via_vm_compute bv_unsigned nPC⌝ ∗
+     vm_compute_hint bv_unsigned nPC (λ a,
      ⌜Z_to_bv_checked 64 a = Some newPC⌝ ∗
      find_in_context (FindInstrKind a true) (λ ik,
      match ik with
@@ -773,11 +771,11 @@ Section instances.
        ∃ Pκs, spec_trace Pκs ∗ ⌜scons (SInstrTrap newPC) snil ⊆ Pκs⌝ ∗ True
      | IKPre l P => P
      end
-    )) -∗
+    ))) -∗
     WPasm [].
   Proof.
-    iDestruct 1 as (???) "(HPC&->&%Hchecked&Hwp)".
-    rewrite ->!via_vm_compute_eq, Z_to_bv_checked_bv_unsigned in *; simplify_eq.
+    unfold vm_compute_hint. iDestruct 1 as (??) "(HPC&%Hchecked&Hwp)".
+    rewrite ->Z_to_bv_checked_bv_unsigned in *; simplify_eq.
     iDestruct "Hwp" as (ins) "[Hi Hwp]".
     destruct ins as [[?|]|?] => /=.
     - iDestruct "Hwp" as (?) "Hl".
@@ -823,61 +821,59 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs)⌝ ∗
-                      (reg_col regs -∗ WPasm es)
+      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ i,
+           ⌜is_Some i⌝ ∗ (reg_col regs -∗ WPasm es))
       end)) -∗
     WPasm (ReadReg r [] v ann :: es).
   Proof.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg with "Hr").
-    - rewrite via_vm_compute_eq.
+    - unfold vm_compute_hint.
       iDestruct "Hwp" as ([? [[??][?[??]]]%list_find_idx_Some]) "Hwp"; simplify_eq/=.
       iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|] => /=.
       iApply (wp_read_reg with "Hr"). iIntros "% Hr". iApply "Hwp". iApply "Hregs".
       iExists _. by iFrame.
   Qed.
 
-  Definition vm_compute_hint {A B C} (f : A → B) (x : A) (T : B → C) : C :=
-    T (f x).
-  Typeclasses Opaque vm_compute_hint.
-  Arguments vm_compute_hint : simpl never.
-
   Lemma li_wp_read_reg_struct r f v ann es :
     (∃ vread, ⌜read_accessor [Field f] v = Some vread⌝ ∗
      (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜vread = v'⌝ -∗ r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r)%type) regs (λ i,
+      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f ∨ (x.1 = KindReg r ∧ is_Some
+             (if x.2 is ExactShape (RegVal_Struct rs) then list_find_idx (λ y, y.1 = f) rs else None )))%type) regs (λ i,
                ⌜is_Some i⌝ ∗ (reg_col regs -∗ WPasm es))
       end))) -∗
     WPasm (ReadReg r [Field f] v ann :: es).
   Proof.
     iDestruct 1 as (???) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg_struct with "Hr").
-    -
-      (* rewrite via_vm_compute_eq. *)
-  Admitted.
-  (*
-      iDestruct "Hwp" as ([? [[??][?[??]]]%list_find_idx_Some]) "Hwp"; simplify_eq/=.
-      iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|] => /=.
-      iApply (wp_read_reg_struct with "Hr"); [done|]. iIntros "% Hr". iApply "Hwp". iApply "Hregs".
-      iExists _. by iFrame.
+    - unfold vm_compute_hint.
+      iDestruct "Hwp" as ([? [[? s][?[Hor ?]]]%list_find_idx_Some]) "Hwp"; simplify_eq/=.
+      iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [%Hvact Hr]] Hregs]"; [done|] => /=.
+      case: Hor => [?|[?[?]]]; simplify_eq.
+      + iApply (wp_read_reg_struct with "Hr"); [done|]. iIntros "% Hr". iApply "Hwp". iApply "Hregs".
+        iExists _. by iFrame.
+      + destruct s as [[]| |] => // Hidx. move: (Hidx) => /list_find_idx_Some[?[?[??]]]. rewrite Hvact.
+        iApply (wp_read_reg_acc with "Hr"); [| done|].
+        { rewrite /read_accessor/=. by simplify_option_eq. }
+        iIntros "% Hr". iApply "Hwp". iApply "Hregs". iExists _. by iFrame.
   Qed.
-*)
 
   Lemma li_wp_assume_reg r v ann es :
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ ∗ (r ↦ᵣ v' -∗ WPasm es))
-      | RKCol regs => ∃ i : nat, ⌜via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs = Some i⌝ ∗
-                      ⌜(regs !!! i).2 = ExactShape v⌝ ∗ (reg_col regs -∗ WPasm es)
+      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ si, if si is Some i then
+                      ⌜(regs !!! i).2 = ExactShape v⌝ ∗ (reg_col regs -∗ WPasm es) else False)
       end)) -∗
     WPasm (AssumeReg r [] v ann :: es).
   Proof.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - iDestruct "Hwp" as (->) "?". by iApply (wp_assume_reg with "Hr").
-    - rewrite via_vm_compute_eq.
-      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some Hr) "Hwp"; simplify_eq/=.
+    - unfold vm_compute_hint. case_match as Hi => //.
+      move: Hi => /list_find_idx_Some [[??][?[??]]]; simplify_eq/=.
+      iDestruct "Hwp" as (Hr) "Hwp"; simplify_eq/=.
       erewrite list_lookup_total_correct in Hr; [|done]; simplify_eq/=.
       iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
       iApply (wp_assume_reg with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs".
@@ -888,41 +884,53 @@ Section instances.
     ((find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => ⌜v = v'⌝ ∗ (r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => ∃ i, ⌜via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs = Some i⌝ ∗
-                      ⌜(regs !!! i).2 = ExactShape v⌝ ∗ (reg_col regs -∗ WPasm es)
+      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r)%type) regs (λ si, if si is Some i then
+          ∃ e, ⌜e = (regs !!! i)⌝ ∗
+          match e.1 with
+          | KindField _ _ => ⌜e.2 = ExactShape v⌝ ∗ (reg_col regs -∗ WPasm es)
+          | KindReg _ =>
+              if e.2 is ExactShape (RegVal_Struct rs) then
+                vm_compute_hint (list_find_idx (λ x, x.1 = f)) rs (λ si, if si is Some i then
+                  ⌜(rs !!! i).2 = v⌝ ∗ (reg_col regs -∗ WPasm es)
+                      else False) else False
+          end else False)
       end))) -∗
     WPasm (AssumeReg r [Field f] v ann :: es).
   Proof.
     iDestruct 1 as (?) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - iDestruct "Hwp" as (->) "?". by iApply (wp_assume_reg_struct with "Hr").
-    - rewrite via_vm_compute_eq.
-  Admitted.
-      (* iDestruct "Hwp" as ([? ?] [i [[[rk s][?[Hor ?]]]%list_find_idx_Some Hr]]%fmap_Some He) "Hwp"; simplify_eq/=. *)
-      (* erewrite list_lookup_total_correct in Hr; [|done]; simplify_eq/=. *)
-      (* iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [%Hvact Hr]] Hregs]"; [done|]; simplify_eq/=. *)
-      (* destruct Hor; simplify_eq. *)
-      (* + rewrite Hvact. iApply (wp_assume_reg_struct with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs". *)
-      (*   iExists _. by iFrame. *)
-      (* + destruct s as [[] | |] => //. rewrite Hvact. rewrite via_vm_compute_eq in He. move: He => /fmap_Some[?[??]]. *)
-      (*   iApply (wp_assume_reg_acc with "Hr"). *)
-      (*   { rewrite /read_accessor/=. by simplify_option_eq. } *)
-
-      (*   iIntros "Hr". iApply "Hwp". iApply "Hregs". *)
-  (* Qed. *)
+    - unfold vm_compute_hint. case_match as Hi => //.
+      move: Hi => /list_find_idx_Some [[??][?[Hor ?]]]; simplify_eq/=.
+      erewrite list_lookup_total_correct; [|done].
+      iDestruct "Hwp" as (e ->) "Hwp"; simplify_eq/=. destruct Hor; simplify_eq.
+      + iDestruct "Hwp" as (->) "Hwp".
+        iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
+        iApply (wp_assume_reg_struct with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs".
+        iExists _. by iFrame.
+      + do 2 case_match => //. case_match as Hi => //.
+        move: (Hi) => /list_find_idx_Some [[??][?[? ?]]]; simplify_eq/=.
+        erewrite list_lookup_total_correct; [|done]; simplify_eq/=.
+        iDestruct "Hwp" as (->) "Hwp".
+        iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
+        iApply (wp_assume_reg_acc with "Hr").
+        { rewrite /read_accessor /=. by simplify_option_eq. }
+        iIntros "Hr". iApply "Hwp". iApply "Hregs".
+        iExists _. by iFrame.
+  Qed.
 
   Lemma li_wp_write_reg r v ann es:
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (r ↦ᵣ v -∗ WPasm es)
-      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs) = Some i⌝ ∗
-          (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r ↦ᵣ v -∗ WPasm es)
+      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ si, if si is Some i then
+          (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r ↦ᵣ v -∗ WPasm es) else False)
       end)) -∗
     WPasm (WriteReg r [] v ann :: es).
   Proof.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_write_reg with "Hr").
-    - rewrite via_vm_compute_eq.
-      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+    - unfold vm_compute_hint. case_match as Hi => //.
+      move: Hi => /list_find_idx_Some [[??][?[??]]]; simplify_eq/=.
       rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
       iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
       iApply (wp_write_reg with "Hr"). iIntros "Hr". iApply ("Hwp" with "[] Hregs [$]"). done.
@@ -933,18 +941,19 @@ Section instances.
     (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (r # f ↦ᵣ vnew -∗ WPasm es)
-      | RKCol regs => ∃ i, ⌜(via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs) = Some i⌝ ∗
-          (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r # f ↦ᵣ vnew -∗ WPasm es)
+      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs (λ si, if si is Some i then
+          (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r # f ↦ᵣ vnew -∗ WPasm es) else False)
       end))) -∗
     WPasm (WriteReg r [Field f] v ann :: es).
   Proof.
     iDestruct 1 as (vnew ? rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_write_reg_struct with "Hr").
-    - rewrite via_vm_compute_eq.
-      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+    - unfold vm_compute_hint. case_match as Hi => //.
+      move: Hi => /list_find_idx_Some [[??][?[??]]]; simplify_eq/=.
       rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
       iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
-      iApply (wp_write_reg_struct with "Hr"); [done|]. iIntros "Hr". iApply ("Hwp" with "[] Hregs [$]"). done.
+      iApply (wp_write_reg_struct with "Hr"); [done|]. iIntros "Hr".
+      iApply ("Hwp" with "[] Hregs [$]"). done.
   Qed.
 
   Lemma li_wp_branch_address v ann es:
@@ -1069,15 +1078,15 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v => (if v is RegVal_Base v' then r ↦ᵣ v -∗ Φ v' else False)
-      | RKCol regs => ∃ i : nat, ⌜via_vm_compute (list_find_idx (λ x, x.1 = KindReg r)) regs = Some i⌝ ∗
-                      if (regs !!! i).2 is ExactShape (RegVal_Base v') then reg_col regs -∗ Φ v' else False
+      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ si, if si is Some i then
+       if (regs !!! i).2 is ExactShape (RegVal_Base v') then reg_col regs -∗ Φ v' else False else False)
       end)) -∗
     WPaexp (AExp_Val (AVal_Var r []) ann) {{ Φ }}.
   Proof.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - case_match => //; subst. by iApply (wpae_var_reg with "Hr").
-    - rewrite via_vm_compute_eq.
-      iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+    - unfold vm_compute_hint. case_match as Hi => //.
+      move: Hi => /list_find_idx_Some [[??][?[??]]]; simplify_eq/=.
       erewrite list_lookup_total_correct; [|done]; simplify_eq/=.
       do 2 case_match => //; subst.
       iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
@@ -1088,22 +1097,39 @@ Section instances.
     (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v => (if v is RegVal_Base v' then r # f ↦ᵣ v -∗ Φ v' else False)
-      | RKCol regs => ∃ i : nat, ⌜via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs = Some i⌝ ∗
-                      if (regs !!! i).2 is ExactShape (RegVal_Base v') then reg_col regs -∗ Φ v' else False
+      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r)%type) regs (λ si, if si is Some i then
+          ∃ e, ⌜e = (regs !!! i)⌝ ∗
+          match e.1 with
+          | KindField _ _ => if e.2 is ExactShape (RegVal_Base v') then reg_col regs -∗ Φ v' else False
+          | KindReg _ =>
+              if e.2 is ExactShape (RegVal_Struct rs) then
+                vm_compute_hint (list_find_idx (λ x, x.1 = f)) rs (λ si, if si is Some i then
+                  if (rs !!! i).2 is RegVal_Base v' then reg_col regs -∗ Φ v' else False
+                 else False)
+              else False
+          end else False)
       end)) -∗
     WPaexp (AExp_Val (AVal_Var r [Field f]) ann) {{ Φ }}.
   Proof.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - case_match => //; subst. by iApply (wpae_var_struct with "Hr").
-    - rewrite via_vm_compute_eq.
-  Admitted.
-      (* iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=. *)
-      (* erewrite list_lookup_total_correct; [|done]; simplify_eq/=. *)
-      (* do 2 case_match => //; subst. *)
-      (* iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=. *)
-      (* iApply (wpae_var_struct with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs". *)
-      (* iExists _. by iFrame. *)
-  (* Qed. *)
+    - unfold vm_compute_hint. case_match as Hi => //.
+      move: Hi => /list_find_idx_Some [[??][?[Hor ?]]]; simplify_eq/=.
+      erewrite list_lookup_total_correct; [|done].
+      iDestruct "Hwp" as (e ->) "Hwp"; simplify_eq/=. destruct Hor; simplify_eq.
+      + do 2 case_match => //.
+        iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
+        iApply (wpae_var_struct with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs".
+        iExists _. by iFrame.
+      + do 2 case_match => //. case_match as Hi => //.
+        move: (Hi) => /list_find_idx_Some [[??][?[? ?]]]; simplify_eq/=.
+        erewrite list_lookup_total_correct; [|done]; simplify_eq/=.
+        case_match => //.
+        iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
+        iApply (wpae_var_reg_acc with "Hr").
+        { rewrite /read_accessor /=. by simplify_option_eq. }
+        iIntros "Hr". iApply "Hwp". iApply "Hregs". iExists _. by iFrame.
+  Qed.
 
   Lemma li_wpae_bits b Φ ann:
     Φ (Val_Bits b) -∗
@@ -1349,42 +1375,3 @@ Ltac liAStep :=
   | liLetBindHint
   | liUnfoldLate
 ]; liSimpl.
-
-  Lemma tac_vm_compute_hint {Σ A B} Δ (f : A → B) a (Q : B → iProp Σ) x:
-    (∀ y, x = y → f a = y) →
-    envs_entails Δ (Q x) →
-    envs_entails Δ (vm_compute_hint f a Q).
-  Proof. naive_solver. Qed.
-Ltac liVmComputeHint :=
-  lazymatch goal with
-  | |- envs_entails ?Δ (vm_compute_hint _ _ _) =>
-      unfold vm_compute_hint
-  end.
-Ltac liVmComputeHint ::=
-  lazymatch goal with
-  | |- envs_entails ?Δ (vm_compute_hint ?f ?a _) =>
-      unfold vm_compute_hint; vm_compute (f a)
-  end.
-Ltac liVmComputeHint ::=
-  lazymatch goal with
-  | |- envs_entails ?Δ (vm_compute_hint ?f ?a _) =>
-      refine (tac_vm_compute_hint _ _ _ _ _ _ _); [let H := fresh in intros ? H; vm_compute; apply H|]
-  end.
-Ltac liStep ::=
-  first [
-      liExtensibleJudgement
-    | liSep
-    | liAnd
-    | liWand
-    | liExist true
-    | liImpl
-    | liForall
-    | liSideCond
-    | liFindInContext
-    | liDestructHint
-    | liVmComputeHint
-    | liTrue
-    | liFalse
-    | liAccu
-    | liUnfoldLetGoal
-    ].

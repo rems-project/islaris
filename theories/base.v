@@ -23,6 +23,11 @@ Ltac unLET :=
   repeat match goal with
          | H := _ |- _ => unfold H in *; clear H
          end.
+Tactic Notation "case_match" "as" ident(Hd) :=
+  match goal with
+  | H : context [ match ?x with _ => _ end ] |- _ => destruct x eqn:Hd
+  | |- context [ match ?x with _ => _ end ] => destruct x eqn:Hd
+  end.
 
 (* This has as better performance characteristic wrt. simpl compared
 to list_find since list_find_idx does not contain prod_map. *)
