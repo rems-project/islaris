@@ -837,23 +837,25 @@ Section instances.
       iExists _. by iFrame.
   Qed.
 
+  Definition vm_compute_hint {A B C} (f : A → B) (x : A) (T : B → C) : C :=
+    T (f x).
+  Typeclasses Opaque vm_compute_hint.
+  Arguments vm_compute_hint : simpl never.
+
   Lemma li_wp_read_reg_struct r f v ann es :
     (∃ vread, ⌜read_accessor [Field f] v = Some vread⌝ ∗
      (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜vread = v'⌝ -∗ r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => ⌜is_Some (via_vm_compute (λ regs,
-            match list_find_idx (λ x, x.1 = KindField r f) regs with
-            | Some i => Some i
-            | None => list_find_idx (λ x, x.1 = KindReg r) regs
-            end) regs)⌝ ∗
-                      (reg_col regs -∗ WPasm es)
+      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r)%type) regs (λ i,
+               ⌜is_Some i⌝ ∗ (reg_col regs -∗ WPasm es))
       end))) -∗
     WPasm (ReadReg r [Field f] v ann :: es).
   Proof.
     iDestruct 1 as (???) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg_struct with "Hr").
-    - rewrite via_vm_compute_eq.
+    -
+      (* rewrite via_vm_compute_eq. *)
   Admitted.
   (*
       iDestruct "Hwp" as ([? [[??][?[??]]]%list_find_idx_Some]) "Hwp"; simplify_eq/=.
@@ -1347,3 +1349,42 @@ Ltac liAStep :=
   | liLetBindHint
   | liUnfoldLate
 ]; liSimpl.
+
+  Lemma tac_vm_compute_hint {Σ A B} Δ (f : A → B) a (Q : B → iProp Σ) x:
+    f a = x →
+    envs_entails Δ (Q x) →
+    envs_entails Δ (vm_compute_hint f a Q).
+  Proof. move => <-. done. Qed.
+Ltac liVmComputeHint :=
+  lazymatch goal with
+  | |- envs_entails ?Δ (vm_compute_hint _ _ _) =>
+      unfold vm_compute_hint
+  end.
+Ltac liVmComputeHint ::=
+  lazymatch goal with
+  | |- envs_entails ?Δ (vm_compute_hint ?f ?a _) =>
+      unfold vm_compute_hint; vm_compute (f a)
+  end.
+Ltac liVmComputeHint ::=
+  lazymatch goal with
+  | |- envs_entails ?Δ (vm_compute_hint ?f ?a _) =>
+      refine (tac_vm_compute_hint _ _ _ _ _ _ _); [vm_compute; exact: eq_refl|]
+  end.
+Ltac liStep ::=
+  first [
+      liExtensibleJudgement
+    | liSep
+    | liAnd
+    | liWand
+    | liExist true
+    | liImpl
+    | liForall
+    | liSideCond
+    | liFindInContext
+    | liDestructHint
+    | liVmComputeHint
+    | liTrue
+    | liFalse
+    | liAccu
+    | liUnfoldLetGoal
+    ].
