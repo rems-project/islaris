@@ -842,7 +842,11 @@ Section instances.
      (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜vread = v'⌝ -∗ r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => ⌜is_Some (via_vm_compute (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r)) regs)⌝ ∗
+      | RKCol regs => ⌜is_Some (via_vm_compute (λ regs,
+            match list_find_idx (λ x, x.1 = KindField r f) regs with
+            | Some i => Some i
+            | None => list_find_idx (λ x, x.1 = KindReg r) regs
+            end) regs)⌝ ∗
                       (reg_col regs -∗ WPasm es)
       end))) -∗
     WPasm (ReadReg r [Field f] v ann :: es).
