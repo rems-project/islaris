@@ -886,13 +886,8 @@ Section instances.
     ((find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => ⌜v = v'⌝ ∗ (r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => ∃ e, ⌜(λ i, regs !!! i) <$>
-         (via_vm_compute (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r)) regs) = Some e⌝ ∗
-         ⌜if e.1 is KindField _ _ then e.2 = ExactShape v else
-            if e.2 is ExactShape (RegVal_Struct rs) then
-              ((λ i, (rs !!! i).2) <$> via_vm_compute (list_find_idx (λ x, x.1 = f)) rs) = Some v
-            else False⌝ ∗
-           (reg_col regs -∗ WPasm es)
+      | RKCol regs => ∃ i, ⌜via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs = Some i⌝ ∗
+                      ⌜(regs !!! i).2 = ExactShape v⌝ ∗ (reg_col regs -∗ WPasm es)
       end))) -∗
     WPasm (AssumeReg r [Field f] v ann :: es).
   Proof.
@@ -900,11 +895,17 @@ Section instances.
     - iDestruct "Hwp" as (->) "?". by iApply (wp_assume_reg_struct with "Hr").
     - rewrite via_vm_compute_eq.
   Admitted.
-      (* iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some Hr) "Hwp"; simplify_eq/=. *)
+      (* iDestruct "Hwp" as ([? ?] [i [[[rk s][?[Hor ?]]]%list_find_idx_Some Hr]]%fmap_Some He) "Hwp"; simplify_eq/=. *)
       (* erewrite list_lookup_total_correct in Hr; [|done]; simplify_eq/=. *)
-      (* iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=. *)
-      (* iApply (wp_assume_reg_struct with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs". *)
-      (* iExists _. by iFrame. *)
+      (* iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [%Hvact Hr]] Hregs]"; [done|]; simplify_eq/=. *)
+      (* destruct Hor; simplify_eq. *)
+      (* + rewrite Hvact. iApply (wp_assume_reg_struct with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs". *)
+      (*   iExists _. by iFrame. *)
+      (* + destruct s as [[] | |] => //. rewrite Hvact. rewrite via_vm_compute_eq in He. move: He => /fmap_Some[?[??]]. *)
+      (*   iApply (wp_assume_reg_acc with "Hr"). *)
+      (*   { rewrite /read_accessor/=. by simplify_option_eq. } *)
+
+      (*   iIntros "Hr". iApply "Hwp". iApply "Hregs". *)
   (* Qed. *)
 
   Lemma li_wp_write_reg r v ann es:
@@ -1085,19 +1086,9 @@ Section instances.
     (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v => (if v is RegVal_Base v' then r # f ↦ᵣ v -∗ Φ v' else False)
-      | RKCol regs => ∃ e : reg_kind * valu_shape,
-           ⌜fmap (FMap:=option_fmap) (λ i, regs !!! i)
-          (via_vm_compute (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r)) regs) = Some e⌝ ∗
-         (if e.1 is KindField _ _ then
-           (if e.2 is ExactShape (RegVal_Base v') then reg_col regs -∗ Φ v' else False)
-         else if e.2 is ExactShape (RegVal_Struct rs) then
-           ∃ i' : nat, ⌜via_vm_compute (list_find_idx (λ x, x.1 = f)) rs = Some i'⌝ ∗
-           if (rs !!! i').2 is RegVal_Base v' then reg_col regs -∗ Φ v' else False
-         else False)
+      | RKCol regs => ∃ i : nat, ⌜via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs = Some i⌝ ∗
+                      if (regs !!! i).2 is ExactShape (RegVal_Base v') then reg_col regs -∗ Φ v' else False
       end)) -∗
-      (* | RKCol regs => ∃ i : nat, ⌜via_vm_compute (list_find_idx (λ x, x.1 = KindField r f)) regs = Some i⌝ ∗ *)
-      (*                 if (regs !!! i).2 is ExactShape (RegVal_Base v') then reg_col regs -∗ Φ v' else False *)
-      (* end)) -∗ *)
     WPaexp (AExp_Val (AVal_Var r [Field f]) ann) {{ Φ }}.
   Proof.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
