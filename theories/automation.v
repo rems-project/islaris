@@ -1351,10 +1351,10 @@ Ltac liAStep :=
 ]; liSimpl.
 
   Lemma tac_vm_compute_hint {Σ A B} Δ (f : A → B) a (Q : B → iProp Σ) x:
-    f a = x →
+    (∀ y, x = y → f a = y) →
     envs_entails Δ (Q x) →
     envs_entails Δ (vm_compute_hint f a Q).
-  Proof. move => <-. done. Qed.
+  Proof. naive_solver. Qed.
 Ltac liVmComputeHint :=
   lazymatch goal with
   | |- envs_entails ?Δ (vm_compute_hint _ _ _) =>
@@ -1368,7 +1368,7 @@ Ltac liVmComputeHint ::=
 Ltac liVmComputeHint ::=
   lazymatch goal with
   | |- envs_entails ?Δ (vm_compute_hint ?f ?a _) =>
-      refine (tac_vm_compute_hint _ _ _ _ _ _ _); [vm_compute; exact: eq_refl|]
+      refine (tac_vm_compute_hint _ _ _ _ _ _ _); [let H := fresh in intros ? H; vm_compute; apply H|]
   end.
 Ltac liStep ::=
   first [
