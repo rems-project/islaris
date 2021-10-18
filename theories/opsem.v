@@ -29,12 +29,13 @@ Proof. solve_decision. Defined.
 Global Instance reg_kind_inhabited : Inhabited (reg_kind) := populate (KindReg "").
 
 Inductive valu_shape :=
-| ExactShape (v : valu) | BitsShape (n : N) | UnknownShape.
+| ExactShape (v : valu) | BitsShape (n : N) | PropShape (P : valu → Prop) | UnknownShape.
 Global Instance valu_shape_inhabited : Inhabited (valu_shape) := populate UnknownShape.
 Definition valu_has_shape (v : valu) (s : valu_shape) : Prop :=
   match s with
   | ExactShape v' => v = v'
   | BitsShape n => if v is RVal_Bits b then b.(bvn_n) = n else False
+  | PropShape P => P v
   | UnknownShape => True
   end.
 Arguments valu_has_shape : simpl nomatch.
