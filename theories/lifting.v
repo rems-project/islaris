@@ -658,6 +658,27 @@ Section lifting.
     Unshelve. exact true.
   Qed.
 
+  Lemma wp_declare_const_enum v es i ann:
+    (∀ c, WPasm ((subst_val_event (Val_Enum (i, c)) v) <$> es)) -∗
+    WPasm (Smt (DeclareConst v (Ty_Enum i)) ann :: es).
+  Proof.
+    iIntros "Hcont". setoid_rewrite wp_asm_unfold.
+    iIntros ([????]) "/= -> -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "(?&Hictx&?)".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iSplit. {
+      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      done.
+    }
+    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
+    inv_seq_step.
+    iFrame; iSplitL; [|done].
+    iApply ("Hcont"); [done..|].
+    iFrame.
+    Unshelve. exact: inhabitant.
+  Qed.
+
   Lemma wp_define_const n es ann e:
     WPexp e {{ v, WPasm ((subst_val_event v n) <$> es) }} -∗
     WPasm (Smt (DefineConst n e) ann :: es).

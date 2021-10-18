@@ -976,6 +976,11 @@ Section instances.
     WPasm (Smt (DeclareConst v Ty_Bool) ann :: es).
   Proof. apply: wp_declare_const_bool. Qed.
 
+  Lemma li_wp_declare_const_enum v es i ann:
+    (∀ c, WPasm ((subst_val_event (Val_Enum (i, c)) v) <$> es)) -∗
+    WPasm (Smt (DeclareConst v (Ty_Enum i)) ann :: es).
+  Proof. apply: wp_declare_const_enum. Qed.
+
   Lemma li_wp_define_const n es ann e:
     WPexp e {{ v, let_bind_hint v (λ v, WPasm ((subst_val_event v n) <$> es)) }} -∗
     WPasm (Smt (DefineConst n e) ann :: es).
@@ -1298,6 +1303,7 @@ Ltac liAAsm :=
       | WriteMem _ _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_mem _ _ _ _ _ _ _ _ _) _)
       | Smt (DeclareConst _ (Ty_BitVec _)) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bv _ _ _ _) _)
       | Smt (DeclareConst _ Ty_Bool) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bool _ _ _) _)
+      | Smt (DeclareConst _ (Ty_Enum _)) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_enum _ _ _ _) _)
       | Smt (DefineConst _ _) _ => notypeclasses refine (tac_fast_apply (li_wp_define_const _ _ _ _) _)
       | Smt (Assert _) _ => notypeclasses refine (tac_fast_apply (li_wp_assert _ _ _) _)
       | Assume _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume _ _ _) _)

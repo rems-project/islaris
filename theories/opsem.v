@@ -5,6 +5,13 @@ Open Scope Z_scope.
 (* TODO: move to a separate file? *)
 (*** General facts and definitions about isla_lang. *)
 Global Instance valu_inhabited : Inhabited valu := populate (RVal_Bool true).
+Global Instance enum_id_eq_decision : EqDecision enum_id.
+Proof. solve_decision. Qed.
+Global Instance enum_ctor_eq_decision : EqDecision enum_ctor.
+Proof. solve_decision. Qed.
+Global Instance enum_eq_decision : EqDecision enum.
+Proof. solve_decision. Qed.
+
 
 Definition ite {A} (b : bool) (x y : A) : A :=
   if b then x else y.
@@ -93,6 +100,8 @@ Definition eval_binop (b : binop) (v1 v2 : base_val) : option base_val :=
   | Eq, Val_Bits n1, Val_Bits n2 =>
     n2' ← bvn_to_bv n1.(bvn_n) n2;
     Some (Val_Bool (bool_decide (n1.(bvn_val) = n2')))
+  | Eq, Val_Enum n1, Val_Enum n2 =>
+    Some (Val_Bool (bool_decide (n1 = n2)))
 
   (* TODO: add support for Bvnand, Bvnor, Bvxnor *)
 
@@ -237,6 +246,8 @@ Inductive trace_step : trc → reg_map → option trace_label → trc → Prop :
     trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) regs None (subst_val_event (Val_Bits (BV b n Heq)) x <$> es)
 | DeclareConstBoolS x ann es b regs:
     trace_step (Smt (DeclareConst x Ty_Bool) ann :: es) regs None (subst_val_event (Val_Bool b) x <$> es)
+| DeclareConstEnumS x ann es regs i c:
+    trace_step (Smt (DeclareConst x (Ty_Enum i)) ann :: es) regs None (subst_val_event (Val_Enum (i, c)) x <$> es)
 | DefineConstS x e v ann es regs:
     eval_exp e = Some v ->
     trace_step (Smt (DefineConst x e) ann :: es) regs None (subst_val_event v x <$> es)
