@@ -26,7 +26,7 @@ Lemma bool_to_Z_Z_of_bool:
   bool_to_Z = Z_of_bool.
 Proof. done. Qed.
 
-Hint Rewrite bv_unsigned_spec_high using lia : rewrite_bits_db.
+#[export] Hint Rewrite bv_unsigned_spec_high using lia : rewrite_bits_db.
 
 Lemma bv_extract_concat_later m n1 n2 s l (b1 : bv n1) (b2 : bv n2):
   (n2 ≤ s)%N → (m = n1 + n2)%N →
@@ -55,11 +55,11 @@ Proof. by destruct b. Qed.
 (** The [bv_simplify] database collects rewrite rules that rewrite
 bitvectors into other bitvectors. *)
 Create HintDb bv_simplify discriminated.
-Hint Rewrite @bv_concat_0 using done : bv_simplify.
-Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : bv_simplify.
-Hint Rewrite @bv_extract_bool_to_bv using lia : bv_simplify.
-Hint Rewrite @bv_not_bool_to_bv : bv_simplify.
-Hint Rewrite bool_decide_bool_to_bv_0 bool_decide_bool_to_bv_1 : bv_simplify.
+#[export] Hint Rewrite @bv_concat_0 using done : bv_simplify.
+#[export] Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : bv_simplify.
+#[export] Hint Rewrite @bv_extract_bool_to_bv using lia : bv_simplify.
+#[export] Hint Rewrite @bv_not_bool_to_bv : bv_simplify.
+#[export] Hint Rewrite bool_decide_bool_to_bv_0 bool_decide_bool_to_bv_1 : bv_simplify.
 
 (** The [bv_unfold] database contains rewrite rules that propagate
 bv_unsigned and bv_signed and unfold the bitvector definitions. *)
@@ -72,7 +72,7 @@ Lemma bv_signed_BV n z Heq:
 Proof. done. Qed.
 
 (* Rules without sideconditions *)
-Hint Rewrite
+#[export] Hint Rewrite
      @bv_succ_unsigned @bv_succ_signed
      @bv_pred_unsigned @bv_pred_signed
      @bv_add_unsigned @bv_add_signed
@@ -102,7 +102,7 @@ Hint Rewrite
   : bv_unfold.
 
 (* Rules with sideconditions *)
-Hint Rewrite
+#[export] Hint Rewrite
      @bv_zero_extend_unsigned @bv_sign_extend_signed
      @bv_concat_unsigned
      using lia
@@ -111,15 +111,15 @@ Hint Rewrite
 (** The [bv_unfolded_simplify] database collects rewrite rules that
 should be used to simplify the goal after Z is bv_unfolded. *)
 Create HintDb bv_unfolded_simplify discriminated.
-Hint Rewrite Z.shiftr_0_r Z.lor_0_r Z.lor_0_l : bv_unfolded_simplify.
-Hint Rewrite Z.land_ones using lia : bv_unfolded_simplify.
-Hint Rewrite bv_wrap_bv_wrap using lia : bv_unfolded_simplify.
+#[export] Hint Rewrite Z.shiftr_0_r Z.lor_0_r Z.lor_0_l : bv_unfolded_simplify.
+#[export] Hint Rewrite Z.land_ones using lia : bv_unfolded_simplify.
+#[export] Hint Rewrite bv_wrap_bv_wrap using lia : bv_unfolded_simplify.
 
 (** The [bv_unfolded_to_arith] database collects rewrite rules that
 convert bitwise operations to arithmetic operations in preparation for lia. *)
 Create HintDb bv_unfolded_to_arith discriminated.
-Hint Rewrite Z_lnot_opp : bv_unfolded_to_arith.
-Hint Rewrite Z.shiftl_mul_pow2 Z.shiftr_div_pow2 using lia : bv_unfolded_to_arith.
+#[export] Hint Rewrite Z_lnot_opp : bv_unfolded_to_arith.
+#[export] Hint Rewrite Z.shiftl_mul_pow2 Z.shiftr_div_pow2 using lia : bv_unfolded_to_arith.
 
 Ltac reduce_closed_N_tac := idtac.
 Ltac reduce_closed_N :=
@@ -235,17 +235,17 @@ Ltac onesify_hyp n H :=
     onesify_hyp n' H
   end.
 
-Hint Rewrite
+#[export] Hint Rewrite
   Z.bits_0
   Z.lor_0_l Z.lor_0_r
   Z.land_spec Z.lor_spec
   andb_false_l andb_false_r andb_true_l andb_true_r
   orb_false_l orb_false_r orb_true_l orb_true_r : bits_simplify.
 
-Hint Rewrite
+#[export] Hint Rewrite
   Z_ones_spec Z.testbit_neg_r Z.shiftl_spec Z.shiftr_spec Z.lnot_spec using lia : bits_simplify.
 
-Hint Rewrite <- Z.land_ones using lia : bits_simplify.
+#[export] Hint Rewrite <- Z.land_ones using lia : bits_simplify.
 
 Ltac bool_decide_split :=
   repeat match goal with

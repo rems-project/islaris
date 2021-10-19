@@ -20,7 +20,7 @@ Typeclasses Opaque ite.
 Lemma ite_bv_unsigned n b (x1 x2 : bv n) :
   bv_unsigned (ite b x1 x2) = ite b (bv_unsigned x1) (bv_unsigned x2).
 Proof. by destruct b. Qed.
-Hint Rewrite ite_bv_unsigned : bv_unfold.
+#[export] Hint Rewrite ite_bv_unsigned : bv_unfold.
 
 Inductive reg_kind :=
 | KindReg (r : string) | KindField (r f : string).
@@ -287,14 +287,14 @@ Record seq_global_state := {
   seq_instrs : gmap addr (list trc);
   seq_mem    : mem_map;
 }.
-Instance eta_seq_global_state : Settable _ := settable! Build_seq_global_state <seq_instrs; seq_mem>.
+Global Instance eta_seq_global_state : Settable _ := settable! Build_seq_global_state <seq_instrs; seq_mem>.
 Record seq_local_state := {
   seq_trace    : trc;
   seq_regs     : reg_map;
   seq_pc_reg   : register_name;
   seq_nb_state : bool;
 }.
-Instance eta_seq_local_state : Settable _ := settable! Build_seq_local_state <seq_trace; seq_regs; seq_pc_reg ;seq_nb_state>.
+Global Instance eta_seq_local_state : Settable _ := settable! Build_seq_local_state <seq_trace; seq_regs; seq_pc_reg ;seq_nb_state>.
 
 Inductive seq_label : Set :=
 | SReadMem (a : addr) (v : bvn)

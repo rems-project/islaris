@@ -23,7 +23,7 @@ Definition islaΣ : gFunctors :=
    GFunctor (constRF backed_memUR);
    GFunctor (frac_agreeR specO)].
 
-Instance subG_islaPreG {Σ} : subG islaΣ Σ → islaPreG Σ.
+Global Instance subG_islaPreG {Σ} : subG islaΣ Σ → islaPreG Σ.
 Proof. solve_inG. Qed.
 
 Definition initial_local_state `{!Arch} (regs : reg_map) : seq_local_state := {|

@@ -14,7 +14,7 @@ Class islaG Σ := IslaG {
   islaG_gen_heapG :> heapG Σ
 }.
 
-Instance isla_irisG `{!islaG Σ} : irisGS isla_lang Σ := {
+Global Instance isla_irisG `{!islaG Σ} : irisGS isla_lang Σ := {
   iris_invGS := islaG_invG;
   state_interp σ _ κs _ := state_ctx σ κs;
   fork_post _ := True%I;
@@ -23,7 +23,7 @@ Instance isla_irisG `{!islaG Σ} : irisGS isla_lang Σ := {
 }.
 Global Opaque iris_invGS.
 
-Instance into_val_val e v `{!TCEq (seq_to_val e) (Some v)} : IntoVal e v.
+Global Instance into_val_val e v `{!TCEq (seq_to_val e) (Some v)} : IntoVal e v.
 Proof. apply of_to_val. by apply TCEq_eq. Qed.
 
 Local Hint Extern 0 (reducible _ _) => eexists _, _, _, _; simpl : core.

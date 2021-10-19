@@ -37,7 +37,7 @@ Definition list_find_idx {A} P `{∀ x, Decision (P x)} : list A → option nat 
   | [] => None
   | x :: l => if decide (P x) then Some 0%nat else S <$> go l
   end.
-Instance: Params (@list_find_idx) 3 := {}.
+Global Instance: Params (@list_find_idx) 3 := {}.
 
 Section list_find_idx.
   Context {A} (P : A → Prop) `{∀ x, Decision (P x)}.
