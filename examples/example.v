@@ -77,7 +77,7 @@ Lemma test_state_adequate κs t2 σ2 n:
 Proof.
   set Σ : gFunctors := #[islaΣ].
   apply: (isla_adequacy Σ) => //. { unfold test_state_spec. spec_solver. }
-  iIntros (?) "#Hi #Hbm Hspec /= !>". iSplitL => //.
+  iIntros (?) "#Hi #Hbm Hspec _ /= !>". iSplitL => //.
   iIntros (?).
   do 6 (rewrite big_sepM_insert; [|by vm_compute]).
   iIntros "(?&?&?&?&?&?&Hregs)".
@@ -141,7 +141,7 @@ Lemma test_state_adequate' κs t2 σ2 n:
 Proof.
   set Σ : gFunctors := #[islaΣ].
   apply: (isla_adequacy Σ) => //. { unfold test_state_spec. spec_solver. }
-  iIntros (?) "#Hi #Hbm Hspec /= !>". iSplitL => //.
+  iIntros (?) "#Hi #Hbm Hspec _ /= !>". iSplitL => //.
   iIntros (?) "/=".
   do 6 (rewrite big_sepM_insert; [|by vm_compute]).
   iIntros "(HPC&?&?&?&?&?&Hregs)".

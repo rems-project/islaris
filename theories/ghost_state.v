@@ -492,6 +492,14 @@ Section mem.
     iApply ("IH" with "[] Hmem Hbs"). iPureIntro. lia.
   Qed.
 
+  Lemma mem_mapsto_byte_to_mapsto a v q :
+    mem_mapsto_byte heap_mem_name a q v -∗ a ↦ₘ{q} v.
+  Proof.
+    iIntros "Hbyte". rewrite mem_mapsto_eq. iExists 1%nat. iSplit; [done|] => /=.
+    rewrite bv_add_Z_0 -(bv_wrap_land 8) bv_wrap_small ?Z_to_bv_bv_unsigned; [| apply bv_unsigned_in_range].
+    by iFrame.
+  Qed.
+
   Lemma mem_mapsto_n_mult_8 n a (w : bv n) q:
     a ↦ₘ{q} w -∗ ⌜∃ len, n = (8 * len)%N⌝.
   Proof. rewrite mem_mapsto_eq. iDestruct 1 as (len Hlen) "Hlist". iPureIntro. naive_solver. Qed.

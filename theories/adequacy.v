@@ -36,7 +36,7 @@ Definition initial_local_state `{!Arch} (regs : reg_map) : seq_local_state := {|
 Lemma isla_adequacy Σ `{!Arch} `{!islaPreG Σ} (instrs : gmap addr (list trc)) (mem : mem_map) (regs : list reg_map) (Pκs : spec) t2 σ2 κs n:
   Pκs [] →
   (∀ {HG : islaG Σ},
-    ⊢ instr_table instrs -∗ backed_mem (dom _ mem) -∗ spec_trace Pκs
+    ⊢ instr_table instrs -∗ backed_mem (dom _ mem) -∗ spec_trace Pκs -∗ ([∗ map] a↦b∈mem, a ↦ₘ b)
     ={⊤}=∗ [∗ list] rs ∈ regs, ∀ (_ : threadG), ([∗ map] r↦v∈rs, r ↦ᵣ v) -∗ WPasm []) →
   nsteps n (initial_local_state <$> regs, {| seq_instrs := instrs; seq_mem := mem |}) κs (t2, σ2) →
   (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧ Pκs κs.
@@ -56,10 +56,12 @@ Proof.
   iAssert (instr_table instrs) as "#His". { by rewrite instr_table_eq. }
   iAssert (backed_mem (dom _ mem)) as "#Hbm". { by rewrite backed_mem_eq. }
 
-  iMod (Hwp HislaG with "His Hbm [Hs1]") as "Hwp". {
+  iMod (Hwp HislaG with "His Hbm [Hs1] [Hm2]") as "Hwp". {
     rewrite spec_trace_eq. iExists _. rewrite spec_trace_raw_eq. by iFrame.
+  } {
+    iApply (big_sepM_impl with "Hm2"). iIntros "!>" (a b ?) "Ha".
+    iApply mem_mapsto_byte_to_mapsto. rewrite mem_mapsto_byte_eq. iFrame.
   }
-
   iModIntro.
   iExists NotStuck, _, (replicate (length regs) (λ _, True%I)), _, _.
   iSplitL "Hs2 Hm1"; last first; [iSplitL|].

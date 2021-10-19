@@ -16,3 +16,4 @@ _build/
 *.o
 /sail/dune
 /sail-riscv/dune
+_opam*

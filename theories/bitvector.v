@@ -256,6 +256,10 @@ Lemma bv_unsigned_in_range n (b : bv n):
   0 ≤ bv_unsigned b < bv_modulus n.
 Proof. apply bv_wf_in_range. apply bv_is_wf. Qed.
 
+Lemma Z_to_bv_bv_unsigned n (b : bv n):
+  Z_to_bv n (bv_unsigned b) = b.
+Proof. apply bv_eq. rewrite Z_to_bv_unsigned, bv_wrap_small; [done|apply bv_unsigned_in_range]. Qed.
+
 Lemma bv_eq_wrap n (b1 b2 : bv n) :
   b1 = b2 ↔ bv_wrap n b1.(bv_unsigned) = bv_wrap n b2.(bv_unsigned).
 Proof.
@@ -869,6 +873,16 @@ Section properties.
     bv_wrap_simplify_solve.
   Qed.
 
+  Lemma bv_add_Z_inj_l b i j:
+    0 ≤ i < bv_modulus n →
+    0 ≤ j < bv_modulus n →
+    bv_add_Z b i = bv_add_Z b j ↔ i = j.
+  Proof.
+    intros ??. split; [|naive_solver].
+    intros Heq%bv_eq. rewrite !bv_add_Z_unsigned, !(Z.add_comm (bv_unsigned _)) in Heq.
+    by rewrite <-bv_wrap_add_inj, !bv_wrap_small in Heq.
+  Qed.
+
   Lemma bv_not_opp b:
     bv_not b = bv_sub_Z (bv_opp b) 1.
   Proof.
@@ -974,6 +988,15 @@ Section bv_seq.
     rewrite <-fmap_add_seqZ, <-list_fmap_compose. apply list_fmap_ext.
     - intros x. simpl. by rewrite bv_add_Z_add_l.
     - f_equal. lia.
+  Qed.
+
+  Lemma NoDup_bv_seq b z:
+    0 ≤ z ≤ bv_modulus n →
+    NoDup (bv_seq b z).
+  Proof.
+    intros ?. apply NoDup_alt. intros i j b'. unfold bv_seq. rewrite !list_lookup_fmap.
+    intros [?[[??]%lookup_seqZ ?]]%fmap_Some ; simplify_eq.
+    intros [?[[->?]%lookup_seqZ ?%bv_add_Z_inj_l]]%fmap_Some; lia.
   Qed.
 End bv_seq.
 
