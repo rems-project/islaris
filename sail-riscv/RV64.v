@@ -628,8 +628,16 @@ Lemma join_lookup_Some' {A} n (ls : list (list A)) i x:
   mjoin ls !! i = Some x ↔ ∃ j l i', ls !! j = Some l ∧ l !! i' = Some x
                              ∧ i = (j * n + i')%nat.
 Proof.
-  move => Hl. rewrite join_lookup_Some.
-Admitted.
+  move => Hl. rewrite join_lookup_Some. split.
+  - move => [?[?[?[Hls [??]]]]]. eexists _, _, _. split_and! => //. subst.
+    move: (Hls) => /(lookup_lt_Some _ _ _)?.
+    rewrite (sum_list_fmap n) ?take_length_le //; [lia|].
+    move => ? /take_elem_of[?[??]]. apply: Hl. by eapply elem_of_list_lookup_2.
+  - move => [?[?[?[Hls [??]]]]]. eexists _, _, _. split_and! => //. subst.
+    move: (Hls) => /(lookup_lt_Some _ _ _)?.
+    rewrite (sum_list_fmap n) ?take_length_le //; [lia|].
+    move => ? /take_elem_of[?[??]]. apply: Hl. by eapply elem_of_list_lookup_2.
+Qed.
 
 Lemma join_lookup_Some_mul {A} n (ls : list (list A)) j i x:
   (∀ x, x ∈ ls → length x = n) →
