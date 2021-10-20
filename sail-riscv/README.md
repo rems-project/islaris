@@ -6,7 +6,12 @@ Coq model generated from the RISC-V Sail model.
 ## Installation
 One can install the Sail model with the following steps:
 ```
-opam pin coq-bbv 1.2
+git clone https://github.com/mit-plv/bbv.git
+cd bbv
+make
+make install
+cd ..
+
 wget https://github.com/riscv/sail-riscv/archive/9f71c756484a4aac7c211d5ea266f45b0b3942e7.tar.gz -O sail.tar.gz
 tar xvf sail.tar.gz
 mv sail-riscv-*/prover_snapshots/coq coq
@@ -31,6 +36,13 @@ cd coq
 
 # Adjust riscv.v for RV32, RV64 and duopod to use "Require Import {RV32/RV64/RVduopod}.riscv_types."
 # instead of "Require Import riscv_types." The same for mem_metadata and riscv_extras.
+
+# Adjust riscv_extras.v for RV32, RV64 and duopod to import "Require Import Lia."
+
+sed -i s/omega/lia/ RV32/riscv_extras.v
+sed -i s/omega/lia/ RV64/riscv_extras.v
+sed -i s/omega/lia/ duopod/riscv_extras.v
+
 ./build
 install -m a+rw -D -t "$OPAM_SWITCH_PREFIX/lib/coq/user-contrib/Sail" lib/sail/*.{v,vo}
 install -m a+rw -D -t "$OPAM_SWITCH_PREFIX/lib/coq/user-contrib/RV32" RV32/*.{v,vo}

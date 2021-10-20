@@ -5,6 +5,30 @@ Require Import isla.adequacy.
 Require Import isla.riscv64.arch.
 
 (*** Relating values *)
+Definition byte_to_bits (b : byte) : list bool :=
+  (λ i, Z.testbit (bv_unsigned b) i) <$> seqZ 0 8.
+Definition byte_to_memory_byte (b : byte) : memory_byte :=
+  bitU_of_bool <$> byte_to_bits b.
+
+Global Instance bitU_of_bool_inj : Inj eq eq bitU_of_bool.
+Proof. move => [] []; done. Qed.
+
+Global Instance byte_to_memory_byte_inj : Inj eq eq byte_to_memory_byte.
+Proof.
+  move => x y. rewrite /byte_to_memory_byte/= => ?. simplify_list_eq.
+  apply bv_eq_wrap. apply Z.bits_inj_iff' => n ?. rewrite !bv_wrap_spec //.
+  case_bool_decide => //=.
+  destruct (decide (n = 0)); subst => //.
+  destruct (decide (n = 1)); subst => //.
+  destruct (decide (n = 2)); subst => //.
+  destruct (decide (n = 3)); subst => //.
+  destruct (decide (n = 4)); subst => //.
+  destruct (decide (n = 5)); subst => //.
+  destruct (decide (n = 6)); subst => //.
+  destruct (decide (n = 7)); subst => //.
+  lia.
+Qed.
+
 Definition bv_to_mword {n1 n2} (b : bv n1) `{H:ArithFact (n2 >=? 0)} : mword n2 :=
   word_to_mword (Word.NToWord _ (Z.to_N $ bv_unsigned b)).
 Arguments bv_to_mword : simpl never.
@@ -56,16 +80,85 @@ Proof.
   rewrite bv_add_unsigned !mword_to_bv_unsigned // get_word_word_binop.
   rewrite /Word.wplus /Word.wordBin Word.wordToN_NToWord_eqn.
   rewrite /bv_wrap/bv_modulus -(N2Z.inj_pow 2) -Npow2_pow Z_nat_N.
-  rewrite N2Z.inj_mod. 2: { by apply: N.pow_nonzero. }
-  rewrite N2Z.inj_add. f_equal. by rewrite Hn N2Z.id.
+  rewrite N2Z.inj_mod N2Z.inj_add. f_equal. by rewrite Hn N2Z.id.
 Qed.
 Arguments add_vec : simpl never.
 
+Lemma mem_bytes_of_bits_to_bv n (v : mword n) len H:
+  n = 8 * len →
+  mem_bytes_of_bits (H:=@mword_Bitvector _ H) v = Some (byte_to_memory_byte <$>
+       (bv_to_little_endian len 8 (@bv_unsigned (Z.to_N n) (mword_to_bv v)))).
+Proof.
+  move => Hn.
+  rewrite /mem_bytes_of_bits/bytes_of_bits/bits_of/= option_map_fmap map_fmap.
+  apply fmap_Some. eexists (rev _). rewrite rev_involutive. split; [|done].
+  rewrite (byte_chunks_reshape (Z.to_nat len)).
+  2: { rewrite fmap_length length_bitlistFromWord. lia. }
+  f_equal. apply list_eq => i. rewrite sublist_lookup_reshape; [|lia|].
+  2: { rewrite fmap_length length_bitlistFromWord. lia. }
+  destruct (decide (i < len)). 2: { admit. }
+  rewrite rev_lookup fmap_length bv_to_little_endian_length; [|lia..].
+  rewrite list_lookup_fmap. symmetry.
+  match goal with | |- context [?a !! ?b] => destruct (a !! b) as [x|] eqn: Hx; rewrite Hx; symmetry => /= end.
+  2: { apply: sublist_lookup_None. rewrite fmap_length. admit. }
+Admitted.
+
+Lemma just_list_bits_of_mem_bytes bs:
+  just_list (bool_of_bitU <$> bits_of_mem_bytes (byte_to_memory_byte <$> bs)) =
+    Some (mjoin ((byte_to_bits <$> rev bs))).
+Proof.
+  rewrite just_list_mapM. apply mapM_Some_2. apply Forall2_same_length_lookup_2. {
+    rewrite fmap_length join_length -list_fmap_compose /compose /= sum_list_fmap'.
+    rewrite length_bits_of_mem_bytes ?fmap_length ?rev_length //.
+    admit.
+  }
+  move => i x y. rewrite list_lookup_fmap /bits_of_mem_bytes/bits_of_bytes concat_join map_fmap.
+  move => /fmap_Some[?[/(join_lookup_Some' 8)[|?[?[?[Hm [Hl ?]]]]]]].
+  { rewrite rev_reverse. move => ? /elem_of_list_fmap[?[? /elem_of_reverse /elem_of_list_fmap[?[??]]]]; subst. done. }
+  move => ?. subst. move: Hm. rewrite list_lookup_fmap. move => /fmap_Some [?[Hrev ?]]. subst.
+  move: Hl. rewrite /bits_of /= map_fmap list_lookup_fmap => /fmap_Some [?[Hl ?]]. subst.
+  move: Hrev => /rev_lookup_Some. rewrite list_lookup_fmap => -[/fmap_Some[?[Hbs ?]] ?]. subst.
+  move: Hl. rewrite /byte_to_memory_byte list_lookup_fmap => /fmap_Some[?[??]].
+  move => /join_lookup_Some_mul[| |].
+  { admit. } { admit. }
+  move => ?. rewrite list_lookup_fmap => -[/fmap_Some[?[/rev_lookup_Some[??] ?]] Hl].
+  unfold byte in *; rewrite fmap_length in Hbs; simplify_eq.
+  by rewrite bool_of_bitU_of_bool.
+Admitted.
+
+Lemma read_mem_bytes_eq len' n H H2 bs:
+  ((λ bl : list bool,
+       to_word (@isPositive n H) (fit_bbv_word (wordFromBitlist bl))) <$>
+     just_list
+     (bool_of_bitU <$>
+                   bits_of_mem_bytes (byte_to_memory_byte <$> bs))) = Some
+   (bv_to_mword (H:=H2) (Z_to_bv (8 * len') (little_endian_to_bv 8 bs))).
+Proof.
+  rewrite just_list_bits_of_mem_bytes /=. f_equal.
+  apply get_word_inj. rewrite !get_word_to_word fit_bbv_word_id.
+  { rewrite join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length. admit. }
+  move => Hhyp. destruct Hhyp => /=. apply Word.wordToN_inj.
+  rewrite Word.wordToN_NToWord_2. 2: admit.
+  apply N2Z.inj. rewrite Z2N.id. 2: admit.
+  rewrite Z_to_bv_unsigned. apply Z.bits_inj_iff' => i ?.
+  have {1}->: i = Z.of_nat (Z.to_nat i) by lia.
+  rewrite -getBit_testbit . 2: admit.
+  rewrite getBit_wordFromBitlist.
+  rewrite bv_wrap_spec //. case_bool_decide => /=.
+  2: { rewrite lookup_ge_None_2 // join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length. admit. }
+  rewrite /default. case_match as Hc.
+  2: { rewrite lookup_ge_None join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length in Hc. admit. }
+  move: Hc => /(join_lookup_Some' 8)[|?[?[?[?[? Hi]]]]]. { admit. }
+  move: Hi => /Nat2Z.inj_iff. rewrite Z2Nat.id // => ->.
+Admitted.
 
 Definition register_value_to_valu (v : register_value) : valu :=
   match v with
   | Regval_bitvector_64_dec m => RVal_Bits (mword_to_bv (n2:=64) m)
+  | Regval_bool b => RVal_Bool b
   | Regval_Misa m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Misa_Misa_chunk_0)))]
+  | Regval_Mstatus m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Mstatus_Mstatus_chunk_0)))]
+  | Regval_Privilege p => RVal_Enum (Mk_enum_id 3, Mk_enum_ctor (match p with | User => 0 | Supervisor => 1 | Machine => 2 end))
   | _ => RegVal_Poison
   end.
 
@@ -121,6 +214,30 @@ Inductive sail_step : sail_state → option seq_label → sail_state → Prop :=
 | SailWriteReg rs rs' h ins e r v:
   set_regval r v rs = Some rs' →
   sail_step (SAIL (Write_reg r v e) rs h ins false) None (SAIL e rs' h ins false)
+| SailReadMem rs h ins e a bs' sz κ adr len:
+  adr = (Z_to_bv 64 (Z.of_nat a)) →
+  (len = N.of_nat sz)%N →
+  (if read_mem_list h adr len is Some bs then
+    κ = None ∧
+    bs = bs'
+  else
+    set_Forall (λ ad, ¬ (a ≤ bv_unsigned ad < a + Z.of_N len)) (dom (gset _) h) ∧
+    κ = Some (SReadMem adr (Z_to_bv (8 * len) (little_endian_to_bv 8 bs')))) →
+  sail_step (SAIL (Read_mem Read_plain a sz e) rs h ins false) κ (SAIL (e (byte_to_memory_byte <$> bs')) rs h ins false)
+| SailWriteMem rs h h' ins e a bs bs' sz len adr κ:
+  adr = (Z_to_bv 64 (Z.of_nat a)) →
+  (len = N.of_nat sz)%N →
+  bs = byte_to_memory_byte <$> bs' →
+  (if read_mem_list h adr len is Some _ then
+    write_mem_list h (Z_to_bv 64 (Z.of_nat a)) bs' = h' ∧
+    κ = None
+  else
+    set_Forall (λ ad, ¬ (a ≤ bv_unsigned ad < a + Z.of_N len)) (dom (gset _) h) ∧
+    h = h' ∧
+    κ = Some (SWriteMem adr (Z_to_bv (8 * len) (little_endian_to_bv 8 bs')))) →
+  sail_step (SAIL (Write_mem Write_plain a sz bs e) rs h ins false) κ (SAIL (e true) rs h' ins false)
+| SailWriteEa rs h ins e wk n1 n2:
+  sail_step (SAIL (Write_ea wk n1 n2 e) rs h ins false) None (SAIL e rs h ins false)
 .
 
 Definition sail_module := {|
@@ -150,10 +267,40 @@ Proof. elim: K e1 => //=. Qed.
 Lemma mctx_interp_Write_reg A E K r e1 v:
   @mctx_interp A E K (Write_reg r v e1) = Write_reg r v (mctx_interp K e1).
 Proof. elim: K e1 => //=. Qed.
+Lemma mctx_interp_Read_mem A E K e1 a sz rk:
+  @mctx_interp A E K (Read_mem rk a sz e1) = Read_mem rk a sz (λ v, mctx_interp K (e1 v)).
+Proof. elim: K e1 => //=. Qed.
+Lemma mctx_interp_Write_mem A E K e1 a sz bs wk:
+  @mctx_interp A E K (Write_mem wk a sz bs e1) = Write_mem wk a sz bs (λ v, mctx_interp K (e1 v)).
+Proof. elim: K e1 => //=. Qed.
+Lemma mctx_interp_Write_ea A E K n1 n2 wk e1:
+  @mctx_interp A E K (Write_ea wk n1 n2 e1) = Write_ea wk n1 n2 (mctx_interp K e1).
+Proof. elim: K e1 => //=. Qed.
 
 (*** [sim]: Simulation relation *)
+Definition get_plat_config (reg_name : string) : option register_value :=
+  match reg_name with
+  | "rv_enable_pmp" => Some (Regval_bool (plat_enable_pmp ()))
+  | "rv_enable_misaligned_access" => Some (Regval_bool (plat_enable_misaligned_access ()))
+  | "rv_ram_base" => Some (Regval_bitvector_64_dec (plat_ram_base ()))
+  | "rv_ram_size" => Some (Regval_bitvector_64_dec (plat_ram_size ()))
+  | "rv_rom_base" => Some (Regval_bitvector_64_dec (plat_rom_base ()))
+  | "rv_rom_size" => Some (Regval_bitvector_64_dec (plat_rom_size ()))
+  | "rv_clint_base" => Some (Regval_bitvector_64_dec (plat_clint_base ()))
+  | "rv_clint_size" => Some (Regval_bitvector_64_dec (plat_clint_size ()))
+  | "rv_htif_tohost" => Some (Regval_bitvector_64_dec (plat_htif_tohost ()))
+  | "Machine" => Some (Regval_Privilege (Machine))
+  | _ => None
+  end.
+
+Definition get_regval_or_config (reg_name : string) (s : regstate) : option register_value :=
+  match get_regval reg_name s with
+  | Some v => Some v
+  | None => get_plat_config reg_name
+  end.
+
 Definition isla_regs_wf (regs : regstate) (isla_regs : reg_map) : Prop :=
-  ∀ r vi, isla_regs !! r = Some vi → ∃ vs, get_regval r regs = Some vs ∧ vi = (register_value_to_valu vs).
+  ∀ r vi, isla_regs !! r = Some vi → ∃ vs, get_regval_or_config r regs = Some vs ∧ vi = (register_value_to_valu vs).
 
 Definition private_regs_wf (isla_regs : reg_map) : Prop :=
   isla_regs !! "nextPC" = None.
@@ -162,7 +309,7 @@ Record sim_state := SIM {
   sim_regs : regstate;
 }.
 Add Printing Constructor sim_state.
-Instance eta_sim_state : Settable _ := settable! SIM <sim_regs>.
+Global Instance eta_sim_state : Settable _ := settable! SIM <sim_regs>.
 
 Definition sim {A E} (Σ : sim_state) (e1 : monad register_value A E) (K : mctx A E) (e2 : trc) : Prop :=
   ∀ n isla_regs mem sail_instrs isla_instrs,
@@ -227,6 +374,22 @@ Proof.
 Qed.
 
 (*** Lemmas about [sim] *)
+Lemma get_plat_config_Some_get_regval r regs x:
+  get_plat_config r = Some x →
+  get_regval r regs = None.
+Proof. unfold get_plat_config. repeat case_match => //. Qed.
+
+Lemma get_set_regval_config_ne r r' regs regs' v:
+  set_regval r' v regs = Some regs' →
+  r ≠ r' →
+  get_regval_or_config r regs' = get_regval_or_config r regs.
+Proof.
+  move => Hset Hr. rewrite /get_regval_or_config.
+  case_match as Hreg.
+  - erewrite <-get_set_regval_ne; [|done..]. by rewrite Hreg.
+  - by erewrite get_regval_None_stable.
+Qed.
+
 Lemma sim_done Σ:
   sim Σ (Done tt) NilMCtx [].
 Proof. move => ??????? Hdone. by apply: Hdone. Qed.
@@ -310,7 +473,27 @@ Proof.
   }
   apply: raw_sim_step_s. {
     econstructor. econstructor => //=. 1: by econstructor.
-    simpl. have [?[??]]:= Hwf (name r) _ ltac:(done). simplify_eq.
+    simpl. have [?[??]]:= Hwf (name r) _ ltac:(done).
+    unfold get_regval_or_config in *. simplify_option_eq.
+    eexists _, _, _. split_and! => //. by left. }
+  by apply: Hsim.
+Qed.
+
+Lemma sim_ReadReg_config A E Σ K e1 e2 ann r v v':
+  get_plat_config r = Some v' →
+  v = register_value_to_valu v' →
+  sim (A:=A) (E:=E) Σ e1 K e2 →
+  sim (A:=A) (E:=E) Σ e1 K (ReadReg r [] v ann :: e2).
+Proof.
+  move => Hget -> Hsim ? isla_regs ??? Hwf??.
+  apply: raw_sim_safe_here => /= -[|Hsafe]. { unfold seq_to_val. by case. }
+  have [vi Hvi]: is_Some (isla_regs !! r). {
+    move: Hsafe => [?[?[?[? Hstep]]]]. inv_seq_step. naive_solver.
+  }
+  apply: raw_sim_step_s. {
+    econstructor. econstructor => //=. 1: by econstructor.
+    simpl. have [?[Hr ?]]:= Hwf r _ ltac:(done). unfold get_regval_or_config in *.
+    erewrite get_plat_config_Some_get_regval in Hr; [|done]. simplify_option_eq.
     eexists _, _, _. split_and! => //. by left. }
   by apply: Hsim.
 Qed.
@@ -335,8 +518,10 @@ Proof.
   }
   apply: raw_sim_weaken; [apply Hsim => /=| ].
   - move => r' vi'. destruct (decide (r' = name r)); simplify_eq.
-    + rewrite lookup_insert. move: Hset => /get_set_regval. naive_solver.
-    + rewrite lookup_insert_ne //. erewrite get_set_regval_ne; [|done..]. by apply: Hwf.
+    + rewrite lookup_insert. move: Hset => /get_set_regval.
+      unfold get_regval_or_config => ->. naive_solver.
+    + rewrite lookup_insert_ne //.
+      erewrite get_set_regval_config_ne; [|done..]. by apply: Hwf.
   - apply/lookup_insert_None. unfold private_regs_wf in *.
     split; [done|]. move => Hn. rewrite Hn in Hvi. naive_solver.
   - move => ????? Hdom. apply: Hdone; [done..|]. by rewrite Hdom dom_insert_lookup_L.
@@ -355,8 +540,135 @@ Proof.
   move => ????/= Hstep. inversion_clear Hstep; simplify_eq. split; [done|].
   apply: raw_sim_weaken; [apply Hsim => /=; [|done..]| lia].
   move => ?? Hisla. have [?[??]]:= Hwf _ _ ltac:(done).
-  eexists _. split; [|done]. erewrite get_set_regval_ne; [done.. |].
+  eexists _. split; [|done].
+  erewrite get_set_regval_config_ne; [done..|].
   move => ?. subst. unfold private_regs_wf in *. rewrite Heq in Hisla. naive_solver.
+Qed.
+
+Lemma sim_Write_ea {A E} Σ e1 e2 K n2 n1 wk:
+  sim Σ e1 K e2 →
+  sim (A:=A) (E:=E) Σ (Write_ea wk n1 n2 e1) K e2.
+Proof.
+  move => Hsim ????????/=. rewrite mctx_interp_Write_ea.
+  apply: raw_sim_step_i. { right. eexists _, _. constructor. }
+  move => ????/= Hstep. inversion Hstep; simplify_eq. split; [done|].
+  apply: raw_sim_weaken; [by apply: Hsim| lia].
+Qed.
+
+Lemma sim_write_mem {E} Σ e2 n n' (v : mword n) K (v' : bv n') ann res wk' (a : mword 64) (a' : addr) len' (sz : Z) d:
+  n = 8 * Z.of_N len' →
+  Z.to_N n = n' →
+  sz = Z.of_N len' →
+  res = RVal_Bool true →
+  mword_to_bv a = a' →
+  mword_to_bv v = v' →
+  sim Σ (Done true) K e2 →
+  sim (E:=E) Σ (Prompt_monad.write_mem Write_plain d a sz v) K (WriteMem res wk' (RVal_Bits a') (RVal_Bits v') len' None ann :: e2).
+Proof.
+  move => ? ? ? ? ? ? Hsim ? isla_regs mem ?? Hwf ? Hdone. subst.
+  set a' := mword_to_bv a. set v' := mword_to_bv (n2:=8 * len') v.
+  unfold Prompt_monad.write_mem. simplify_option_eq.
+  erewrite mem_bytes_of_bits_to_bv; [|done].
+  rewrite mctx_interp_Write_mem.
+  apply: raw_sim_safe_here => /= -[|Hsafe]. { unfold seq_to_val. by case. }
+  have {Hsafe}[? Hor] : 0 < Z.of_N len' ∧ (is_Some (read_mem_list mem a' len') ∨
+    (read_mem_list mem a' len' = None ∧ set_Forall (λ ad, ¬ (bv_unsigned a' ≤ bv_unsigned ad < bv_unsigned a' + Z.of_N len')) (dom (gset _) mem))). {
+    move: Hsafe => [?[?[?[? Hstep]]]]. inv_seq_step.
+    revert select (∃ m, _) => -[?[?[?[Ha'[ _ [??]]]]]].
+    injection Ha'. intros ?%Eqdep_dec.inj_pair2_eq_dec. 2: { by move => ??; apply decide; apply _. } subst.
+    split; [done|]. case_match as Hmem.
+    + move: Hmem => /fmap_Some. naive_solver.
+    + move: Hmem => /fmap_None. naive_solver.
+  }
+  have Heq : Z.of_nat (Word.wordToNat a) = bv_unsigned a'.
+  { rewrite /a' mword_to_bv_unsigned // Word.wordToN_nat nat_N_Z. done. }
+  have Heq2 : (bv_unsigned (mword_to_bv (n2:=(Z.to_N (8 * Z.of_N len'))) v) = (bv_unsigned v')).
+  { rewrite /v' !mword_to_bv_unsigned //; lia. }
+  constructor => _. split. {
+    right. move: Hor => [[? Hm]//|[Hm ?]].
+    all: eexists _, _; eapply SailWriteMem; [done..|].
+    all: by rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned Hm.
+  }
+  move => ? ? ? ? Hstep. inversion_clear Hstep; simplify_eq.
+  move: H2. rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned.
+  move: Hor => [[? Hm]//|[Hm ?]]; rewrite Hm.
+  - move => [??]. simplify_eq. eexists _. split. {
+      apply: (steps_l' _ _ _ _ _ []); [ |by apply: steps_refl| by rewrite right_id_L].
+      econstructor. econstructor; [done| by econstructor|] => /=.
+      eexists _, _, v'. split_and! => //.
+      { do 2 f_equal. apply bvn_eq => /=. split; [lia|] => /=. by rewrite /bvn_unsigned/= Heq2. }
+      by rewrite /read_mem Hm.
+    }
+    rewrite /write_mem N_nat_Z Heq2.
+    apply: raw_sim_weaken; [by apply Hsim| lia].
+  - move => [?[??]]. simplify_eq. eexists _. split. {
+      apply: (steps_l' _ _ _ _ _ []); [ |by apply: steps_refl| by rewrite right_id_L].
+      econstructor. econstructor; [done| by econstructor|] => /=.
+      eexists _, _, v'. split_and! => //.
+      { do 2 f_equal. apply bvn_eq => /=. split; [lia|] => /=. by rewrite /bvn_unsigned/= Heq2. }
+      rewrite /read_mem Hm /=. split_and! => //.
+      rewrite Heq2 Z_to_bv_little_endian_to_bv_to_little_endian //; lia.
+    }
+    apply: raw_sim_weaken; [by apply Hsim| lia].
+    Unshelve. apply: inhabitant.
+Qed.
+
+Lemma sim_read_mem {E} Σ sz' H e2 K ann ann' rk' (a : mword 64) (a' : addr) len' len'' (sz : Z) d sm:
+  len'' = (8 * len')%N →
+  sz = Z.of_N len' →
+  mword_to_bv a = a' →
+  (∀ r1 (r2 : bv len''), r1 = bv_to_mword r2 → sim Σ (Done r1) K (subst_val_event (Val_Bits r2) sm <$> e2)) →
+  sim (E:=E) Σ (Prompt_monad.read_mem (B:=sz') (H:=H) Read_plain d a sz) K
+      (Smt (DeclareConst sm (Ty_BitVec len'')) ann' ::
+       ReadMem (RVal_Symbolic sm) rk' (RVal_Bits a') len' None ann :: e2).
+Proof.
+  move => ? ? ? Hsim. subst. set a' := mword_to_bv a.
+  unfold Prompt_monad.read_mem, read_mem_bytes. apply sim_bind.
+  move => ? isla_regs mem ?? Hwf ? Hdone. rewrite mctx_interp_Read_mem.
+  have Heq : Z.of_nat (Word.wordToNat a) = bv_unsigned a'.
+  { rewrite /a' mword_to_bv_unsigned // Word.wordToN_nat nat_N_Z. done. }
+  constructor => Hsafe.
+  have {Hsafe}[? Hor] : 0 < Z.of_N len' ∧ (is_Some (read_mem_list mem a' len') ∨
+    (read_mem_list mem a' len' = None ∧ set_Forall (λ ad, ¬ (bv_unsigned a' ≤ bv_unsigned ad < bv_unsigned a' + Z.of_N len')) (dom (gset _) mem))). {
+    efeed pose proof Hsafe as He.
+    { apply: steps_l'; [|apply steps_refl|done].
+      constructor. econstructor; [done|eapply (DeclareConstBitVecS' (bv_0 _))|] => /=. done. }
+    move: He => [| {}Hsafe]. { unfold seq_to_val. by case. }
+    move: Hsafe => [?[?[?[? Hstep]]]]. inv_seq_step.
+    revert select (∃ m, _) => -[?[?[?[Ha'[ _ [??]]]]]].
+    injection Ha'. intros ?%Eqdep_dec.inj_pair2_eq_dec. 2: { by move => ??; apply decide; apply _. } subst.
+    split; [done|]. case_match as Hmem.
+    + move: Hmem => /fmap_Some. naive_solver.
+    + move: Hmem => /fmap_None. naive_solver.
+  }
+  split. {
+    right. move: Hor => [[? Hm]//|[Hm ?]].
+    all: eexists _, _; eapply SailReadMem; [done..|].
+    all: by rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned Hm.
+  }
+  move => ? ? ? ? Hstep. inversion_clear Hstep; simplify_eq.
+  move: H2. rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned.
+  rewrite option_map_fmap map_fmap (read_mem_bytes_eq len') /=.
+  move: Hor => [[? Hm]//|[Hm ?]]; rewrite Hm.
+  - move => [??]. simplify_eq. eexists _. split. {
+      apply: steps_l'.
+      { econstructor. econstructor; [done| eapply DeclareConstBitVecS' |] => /=. done. } 2: done.
+      apply: (steps_l' _ _ _ _ None); [ |by apply: steps_refl| by rewrite right_id_L ].
+      econstructor. econstructor; [done| by econstructor|]; csimpl.
+      eexists _, _, _. split_and! => //. { by rewrite /eq_var_name Z.eqb_refl. }
+      rewrite /read_mem Hm/=. split_and! => //. by left.
+    }
+    apply: raw_sim_weaken; [by apply Hsim|lia].
+  - move => [??]. simplify_eq. eexists _. split. {
+      apply: steps_l'.
+      { econstructor. econstructor; [done| by econstructor|] => /=. done. } 2: done.
+      apply: (steps_l' _ _ _ _ (Some _)); [ |by apply: steps_refl| by rewrite right_id_L ].
+      econstructor. econstructor; [done| by econstructor|]; csimpl.
+      eexists _, _, _. split_and! => //. { by rewrite /eq_var_name Z.eqb_refl. }
+      by rewrite /read_mem Hm/=.
+    }
+    apply: raw_sim_weaken; [by apply Hsim| lia].
+    Unshelve. all: apply inhabitant.
 Qed.
 
 Lemma sim_assert_exp' E Σ b K e2 s:
@@ -371,12 +683,30 @@ Lemma sim_assert_exp E Σ b K e2 s:
   sim (E:=E) Σ (assert_exp b s) K e2.
 Proof. move => Hb Hsim. unfold assert_exp. destruct b => //. Qed.
 
+Lemma sim_DeclareConstBool A E Σ K e1 e2 ann x b:
+  sim (A:=A) (E:=E) Σ e1 K (subst_val_event (Val_Bool b) x <$> e2) →
+  sim (A:=A) (E:=E) Σ e1 K (Smt (DeclareConst x Ty_Bool) ann :: e2).
+Proof.
+  move => Hsim ????????.
+  apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. done. }
+  by apply: Hsim.
+Qed.
+
 Lemma sim_DeclareConstBitVec A E Σ K e1 e2 ann x b (v : bv b):
   sim (A:=A) (E:=E) Σ e1 K (subst_val_event (Val_Bits v) x <$> e2) →
   sim (A:=A) (E:=E) Σ e1 K (Smt (DeclareConst x (Ty_BitVec b)) ann :: e2).
 Proof.
   move => Hsim ????????. destruct v.
-  apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor.  done. }
+  apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. done. }
+  by apply: Hsim.
+Qed.
+
+Lemma sim_DeclareConstEnum A E Σ K e1 e2 ann x id c:
+  sim (A:=A) (E:=E) Σ e1 K (subst_val_event (Val_Enum (id, c)) x <$> e2) →
+  sim (A:=A) (E:=E) Σ e1 K (Smt (DeclareConst x (Ty_Enum id)) ann :: e2).
+Proof.
+  move => Hsim ????????.
+  apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. done. }
   by apply: Hsim.
 Qed.
 
@@ -420,7 +750,7 @@ Qed.
 
 Definition eval_assume_val' (regs : regstate) (v : assume_val) : option base_val :=
   match v with
-  | AVal_Var r l => v' ← get_regval r regs;
+  | AVal_Var r l => v' ← get_regval_or_config r regs;
                    v'' ← read_accessor l (register_value_to_valu v');
                    if v'' is RegVal_Base b then Some b else None
   | AVal_Bool b => Some (Val_Bool b)
@@ -484,4 +814,18 @@ Proof.
   apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. done. }
   apply: Hsim; [|done..].
   by apply: eval_a_exp'_sound.
+Qed.
+
+Lemma sim_AssumeReg A E Σ K e1 e2 ann r v al:
+  ((v' ← get_regval_or_config r Σ.(sim_regs); read_accessor al (register_value_to_valu v')) = Some v
+    → sim (A:=A) (E:=E) Σ e1 K e2) →
+  sim (A:=A) (E:=E) Σ e1 K (AssumeReg r al v ann :: e2).
+Proof.
+  move => Hsim ????? Hwf ??.
+  apply: raw_sim_safe_here => -[[??//]|[?[?[?[??]]]]]. inv_seq_step.
+  revert select (∃ v, _) => -[?[?[?[?[??]]]]]. simplify_eq.
+  apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor. naive_solver. }
+  apply: Hsim; [|done..].
+  have [?[??]]:= Hwf r _ ltac:(done). simplify_eq.
+  apply/bind_Some. naive_solver.
 Qed.

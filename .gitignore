@@ -17,3 +17,5 @@ _build/
 /sail/dune
 /sail-riscv/dune
 _opam*
+/sail-riscv/bbv/
+/sail-riscv/coq/

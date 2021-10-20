@@ -281,7 +281,9 @@ Inductive trace_step : trc → reg_map → option trace_label → trc → Prop :
     trace_step [] regs (Some (LDone es)) es
 .
 
-Definition instruction_size : Z := 0x4.
+Lemma DeclareConstBitVecS' {n} (b : bv n) x ann es regs:
+  trace_step (Smt (DeclareConst x (Ty_BitVec n)) ann :: es) regs None (subst_val_event (Val_Bits b) x <$> es).
+Proof. destruct b. constructor. Qed.
 
 Record seq_global_state := {
   seq_instrs : gmap addr (list trc);
