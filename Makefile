@@ -10,10 +10,6 @@ tests:
 all_and_tests: tests all
 .PHONY: all_and_tests
 
-ci: restore_dune_project all_and_tests
-	@true
-.PHONY: ci
-
 generate_aarch64:
 	@echo "[isla-coq] examples/memory_instructions.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memory_instructions.dump -j 8 -o instructions  -n "instr_{instr}" --coqdir=isla.instructions
@@ -53,17 +49,8 @@ uninstall:
 .PHONY: uninstall
 
 builddep-opamfiles: builddep/coq-isla-builddep.opam
-	@echo "# Renaming dune-project to work around coq#15044"
-	@mv dune-project dune-project.tmp
 	@true
 .PHONY: builddep-opamfiles
-
-restore_dune_project:
-	@if [ -f dune-project.tmp ] && ! [ -e dune-project ]; then \
-		echo "# Renaming dune-project back";\
-		mv dune-project.tmp dune-project;\
-	fi
-.PHONY: restore_dune_project
 
 # Create a virtual Opam package with the same deps as RefinedC, but no
 # build. Uses a very ugly hack to use sed for removing the last 4
@@ -79,10 +66,6 @@ builddep/coq-isla-builddep.opam: coq-isla.opam Makefile
 #  2) they will remain satisfied even if other packages are updated/installed,
 #  3) we do not have to pin the RefinedC package itself (which takes time).
 builddep: builddep/coq-isla-builddep.opam
-	@echo "# Renaming dune-project to work around coq#15044"
-	@mv dune-project dune-project.tmp
 	@echo "# Installing package $^."
 	@opam install $(OPAMFLAGS) $^
-	@echo "# Renaming dune-project back"
-	@mv dune-project.tmp dune-project
 .PHONY: builddep

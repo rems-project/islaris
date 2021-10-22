@@ -26,7 +26,7 @@ jobs:
       CPU_CORES: "1"
       DENY_WARNINGS: "1"
       CI_RUNNER: "dummy"
-      MAKE_TARGET: "ci"
+      MAKE_TARGET: "all_and_tests"
 
     container:
       image: ralfjung/opam-ci:opam2
