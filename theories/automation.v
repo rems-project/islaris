@@ -200,10 +200,10 @@ Proof. move => <-. by rewrite bv_add_unsigned Z_to_bv_unsigned bv_wrap_bv_wrap /
 Ltac solve_normalize_instr_addr :=
   unfold NormalizeInstrAddr, normalize_instr_addr; unLET;
   try lazymatch goal with
-  | |- bv_wrap _ (bv_unsigned (bv_add (Z_to_bv 64 _) _)) = _ => apply normalize_instr_addr_add_tac
+  | |- bv_wrap _ ?a = _ => reduce_closed a
   end;
   try lazymatch goal with
-  | |- bv_wrap _ ?a = _ => reduce_closed a
+  | |- bv_wrap _ (bv_unsigned (bv_add (Z_to_bv 64 _) _)) = _ => apply normalize_instr_addr_add_tac
   end;
   try lazymatch goal with
   | |- bv_wrap _ (_ + ?a) = _ => reduce_closed a

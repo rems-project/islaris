@@ -2,12 +2,12 @@ Require Import isla.isla.
 Require Import isla.aarch64.aarch64.
 Require Export isla.instructions.binary_search.a8.
 
-Lemma a8_spec `{!islaG Σ} `{!threadG}:
-  instr 0x10300008 (Some a8) -∗
-  instr_body 0x10300008 (stp_uninit_spec 0x0000000010300008 "R22" "R21" "SP_EL2" (32) false).
+Lemma a8_spec `{!islaG Σ} `{!threadG} pc:
+  instr pc (Some a8) -∗
+  instr_body pc (stp_uninit_spec pc "R22" "R21" "SP_EL2" (32) false).
 Proof.
 Admitted.
 
-Definition a8_spec_inst `{!islaG Σ} `{!threadG} :=
-  entails_to_simplify_hyp 0 a8_spec.
+Definition a8_spec_inst `{!islaG Σ} `{!threadG} pc :=
+  entails_to_simplify_hyp 0 (a8_spec pc).
 Global Existing Instance a8_spec_inst.

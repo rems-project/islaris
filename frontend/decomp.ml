@@ -145,9 +145,9 @@ let gen_spec_file : Arch.t -> Template.t -> string -> string list
     pp "Require Export %s.@." (build_mp name);
     List.iter (pp "Require Import %s.@.") spec.spec_imports;
     (* Lemma. *)
-    pp "@.Lemma %s_spec `{!islaG Σ} `{!threadG}:@." name;
-    pp "  instr 0x%s (Some %s) -∗@." d.dl_real_addr name;
-    pp "  instr_body 0x%s (%s).@." d.dl_real_addr spec.spec_spec;
+    pp "@.Lemma %s_spec `{!islaG Σ} `{!threadG} pc:@." name;
+    pp "  instr pc (Some %s) -∗@." name;
+    pp "  instr_body pc (%s).@." spec.spec_spec;
     pp "Proof.@.";
     if spec.spec_admitted then
       pp "Admitted.@."
@@ -159,8 +159,8 @@ let gen_spec_file : Arch.t -> Template.t -> string -> string list
       pp "Qed.@."
     end;
     (* SimplifyHyp rule. *)
-    pp "@.Definition %s_spec_inst `{!islaG Σ} `{!threadG} :=@." name;
-    pp "  entails_to_simplify_hyp 0 %s_spec.@." name;
+    pp "@.Definition %s_spec_inst `{!islaG Σ} `{!threadG} pc :=@." name;
+    pp "  entails_to_simplify_hyp 0 (%s_spec pc).@." name;
     pp "Global Existing Instance %s_spec_inst.@." name
   in
   let spec_file = Filename.concat output_dir (name ^ "_spec.v") in

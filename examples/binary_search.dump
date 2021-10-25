@@ -4,26 +4,26 @@
 //@base_address: 0x0000000010300000
 //@constraint: = (bvand (bvsub SP_EL2 0x0000000000000040) 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvsub (bvadd SP_EL2 0x0000000000000008) 0x0000000000000040) 0xfff0000000000007) 0x0000000000000000
-//@spec: stp_uninit_spec 0x0000000010300000 "R29" "R30" "SP_EL2" (-64) true
+//@spec: stp_uninit_spec pc "R29" "R30" "SP_EL2" (-64) true
 //@spec_tactic: all: bv_solve.
    0:	a9bc7bfd 	stp	x29, x30, [sp, #-64]!
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000018) 0xfff0000000000007) 0x0000000000000000
-//@spec: stp_uninit_spec 0x0000000010300004 "R24" "R23" "SP_EL2" (16) false
+//@spec: stp_uninit_spec pc "R24" "R23" "SP_EL2" (16) false
 //@spec_tactic: all: bv_solve.
 //TODO: remove once we are on coq 8.14
 //@admitted
    4:	a9015ff8 	stp	x24, x23, [sp, #16]
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000028) 0xfff0000000000007) 0x0000000000000000
-//@spec: stp_uninit_spec 0x0000000010300008 "R22" "R21" "SP_EL2" (32) false
+//@spec: stp_uninit_spec pc "R22" "R21" "SP_EL2" (32) false
 //@spec_tactic: all: bv_solve.
 //TODO: remove once we are on coq 8.14
 //@admitted
    8:	a90257f6 	stp	x22, x21, [sp, #32]
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000038) 0xfff0000000000007) 0x0000000000000000
-//@spec: stp_uninit_spec 0x000000001030000c "R20" "R19" "SP_EL2" (48) false
+//@spec: stp_uninit_spec pc "R20" "R19" "SP_EL2" (48) false
 //@spec_tactic: all: bv_solve.
 //TODO: remove once we are on coq 8.14
 //@admitted
@@ -35,7 +35,7 @@
   20:	aa0103f5 	mov	x21, x1
   24:	aa0003f6 	mov	x22, x0
   28:	aa1f03f7 	mov	x23, xzr
-//@spec: sub_R_R_R_spec 0x000000001030002c "R8" "R20" "R23"
+//@spec: sub_R_R_R_spec pc "R8" "R20" "R23"
 //@spec_tactic: all: bv_solve.
   2c:	cb170288 	sub	x8, x20, x23
   30:	8b4806f8 	add	x24, x23, x8, lsr #1
@@ -44,13 +44,13 @@
   38:	aa1303e1 	mov	x1, x19
   3c:	d63f02c0 	blr	x22
   40:	7200001f 	tst	w0, #0x1
-//@spec: csel_spec 0x0000000010300044 "R20" "R24"
+//@spec: csel_spec pc "R20" "R24"
 //@spec_tactic: all: csel_spec_tac.
   44:	9a981294 	csel	x20, x20, x24, ne  // ne = any
-//@spec: csinc_spec 0x0000000010300048 "R23" "R24"
+//@spec: csinc_spec pc "R23" "R24"
 //@spec_tactic: all: csinc_spec_tac.
   48:	9a9806f7 	csinc	x23, x23, x24, eq  // eq = none
-//@spec: cmp_R_R_spec 0x000000001030004c "R20" "R23"
+//@spec: cmp_R_R_spec pc "R20" "R23"
 //@spec_tactic: 1: cmp_spec_tac1. 1: cmp_spec_tac2. 1: cmp_spec_tac3. 1: cmp_spec_tac4.
   4c:	eb17029f 	cmp	x20, x23
   50:	54fffee8 	b.hi	2c <binary_search+0x2c>  // b.pmore
@@ -59,24 +59,24 @@
   5c:	aa1703e0 	mov	x0, x23
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000038) 0xfff0000000000007) 0x0000000000000000
-//@spec: ldp_mapsto_spec 0x0000000010300060 "R20" "R19" "SP_EL2" (48) None
+//@spec: ldp_mapsto_spec pc "R20" "R19" "SP_EL2" (48) None
 //@spec_tactic: all: bv_solve.
   60:	a9434ff4 	ldp	x20, x19, [sp, #48]
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000028) 0xfff0000000000007) 0x0000000000000000
-//@spec: ldp_mapsto_spec 0x0000000010300064 "R22" "R21" "SP_EL2" (32) None
+//@spec: ldp_mapsto_spec pc "R22" "R21" "SP_EL2" (32) None
 //@spec_tactic: all: bv_solve.
   64:	a94257f6 	ldp	x22, x21, [sp, #32]
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000018) 0xfff0000000000007) 0x0000000000000000
-//@spec: ldp_mapsto_spec 0x0000000010300068 "R24" "R23" "SP_EL2" (16) None
+//@spec: ldp_mapsto_spec pc "R24" "R23" "SP_EL2" (16) None
 //@spec_tactic: all: bv_solve.
 //TODO: remove once we are on coq 8.14
 //@admitted
   68:	a9415ff8 	ldp	x24, x23, [sp, #16]
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000008) 0xfff0000000000007) 0x0000000000000000
-//@spec: ldp_mapsto_spec 0x000000001030006c "R29" "R30" "SP_EL2" (0) (Some 64)
+//@spec: ldp_mapsto_spec pc "R29" "R30" "SP_EL2" (0) (Some 64)
 //@spec_tactic: all: bv_solve.
 //TODO: remove once we are on coq 8.14
 //@admitted
@@ -84,7 +84,7 @@
   70:	d65f03c0 	ret
 
 0000000000000074 <compare_int>:
-//@spec: cmp_R_R_spec 0x0000000010300074 "R0" "R1"
+//@spec: cmp_R_R_spec pc "R0" "R1"
 //@spec_tactic: 1: cmp_spec_tac1. 1: cmp_spec_tac2. 1: cmp_spec_tac3. 1: cmp_spec_tac4.
   74:	eb01001f 	cmp	x0, x1
   78:	1a9f87e0 	cset	w0, ls  // ls = plast

@@ -93,7 +93,7 @@ Definition csinc_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) : iProp
   "PSTATE" # "V" ↦ᵣ RVal_Bits pstatev ∗
   R1 ↦ᵣ RVal_Bits v1 ∗
   R2 ↦ᵣ RVal_Bits v2 ∗
-  instr_pre 0x000000001030004c (
+  instr_pre (pc + 4) (
     reg_col sys_regs ∗
     R1 ↦ᵣ RVal_Bits (ite (bool_decide (bv_unsigned pstatez = 1)) v1 (bv_add_Z v2 1)) ∗
     R2 ↦ᵣ RVal_Bits v2 ∗
