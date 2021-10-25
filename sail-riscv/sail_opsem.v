@@ -84,23 +84,27 @@ Proof.
 Qed.
 Arguments add_vec : simpl never.
 
+Lemma sublist_lookup_Some {A} i n (l : list A) x:
+  sublist_lookup i n l = Some x ↔ x = take n (drop i l) ∧ (i + n <= length l)%nat.
+Proof. rewrite /sublist_lookup. case_option_guard; naive_solver lia. Qed.
+
 Lemma mem_bytes_of_bits_to_bv n (v : mword n) len H:
   n = 8 * len →
   mem_bytes_of_bits (H:=@mword_Bitvector _ H) v = Some (byte_to_memory_byte <$>
        (bv_to_little_endian len 8 (@bv_unsigned (Z.to_N n) (mword_to_bv v)))).
 Proof.
-  move => Hn.
+  move => Hn. have ?:= use_ArithFact H.
   rewrite /mem_bytes_of_bits/bytes_of_bits/bits_of/= option_map_fmap map_fmap.
   apply fmap_Some. eexists (rev _). rewrite rev_involutive. split; [|done].
   rewrite (byte_chunks_reshape (Z.to_nat len)).
   2: { rewrite fmap_length length_bitlistFromWord. lia. }
-  f_equal. apply list_eq => i. rewrite sublist_lookup_reshape; [|lia|].
+  f_equal. eapply list_eq_same_length; [done | |].
+  { rewrite reshape_length rev_length replicate_length fmap_length bv_to_little_endian_length; lia. }
+  move => i x y ?. rewrite sublist_lookup_reshape; [|lia|].
   2: { rewrite fmap_length length_bitlistFromWord. lia. }
-  destruct (decide (i < len)). 2: { admit. }
-  rewrite rev_lookup fmap_length bv_to_little_endian_length; [|lia..].
-  rewrite list_lookup_fmap. symmetry.
-  match goal with | |- context [?a !! ?b] => destruct (a !! b) as [x|] eqn: Hx; rewrite Hx; symmetry => /= end.
-  2: { apply: sublist_lookup_None. rewrite fmap_length. admit. }
+  move => /sublist_lookup_Some[??] /rev_lookup_Some.
+  rewrite list_lookup_fmap fmap_length bv_to_little_endian_length; [|lia] => -[Hl ?].
+  move: Hl => /fmap_Some[?[??]]. simplify_eq.
 Admitted.
 
 Lemma just_list_bits_of_mem_bytes bs:
