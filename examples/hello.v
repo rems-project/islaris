@@ -76,7 +76,7 @@ Proof.
       revert select (_ !! i = Some vmem). move: Heq. clear => ??.
       by repeat (destruct i; simplify_eq/=).
     }
-    subst. by rewrite drop_ge.
+    subst. rewrite drop_ge //. normalize_and_simpl_goal => //. bv_solve.
   - rename select (bv_concat _ _ _ ≠ _) into Hneq.
     bv_simplify_hyp Hneq.
     revert select (_ !! i = Some vmem). move: Hneq. clear => ??.

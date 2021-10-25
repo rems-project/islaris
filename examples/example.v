@@ -233,4 +233,5 @@ Proof.
   iStartProof.
   repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
+  all: bv_solve.
 Qed.
