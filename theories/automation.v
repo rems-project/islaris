@@ -192,10 +192,21 @@ Global Instance simpl_and_normalize_instr_addr a1 a2 a2' `{!NormalizeInstrAddr a
   SimplAndUnsafe true (normalize_instr_addr a1 a2) (λ T, a2' = a2 ∧ T).
 Proof. unfold NormalizeInstrAddr, SimplAndUnsafe in *. naive_solver. Qed.
 
+Lemma normalize_instr_addr_add_tac a n r:
+  bv_wrap 64 (a + bv_unsigned n) = r →
+  bv_wrap 64 (bv_unsigned (bv_add (Z_to_bv 64 a) n)) = r.
+Proof. move => <-. by rewrite bv_add_unsigned Z_to_bv_unsigned bv_wrap_bv_wrap // bv_wrap_add_idemp_l. Qed.
+
 Ltac solve_normalize_instr_addr :=
   unfold NormalizeInstrAddr, normalize_instr_addr; unLET;
   try lazymatch goal with
+  | |- bv_wrap _ (bv_unsigned (bv_add (Z_to_bv 64 _) _)) = _ => apply normalize_instr_addr_add_tac
+  end;
+  try lazymatch goal with
   | |- bv_wrap _ ?a = _ => reduce_closed a
+  end;
+  try lazymatch goal with
+  | |- bv_wrap _ (_ + ?a) = _ => reduce_closed a
   end;
   exact: eq_refl.
 
