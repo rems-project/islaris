@@ -42,16 +42,15 @@ Definition wp_asm_eq `{!Arch} `{!islaG Σ} `{!threadG} : wp_asm = @wp_asm_def _ 
 
 Notation WPasm := wp_asm.
 
-Definition instr_pre'_def `{!Arch} `{!islaG Σ} `{!threadG} (is_later : bool) (i : Z) (P : iProp Σ) : iProp Σ :=
+Definition instr_pre'_def `{!Arch} `{!islaG Σ} `{!threadG} (is_later : bool) (a : Z) (P : iProp Σ) : iProp Σ :=
   ▷?is_later (
   P -∗
-  ∃ ins newPC,
-    ⌜Z_to_bv_checked 64 i = Some newPC⌝ ∗
-    instr i ins ∗
+  ∃ ins,
+    instr (bv_wrap 64 a) ins ∗
     match ins with
     | Some ins => ⌜ins ≠ []⌝ ∗
-        ∀ i, ⌜i ∈ ins⌝ -∗ arch_pc_reg ↦ᵣ RVal_Bits newPC -∗ WPasm i
-    | None => ∃ Pκs, ⌜Pκs [SInstrTrap newPC]⌝ ∗ spec_trace Pκs
+        ∀ i, ⌜i ∈ ins⌝ -∗ arch_pc_reg ↦ᵣ RVal_Bits (Z_to_bv 64 a) -∗ WPasm i
+    | None => ∃ Pκs, ⌜Pκs [SInstrTrap (Z_to_bv 64 a)]⌝ ∗ spec_trace Pκs
     end
    ).
 Definition instr_pre'_aux `{!Arch} `{!islaG Σ} `{!threadG} : seal (@instr_pre'_def _ Σ _ _). by eexists. Qed.
@@ -208,26 +207,29 @@ Section lifting.
     WPasm [].
   Proof.
     rewrite instr_pre'_eq. iIntros "HPC Hpre HP".
-    iDestruct ("Hpre" with "[$HP]") as (ins ?) "(>%HPC & >Hinstr & Hwp)".
-    rewrite Z_to_bv_checked_bv_unsigned in HPC; simplify_eq.
+    iDestruct ("Hpre" with "[$HP]") as (ins) "(>Hinstr & Hwp)".
+    rewrite bv_wrap_small; [| by apply bv_unsigned_in_range].
     iDestruct (laterN_le _ 1 with "Hwp") as "Hwp". { destruct l => /=; lia. }
-    destruct ins.
+    destruct ins; rewrite Z_to_bv_bv_unsigned.
     - iDestruct "Hwp" as "[>% Hwp]".
       by iApply (wp_next_instr with "HPC Hinstr"); [done..|].
     - iDestruct "Hwp" as (?) "[>% Hwp]".
       by iApply (wp_next_instr_extern with "[$] [$] [$]").
   Qed.
 
-  Lemma instr_pre_wand a l1 l2 P Q:
+  Lemma instr_pre_wand a1 a2 l1 l2 P Q:
     implb l1 l2 →
-    instr_pre' l1 a P -∗
+    bv_wrap 64 a1 = bv_wrap 64 a2 →
+    instr_pre' l1 a1 P -∗
     (Q -∗ P) -∗
-    instr_pre' l2 a Q.
+    instr_pre' l2 a2 Q.
   Proof.
-    rewrite instr_pre'_eq => Himpl.
+    rewrite instr_pre'_eq => Himpl Ha.
     iIntros "Hinstr Hwand".
     iApply (laterN_le (Nat.b2n l1)). { destruct l1, l2 => //=. lia. }
-    iIntros "!> HQ". iApply ("Hinstr" with "[HQ Hwand]"). by iApply "Hwand".
+    iIntros "!> HQ".
+    rewrite Ha. have -> : Z_to_bv 64 a1 = Z_to_bv 64 a2 by apply bv_eq.
+    iApply ("Hinstr" with "[HQ Hwand]"). by iApply "Hwand".
   Qed.
 
   Lemma instr_pre_to_body a P:
@@ -235,27 +237,29 @@ Section lifting.
     instr_pre a P.
   Proof. rewrite instr_pre'_eq. done. Qed.
 
-  Lemma instr_pre_intro_Some l P ins (PC : bv 64):
+  Lemma instr_pre_intro_Some l P ins a:
     ins ≠ [] →
-    instr (bv_unsigned PC) (Some ins) -∗
-    (∀ i, ⌜i ∈ ins⌝ -∗ P -∗ arch_pc_reg ↦ᵣ RVal_Bits PC -∗ WPasm i) -∗
-    instr_pre' l (bv_unsigned PC) P.
+    instr a (Some ins) -∗
+    (∀ i, ⌜i ∈ ins⌝ -∗ P -∗ arch_pc_reg ↦ᵣ RVal_Bits (Z_to_bv 64 a) -∗ WPasm i) -∗
+    instr_pre' l a P.
   Proof.
     rewrite instr_pre'_eq.
     iIntros (?) "Hinstr Hwp !> HP".
-    iExists _, _. rewrite Z_to_bv_checked_bv_unsigned. iFrame. repeat iSplit; [done|done|].
+    iDestruct (instr_addr_in_range with "Hinstr") as %?.
+    iExists _. rewrite bv_wrap_small; [|done]. iFrame. iSplit; [done|].
     iIntros (??) "HPC". iApply ("Hwp" with "[//] [$] [$]").
   Qed.
 
-  Lemma instr_pre_intro_None P (PC : bv 64) l:
-    instr (bv_unsigned PC) None -∗
-    (P -∗ ∃ Pκs, ⌜Pκs [SInstrTrap PC]⌝ ∗ spec_trace Pκs) -∗
-    instr_pre' l (bv_unsigned PC) P.
+  Lemma instr_pre_intro_None P a l:
+    instr a None -∗
+    (P -∗ ∃ Pκs, ⌜Pκs [SInstrTrap (Z_to_bv 64 a)]⌝ ∗ spec_trace Pκs) -∗
+    instr_pre' l a P.
   Proof.
     rewrite instr_pre'_eq.
     iIntros "Hinstr Hspec !> HP".
+    iDestruct (instr_addr_in_range with "Hinstr") as %?.
     iDestruct ("Hspec" with "HP") as (??) "Hspec".
-    iExists _, _. rewrite Z_to_bv_checked_bv_unsigned. iFrame. iSplit; [done|]. iExists _. by iFrame.
+    iExists _. rewrite bv_wrap_small; [|done]. iFrame. iExists _. by iFrame.
   Qed.
 
   Lemma wp_read_reg_acc r v v' v'' vread ann es q al:

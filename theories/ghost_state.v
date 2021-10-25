@@ -231,6 +231,13 @@ Section instr.
   Global Instance instr_tl a i : Timeless (instr a i).
   Proof. rewrite instr_eq. by apply _. Qed.
 
+  Lemma instr_addr_in_range a i:
+    instr a i -∗ ⌜0 ≤ a < bv_modulus 64⌝.
+  Proof.
+    rewrite instr_eq/instr_def. iDestruct 1 as (??->%Z_to_bv_checked_Some) "?".
+    iPureIntro. apply bv_unsigned_in_range.
+  Qed.
+
   Lemma instr_intro ins a i :
     ∀ Hwf,
     ins !! (BV _ a Hwf) = i →

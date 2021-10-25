@@ -802,23 +802,28 @@ Section instances.
     )) -∗
     WPasm [].
   Proof.
-  Admitted.
-  (*
-    iDestruct 1 as (??) "(HPC&%a&%Ha&%Hchecked&Hwp)". case: Ha => ?. subst.
-    rewrite ->Z_to_bv_checked_bv_unsigned in *; simplify_eq.
+    iDestruct 1 as (???) "(HPC&%Hnorm&->&Hwp)". unfold normalize_instr_addr in *.
+    have ? := bv_unsigned_in_range _ nPC.
     iDestruct "Hwp" as (ins) "[Hi Hwp]".
     destruct ins as [[?|]|?] => /=.
     - iDestruct "Hwp" as (?) "Hl".
+      iDestruct (instr_addr_in_range with "Hi") as %?.
+      rewrite !bv_wrap_small // in Hnorm. subst.
       iApply (wp_next_instr with "HPC Hi [Hl]") => //.
-      iIntros "!>" (i Hi) "?".
+      iIntros "!>" (i Hi) "?". rewrite Z_to_bv_bv_unsigned.
       iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
       iApply ("Hwp" with "[$]").
-    - iDestruct "Hwp" as (?) "(?&%&?)".
+    - iDestruct "Hwp" as (?) "(?&%Hscons&?)".
+      iDestruct (instr_addr_in_range with "Hi") as %?.
+      rewrite !bv_wrap_small // in Hnorm. subst.
+      rewrite Z_to_bv_bv_unsigned in Hscons.
       iApply (wp_next_instr_extern with "HPC [$] [$]") => //.
       spec_solver.
-    - by iApply (wp_next_instr_pre with "[$] [$]").
+    - iApply (wp_next_instr_pre with "[$] [Hi] Hwp").
+      iApply (instr_pre_wand with "Hi"); [by erewrite implb_same| |by iIntros "$"].
+      by rewrite -Hnorm bv_wrap_small.
   Qed.
-*)
+
   Lemma li_instr_pre l a P:
     (∃ newPC normPC,
      ⌜normalize_instr_addr a normPC⌝ ∗
@@ -833,24 +838,30 @@ Section instances.
      end
     )) -∗
     instr_pre' l a P.
-  Proof. Admitted.
-  (*
-
-    iDestruct 1 as (?->%Z_to_bv_checked_Some ins) "[Hinstr Hwp]".
+  Proof.
+    iDestruct 1 as (?? Hnorm -> ins) "[Hinstr Hwp]".
+    unfold normalize_instr_addr in *.
     destruct ins as [[?|]|?] => /=.
     - iDestruct "Hwp" as (?) "Hl".
-      iApply (instr_pre_intro_Some with "[$]"); [done..|].
+      iDestruct (instr_addr_in_range with "Hinstr") as %?.
+      rewrite (bv_wrap_small _ normPC) // in Hnorm. subst.
+      iApply (instr_pre_wand with "[-]"); [by erewrite implb_same| | | iIntros "HP"; iApply "HP"].
+      2: iApply (instr_pre_intro_Some with "[$]"); [done..|].
+      { by rewrite bv_wrap_bv_wrap. }
       iIntros (i Hi) "??".
       iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
       iApply ("Hwp" with "[$] [$]").
-    - iApply (instr_pre_intro_None with "[$]"); [done..|].
-      iIntros "HP".
-      iDestruct ("Hwp" with "HP") as (?) "[? [% _]]".
+    - iDestruct (instr_addr_in_range with "Hinstr") as %?.
+      rewrite (bv_wrap_small _ normPC) // in Hnorm. subst.
+      iApply (instr_pre_wand with "[-]"); [by erewrite implb_same| | | iIntros "HP"; iApply "HP"].
+      2: iApply (instr_pre_intro_None with "[$]"); [done..|].
+      { by rewrite bv_wrap_bv_wrap. }
+      iIntros "HP". iDestruct ("Hwp" with "HP") as (?) "[? [% _]]".
       iExists _. iFrame. iPureIntro. spec_solver.
     - iDestruct "Hwp" as (?) "Hwand".
       by iApply (instr_pre_wand with "Hinstr").
   Qed.
-*)
+
   Lemma li_wp_read_reg r v ann es :
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
