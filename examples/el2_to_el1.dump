@@ -1,0 +1,12 @@
+0000000000080000 <el2_to_el1>:
+   80000:	d2a00200 	mov	x0, #0x100000              	// #1048576
+   80004:	d51c4020 	msr	elr_el2, x0
+//SPSR_EL2.M of the form 0b0010x (where bit X corresponds to saved PSTATE.SP).
+//@constraint: = ((_ extract 4  4 ) SPSR_EL2) 0b0
+//@constraint: = ((_ extract 3  2 ) SPSR_EL2) 0b01
+//@constraint: = ((_ extract 1  1 ) SPSR_EL2) 0b0
+//SPSR_EL2.IL is 0b0.
+//@constraint: = ((_ extract 20 20) SPSR_EL2) 0b0
+//ELR_EL2 is set to a concrete address.
+//@constraint: = ELR_EL2 0x0000000000100000
+   80008:	d69f03e0 	eret
