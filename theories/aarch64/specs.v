@@ -17,6 +17,19 @@ Definition sub_R_R_R_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 R3 : string) 
   ).
 Global Instance : LithiumUnfold (@sub_R_R_R_spec) := I.
 
+Definition sub_R_R_R_self_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) : iProp Σ :=
+  ∃ (r1 r2 : bv 64),
+  reg_col sys_regs ∗
+  R1 ↦ᵣ RVal_Bits r1 ∗
+  R2 ↦ᵣ RVal_Bits r2 ∗
+  instr_pre (pc + 4) (
+    reg_col sys_regs ∗
+    R1 ↦ᵣ RVal_Bits (bv_sub r1 r2) ∗
+    R2 ↦ᵣ RVal_Bits r2 ∗
+    True
+  ).
+Global Instance : LithiumUnfold (@sub_R_R_R_self_spec) := I.
+
 Definition cmp_R_R_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) : iProp Σ :=
   ∃ (r1 r2 : bv 64),
   reg_col sys_regs ∗
@@ -49,13 +62,23 @@ Ltac cmp_spec_tac4 :=
   case_bool_decide as Hbv; case_bool_decide as Heq => //; exfalso; contradict Hbv;
     apply/bv_eq_signed; bv_simplify_arith;
     bv_simplify_arith_hyp Heq;
-    (* TODO: bv_solve can just solve this on Coq 8.14. *)
-    (rewrite (bv_wrap_small 128 (bv_unsigned _ + _)); [|bv_solve]);
-    (rewrite (bv_swrap_small 128 1); [|bv_solve]);
-    (rewrite !(bv_wrap_small 128 _); [|bv_solve..]);
-    (rewrite !(bv_swrap_small 128 _); [|bv_solve..]);
-    have -> : bv_swrap 64 (bv_unsigned r1 + bv_wrap 64 (- bv_unsigned r2 - 1) + 1) = bv_swrap 64 (bv_unsigned r1 - bv_unsigned r2) by [bv_solve];
     bv_solve.
+
+Definition cmp_R_imm_spec `{!islaG Σ} `{!threadG} (pc : Z) (R : string) (imm : Z) : iProp Σ :=
+  ∃ (r1 : bv 64),
+  reg_col sys_regs ∗
+  reg_col CNVZ_regs ∗
+  R ↦ᵣ RVal_Bits r1 ∗
+  instr_pre (pc + 4) (
+    reg_col sys_regs ∗
+    R ↦ᵣ RVal_Bits r1 ∗
+    "PSTATE" # "N" ↦ᵣ RVal_Bits (bv_extract 63 1 (bv_sub_Z r1 imm)) ∗
+    "PSTATE" # "Z" ↦ᵣ RVal_Bits (bool_to_bv 1 (bool_decide (bv_unsigned r1 = imm))) ∗
+    "PSTATE" # "C" ↦ᵣ RVal_Bits (bool_to_bv 1 (bool_decide (imm ≤ bv_unsigned r1))) ∗
+    "PSTATE" # "V" ↦ᵣ RVal_Bits (bool_to_bv 1 (bool_decide (bv_signed (bv_sub_Z r1 imm) ≠ bv_signed r1 - imm))) ∗
+    True
+  ).
+Global Instance : LithiumUnfold (@cmp_R_imm_spec) := I.
 
 (* TODO: generalize *)
 Definition csel_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) : iProp Σ :=
@@ -148,3 +171,48 @@ Definition ldp_mapsto_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) (R
     True
   ).
 Global Instance : LithiumUnfold (@ldp_mapsto_spec) := I.
+
+Definition ldr_mapsto_spec `{!islaG Σ} `{!threadG} (pc : Z) (pcval : Z) (R1 : string) (addr : bv 64) : iProp Σ :=
+  ∃ (r1 : bv 64),
+  reg_col sys_regs ∗
+  reg_col [(KindReg R1, UnknownShape)] ∗
+  addr ↦ₘ r1 ∗
+  ⌜pc = pcval⌝ ∗
+  ⌜bv_unsigned addr `mod` 8 = 0⌝ ∗
+  ⌜0 < bv_unsigned addr ∧ bv_unsigned addr + 16 < 2 ^ 52⌝ ∗
+  instr_pre (pc + 4) (
+    reg_col sys_regs ∗
+    R1 ↦ᵣ RVal_Bits r1 ∗
+    addr ↦ₘ r1 ∗
+    True
+  ).
+Global Instance : LithiumUnfold (@ldr_mapsto_spec) := I.
+
+
+(* Is there a nice way to write this that handles both the R to R and R to same R cases? *)
+Definition lsr_R_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 : string) (shift : Z) : iProp Σ :=
+  ∃ (v1 : bv 64),
+  reg_col sys_regs ∗
+  R1 ↦ᵣ RVal_Bits v1 ∗
+  instr_pre (pc + 4) (
+    ∃ vnew : bv 64,
+    reg_col sys_regs ∗
+    R1 ↦ᵣ RVal_Bits vnew ∗
+    ⌜bv_unsigned vnew = Z.shiftr (bv_unsigned v1) shift⌝ ∗
+    True
+  ).
+Global Instance : LithiumUnfold (@lsr_R_spec) := I.
+
+Definition movk_spec `{!islaG Σ} `{!threadG} (pc : Z) (R : string) (start : Z) (result : Z) : iProp Σ :=
+  ∃ (v : bv 64),
+  reg_col sys_regs ∗
+  R ↦ᵣ RVal_Bits v ∗
+  ⌜bv_unsigned v = start⌝ ∗
+  instr_pre (pc + 4) (
+    ∃ (vresult : bv 64),
+    reg_col sys_regs ∗
+    R ↦ᵣ RVal_Bits vresult ∗
+    ⌜bv_unsigned vresult = result⌝ ∗
+    True
+  ).
+Global Instance : LithiumUnfold (@movk_spec) := I.

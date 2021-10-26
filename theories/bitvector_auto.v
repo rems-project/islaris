@@ -114,6 +114,7 @@ Create HintDb bv_unfolded_simplify discriminated.
 #[export] Hint Rewrite Z.shiftr_0_r Z.lor_0_r Z.lor_0_l : bv_unfolded_simplify.
 #[export] Hint Rewrite Z.land_ones using lia : bv_unfolded_simplify.
 #[export] Hint Rewrite bv_wrap_bv_wrap using lia : bv_unfolded_simplify.
+#[export] Hint Rewrite Z_to_bv_small using unfold bv_modulus; lia : bv_unfolded_simplify.
 
 (** The [bv_unfolded_to_arith] database collects rewrite rules that
 convert bitwise operations to arithmetic operations in preparation for lia. *)
@@ -262,7 +263,7 @@ Ltac neg_bits_zero :=
 
 
 Ltac bits_simplify :=
-  apply bv_eq;
+  try apply/bv_eq;
   autorewrite with bv_unfold;
   unfold bv_wrap in *;
   onesify (64%nat);
@@ -280,7 +281,7 @@ Ltac bits_simplify :=
   ]).
 
 Ltac bitify_hyp H :=
-  rewrite -> bv_eq in H;
+  try (rewrite -> bv_eq in H);
   rewrite <- Z.bits_inj_iff' in H.
 
 Ltac bits_simplify_hyp H :=
