@@ -168,22 +168,8 @@ Proof.
             match type of HR with | (Is_true ?b) ↔ _ => rename b into bres end).
   - bv_solve.
   - bv_solve.
-  - bv_simplify => /=.
-    have -> : (bv_wrap 64 (bv_unsigned l) + bv_wrap 64 (bv_wrap 64 (bv_unsigned r - bv_unsigned l) ≫ 1))
-             = (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2) by bv_solve.
-    rewrite (bv_wrap_small 61 _); [|bv_solve].
-    bv_solve.
   - bv_solve.
-  - bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
-    destruct bres; simpl in *; bv_solve.
-  - bv_simplify_arith_hyp select (i < _).
-    destruct bres; simpl in *; eauto.
-    apply: binary_search_cond_1; [solve_goal..|].
-    bv_solve.
-  - bv_simplify_arith_hyp select (_ ≤ i).
-    destruct bres; simpl in *; eauto.
-    apply: binary_search_cond_2; [solve_goal..|].
-    bv_solve.
+  - bv_solve.
   - bv_simplify_arith_hyp select (i < _).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
@@ -200,6 +186,16 @@ Proof.
   - bv_simplify_arith_hyp select (¬ _ ≤ _).
     bv_simplify_arith_hyp select (_ ≤ i).
     destruct bres; simpl in *; bv_solve.
+  - bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
+    destruct bres; simpl in *; bv_solve.
+  - bv_simplify_arith_hyp select (i < _).
+    destruct bres; simpl in *; eauto.
+    apply: binary_search_cond_1; [solve_goal..|].
+    bv_solve.
+  - bv_simplify_arith_hyp select (_ ≤ i).
+    destruct bres; simpl in *; eauto.
+    apply: binary_search_cond_2; [solve_goal..|].
+    bv_solve.
 Time Qed.
 
 

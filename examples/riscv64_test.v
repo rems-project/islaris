@@ -29,9 +29,9 @@ Proof.
   iStartProof.
   Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
+  - rewrite /riscv_test_spec sif_true //. normalize_and_simpl_goal => //; bv_solve.
   - rewrite /riscv_test_spec sif_false. 1: normalize_and_simpl_goal => //; bv_solve.
     rename select (_ ≠ x11) into Hx11. contradict Hx11. bv_solve.
-  - rewrite /riscv_test_spec sif_true //. normalize_and_simpl_goal => //; bv_solve.
 Qed.
 
 Definition riscv_test_regs (mstatus_bits satp x2 x10 x11 : bv 64) : reg_map :=
