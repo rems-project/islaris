@@ -33,7 +33,12 @@ generate_riscv64:
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/riscv64_test.dump -j 8 -o instructions/riscv64_test --coqdir=isla.instructions.riscv64_test --arch=riscv64
 .PHONY: generate_riscv64
 
-generate: generate_aarch64 generate_riscv64
+generate_el2_to_el1: examples/el2_to_el1.dump
+	@echo "[isla-coq] $<"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/el2_to_el1 --coqdir=isla.instructions.el2_to_el1
+.PHONY: generate_el2_to_el1
+
+generate: generate_aarch64 generate_riscv64 generate_el2_to_el1
 .PHONY: generate
 
 clean:
