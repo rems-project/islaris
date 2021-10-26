@@ -326,7 +326,7 @@ let pp_traces_def : string -> traces Format.pp = fun id ff (Traces trcs) ->
     in
     print_trace
   in
-  List.iter print_trace trcs;
+  List.iter print_trace (List.sort Stdlib.compare trcs);
   pp "@]@;]."
 
 

@@ -19,3 +19,4 @@ _build/
 _opam*
 /sail-riscv/bbv/
 /sail-riscv/coq/
+*.isla
