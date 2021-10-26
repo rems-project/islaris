@@ -279,6 +279,8 @@ Inductive trace_step : trc → reg_map → option trace_label → trc → Prop :
     trace_step (Branch c desc ann :: es) regs (Some (LBranch c desc)) es
 | DoneES es regs:
     trace_step [] regs (Some (LDone es)) es
+| BarrierS v ann es regs :
+    trace_step (Barrier v ann :: es) regs None es
 .
 
 Lemma DeclareConstBitVecS' {n} (b : bv n) x ann es regs:
