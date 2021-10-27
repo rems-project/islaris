@@ -6,7 +6,7 @@ Definition sys_regs : list (reg_kind * valu_shape) := [
   (KindReg "SCTLR_EL2" , ExactShape (RVal_Bits [BV{64} 0x0000000004000002] ));
   (KindReg "SCR_EL3" , ExactShape (RVal_Bits [BV{32} 0x00000401] ));
   (KindReg "TCR_EL2" , ExactShape (RVal_Bits [BV{64} 0] ));
-  (KindReg "HCR_EL2" , ExactShape (RVal_Bits [BV{64} 0] ));
+  (KindReg "HCR_EL2" , ExactShape (RVal_Bits [BV{64} 0x0000000080000000] ));
   (KindReg "CFG_ID_AA64PFR0_EL1_EL0" , ExactShape (RVal_Bits [BV{4} 1] ));
   (KindReg "CFG_ID_AA64PFR0_EL1_EL1" , ExactShape (RVal_Bits [BV{4} 1] ));
   (KindReg "CFG_ID_AA64PFR0_EL1_EL2" , ExactShape (RVal_Bits [BV{4} 1] ));
@@ -56,7 +56,7 @@ Definition sys_regs_map : reg_map :=
   <[ "SCTLR_EL2" := RVal_Bits [BV{64} 0x0000000004000002] ]> $
   <[ "SCR_EL3" := RVal_Bits [BV{32} 0x00000401] ]> $
   <[ "TCR_EL2" := RVal_Bits [BV{64} 0] ]> $
-  <[ "HCR_EL2" := RVal_Bits [BV{64} 0] ]> $
+  <[ "HCR_EL2" := RVal_Bits [BV{64} 0x0000000080000000] ]> $
   <[ "CFG_ID_AA64PFR0_EL1_EL0" := RVal_Bits [BV{4} 1] ]> $
   <[ "CFG_ID_AA64PFR0_EL1_EL1" := RVal_Bits [BV{4} 1] ]> $
   <[ "CFG_ID_AA64PFR0_EL1_EL2" := RVal_Bits [BV{4} 1] ]> $
