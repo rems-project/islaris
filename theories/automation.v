@@ -505,10 +505,11 @@ Section instances.
     λ G, i2p (subsume_struct_reg r f v1 v2 G).
 
   Lemma subsume_regcol_reg regs r v G:
-    (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ i,
+    (tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
       ∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ ∀ v', ⌜valu_has_shape v' vr.2⌝ -∗ ⌜v = v'⌝ ∗ G)) -∗
     subsume (reg_col regs) (r ↦ᵣ v) G.
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
     rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
     iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
@@ -520,10 +521,11 @@ Section instances.
     λ G, i2p (subsume_regcol_reg regs r v G).
 
   Lemma subsume_struct_regcol_reg regs r f v G:
-    (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs (λ i,
+    (tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs) (λ i,
       (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ ∀ v', ⌜valu_has_shape v' vr.2⌝ -∗ ⌜v = v'⌝ ∗ G))) -∗
     subsume (reg_col regs) (r # f ↦ᵣ v) G.
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
     rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
     iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
@@ -551,11 +553,12 @@ Section instances.
     λ G, i2p (subsume_struct_reg_reg_pred r f v P G).
 
   Lemma subsume_regcol_reg_pred regs r P G:
-    (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ i,
+    (tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
       (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
          reg_col (delete i regs) -∗ P v' ∗ G))) -∗
     subsume (reg_col regs) (r ↦ᵣ: P) G.
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
     rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
     iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
@@ -567,11 +570,12 @@ Section instances.
     λ G, i2p (subsume_regcol_reg_pred regs r P G).
 
   Lemma subsume_struct_regcol_reg_pred regs r f P G:
-    (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs (λ i,
+    (tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs) (λ i,
       (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
          reg_col (delete i regs) -∗ P v' ∗ G))) -∗
     subsume (reg_col regs) (r # f ↦ᵣ: P) G.
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
     rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
     iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
@@ -586,12 +590,13 @@ Section instances.
     find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v => P v
-      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ i,
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
            (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
              reg_col (delete i regs) -∗ P v'))
       end) -∗
     r ↦ᵣ: P.
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     rewrite reg_mapsto_pred_eq /reg_mapsto_pred_def.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - eauto with iFrame.
@@ -605,12 +610,13 @@ Section instances.
     find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v => P v
-      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs (λ i,
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs) (λ i,
            (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
              reg_col (delete i regs) -∗ P v'))
       end) -∗
     r # f ↦ᵣ: P.
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     rewrite struct_reg_mapsto_pred_eq /struct_reg_mapsto_pred_def.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - eauto with iFrame.
@@ -877,11 +883,12 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ i,
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
            (reg_col regs -∗ WPasm es))
       end)) -∗
     WPasm (ReadReg r [] v ann :: es).
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg with "Hr").
     - iDestruct "Hwp" as (? [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
@@ -895,16 +902,17 @@ Section instances.
      (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜vread = v'⌝ -∗ r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f ∨ (x.1 = KindReg r ∧ is_Some
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f ∨ (x.1 = KindReg r ∧ is_Some
              (match x.2 with
               | ExactShape (RegVal_Struct rs) => list_find_idx (λ y, y.1 = f) rs
               | StructShape ss => list_find_idx (λ y, y.1 = f) ss
               | _ => None
-              end)))%type) regs (λ i,
+              end)))%type) regs) (λ i,
                (reg_col regs -∗ WPasm es))
       end))) -∗
     WPasm (ReadReg r [Field f] v ann :: es).
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (???) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg_struct with "Hr").
     - iDestruct "Hwp" as (? [[? s][?[Hor ?]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
@@ -939,11 +947,12 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ ∗ (r ↦ᵣ v' -∗ WPasm es))
-      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ i,
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
                       ⌜∀ v', valu_has_shape v' (regs !!! i).2 → v' = v⌝ ∗ (reg_col regs -∗ WPasm es))
       end)) -∗
     WPasm (AssumeReg r [] v ann :: es).
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - iDestruct "Hwp" as (->) "?". by iApply (wp_assume_reg with "Hr").
     - iDestruct "Hwp" as (a [[??][?[??]]]%list_find_idx_Some Hr) "Hwp"; simplify_eq/=.
@@ -958,18 +967,19 @@ Section instances.
     ((find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => ⌜v = v'⌝ ∗ (r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r)%type) regs (λ i,
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r)%type) regs) (λ i,
           ∃ e, ⌜e = (regs !!! i)⌝ ∗
           match e.1 with
           | KindField _ _ => ⌜e.2 = ExactShape v⌝ ∗ (reg_col regs -∗ WPasm es)
           | KindReg _ =>
               if e.2 is ExactShape (RegVal_Struct rs) then
-                vm_compute_hint (list_find_idx (λ x, x.1 = f)) rs (λ i,
+                tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = f)) rs) (λ i,
                   ⌜(rs !!! i).2 = v⌝ ∗ (reg_col regs -∗ WPasm es)) else False
           end)
       end))) -∗
     WPasm (AssumeReg r [Field f] v ann :: es).
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (?) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - iDestruct "Hwp" as (->) "?". by iApply (wp_assume_reg_struct with "Hr").
     - iDestruct "Hwp" as (i [[??][?[Hor ?]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
@@ -994,11 +1004,12 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (r ↦ᵣ v -∗ WPasm es)
-      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ i,
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
           (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r ↦ᵣ v -∗ WPasm es))
       end)) -∗
     WPasm (WriteReg r [] v ann :: es).
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_write_reg with "Hr").
     - iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
@@ -1012,11 +1023,12 @@ Section instances.
     (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (r # f ↦ᵣ vnew -∗ WPasm es)
-      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs (λ i,
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs) (λ i,
           (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r # f ↦ᵣ vnew -∗ WPasm es))
       end))) -∗
     WPasm (WriteReg r [Field f] v ann :: es).
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (vnew ? rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_write_reg_struct with "Hr").
     - iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
@@ -1158,12 +1170,13 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v => (if v is RegVal_Base v' then r ↦ᵣ v -∗ Φ v' else False)
-      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs (λ i,
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
         ∀ v, ⌜valu_has_shape v (regs !!! i).2⌝ -∗ ∃ v', ⌜v = RegVal_Base v'⌝ ∗ (reg_col regs -∗ Φ v')
              )
       end)) -∗
     WPaexp (AExp_Val (AVal_Var r []) ann) {{ Φ }}.
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - case_match => //; subst. by iApply (wpae_var_reg with "Hr").
     - iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
@@ -1177,20 +1190,21 @@ Section instances.
     (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v => (if v is RegVal_Base v' then r # f ↦ᵣ v -∗ Φ v' else False)
-      | RKCol regs => vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r)%type) regs (λ i,
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r)%type) regs) (λ i,
           ∃ e, ⌜e = (regs !!! i)⌝ ∗
           match e.1 with
           | KindField _ _ =>
               ∀ v, ⌜valu_has_shape v e.2⌝ -∗ ∃ v', ⌜v = RegVal_Base v'⌝ ∗ (reg_col regs -∗ Φ v')
           | KindReg _ =>
               ∀ v, ⌜valu_has_shape v e.2⌝ -∗ ∃ rs, ⌜v = RegVal_Struct rs⌝ ∗
-                vm_compute_hint (list_find_idx (λ x, x.1 = f)) rs (λ i,
+                tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = f)) rs) (λ i,
                   if (rs !!! i).2 is RegVal_Base v' then reg_col regs -∗ Φ v' else False
                  )
           end)
       end)) -∗
     WPaexp (AExp_Val (AVal_Var r [Field f]) ann) {{ Φ }}.
   Proof.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - case_match => //; subst. by iApply (wpae_var_struct with "Hr").
     - iDestruct "Hwp" as (? [[??][?[Hor ?]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.

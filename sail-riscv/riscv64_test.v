@@ -116,7 +116,7 @@ Lemma sim_instr_a10:
 Proof.
   move => regs.
   destruct (eq_vec (x10 regs) (x11 regs)) eqn: Hb1; sim_simpl_hyp Hb1.
-  all: eexists _; split. 1: by right; left. 2: by left.
+  all: eexists _; split. 1: by left. 2: by right; left.
   all: unfold step_cpu; red_sim; unfold execute; red_sim.
   all: unfold execute_BTYPE; red_sim.
   all: apply: sim_read_reg_l; [done|]; red_sim.
