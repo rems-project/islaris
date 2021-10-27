@@ -1069,6 +1069,11 @@ Section instances.
     WPasm (Assume e ann :: es).
   Proof. apply: wp_assume. Qed.
 
+  Lemma li_wp_barrier es v ann:
+    WPasm es -∗
+    WPasm (Barrier v ann :: es).
+  Proof. apply: wp_barrier. Qed.
+
   Lemma li_wp_write_mem len n success kind a (vnew : bv n) tag ann es:
     (⌜n = (8*len)%N⌝ ∗
     ⌜len ≠ 0%N⌝ ∗
@@ -1375,6 +1380,7 @@ Ltac liAAsm :=
       | Smt (DefineConst _ _) _ => notypeclasses refine (tac_fast_apply (li_wp_define_const _ _ _ _) _)
       | Smt (Assert _) _ => notypeclasses refine (tac_fast_apply (li_wp_assert _ _ _) _)
       | Assume _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume _ _ _) _)
+      | Barrier _ _ => notypeclasses refine (tac_fast_apply (li_wp_barrier _ _ _) _)
       end
     | ?def => first [
                  iEval (unfold def); try clear def

@@ -745,6 +745,25 @@ Section lifting.
     iApply "Hcont"; [done..|iFrame].
   Qed.
 
+  Lemma wp_barrier es v ann:
+    WPasm es -∗
+    WPasm (Barrier v ann :: es).
+  Proof.
+    rewrite wp_asm_eq.
+    iIntros "Hcont" ([????]) "/= -> -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "Hctx".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iSplit. {
+      iPureIntro.
+      eexists _, _, _, _; econstructor; [done |by econstructor| done].
+    }
+    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
+    inv_seq_step.
+    iFrame; iSplit; [|done].
+    iApply "Hcont"; [done..|iFrame].
+  Qed.
+
 End lifting.
 
 Section exp_lifting.
