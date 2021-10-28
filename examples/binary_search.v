@@ -245,8 +245,6 @@ Lemma binary_search stack_size :
   instr_body 0x0000000010300000 (binary_search_spec stack_size).
 Proof.
   move => ?. iStartProof.
-Admitted.
-(* TODO: uncomment this once we are on coq 8.14
   Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
   all: try rewrite ->@bv_or_0_l in * by done.
@@ -255,6 +253,5 @@ Admitted.
   - eauto.
   - eauto.
 Time Qed.
-*)
 
 End proof.

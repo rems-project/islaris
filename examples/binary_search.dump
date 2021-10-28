@@ -11,22 +11,16 @@
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000018) 0xfff0000000000007) 0x0000000000000000
 //@spec: stp_uninit_spec pc "R24" "R23" "SP_EL2" (16) false
 //@spec_tactic: all: bv_solve.
-//TODO: remove once we are on coq 8.14
-//@admitted
    4:	a9015ff8 	stp	x24, x23, [sp, #16]
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000028) 0xfff0000000000007) 0x0000000000000000
 //@spec: stp_uninit_spec pc "R22" "R21" "SP_EL2" (32) false
 //@spec_tactic: all: bv_solve.
-//TODO: remove once we are on coq 8.14
-//@admitted
    8:	a90257f6 	stp	x22, x21, [sp, #32]
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000038) 0xfff0000000000007) 0x0000000000000000
 //@spec: stp_uninit_spec pc "R20" "R19" "SP_EL2" (48) false
 //@spec_tactic: all: bv_solve.
-//TODO: remove once we are on coq 8.14
-//@admitted
    c:	a9034ff4 	stp	x20, x19, [sp, #48]
   10:	910003fd 	mov	x29, sp
   14:	b4000222 	cbz	x2, 58 <binary_search+0x58>
@@ -71,15 +65,11 @@
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000018) 0xfff0000000000007) 0x0000000000000000
 //@spec: ldp_mapsto_spec pc "R24" "R23" "SP_EL2" (16) None
 //@spec_tactic: all: bv_solve.
-//TODO: remove once we are on coq 8.14
-//@admitted
   68:	a9415ff8 	ldp	x24, x23, [sp, #16]
 //@constraint: = (bvand SP_EL2 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000008) 0xfff0000000000007) 0x0000000000000000
 //@spec: ldp_mapsto_spec pc "R29" "R30" "SP_EL2" (0) (Some 64)
 //@spec_tactic: all: bv_solve.
-//TODO: remove once we are on coq 8.14
-//@admitted
   6c:	a8c47bfd 	ldp	x29, x30, [sp], #64
   70:	d65f03c0 	ret
 
