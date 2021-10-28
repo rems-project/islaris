@@ -182,15 +182,17 @@ Qed.
 
 (** * [normalize_instr_addr] *)
 
-Definition normalize_instr_addr (a1 a2 : Z) : Prop := bv_wrap 64 a1 = bv_wrap 64 a2.
+Definition normalize_instr_addr {Σ} (a1 : Z) (T : Z → iProp Σ) : iProp Σ :=
+  ∃ a2, ⌜bv_wrap 64 a1 = bv_wrap 64 a2⌝ ∗ T a2.
+Arguments normalize_instr_addr : simpl never.
 Typeclasses Opaque normalize_instr_addr.
 
-Class NormalizeInstrAddr (a1 a2 : Z) : Prop :=
-  normalize_instr_addr_proof : normalize_instr_addr a1 a2.
-
-Global Instance simpl_and_normalize_instr_addr a1 a2 a2' `{!NormalizeInstrAddr a1 a2'} `{!IsProtected a2} :
-  SimplAndUnsafe true (normalize_instr_addr a1 a2) (λ T, a2' = a2 ∧ T).
-Proof. unfold NormalizeInstrAddr, SimplAndUnsafe in *. naive_solver. Qed.
+Program Definition normalize_instr_addr_hint {Σ} a1 a2 :
+  (bv_wrap 64 a1 = bv_wrap 64 a2) →
+  TacticHint (normalize_instr_addr (Σ:=Σ) a1) := λ H, {|
+    tactic_hint_P T := T a2;
+|}.
+Next Obligation. unfold normalize_instr_addr. move => ??? -> ?. iIntros "?". iExists _. by iFrame. Qed.
 
 Lemma normalize_instr_addr_add_tac a n r:
   bv_wrap 64 (a + bv_unsigned n) = r →
@@ -198,7 +200,7 @@ Lemma normalize_instr_addr_add_tac a n r:
 Proof. move => <-. by rewrite bv_add_unsigned Z_to_bv_unsigned bv_wrap_bv_wrap // bv_wrap_add_idemp_l. Qed.
 
 Ltac solve_normalize_instr_addr :=
-  unfold NormalizeInstrAddr, normalize_instr_addr; unLET;
+  unfold normalize_instr_addr; unLET;
   try lazymatch goal with
   | |- bv_wrap _ ?a = _ => reduce_closed a
   end;
@@ -210,8 +212,8 @@ Ltac solve_normalize_instr_addr :=
   end;
   exact: eq_refl.
 
-Global Hint Extern 10 (NormalizeInstrAddr _ _) =>
-  solve_normalize_instr_addr : typeclass_instances.
+Global Hint Extern 10 (TacticHint (normalize_instr_addr _)) =>
+  eapply normalize_instr_addr_hint; solve_normalize_instr_addr : typeclass_instances.
 
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
@@ -804,9 +806,9 @@ Section instances.
     λ T, i2p (simpl_goal_reg_col_cons r col s T).
 
   Lemma li_wp_next_instr:
-    (∃ (nPC newPC : addr) normPC,
+    (∃ (nPC newPC : addr),
      arch_pc_reg ↦ᵣ RVal_Bits nPC ∗
-     ⌜normalize_instr_addr (bv_unsigned nPC) normPC⌝ ∗
+     tactic_hint (normalize_instr_addr (bv_unsigned nPC)) (λ normPC,
      ⌜newPC = Z_to_bv 64 normPC⌝ ∗
      find_in_context (FindInstrKind normPC true) (λ ik,
      match ik with
@@ -816,10 +818,10 @@ Section instances.
        ∃ Pκs, spec_trace Pκs ∗ ⌜scons (SInstrTrap newPC) snil ⊆ Pκs⌝ ∗ True
      | IKPre l P => P
      end
-    )) -∗
+    ))) -∗
     WPasm [].
   Proof.
-    iDestruct 1 as (???) "(HPC&%Hnorm&->&Hwp)". unfold normalize_instr_addr in *.
+    unfold normalize_instr_addr. iDestruct 1 as (??) "(HPC&%normPC&%Hnorm&->&Hwp)".
     have ? := bv_unsigned_in_range _ nPC.
     iDestruct "Hwp" as (ins) "[Hi Hwp]".
     destruct ins as [[?|]|?] => /=.
@@ -842,8 +844,8 @@ Section instances.
   Qed.
 
   Lemma li_instr_pre l a P:
-    (∃ newPC normPC,
-     ⌜normalize_instr_addr a normPC⌝ ∗
+    (∃ newPC,
+     tactic_hint (normalize_instr_addr a) (λ normPC,
      ⌜newPC = Z_to_bv 64 normPC⌝ ∗
      find_in_context (FindInstrKind normPC l) (λ ik,
      match ik with
@@ -853,11 +855,10 @@ Section instances.
        P -∗ ∃ Pκs, spec_trace Pκs ∗ ⌜scons (SInstrTrap newPC) snil ⊆ Pκs⌝ ∗ True
      | IKPre l' Q => ⌜implb l' l⌝ ∗ (P -∗ Q)
      end
-    )) -∗
+    ))) -∗
     instr_pre' l a P.
   Proof.
-    iDestruct 1 as (?? Hnorm -> ins) "[Hinstr Hwp]".
-    unfold normalize_instr_addr in *.
+    unfold normalize_instr_addr.  iDestruct 1 as (? normPC Hnorm -> ins) "[Hinstr Hwp]".
     destruct ins as [[?|]|?] => /=.
     - iDestruct "Hwp" as (?) "Hl".
       iDestruct (instr_addr_in_range with "Hinstr") as %?.
