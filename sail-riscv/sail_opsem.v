@@ -5,21 +5,6 @@ Require Import isla.adequacy.
 Require Import isla.riscv64.arch.
 
 (*** Relating values *)
-Definition bv_to_bits {n} (b : bv n) : list bool :=
-  (λ i, Z.testbit (bv_unsigned b) i) <$> seqZ 0 (Z.of_N n).
-
-Lemma bv_to_bits_length n (b : bv n): length (bv_to_bits b) = N.to_nat n.
-Proof. rewrite /bv_to_bits fmap_length seqZ_length. lia. Qed.
-
-Lemma bv_to_bits_lookup_Some n (b : bv n) i x:
-  bv_to_bits b !! i = Some x ↔ (i < N.to_nat n)%nat ∧ x = Z.testbit (bv_unsigned b) i.
-Proof.
-  rewrite /bv_to_bits list_lookup_fmap fmap_Some.
-  split.
-  - move => [?[/lookup_seqZ? ?]]. naive_solver lia.
-  - move => [??]. eexists _. split; [|done]. apply lookup_seqZ. lia.
-Qed.
-
 Definition byte_to_memory_byte (b : byte) : memory_byte :=
   bitU_of_bool <$> rev (bv_to_bits b).
 
@@ -100,8 +85,8 @@ Proof.
   move => ?.
   apply: list_eq_same_length; [done| |].
   { rewrite rev_length length_bitlistFromWord bv_to_bits_length; lia. }
-  move => ????. rewrite bitlistFromWord_lookup_Some -(mword_to_bv_unsigned (n2:=n2)) // => -[??].
-  move => /rev_lookup_Some[/bv_to_bits_lookup_Some[??] ?]. simplify_eq.
+  move => ????. rewrite bitlistFromWord_lookup_Some -(mword_to_bv_unsigned (n2:=n2)) // rev_reverse => -[??].
+  move => /reverse_lookup_Some[/bv_to_bits_lookup_Some[??] ?]. simplify_eq.
   rewrite bv_to_bits_length. f_equal. lia.
 Qed.
 
@@ -117,70 +102,6 @@ Proof.
 Qed.
 Arguments add_vec : simpl never.
 
-Lemma sublist_lookup_Some {A} i n (l : list A) x:
-  sublist_lookup i n l = Some x ↔ x = take n (drop i l) ∧ (i + n <= length l)%nat.
-Proof. rewrite /sublist_lookup. case_option_guard; naive_solver lia. Qed.
-
-Lemma Z_to_little_endian_lookup_Some m n z (i : nat) x:
-  0 ≤ m → 0 ≤ n → Z_to_little_endian m n z !! i = Some x ↔ i < m ∧ x = Z.land (z ≫ (i * n)) (Z.ones n).
-Proof.
-  revert z m. induction i as [|i IH]; intros z m Hm Hn; rewrite -{1}(Z.succ_pred m).
-  all: destruct (decide (m = 0)); subst => /=; [ naive_solver lia|].
-  all: rewrite Z_to_little_endian_succ /=; [|lia].
-  { rewrite Z.shiftr_0_r. naive_solver lia. }
-  rewrite IH ?Z.shiftr_shiftr; [|lia..].
-  assert ((n + i * n) = (S i * n)) as -> by lia.
-  naive_solver lia.
-Qed.
-
-Lemma bv_to_little_endian_lookup_Some m n z (i : nat) x:
-  0 ≤ m → bv_to_little_endian m n z !! i = Some x ↔ i < m ∧ x = Z_to_bv n (z ≫ (i * Z.of_N n)).
-Proof.
-  unfold bv_to_little_endian. intros Hm. rewrite list_lookup_fmap fmap_Some.
-  split.
-  - intros [?[[??]%Z_to_little_endian_lookup_Some ?]]; [|lia..]; subst. split; [done|].
-    rewrite -bv_wrap_land. apply bv_eq. by rewrite !Z_to_bv_unsigned bv_wrap_bv_wrap.
-  - intros [?->]. eexists _. split; [apply Z_to_little_endian_lookup_Some => //; lia| ].
-    rewrite -bv_wrap_land. apply bv_eq. by rewrite !Z_to_bv_unsigned bv_wrap_bv_wrap.
-Qed.
-
-Lemma little_endian_to_Z_spec n bs i b:
-  0 ≤ i → 0 < n →
-  Forall (λ b, 0 ≤ b < 2 ^ n) bs →
-  bs !! Z.to_nat (i `div` n) = Some b →
-  Z.testbit (little_endian_to_Z n bs) i = Z.testbit b (i `mod` n).
-Proof.
-  intros Hi Hn. rewrite Z2Nat.inj_div; [|lia..].
-  revert i Hi. induction bs as [|b' bs IH]; intros i ? => //= /Forall_cons[[? /Z_bounded_iff_bits_nonneg Hb' ]?].
-  intros [[?%Nat.div_small_iff ?]|[? Hbs]]%lookup_cons_Some; subst; [|lia|].
-  - rewrite Z.lor_spec Z.shiftl_spec // Z.mod_small ?(Z.testbit_neg_r _ (i - n)); [|lia..].
-    by rewrite orb_false_r.
-  - rewrite Z.lor_spec Z.shiftl_spec //.
-    have ? : (Z.to_nat n <= Z.to_nat i)%nat. { apply Nat.div_str_pos_iff; lia. }
-    move: Hbs.
-    have ->: (Z.to_nat i `div` Z.to_nat n - 1)%nat = (Z.to_nat (i - n) `div` Z.to_nat n)%nat. {
-      apply Nat2Z.inj. rewrite Z2Nat.inj_sub ?Nat2Z.inj_div ?Nat2Z.inj_sub ?Nat2Z.inj_div //; [|lia..].
-      rewrite -(Z.add_opp_r (Z.to_nat _)) Z.opp_eq_mul_m1 Z.mul_comm Z.div_add; [|lia]. lia.
-    }
-    move => /IH ->; [|lia|done]. rewrite Hb' /=; [|lia..].
-    by rewrite -Zminus_mod_idemp_r Z_mod_same_full Z.sub_0_r.
-Qed.
-
-Lemma little_endian_to_bv_spec n bs i b:
-  0 ≤ i → n ≠ 0%N →
-  bs !! Z.to_nat (i `div` Z.of_N n) = Some b →
-  Z.testbit (little_endian_to_bv n bs) i = Z.testbit (bv_unsigned b) (i `mod` Z.of_N n).
-Proof.
-  move => ???. rewrite /little_endian_to_bv. apply little_endian_to_Z_spec; [lia|lia| |].
-  { apply Forall_fmap. apply Forall_true => ? /=. apply bv_unsigned_in_range. }
-  rewrite list_lookup_fmap. apply fmap_Some. naive_solver.
-Qed.
-
-Lemma bv_seq_length n (x : bv n) len:
-  length (bv_seq x len) = Z.to_nat len.
-Proof. by rewrite fmap_length seqZ_length. Qed.
-
-
 Lemma mem_bytes_of_bits_to_bv n (v : mword n) len H:
   n = 8 * len →
   mem_bytes_of_bits (H:=@mword_Bitvector _ H) v = Some (byte_to_memory_byte <$>
@@ -193,9 +114,9 @@ Proof.
   2: { rewrite fmap_length length_bitlistFromWord. lia. }
   f_equal. eapply list_eq_same_length; [done | |].
   { rewrite reshape_length rev_length replicate_length fmap_length bv_to_little_endian_length; lia. }
-  move => i x y ?. rewrite sublist_lookup_reshape; [|lia|].
+  move => i x y ?. rewrite rev_reverse sublist_lookup_reshape; [|lia|].
   2: { rewrite fmap_length length_bitlistFromWord. lia. }
-  move => /sublist_lookup_Some[??] /rev_lookup_Some.
+  move => /sublist_lookup_Some'[??] /reverse_lookup_Some.
   rewrite list_lookup_fmap fmap_length bv_to_little_endian_length; [|lia] => -[Hl ?].
   move: Hl => /fmap_Some[?[/bv_to_little_endian_lookup_Some[|???]]]; [lia|]. simplify_eq.
   apply: list_eq_same_length; [done|..].
@@ -210,26 +131,26 @@ Qed.
 
 Lemma just_list_bits_of_mem_bytes bs:
   just_list (bool_of_bitU <$> bits_of_mem_bytes (byte_to_memory_byte <$> bs)) =
-    Some (mjoin (((λ x, reverse (bv_to_bits x)) <$> rev bs))).
+    Some (mjoin (((λ x, reverse (bv_to_bits x)) <$> reverse bs))).
 Proof.
   rewrite just_list_mapM. apply mapM_Some_2. apply Forall2_same_length_lookup_2. {
     rewrite fmap_length join_length -list_fmap_compose /compose /= sum_list_fmap'.
-    rewrite length_bits_of_mem_bytes ?fmap_length ?rev_length //.
+    rewrite length_bits_of_mem_bytes ?fmap_length ?reverse_length //.
     move => ? /elem_of_list_fmap[?[??]]. subst. by rewrite byte_to_memory_byte_length.
   }
   move => i x y. rewrite list_lookup_fmap /bits_of_mem_bytes/bits_of_bytes concat_join map_fmap.
   move => /fmap_Some[?[/(join_lookup_Some' 8)[|?[?[?[Hm [Hl ?]]]]]]].
   { rewrite rev_reverse. move => ? /elem_of_list_fmap[?[? /elem_of_reverse /elem_of_list_fmap[?[??]]]]; subst. done. }
-  move => ?. subst. move: Hm. rewrite list_lookup_fmap. move => /fmap_Some [?[Hrev ?]]. subst.
+  move => ?. subst. move: Hm. rewrite list_lookup_fmap rev_reverse. move => /fmap_Some [?[Hrev ?]]. subst.
   move: Hl. rewrite /bits_of /= map_fmap list_lookup_fmap => /fmap_Some [?[Hl ?]]. subst.
-  move: Hrev => /rev_lookup_Some. rewrite list_lookup_fmap => -[/fmap_Some[?[Hbs ?]] ?]. subst.
+  move: Hrev => /reverse_lookup_Some. rewrite list_lookup_fmap => -[/fmap_Some[?[Hbs ?]] ?]. subst.
   move: Hl => /byte_to_memory_byte_lookup_Some[??].
   move => /join_lookup_Some_mul[| |].
   { move => ? /elem_of_list_fmap[?[??]]. subst. by rewrite reverse_length bv_to_bits_length. }
   { done. }
-  move => ?. rewrite list_lookup_fmap => -[/fmap_Some[?[/rev_lookup_Some[??] ?]] Hl].
-  unfold byte in *; rewrite fmap_length in Hbs; simplify_eq. rewrite -rev_reverse in Hl.
-  move: Hl => /rev_lookup_Some [/bv_to_bits_lookup_Some[??] ?]; simplify_eq.
+  move => ?. rewrite list_lookup_fmap => -[/fmap_Some[?[/reverse_lookup_Some[??] ?]] Hl].
+  unfold byte in *; rewrite fmap_length in Hbs; simplify_eq.
+  move: Hl => /reverse_lookup_Some [/bv_to_bits_lookup_Some[??] ?]; simplify_eq.
   by rewrite bool_of_bitU_of_bool bv_to_bits_length.
 Qed.
 
@@ -242,10 +163,10 @@ Lemma read_mem_bytes_eq (len' : N) n H H2 bs:
 Proof.
   rewrite just_list_bits_of_mem_bytes /= => ??. f_equal.
   apply get_word_inj. rewrite !get_word_to_word fit_bbv_word_id.
-  { rewrite join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length. lia. }
+  { rewrite join_length -list_fmap_compose /compose /= sum_list_fmap' ?reverse_length. lia. }
   move => Hhyp. destruct Hhyp => /=. apply Word.wordToN_inj.
   rewrite Word.wordToN_NToWord_2. 2: {
-    rewrite -Npow2_pow Z_to_bv_unsigned join_length -list_fmap_compose /compose /= sum_list_fmap' rev_length.
+    rewrite -Npow2_pow Z_to_bv_unsigned join_length -list_fmap_compose /compose /= sum_list_fmap' reverse_length.
     have ? := bv_wrap_in_range (8 * len') (little_endian_to_bv 8 bs).
     unfold bv_modulus in *.
     apply N2Z.inj_lt.
@@ -257,19 +178,19 @@ Proof.
   }
   rewrite Z_to_bv_unsigned. apply Z.bits_inj_iff' => i ?.
   have {1}->: i = Z.of_nat (Z.to_nat i) by lia.
-  rewrite wordFromBitlist_spec.
+  rewrite wordFromBitlist_spec rev_reverse.
   rewrite bv_wrap_spec //. case_bool_decide => /=.
-  2: { rewrite lookup_ge_None_2 // rev_length join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length. lia. }
+  2: { rewrite lookup_ge_None_2 // reverse_length join_length -list_fmap_compose /compose /= sum_list_fmap' ?reverse_length. lia. }
   rewrite /default. case_match as Hc.
-  2: { rewrite lookup_ge_None rev_length join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length in Hc. lia. }
-  move: Hc => /rev_lookup_Some [/(join_lookup_Some' 8)[|j1 [?[j2[Hl[Hl2 Hi]]]]] ?]. {
+  2: { rewrite lookup_ge_None reverse_length join_length -list_fmap_compose /compose /= sum_list_fmap' ?reverse_length in Hc. lia. }
+  move: Hc => /reverse_lookup_Some [/(join_lookup_Some' 8)[|j1 [?[j2[Hl[Hl2 Hi]]]]] ?]. {
     move => /elem_of_list_fmap[?[??]]. subst.
     by rewrite reverse_length bv_to_bits_length.
   }
-  move: Hi => /Nat2Z.inj_iff. rewrite join_length -list_fmap_compose /compose /= sum_list_fmap' rev_length => Hi.
+  move: Hi => /Nat2Z.inj_iff. rewrite join_length -list_fmap_compose /compose /= sum_list_fmap' reverse_length => Hi.
   have {Hi} ?: i = (length bs * 8 - 1 - (j1 * 8 + j2))%nat by lia. simplify_eq.
-  move: Hl. rewrite list_lookup_fmap => /fmap_Some[?[/rev_lookup_Some[Hbs ?] ?]]. simplify_eq.
-  move: Hl2. rewrite -rev_reverse => /rev_lookup_Some[/bv_to_bits_lookup_Some[??]?]. simplify_eq/=.
+  move: Hl. rewrite list_lookup_fmap => /fmap_Some[?[/reverse_lookup_Some[Hbs ?] ?]]. simplify_eq.
+  move: Hl2  => /reverse_lookup_Some[/bv_to_bits_lookup_Some[??]?]. simplify_eq/=.
   erewrite little_endian_to_bv_spec; [|lia|done|]. 2: { erewrite <-Hbs. f_equal. lia. }
   f_equal. lia.
 Qed.

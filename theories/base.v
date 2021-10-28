@@ -29,6 +29,182 @@ Tactic Notation "case_match" "as" ident(Hd) :=
   | |- context [ match ?x with _ => _ end ] => destruct x eqn:Hd
   end.
 
+Definition bv_to_bits {n} (b : bv n) : list bool :=
+  (λ i, Z.testbit (bv_unsigned b) i) <$> seqZ 0 (Z.of_N n).
+
+Lemma bv_to_bits_length n (b : bv n): length (bv_to_bits b) = N.to_nat n.
+Proof. rewrite /bv_to_bits fmap_length seqZ_length. lia. Qed.
+
+Lemma bv_to_bits_lookup_Some n (b : bv n) i x:
+  bv_to_bits b !! i = Some x ↔ (i < N.to_nat n)%nat ∧ x = Z.testbit (bv_unsigned b) i.
+Proof.
+  rewrite /bv_to_bits list_lookup_fmap fmap_Some.
+  split.
+  - move => [?[/lookup_seqZ? ?]]. naive_solver lia.
+  - move => [??]. eexists _. split; [|done]. apply lookup_seqZ. lia.
+Qed.
+
+Lemma list_fmap_inj1 {A B} (f1 f2 : A → B) (l : list A) x:
+  f1 <$> l = f2 <$> l → x ∈ l → f1 x = f2 x.
+Proof. induction l; set_solver. Qed.
+
+Global Instance bv_to_bits_inj n : Inj eq eq (@bv_to_bits n).
+Proof.
+  unfold bv_to_bits. move => x y /(list_fmap_inj1 _ _ _ _) Hf.
+  apply bv_eq_wrap. apply Z.bits_inj_iff' => i Hi.
+  rewrite !bv_wrap_spec //. case_bool_decide => //=.
+  apply: Hf. apply elem_of_seqZ. lia.
+Qed.
+
+Lemma sublist_lookup_Some' {A} i n (l : list A) x:
+  sublist_lookup i n l = Some x ↔ x = take n (drop i l) ∧ (i + n <= length l)%nat.
+Proof. rewrite /sublist_lookup. case_option_guard; naive_solver lia. Qed.
+
+Lemma Z_to_little_endian_lookup_Some m n z (i : nat) x:
+  0 ≤ m → 0 ≤ n → Z_to_little_endian m n z !! i = Some x ↔ i < m ∧ x = Z.land (z ≫ (i * n)) (Z.ones n).
+Proof.
+  revert z m. induction i as [|i IH]; intros z m Hm Hn; rewrite -{1}(Z.succ_pred m).
+  all: destruct (decide (m = 0)); subst => /=; [ naive_solver lia|].
+  all: rewrite Z_to_little_endian_succ /=; [|lia].
+  { rewrite Z.shiftr_0_r. naive_solver lia. }
+  rewrite IH ?Z.shiftr_shiftr; [|lia..].
+  assert ((n + i * n) = (S i * n)) as -> by lia.
+  naive_solver lia.
+Qed.
+
+Lemma bv_to_little_endian_lookup_Some m n z (i : nat) x:
+  0 ≤ m → bv_to_little_endian m n z !! i = Some x ↔ i < m ∧ x = Z_to_bv n (z ≫ (i * Z.of_N n)).
+Proof.
+  unfold bv_to_little_endian. intros Hm. rewrite list_lookup_fmap fmap_Some.
+  split.
+  - intros [?[[??]%Z_to_little_endian_lookup_Some ?]]; [|lia..]; subst. split; [done|].
+    rewrite -bv_wrap_land. apply bv_eq. by rewrite !Z_to_bv_unsigned bv_wrap_bv_wrap.
+  - intros [?->]. eexists _. split; [apply Z_to_little_endian_lookup_Some => //; lia| ].
+    rewrite -bv_wrap_land. apply bv_eq. by rewrite !Z_to_bv_unsigned bv_wrap_bv_wrap.
+Qed.
+
+Lemma little_endian_to_Z_spec n bs i b:
+  0 ≤ i → 0 < n →
+  Forall (λ b, 0 ≤ b < 2 ^ n) bs →
+  bs !! Z.to_nat (i `div` n) = Some b →
+  Z.testbit (little_endian_to_Z n bs) i = Z.testbit b (i `mod` n).
+Proof.
+  intros Hi Hn. rewrite Z2Nat.inj_div; [|lia..].
+  revert i Hi. induction bs as [|b' bs IH]; intros i ? => //= /list.Forall_cons[[? /Z_bounded_iff_bits_nonneg Hb' ]?].
+  intros [[?%Nat.div_small_iff ?]|[? Hbs]]%lookup_cons_Some; subst; [|lia|].
+  - rewrite Z.lor_spec Z.shiftl_spec // Z.mod_small ?(Z.testbit_neg_r _ (i - n)); [|lia..].
+    by rewrite orb_false_r.
+  - rewrite Z.lor_spec Z.shiftl_spec //.
+    have ? : (Z.to_nat n <= Z.to_nat i)%nat. { apply Nat.div_str_pos_iff; lia. }
+    move: Hbs.
+    have ->: (Z.to_nat i `div` Z.to_nat n - 1)%nat = (Z.to_nat (i - n) `div` Z.to_nat n)%nat. {
+      apply Nat2Z.inj. rewrite Z2Nat.inj_sub ?Nat2Z.inj_div ?Nat2Z.inj_sub ?Nat2Z.inj_div //; [|lia..].
+      rewrite -(Z.add_opp_r (Z.to_nat _)) Z.opp_eq_mul_m1 Z.mul_comm Z.div_add; [|lia]. lia.
+    }
+    move => /IH ->; [|lia|done]. rewrite Hb' /=; [|lia..].
+    by rewrite -Zminus_mod_idemp_r Z_mod_same_full Z.sub_0_r.
+Qed.
+
+Lemma little_endian_to_bv_spec n bs i b:
+  0 ≤ i → n ≠ 0%N →
+  bs !! Z.to_nat (i `div` Z.of_N n) = Some b →
+  Z.testbit (little_endian_to_bv n bs) i = Z.testbit (bv_unsigned b) (i `mod` Z.of_N n).
+Proof.
+  move => ???. rewrite /little_endian_to_bv. apply little_endian_to_Z_spec; [lia|lia| |].
+  { apply Forall_fmap. apply Forall_true => ? /=. apply bv_unsigned_in_range. }
+  rewrite list_lookup_fmap. apply fmap_Some. naive_solver.
+Qed.
+
+Lemma bv_seq_length n (x : bv n) len:
+  length (bv_seq x len) = Z.to_nat len.
+Proof. by rewrite fmap_length seqZ_length. Qed.
+
+Lemma reverse_lookup {A} (l : list A) i:
+  (i < length l)%nat →
+  reverse l !! i = l !! (length l - 1 - i)%nat.
+Proof.
+  elim: l i => //= x l IH i ?.
+  rewrite reverse_cons.
+  destruct (decide (i = length l)); subst.
+  + rewrite list_lookup_middle ?reverse_length //.
+    by have ->: (length l - 0 - length l = 0)%nat by lia.
+  + rewrite lookup_app_l ?reverse_length; [|lia].
+    rewrite IH; [|lia].
+    by have ->: (length l - 0 - i = S (length l - 1 - i))%nat by lia.
+Qed.
+Lemma reverse_lookup_Some {A} (l : list A) i x:
+  reverse l !! i = Some x ↔ l !! (length l - 1 - i)%nat = Some x ∧ (i < length l)%nat.
+Proof.
+  split.
+  - destruct (decide (i < length l)%nat). 1: by rewrite reverse_lookup.
+    rewrite lookup_ge_None_2 // reverse_length. lia.
+  - move => [??]. by rewrite reverse_lookup.
+Qed.
+
+Lemma sum_list_fmap {A} n (l : list A) f:
+  (∀ x, x ∈ l → f x = n) →
+  sum_list (f <$> l) = (length l * n)%nat.
+Proof. move => Hf. elim: l Hf => //; csimpl=> ?? IH Hf. rewrite IH. 2: set_solver. rewrite Hf //. set_solver. Qed.
+
+Lemma sum_list_fmap' {A} (l : list A) n :
+  sum_list ((λ _, n) <$> l) = (length l * n)%nat.
+Proof. by apply sum_list_fmap. Qed.
+Lemma concat_join {A} (l : list (list A)):
+  concat l = mjoin l.
+Proof. by elim: l => // ??; csimpl => ->. Qed.
+Lemma rev_reverse {A} (l : list A):
+  rev l = reverse l.
+Proof. elim: l => // ??/= ->. by rewrite reverse_cons. Qed.
+Lemma map_fmap {A B} x (f : A → B):
+  map f x = f <$> x.
+Proof. done.  Qed.
+Lemma option_map_fmap {A B} x (f : A → B):
+  option_map f x = f <$> x.
+Proof. by destruct x. Qed.
+
+Lemma join_lookup_Some {A} (ls : list (list A)) i x:
+  mjoin ls !! i = Some x ↔ ∃ j l i', ls !! j = Some l ∧ l !! i' = Some x
+                             ∧ i = (sum_list (length <$> take j ls) + i')%nat.
+Proof.
+  elim: ls i; csimpl. 1: set_solver.
+  move => ?? IH i. rewrite lookup_app_Some IH.
+  split.
+  - case.
+    + move => ?. by eexists 0%nat, _, _.
+    + move => [? [?[?[?[?[??]]]]]]. eexists (S _), _, _. split_and! => //; csimpl. lia.
+  - move => [j [?[?[?[? ->]]]]]. destruct j as [|j]; csimpl in *.
+    + left. naive_solver.
+    + right. split; [lia|]. eexists _, _, _. split_and! => //. lia.
+Qed.
+
+Lemma join_lookup_Some' {A} n (ls : list (list A)) i x:
+  (∀ x, x ∈ ls → length x = n) →
+  mjoin ls !! i = Some x ↔ ∃ j l i', ls !! j = Some l ∧ l !! i' = Some x
+                             ∧ i = (j * n + i')%nat.
+Proof.
+  move => Hl. rewrite join_lookup_Some. split.
+  - move => [?[?[?[Hls [??]]]]]. eexists _, _, _. split_and! => //. subst.
+    move: (Hls) => /(lookup_lt_Some _ _ _)?.
+    rewrite (sum_list_fmap n) ?take_length_le //; [lia|].
+    move => ? /take_elem_of[?[??]]. apply: Hl. by eapply elem_of_list_lookup_2.
+  - move => [?[?[?[Hls [??]]]]]. eexists _, _, _. split_and! => //. subst.
+    move: (Hls) => /(lookup_lt_Some _ _ _)?.
+    rewrite (sum_list_fmap n) ?take_length_le //; [lia|].
+    move => ? /take_elem_of[?[??]]. apply: Hl. by eapply elem_of_list_lookup_2.
+Qed.
+
+Lemma join_lookup_Some_mul {A} n (ls : list (list A)) j i x:
+  (∀ x, x ∈ ls → length x = n) →
+  (i < n)%nat →
+  mjoin ls !! (j * n + i)%nat = Some x ↔ ∃ l, ls !! j = Some l ∧ l !! i = Some x.
+Proof.
+  move => Hf ?. rewrite join_lookup_Some' //. split; [| naive_solver].
+  move => [j'[l'[i'[?[??]]]]].
+  have ? : (i' < n)%nat. { erewrite <-Hf; [| by eapply elem_of_list_lookup_2]. by eapply lookup_lt_Some. }
+  have ?: j = j' by nia. subst. have : i = i' by lia. naive_solver.
+Qed.
+
+
 (* This has as better performance characteristic wrt. simpl compared
 to list_find since list_find_idx does not contain prod_map. *)
 Definition list_find_idx {A} P `{∀ x, Decision (P x)} : list A → option nat :=

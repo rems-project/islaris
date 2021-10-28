@@ -192,7 +192,7 @@ Lemma nextPC_nextPC regs n:
 Proof. now rewrite (regstate_eta regs). Qed.
 
 (* This breaks the `with` notations so we have to import it later. *)
-Require Import refinedc.lithium.base.
+Require Import isla.base.
 
 (* This file should not depend on anything in isla-coq since it is quite slow to compile. *)
 
@@ -479,34 +479,12 @@ Proof.
   repeat (apply Hcase; [done|]). done.
 Qed.
 
-Lemma rev_lookup {A} (l : list A) i:
-  (i < length l)%nat →
-  rev l !! i = l !! (length l - 1 - i)%nat.
-Proof.
-  elim: l i => //= x l IH i ?.
-  destruct (decide (i = length l)); subst.
-  + rewrite list_lookup_middle ?rev_length //.
-    by have ->: (length l - 0 - length l = 0)%nat by lia.
-  + rewrite lookup_app_l ?rev_length; [|lia].
-    rewrite IH; [|lia].
-    by have ->: (length l - 0 - i = S (length l - 1 - i))%nat by lia.
-Qed.
-Lemma rev_lookup_Some {A} (l : list A) i x:
-  rev l !! i = Some x ↔ l !! (length l - 1 - i)%nat = Some x ∧ (i < length l)%nat.
-Proof.
-  split.
-  - destruct (decide (i < length l)%nat). 1: by rewrite rev_lookup.
-    rewrite lookup_ge_None_2 // rev_length. lia.
-  - move => [??]. by rewrite rev_lookup.
-Qed.
-
 Lemma length_bitlistFromWord_rev n (w : Word.word n):
   length (bitlistFromWord_rev w) = n.
 Proof.
   elim: n w. { move => w. have ->:= Word.shatter_word_0 w. done. }
   move => n IH w. have [b [c ->]]:= Word.shatter_word_S w => /=. by rewrite IH.
 Qed.
-
 
 Lemma bitlistFromWord_rev_lookup_Some n (w : Word.word n) (i : nat) x:
   bitlistFromWord_rev w !! i = Some x ↔ x = Z.testbit (Z.of_N (Word.wordToN w)) i ∧ (i < n)%nat.
@@ -527,14 +505,34 @@ Qed.
 Lemma bitlistFromWord_lookup_Some n (w : Word.word n) (i : nat) x:
   bitlistFromWord w !! i = Some x ↔ x = Z.testbit (Z.of_N (Word.wordToN w)) (n - 1 - i)%nat ∧ (i < n)%nat.
 Proof.
-  unfold bitlistFromWord. rewrite rev_lookup_Some bitlistFromWord_rev_lookup_Some ?length_bitlistFromWord_rev.
+  unfold bitlistFromWord. rewrite rev_reverse reverse_lookup_Some bitlistFromWord_rev_lookup_Some ?length_bitlistFromWord_rev.
   naive_solver lia.
+Qed.
+
+Lemma wlsb_testbit n (w : Word.word (S n)):
+  Word.wlsb w = Z.testbit (Z.of_N (Word.wordToN w)) 0.
+Proof.
+  have [b [? ->]]:= Word.shatter_word_S w. simpl.
+  rewrite Z.bit0_odd. by destruct b; rewrite ?N2Z.inj_succ ?Z.odd_succ N2Z.inj_mul ?Z.even_mul ?Z.odd_mul /=.
+Qed.
+
+Lemma wordToN_split2 sz1 sz2 (w : Word.word (sz1 + sz2)) :
+  Word.wordToN (Word.split2 sz1 sz2 w) = (Word.wordToN w `div` 2 ^ N.of_nat sz1)%N.
+Proof. by rewrite !Word.wordToN_nat Word.wordToNat_split2 Nat2N.inj_div Nat2N.inj_pow. Qed.
+
+Lemma wordToN_wrshift' n (w : Word.word n) z:
+  Z.of_N (Word.wordToN (Word.wrshift' w z)) = Z.of_N (Word.wordToN w) ≫ z.
+Proof.
+  rewrite /Word.wrshift' wordToN_split2. destruct (PeanoNat.Nat.add_comm n z).
+  rewrite DepEqNat.nat_cast_same Word.wordToN_combine Word.wordToN_wzero.
+  rewrite Z.shiftr_div_pow2; [|lia].
+  by rewrite N2Z.inj_div N2Z.inj_pow N.mul_0_r N.add_0_r nat_N_Z.
 Qed.
 
 Lemma getBit_testbit n z (w : Word.word n):
   n ≠ 0%nat →
   getBit w z = Z.testbit (Z.of_N (Word.wordToN w)) (Z.of_nat z).
-Proof. destruct n => //=. Admitted.
+Proof. destruct n => //=. by rewrite wlsb_testbit wordToN_wrshift' Z.shiftr_spec. Qed.
 
 Lemma wordFromBitlist_rev_spec l (i : nat):
   Z.testbit (Z.of_N (Word.wordToN (wordFromBitlist_rev l))) i = default false (l !! i).
@@ -582,15 +580,6 @@ Lemma if_false b A (e1 e2 : A):
   (if b then e1 else e2) = e2.
 Proof. naive_solver. Qed.
 
-
-Lemma option_map_fmap {A B} x (f : A → B):
-  option_map f x = f <$> x.
-Proof. by destruct x. Qed.
-
-Lemma map_fmap {A B} x (f : A → B):
-  map f x = f <$> x.
-Proof. done.  Qed.
-
 Lemma just_list_mapM {A} (l : list (option A)):
   just_list l = mapM (M := option) id l.
 Proof. elim: l => //= -[|]//= ?? ->. case_match => //. Qed.
@@ -621,22 +610,6 @@ Lemma fit_bbv_word_id n1 n2 (m : Word.word n1):
   ∀ Heq : n1 = n2, fit_bbv_word m = eq_rect n1 _ m n2 Heq.
 Proof. move => Heq. destruct Heq => /=. by rewrite /fit_bbv_word nat_diff_eq. Qed.
 
-Lemma sum_list_fmap {A} n (l : list A) f:
-  (∀ x, x ∈ l → f x = n) →
-  sum_list (f <$> l) = (length l * n)%nat.
-Proof. move => Hf. elim: l Hf => //; csimpl=> ?? IH Hf. rewrite IH. 2: set_solver. rewrite Hf //. set_solver. Qed.
-
-Lemma sum_list_fmap' {A} (l : list A) n :
-  sum_list ((λ _, n) <$> l) = (length l * n)%nat.
-Proof. by apply sum_list_fmap. Qed.
-
-Lemma concat_join {A} (l : list (list A)):
-  concat l = mjoin l.
-Proof. by elim: l => // ??; csimpl => ->. Qed.
-Lemma rev_reverse {A} (l : list A):
-  rev l = reverse l.
-Proof. elim: l => // ??/= ->. by rewrite reverse_cons. Qed.
-
 Lemma length_bits_of_bytes l:
   (∀ x, x ∈ l → length x = 8%nat) →
   length (bits_of_bytes l) = (length l * 8)%nat.
@@ -652,48 +625,6 @@ Lemma length_bits_of_mem_bytes l:
 Proof.
   move => Hf. rewrite length_bits_of_bytes ?rev_length // => ?.
   rewrite rev_reverse elem_of_reverse. apply: Hf.
-Qed.
-
-Lemma join_lookup_Some {A} (ls : list (list A)) i x:
-  mjoin ls !! i = Some x ↔ ∃ j l i', ls !! j = Some l ∧ l !! i' = Some x
-                             ∧ i = (sum_list (length <$> take j ls) + i')%nat.
-Proof.
-  elim: ls i; csimpl. 1: set_solver.
-  move => ?? IH i. rewrite lookup_app_Some IH.
-  split.
-  - case.
-    + move => ?. by eexists 0%nat, _, _.
-    + move => [? [?[?[?[?[??]]]]]]. eexists (S _), _, _. split_and! => //; csimpl. lia.
-  - move => [j [?[?[?[? ->]]]]]. destruct j as [|j]; csimpl in *.
-    + left. naive_solver.
-    + right. split; [lia|]. eexists _, _, _. split_and! => //. lia.
-Qed.
-
-Lemma join_lookup_Some' {A} n (ls : list (list A)) i x:
-  (∀ x, x ∈ ls → length x = n) →
-  mjoin ls !! i = Some x ↔ ∃ j l i', ls !! j = Some l ∧ l !! i' = Some x
-                             ∧ i = (j * n + i')%nat.
-Proof.
-  move => Hl. rewrite join_lookup_Some. split.
-  - move => [?[?[?[Hls [??]]]]]. eexists _, _, _. split_and! => //. subst.
-    move: (Hls) => /(lookup_lt_Some _ _ _)?.
-    rewrite (sum_list_fmap n) ?take_length_le //; [lia|].
-    move => ? /take_elem_of[?[??]]. apply: Hl. by eapply elem_of_list_lookup_2.
-  - move => [?[?[?[Hls [??]]]]]. eexists _, _, _. split_and! => //. subst.
-    move: (Hls) => /(lookup_lt_Some _ _ _)?.
-    rewrite (sum_list_fmap n) ?take_length_le //; [lia|].
-    move => ? /take_elem_of[?[??]]. apply: Hl. by eapply elem_of_list_lookup_2.
-Qed.
-
-Lemma join_lookup_Some_mul {A} n (ls : list (list A)) j i x:
-  (∀ x, x ∈ ls → length x = n) →
-  (i < n)%nat →
-  mjoin ls !! (j * n + i)%nat = Some x ↔ ∃ l, ls !! j = Some l ∧ l !! i = Some x.
-Proof.
-  move => Hf ?. rewrite join_lookup_Some' //. split; [| naive_solver].
-  move => [j'[l'[i'[?[??]]]]].
-  have ? : (i' < n)%nat. { erewrite <-Hf; [| by eapply elem_of_list_lookup_2]. by eapply lookup_lt_Some. }
-  have ?: j = j' by nia. subst. have : i = i' by lia. naive_solver.
 Qed.
 
 Lemma bool_of_bitU_of_bool b:
