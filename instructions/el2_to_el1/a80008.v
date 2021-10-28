@@ -25,8 +25,8 @@ Definition a80008 : list trc := [
     Assume (AExp_Binop (Eq) (AExp_Unop (Extract 20%N 20%N) (AExp_Val (AVal_Var "SPSR_EL2" []) Mk_annot) Mk_annot) (AExp_Val (AVal_Bits [BV{1%N} 0x0%Z]) Mk_annot) Mk_annot) Mk_annot;
     Smt (Assert (Binop (Eq) (Unop (Extract 20%N 20%N) (Val (Val_Symbolic 29%Z) Mk_annot) Mk_annot) (Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot) Mk_annot)) Mk_annot;
     Smt (DeclareConst 30%Z (Ty_BitVec 64%N)) Mk_annot;
-    Assume (AExp_Binop (Eq) (AExp_Val (AVal_Var "ELR_EL2" []) Mk_annot) (AExp_Val (AVal_Bits [BV{64%N} 0x100000%Z]) Mk_annot) Mk_annot) Mk_annot;
-    Smt (Assert (Binop (Eq) (Val (Val_Symbolic 30%Z) Mk_annot) (Val (Val_Bits [BV{64%N} 0x100000%Z]) Mk_annot) Mk_annot)) Mk_annot;
+    Assume (AExp_Binop (Eq) (AExp_Unop (Extract 55%N 55%N) (AExp_Val (AVal_Var "ELR_EL2" []) Mk_annot) Mk_annot) (AExp_Val (AVal_Bits [BV{1%N} 0x0%Z]) Mk_annot) Mk_annot) Mk_annot;
+    Smt (Assert (Binop (Eq) (Unop (Extract 55%N 55%N) (Val (Val_Symbolic 30%Z) Mk_annot) Mk_annot) (Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot) Mk_annot)) Mk_annot;
     ReadReg "PSTATE" [Field "EL"] (RegVal_Struct [("EL", RegVal_Base (Val_Bits [BV{2%N} 0x2%Z]))]) Mk_annot;
     ReadReg "ELR_EL2" [] (RegVal_Base (Val_Symbolic 30%Z)) Mk_annot;
     Barrier (RegVal_Base (Val_Enum ((Mk_enum_id 2%nat), Mk_enum_ctor 26%nat))) Mk_annot;
