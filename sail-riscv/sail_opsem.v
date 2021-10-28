@@ -5,10 +5,23 @@ Require Import isla.adequacy.
 Require Import isla.riscv64.arch.
 
 (*** Relating values *)
-Definition byte_to_bits (b : byte) : list bool :=
-  (λ i, Z.testbit (bv_unsigned b) i) <$> seqZ 0 8.
+Definition bv_to_bits {n} (b : bv n) : list bool :=
+  (λ i, Z.testbit (bv_unsigned b) i) <$> seqZ 0 (Z.of_N n).
+
+Lemma bv_to_bits_length n (b : bv n): length (bv_to_bits b) = N.to_nat n.
+Proof. rewrite /bv_to_bits fmap_length seqZ_length. lia. Qed.
+
+Lemma bv_to_bits_lookup_Some n (b : bv n) i x:
+  bv_to_bits b !! i = Some x ↔ (i < N.to_nat n)%nat ∧ x = Z.testbit (bv_unsigned b) i.
+Proof.
+  rewrite /bv_to_bits list_lookup_fmap fmap_Some.
+  split.
+  - move => [?[/lookup_seqZ? ?]]. naive_solver lia.
+  - move => [??]. eexists _. split; [|done]. apply lookup_seqZ. lia.
+Qed.
+
 Definition byte_to_memory_byte (b : byte) : memory_byte :=
-  bitU_of_bool <$> byte_to_bits b.
+  bitU_of_bool <$> rev (bv_to_bits b).
 
 Global Instance bitU_of_bool_inj : Inj eq eq bitU_of_bool.
 Proof. move => [] []; done. Qed.
@@ -28,6 +41,13 @@ Proof.
   destruct (decide (n = 7)); subst => //.
   lia.
 Qed.
+
+Lemma byte_to_memory_byte_length b: length (byte_to_memory_byte b) = 8%nat.
+Proof. done. Qed.
+
+Lemma byte_to_memory_byte_lookup_Some b i x:
+  byte_to_memory_byte b !! i = Some x ↔ (i < 8)%nat ∧ x = bitU_of_bool (Z.testbit (bv_unsigned b) (7 - i)%nat).
+Proof. do 8 try destruct i => //=; naive_solver lia. Qed.
 
 Definition bv_to_mword {n1 n2} (b : bv n1) `{H:ArithFact (n2 >=? 0)} : mword n2 :=
   word_to_mword (Word.NToWord _ (Z.to_N $ bv_unsigned b)).
@@ -72,6 +92,19 @@ Lemma getBit_get_word_testbit n2 n z (w : mword n):
   getBit (get_word w) z = Z.testbit (bv_unsigned (mword_to_bv (n2:=n2) w)) (Z.of_nat z).
 Proof. etrans; [apply getBit_testbit|]; [lia|]. by rewrite mword_to_bv_unsigned. Qed.
 
+
+Lemma bitlistFromWord_to_bv n1 n2 (v : mword n1):
+  n1 = Z.of_N n2 →
+  bitlistFromWord (get_word v) = rev (bv_to_bits (mword_to_bv (n2:=n2) v)).
+Proof.
+  move => ?.
+  apply: list_eq_same_length; [done| |].
+  { rewrite rev_length length_bitlistFromWord bv_to_bits_length; lia. }
+  move => ????. rewrite bitlistFromWord_lookup_Some -(mword_to_bv_unsigned (n2:=n2)) // => -[??].
+  move => /rev_lookup_Some[/bv_to_bits_lookup_Some[??] ?]. simplify_eq.
+  rewrite bv_to_bits_length. f_equal. lia.
+Qed.
+
 Lemma mword_to_bv_add_vec {n1 : Z} {n2 : N} (b1 b2 : mword n1) :
   n1 = Z.of_N n2 →
   mword_to_bv (n2:=n2) (add_vec b1 b2) = bv_add (mword_to_bv b1) (mword_to_bv b2).
@@ -87,6 +120,66 @@ Arguments add_vec : simpl never.
 Lemma sublist_lookup_Some {A} i n (l : list A) x:
   sublist_lookup i n l = Some x ↔ x = take n (drop i l) ∧ (i + n <= length l)%nat.
 Proof. rewrite /sublist_lookup. case_option_guard; naive_solver lia. Qed.
+
+Lemma Z_to_little_endian_lookup_Some m n z (i : nat) x:
+  0 ≤ m → 0 ≤ n → Z_to_little_endian m n z !! i = Some x ↔ i < m ∧ x = Z.land (z ≫ (i * n)) (Z.ones n).
+Proof.
+  revert z m. induction i as [|i IH]; intros z m Hm Hn; rewrite -{1}(Z.succ_pred m).
+  all: destruct (decide (m = 0)); subst => /=; [ naive_solver lia|].
+  all: rewrite Z_to_little_endian_succ /=; [|lia].
+  { rewrite Z.shiftr_0_r. naive_solver lia. }
+  rewrite IH ?Z.shiftr_shiftr; [|lia..].
+  assert ((n + i * n) = (S i * n)) as -> by lia.
+  naive_solver lia.
+Qed.
+
+Lemma bv_to_little_endian_lookup_Some m n z (i : nat) x:
+  0 ≤ m → bv_to_little_endian m n z !! i = Some x ↔ i < m ∧ x = Z_to_bv n (z ≫ (i * Z.of_N n)).
+Proof.
+  unfold bv_to_little_endian. intros Hm. rewrite list_lookup_fmap fmap_Some.
+  split.
+  - intros [?[[??]%Z_to_little_endian_lookup_Some ?]]; [|lia..]; subst. split; [done|].
+    rewrite -bv_wrap_land. apply bv_eq. by rewrite !Z_to_bv_unsigned bv_wrap_bv_wrap.
+  - intros [?->]. eexists _. split; [apply Z_to_little_endian_lookup_Some => //; lia| ].
+    rewrite -bv_wrap_land. apply bv_eq. by rewrite !Z_to_bv_unsigned bv_wrap_bv_wrap.
+Qed.
+
+Lemma little_endian_to_Z_spec n bs i b:
+  0 ≤ i → 0 < n →
+  Forall (λ b, 0 ≤ b < 2 ^ n) bs →
+  bs !! Z.to_nat (i `div` n) = Some b →
+  Z.testbit (little_endian_to_Z n bs) i = Z.testbit b (i `mod` n).
+Proof.
+  intros Hi Hn. rewrite Z2Nat.inj_div; [|lia..].
+  revert i Hi. induction bs as [|b' bs IH]; intros i ? => //= /Forall_cons[[? /Z_bounded_iff_bits_nonneg Hb' ]?].
+  intros [[?%Nat.div_small_iff ?]|[? Hbs]]%lookup_cons_Some; subst; [|lia|].
+  - rewrite Z.lor_spec Z.shiftl_spec // Z.mod_small ?(Z.testbit_neg_r _ (i - n)); [|lia..].
+    by rewrite orb_false_r.
+  - rewrite Z.lor_spec Z.shiftl_spec //.
+    have ? : (Z.to_nat n <= Z.to_nat i)%nat. { apply Nat.div_str_pos_iff; lia. }
+    move: Hbs.
+    have ->: (Z.to_nat i `div` Z.to_nat n - 1)%nat = (Z.to_nat (i - n) `div` Z.to_nat n)%nat. {
+      apply Nat2Z.inj. rewrite Z2Nat.inj_sub ?Nat2Z.inj_div ?Nat2Z.inj_sub ?Nat2Z.inj_div //; [|lia..].
+      rewrite -(Z.add_opp_r (Z.to_nat _)) Z.opp_eq_mul_m1 Z.mul_comm Z.div_add; [|lia]. lia.
+    }
+    move => /IH ->; [|lia|done]. rewrite Hb' /=; [|lia..].
+    by rewrite -Zminus_mod_idemp_r Z_mod_same_full Z.sub_0_r.
+Qed.
+
+Lemma little_endian_to_bv_spec n bs i b:
+  0 ≤ i → n ≠ 0%N →
+  bs !! Z.to_nat (i `div` Z.of_N n) = Some b →
+  Z.testbit (little_endian_to_bv n bs) i = Z.testbit (bv_unsigned b) (i `mod` Z.of_N n).
+Proof.
+  move => ???. rewrite /little_endian_to_bv. apply little_endian_to_Z_spec; [lia|lia| |].
+  { apply Forall_fmap. apply Forall_true => ? /=. apply bv_unsigned_in_range. }
+  rewrite list_lookup_fmap. apply fmap_Some. naive_solver.
+Qed.
+
+Lemma bv_seq_length n (x : bv n) len:
+  length (bv_seq x len) = Z.to_nat len.
+Proof. by rewrite fmap_length seqZ_length. Qed.
+
 
 Lemma mem_bytes_of_bits_to_bv n (v : mword n) len H:
   n = 8 * len →
@@ -104,17 +197,25 @@ Proof.
   2: { rewrite fmap_length length_bitlistFromWord. lia. }
   move => /sublist_lookup_Some[??] /rev_lookup_Some.
   rewrite list_lookup_fmap fmap_length bv_to_little_endian_length; [|lia] => -[Hl ?].
-  move: Hl => /fmap_Some[?[??]]. simplify_eq.
-Admitted.
+  move: Hl => /fmap_Some[?[/bv_to_little_endian_lookup_Some[|???]]]; [lia|]. simplify_eq.
+  apply: list_eq_same_length; [done|..].
+  { rewrite byte_to_memory_byte_length take_length_le ?drop_length; lia. }
+  move => i' x y ? /lookup_take_Some. rewrite lookup_drop list_lookup_fmap.
+  move => [/fmap_Some[?[/bitlistFromWord_lookup_Some[??]?]]?] /byte_to_memory_byte_lookup_Some[??].
+  simplify_eq. f_equal.
+  rewrite -(mword_to_bv_unsigned (n2:=(Z.to_N (8 * len)))); [|lia].
+  rewrite Z_to_bv_unsigned bv_wrap_spec_low ?Z.shiftr_spec; [|lia..].
+  f_equal. lia.
+Qed.
 
 Lemma just_list_bits_of_mem_bytes bs:
   just_list (bool_of_bitU <$> bits_of_mem_bytes (byte_to_memory_byte <$> bs)) =
-    Some (mjoin ((byte_to_bits <$> rev bs))).
+    Some (mjoin (((λ x, reverse (bv_to_bits x)) <$> rev bs))).
 Proof.
   rewrite just_list_mapM. apply mapM_Some_2. apply Forall2_same_length_lookup_2. {
     rewrite fmap_length join_length -list_fmap_compose /compose /= sum_list_fmap'.
     rewrite length_bits_of_mem_bytes ?fmap_length ?rev_length //.
-    admit.
+    move => ? /elem_of_list_fmap[?[??]]. subst. by rewrite byte_to_memory_byte_length.
   }
   move => i x y. rewrite list_lookup_fmap /bits_of_mem_bytes/bits_of_bytes concat_join map_fmap.
   move => /fmap_Some[?[/(join_lookup_Some' 8)[|?[?[?[Hm [Hl ?]]]]]]].
@@ -122,39 +223,56 @@ Proof.
   move => ?. subst. move: Hm. rewrite list_lookup_fmap. move => /fmap_Some [?[Hrev ?]]. subst.
   move: Hl. rewrite /bits_of /= map_fmap list_lookup_fmap => /fmap_Some [?[Hl ?]]. subst.
   move: Hrev => /rev_lookup_Some. rewrite list_lookup_fmap => -[/fmap_Some[?[Hbs ?]] ?]. subst.
-  move: Hl. rewrite /byte_to_memory_byte list_lookup_fmap => /fmap_Some[?[??]].
+  move: Hl => /byte_to_memory_byte_lookup_Some[??].
   move => /join_lookup_Some_mul[| |].
-  { admit. } { admit. }
+  { move => ? /elem_of_list_fmap[?[??]]. subst. by rewrite reverse_length bv_to_bits_length. }
+  { done. }
   move => ?. rewrite list_lookup_fmap => -[/fmap_Some[?[/rev_lookup_Some[??] ?]] Hl].
-  unfold byte in *; rewrite fmap_length in Hbs; simplify_eq.
-  by rewrite bool_of_bitU_of_bool.
-Admitted.
+  unfold byte in *; rewrite fmap_length in Hbs; simplify_eq. rewrite -rev_reverse in Hl.
+  move: Hl => /rev_lookup_Some [/bv_to_bits_lookup_Some[??] ?]; simplify_eq.
+  by rewrite bool_of_bitU_of_bool bv_to_bits_length.
+Qed.
 
-Lemma read_mem_bytes_eq len' n H H2 bs:
-  ((λ bl : list bool,
-       to_word (@isPositive n H) (fit_bbv_word (wordFromBitlist bl))) <$>
-     just_list
-     (bool_of_bitU <$>
-                   bits_of_mem_bytes (byte_to_memory_byte <$> bs))) = Some
-   (bv_to_mword (H:=H2) (Z_to_bv (8 * len') (little_endian_to_bv 8 bs))).
+Lemma read_mem_bytes_eq (len' : N) n H H2 bs:
+  n = (length bs * 8) →
+  len' = N.of_nat (length bs) →
+  ((λ bl, to_word (@isPositive n H) (fit_bbv_word (wordFromBitlist bl))) <$>
+     just_list (bool_of_bitU <$> bits_of_mem_bytes (byte_to_memory_byte <$> bs))) = Some
+     (bv_to_mword (H:=H2) (Z_to_bv (8 * len') (little_endian_to_bv 8 bs))).
 Proof.
-  rewrite just_list_bits_of_mem_bytes /=. f_equal.
+  rewrite just_list_bits_of_mem_bytes /= => ??. f_equal.
   apply get_word_inj. rewrite !get_word_to_word fit_bbv_word_id.
-  { rewrite join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length. admit. }
+  { rewrite join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length. lia. }
   move => Hhyp. destruct Hhyp => /=. apply Word.wordToN_inj.
-  rewrite Word.wordToN_NToWord_2. 2: admit.
-  apply N2Z.inj. rewrite Z2N.id. 2: admit.
+  rewrite Word.wordToN_NToWord_2. 2: {
+    rewrite -Npow2_pow Z_to_bv_unsigned join_length -list_fmap_compose /compose /= sum_list_fmap' rev_length.
+    have ? := bv_wrap_in_range (8 * len') (little_endian_to_bv 8 bs).
+    unfold bv_modulus in *.
+    apply N2Z.inj_lt.
+    have ->: N.of_nat (length bs * 8) = (8 * len')%N by lia.
+    rewrite N2Z.inj_pow. lia.
+  }
+  apply N2Z.inj. rewrite Z2N.id. 2: {
+    have ? := bv_unsigned_in_range _ (Z_to_bv (8 * len') (little_endian_to_bv 8 bs)). lia.
+  }
   rewrite Z_to_bv_unsigned. apply Z.bits_inj_iff' => i ?.
   have {1}->: i = Z.of_nat (Z.to_nat i) by lia.
-  rewrite -getBit_testbit . 2: admit.
-  rewrite getBit_wordFromBitlist.
+  rewrite wordFromBitlist_spec.
   rewrite bv_wrap_spec //. case_bool_decide => /=.
-  2: { rewrite lookup_ge_None_2 // join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length. admit. }
+  2: { rewrite lookup_ge_None_2 // rev_length join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length. lia. }
   rewrite /default. case_match as Hc.
-  2: { rewrite lookup_ge_None join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length in Hc. admit. }
-  move: Hc => /(join_lookup_Some' 8)[|?[?[?[?[? Hi]]]]]. { admit. }
-  move: Hi => /Nat2Z.inj_iff. rewrite Z2Nat.id // => ->.
-Admitted.
+  2: { rewrite lookup_ge_None rev_length join_length -list_fmap_compose /compose /= sum_list_fmap' ?rev_length in Hc. lia. }
+  move: Hc => /rev_lookup_Some [/(join_lookup_Some' 8)[|j1 [?[j2[Hl[Hl2 Hi]]]]] ?]. {
+    move => /elem_of_list_fmap[?[??]]. subst.
+    by rewrite reverse_length bv_to_bits_length.
+  }
+  move: Hi => /Nat2Z.inj_iff. rewrite join_length -list_fmap_compose /compose /= sum_list_fmap' rev_length => Hi.
+  have {Hi} ?: i = (length bs * 8 - 1 - (j1 * 8 + j2))%nat by lia. simplify_eq.
+  move: Hl. rewrite list_lookup_fmap => /fmap_Some[?[/rev_lookup_Some[Hbs ?] ?]]. simplify_eq.
+  move: Hl2. rewrite -rev_reverse => /rev_lookup_Some[/bv_to_bits_lookup_Some[??]?]. simplify_eq/=.
+  erewrite little_endian_to_bv_spec; [|lia|done|]. 2: { erewrite <-Hbs. f_equal. lia. }
+  f_equal. lia.
+Qed.
 
 Definition register_value_to_valu (v : register_value) : valu :=
   match v with
@@ -221,6 +339,7 @@ Inductive sail_step : sail_state → option seq_label → sail_state → Prop :=
 | SailReadMem rs h ins e a bs' sz κ adr len:
   adr = (Z_to_bv 64 (Z.of_nat a)) →
   (len = N.of_nat sz)%N →
+  length bs' = sz →
   (if read_mem_list h adr len is Some bs then
     κ = None ∧
     bs = bs'
@@ -620,13 +739,14 @@ Qed.
 Lemma sim_read_mem {E} Σ sz' H e2 K ann ann' rk' (a : mword 64) (a' : addr) len' len'' (sz : Z) d sm:
   len'' = (8 * len')%N →
   sz = Z.of_N len' →
+  sz' = Z.of_N len' * 8 →
   mword_to_bv a = a' →
   (∀ r1 (r2 : bv len''), r1 = bv_to_mword r2 → sim Σ (Done r1) K (subst_val_event (Val_Bits r2) sm <$> e2)) →
   sim (E:=E) Σ (Prompt_monad.read_mem (B:=sz') (H:=H) Read_plain d a sz) K
       (Smt (DeclareConst sm (Ty_BitVec len'')) ann' ::
        ReadMem (RVal_Symbolic sm) rk' (RVal_Bits a') len' None ann :: e2).
 Proof.
-  move => ? ? ? Hsim. subst. set a' := mword_to_bv a.
+  move => ? ? ? ? Hsim. subst. set a' := mword_to_bv a.
   unfold Prompt_monad.read_mem, read_mem_bytes. apply sim_bind.
   move => ? isla_regs mem ?? Hwf ? Hdone. rewrite mctx_interp_Read_mem.
   have Heq : Z.of_nat (Word.wordToNat a) = bv_unsigned a'.
@@ -647,12 +767,14 @@ Proof.
   }
   split. {
     right. move: Hor => [[? Hm]//|[Hm ?]].
-    all: eexists _, _; eapply SailReadMem; [done..|].
-    all: by rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned Hm.
+    all: eexists _, _; eapply SailReadMem; [done..| | by rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned Hm].
+    - move: Hm => /mapM_Some /Forall2_length <-. rewrite bv_seq_length. lia.
+    - apply replicate_length.
   }
   move => ? ? ? ? Hstep. inversion_clear Hstep; simplify_eq.
-  move: H2. rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned.
+  move: H3. rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned.
   rewrite option_map_fmap map_fmap (read_mem_bytes_eq len') /=.
+  2: { rewrite H2. lia. } 2: { rewrite H2. lia. }
   move: Hor => [[? Hm]//|[Hm ?]]; rewrite Hm.
   - move => [??]. simplify_eq. eexists _. split. {
       apply: steps_l'.

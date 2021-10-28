@@ -155,7 +155,7 @@ Ltac red_monad_sim :=
          | |- sim _ (Write_ea _ _ _ _) _ _  => apply: sim_Write_ea
          | |- sim _ (Prompt_monad.write_mem _ _ _ _ _) _ (WriteMem _ _ _ _ _ _ _ ::_)  => apply sim_write_mem; [done|done|done|done|shelve|shelve|]
          | |- sim _ (Prompt_monad.read_mem _ _ _ _) _ (Smt (DeclareConst _ (Ty_BitVec _)) _::ReadMem _ _ _ _ _ _ ::_) =>
-             apply sim_read_mem; [done|done|shelve|] => ?? ->
+             apply sim_read_mem; [done|done|done|shelve|] => ?? ->
          | |- sim _ (Done _) NilMCtx []  => apply: sim_done
          end.
 
