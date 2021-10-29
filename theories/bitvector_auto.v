@@ -73,6 +73,7 @@ Proof. done. Qed.
 
 (* Rules without sideconditions *)
 #[export] Hint Rewrite
+     @Z_to_bv_unsigned @Z_to_bv_signed
      @bv_succ_unsigned @bv_succ_signed
      @bv_pred_unsigned @bv_pred_signed
      @bv_add_unsigned @bv_add_signed

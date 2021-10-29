@@ -432,40 +432,41 @@ Local Ltac bv_wrap_simplify_cancel :=
   repeat first [ apply bv_wrap_simplify_marker_remove | apply bv_wrap_simplify_marker_remove_sub | apply bv_wrap_simplify_marker_move];
   first [ apply bv_wrap_simplify_marker_remove_end | apply bv_wrap_simplify_marker_remove_end_opp | apply bv_wrap_simplify_marker_move_end].
 
+(** [bv_wrap_simplify_left] applies for goals of the form [bv_wrap n z1 = _] and
+ tries to simplify them by removing any [bv_wrap] inside z1. *)
+Ltac bv_wrap_simplify_left :=
+  repeat lazymatch goal with
+         | |- bv_wrap _ ?x = _ =>
+             match x with
+             | context [ bv_wrap ?n ?z ] =>
+                 let x := fresh "x" in
+                 let Heq := fresh "Heq" in
+                 pose proof (bv_wrap_factor_intro n z) as [x [_ Heq]];
+                 rewrite !Heq;
+                 clear Heq
+             end
+         end;
+  match goal with | |- bv_wrap _ ?z = _ => ring_simplify z end;
+  repeat match goal with | |- context [bv_modulus ?n * ?z] => rewrite (Z.mul_comm (bv_modulus n) z) end;
+  repeat match goal with | |- context [(bv_modulus ?n ^ ?m) * ?z] => rewrite (Z.mul_comm (bv_modulus n ^ m) z) end;
+  repeat match goal with | |- context [?z1 * bv_modulus ?n * ?z2] => rewrite (Zmul_assoc_comm (bv_modulus n) z1 z2) end;
+  repeat match goal with | |- context [?z1 * (bv_modulus ?n ^ ?m) * ?z2] => rewrite (Zmul_assoc_comm (bv_modulus n ^ m) z1 z2) end;
+  repeat match goal with | |- context [?n ^ 2] => rewrite (Zpow_2_mul n) end;
+  repeat match goal with | |- context [?z1 * (?z2 * ?z3)] => rewrite (Z.mul_assoc z1 z2 z3) end;
+
+  bv_wrap_simplify_cancel;
+  match goal with | |- bv_wrap _ ?z = _ => ring_simplify z end.
+
 (** [bv_wrap_simplify] applies for goals of the form [bv_wrap n z1 = bv_wrap n z2] and
 [bv_swrap n z1 = bv_swrap n z2] and tries to simplify them by removing any [bv_wrap]
 and [bv_swrap] inside z1 and z2. *)
 Ltac bv_wrap_simplify :=
   unfold bv_signed, bv_swrap;
   try match goal with | |- _ - _ = _ - _ => f_equal end;
-  match goal with
-  | |- bv_wrap ?n1 ?z1 = bv_wrap ?n2 ?z2 => change (block bv_wrap n1 z1 = block bv_wrap n2 z2)
-  end;
-  repeat match goal with
-  | |- context [ bv_wrap ?n ?z ] =>
-    let x := fresh "x" in
-    let Heq := fresh "Heq" in
-    pose proof (bv_wrap_factor_intro n z) as [x [? Heq]];
-    rewrite !Heq;
-    clear Heq
-  end;
-  match goal with
-  | |- block bv_wrap ?n1 ?z1 = block bv_wrap ?n2 ?z2 => change (bv_wrap n1 z1 = bv_wrap n2 z2)
-  end;
-  match goal with | |- bv_wrap _ ?z = _ => ring_simplify z end;
-  match goal with | |- _ = bv_wrap _ ?z => ring_simplify z end;
-  repeat rewrite (Z.mul_comm (bv_modulus _));
-  repeat rewrite (Z.mul_comm ((bv_modulus _) ^ _));
-  repeat rewrite (Zmul_assoc_comm (bv_modulus _));
-  repeat rewrite (Zmul_assoc_comm ((bv_modulus _) ^ _));
-  repeat rewrite Zpow_2_mul;
-  repeat rewrite Z.mul_assoc;
-
-  bv_wrap_simplify_cancel;
+  bv_wrap_simplify_left;
   symmetry;
-  bv_wrap_simplify_cancel;
-  match goal with | |- bv_wrap _ ?z = _ => ring_simplify z end;
-  match goal with | |- _ = bv_wrap _ ?z => ring_simplify z end.
+  bv_wrap_simplify_left;
+  symmetry.
 
 Ltac bv_wrap_simplify_solve :=
   bv_wrap_simplify; f_equal; lia.
