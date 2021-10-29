@@ -188,13 +188,49 @@ Arguments normalize_instr_addr : simpl never.
 Typeclasses Opaque normalize_instr_addr.
 
 Program Definition normalize_instr_addr_hint {Σ} a1 a2 :
-  (∀ x, bv_wrap 64 a2 = x → block bv_wrap 64%N a1 = x) →
+  (bv_wrap 64 a1 = bv_wrap 64 a2) →
   TacticHint (normalize_instr_addr (Σ:=Σ) a1) := λ H, {|
     tactic_hint_P T := T a2;
 |}.
-Next Obligation. unfold normalize_instr_addr, block. move => ??? Heq ?. iIntros "?". iExists _. iFrame. iPureIntro. by apply: Heq. Qed.
+Next Obligation. unfold normalize_instr_addr. move => ??? -> ?. iIntros "?". iExists _. by iFrame. Qed.
+
+Lemma normalize_instr_addr_add_tac a n r:
+  bv_wrap 64 (a + bv_unsigned n) = r →
+  bv_wrap 64 (bv_unsigned (bv_add (Z_to_bv 64 a) n)) = r.
+Proof. move => <-. by rewrite bv_add_unsigned Z_to_bv_unsigned bv_wrap_bv_wrap // bv_wrap_add_idemp_l. Qed.
 
 Ltac solve_normalize_instr_addr :=
+  unfold normalize_instr_addr; unLET;
+  try lazymatch goal with
+  | |- bv_wrap _ ?a = _ => reduce_closed a
+  end;
+  try lazymatch goal with
+  | |- bv_wrap _ (bv_unsigned (bv_add (Z_to_bv 64 _) _)) = _ => apply normalize_instr_addr_add_tac
+  end;
+  try lazymatch goal with
+  | |- bv_wrap _ (_ + ?a) = _ => reduce_closed a
+  end;
+  exact: eq_refl.
+
+Global Hint Extern 10 (TacticHint (normalize_instr_addr _)) =>
+  eapply normalize_instr_addr_hint; solve_normalize_instr_addr : typeclass_instances.
+
+
+(** * [normalize_bv_unsigned] *)
+
+Definition normalize_bv_unsigned {Σ} (a1 : Z) (T : Z → iProp Σ) : iProp Σ :=
+  ∃ a2, ⌜bv_wrap 64 a1 = bv_wrap 64 a2⌝ ∗ T a2.
+Arguments normalize_bv_unsigned : simpl never.
+Typeclasses Opaque normalize_bv_unsigned.
+
+Program Definition normalize_bv_unsigned_hint {Σ} a1 a2 :
+  (∀ x, bv_wrap 64 a2 = x → block bv_wrap 64%N a1 = x) →
+  TacticHint (normalize_bv_unsigned (Σ:=Σ) a1) := λ H, {|
+    tactic_hint_P T := T a2;
+|}.
+Next Obligation. unfold normalize_bv_unsigned, block. move => ??? Heq ?. iIntros "?". iExists _. iFrame. iPureIntro. by apply: Heq. Qed.
+
+Ltac solve_normalize_bv_unsigned :=
   let H := fresh in move => ? H;
   bv_simplify;
   repeat match goal with | |- context [bv_wrap ?n ?x] => reduce_closed (bv_wrap n x) end;
@@ -202,8 +238,8 @@ Ltac solve_normalize_instr_addr :=
   bv_wrap_simplify_left;
   apply H.
 
-Global Hint Extern 10 (TacticHint (normalize_instr_addr _)) =>
-  eapply normalize_instr_addr_hint; solve_normalize_instr_addr : typeclass_instances.
+Global Hint Extern 10 (TacticHint (normalize_bv_unsigned _)) =>
+  eapply normalize_bv_unsigned_hint; solve_normalize_bv_unsigned : typeclass_instances.
 
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)

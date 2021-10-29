@@ -447,6 +447,7 @@ Ltac bv_wrap_simplify_left :=
              end
          end;
   match goal with | |- bv_wrap _ ?z = _ => ring_simplify z end;
+  repeat match goal with | |- context [- bv_modulus ?n * ?z] => rewrite (Z.mul_opp_comm (bv_modulus n) z) end;
   repeat match goal with | |- context [bv_modulus ?n * ?z] => rewrite (Z.mul_comm (bv_modulus n) z) end;
   repeat match goal with | |- context [(bv_modulus ?n ^ ?m) * ?z] => rewrite (Z.mul_comm (bv_modulus n ^ m) z) end;
   repeat match goal with | |- context [?z1 * bv_modulus ?n * ?z2] => rewrite (Zmul_assoc_comm (bv_modulus n) z1 z2) end;
