@@ -731,17 +731,21 @@ Section instances.
   Lemma subsume_mem_uninit_mem_uninit a1 a2 n1 n2 G
         `{!BvSolve (0 ≤ n2 ∧ bv_unsigned a1 ≤ bv_unsigned a2 ∧
                       bv_unsigned a2 + n2 ≤ bv_unsigned a1 + n1)}:
-    (a1 ↦ₘ? (bv_unsigned a2 - bv_unsigned a1) -∗
-     (bv_add_Z a2 n2) ↦ₘ? (n1 - n2 - (bv_unsigned a2 - bv_unsigned a1)) -∗ G) -∗
+    (tactic_hint (normalize_bv_unsigned (bv_unsigned a2 - bv_unsigned a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
+     tactic_hint (normalize_bv_unsigned (n1 - n2 - m1)) (λ m2, ⌜0 ≤ m2 < 2 ^ 64⌝ ∗ (
+      a1 ↦ₘ? m1 -∗
+     (bv_add_Z a2 n2) ↦ₘ? m2 -∗ G)))) -∗
      subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) G.
   Proof.
-    unfold BvSolve in *. iIntros "HG Ha".
-    iDestruct (mem_mapsto_uninit_split (bv_unsigned a2 - bv_unsigned a1) with "Ha") as "[? Ha]"; [bv_solve|].
+    unfold BvSolve, normalize_bv_unsigned, tactic_hint in *. iIntros "HG Ha".
+    iDestruct "HG" as "(%m1&%Hm1&%&%m2&%Hm2&%&HG)".
+    iDestruct (mem_mapsto_uninit_split m1 with "Ha") as "[? Ha]"; [bv_solve|].
     iDestruct (mem_mapsto_uninit_split n2 with "Ha") as "[? Ha]"; [bv_solve|].
-    have -> : bv_add_Z a1 (bv_unsigned a2 - bv_unsigned a1) = a2 by bv_solve.
-    have -> : (n1 - (bv_unsigned a2 - bv_unsigned a1) - n2) = (n1 - n2 - (bv_unsigned a2 - bv_unsigned a1)) by bv_solve.
+    have -> : bv_add_Z a1 m1 = a2 by bv_solve.
+    have ? : n1 < 2 ^ 64 by admit.
+    have -> : (n1 - m1 - n2) = m2 by bv_solve.
     iFrame. iApply ("HG" with "[$] [$]").
-  Qed.
+  Admitted.
   Global Instance subsume_mem_uninit_mem_uninit_inst a1 a2 n1 n2
          `{!BvSolve (0 ≤ n2 ∧ bv_unsigned a1 ≤ bv_unsigned a2 ∧ bv_unsigned a2 + n2 ≤ bv_unsigned a1 + n1)}:
     Subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) :=
@@ -754,18 +758,23 @@ Section instances.
   Lemma subsume_mem_uninit_mem_uninit2 a1 a2 n1 n2 G
         `{!BvSolve (0 ≤ n2 ∧ bv_unsigned a1 ≤ bv_unsigned a2 ∧ bv_unsigned a2 ≤ bv_unsigned a1 + n1 ∧
                       bv_unsigned a1 + n1 ≤ bv_unsigned a2 + n2)}:
-    (a1 ↦ₘ? (bv_unsigned a2 - bv_unsigned a1) -∗
-    (bv_add_Z a2 (n1 - (bv_unsigned a2 - bv_unsigned a1))) ↦ₘ? (n2 - n1 + (bv_unsigned a2 - bv_unsigned a1)) ∗ G) -∗
+    (tactic_hint (normalize_bv_unsigned (bv_unsigned a2 - bv_unsigned a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
+     tactic_hint (normalize_bv_unsigned (n2 - (n1 - m1))) (λ m2, ⌜0 ≤ m2 < 2 ^ 64⌝ ∗
+     tactic_hint (normalize_bv_unsigned (n1 - m1)) (λ m3,
+     a1 ↦ₘ? m1 -∗
+    (bv_add_Z a2 m3) ↦ₘ? m2 ∗ G)))) -∗
      subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) G.
   Proof.
-    unfold BvSolve in *. iIntros "HG Ha".
-    iDestruct (mem_mapsto_uninit_split (bv_unsigned a2 - bv_unsigned a1) with "Ha") as "[? Ha]"; [bv_solve|].
+    unfold BvSolve, normalize_bv_unsigned, tactic_hint in *. iIntros "HG Ha".
+    iDestruct "HG" as "(%m1&%Hm1&%&%m2&%Hm2&%&%m3&%Hm3&HG)".
+    iDestruct (mem_mapsto_uninit_split m1 with "Ha") as "[? Ha]"; [bv_solve|].
     iDestruct ("HG" with "[$]") as "[H1 $]".
-    have -> : bv_add_Z a1 (bv_unsigned a2 - bv_unsigned a1) = a2 by bv_solve.
+    have -> : bv_add_Z a1 m1 = a2 by bv_solve.
     iApply (mem_mapsto_uninit_combine with "Ha"); [bv_solve|].
-    have -> : (n2 - n1 + (bv_unsigned a2 - bv_unsigned a1)) = (n2 - (n1 - (bv_unsigned a2 - bv_unsigned a1))) by bv_solve.
-    done.
-  Qed.
+    have ? : n2 < 2 ^ 64 by admit.
+    have -> : (n2 - (n1 - m1)) = m2 by bv_solve.
+    by have -> : bv_add_Z a2 m3 = bv_add_Z a2 (n1 - m1) by bv_solve.
+  Admitted.
   Global Instance subsume_mem_uninit_mem_uninit2_inst a1 a2 n1 n2
         `{!BvSolve (0 ≤ n2 ∧ bv_unsigned a1 ≤ bv_unsigned a2 ∧ bv_unsigned a2 ≤ bv_unsigned a1 + n1 ∧
                       bv_unsigned a1 + n1 ≤ bv_unsigned a2 + n2)}:
