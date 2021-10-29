@@ -138,7 +138,7 @@ Definition stp_uninit_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) (R
   R1 ↦ᵣ RVal_Bits r1 ∗
   R2 ↦ᵣ RVal_Bits r2 ∗
   Rbase ↦ᵣ RVal_Bits rbase ∗
-  (bv_add_Z rbase offset) ↦ₘ? 16 ∗
+  (bv_unsigned rbase + offset) ↦ₘ? 16 ∗
   ⌜bv_unsigned rbase `mod` 8 = 0⌝ ∗
   ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + offset + 16 < 2 ^ 52⌝ ∗
   instr_pre (pc + 4) (
@@ -146,8 +146,8 @@ Definition stp_uninit_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) (R
     R1 ↦ᵣ RVal_Bits r1 ∗
     R2 ↦ᵣ RVal_Bits r2 ∗
     Rbase ↦ᵣ RVal_Bits (if incr then bv_add_Z rbase offset else rbase) ∗
-    (bv_add_Z rbase offset) ↦ₘ r1 ∗
-    (bv_add_Z rbase (offset + 8)) ↦ₘ r2 ∗
+    (bv_unsigned rbase + offset) ↦ₘ r1 ∗
+    (bv_unsigned rbase + offset + 8) ↦ₘ r2 ∗
     True
   ).
 Global Instance : LithiumUnfold (@stp_uninit_spec) := I.
@@ -157,8 +157,8 @@ Definition ldp_mapsto_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) (R
   reg_col sys_regs ∗
   reg_col [(KindReg R1, UnknownShape); (KindReg R2, UnknownShape)] ∗
   Rbase ↦ᵣ RVal_Bits rbase ∗
-  (bv_add_Z rbase offset) ↦ₘ r1 ∗
-  (bv_add_Z rbase (offset + 8)) ↦ₘ r2 ∗
+  (bv_unsigned rbase + offset) ↦ₘ r1 ∗
+  (bv_unsigned rbase + offset + 8) ↦ₘ r2 ∗
   ⌜bv_unsigned rbase `mod` 8 = 0⌝ ∗
   ⌜0 < bv_unsigned rbase + offset ∧ bv_unsigned rbase + offset + 16 < 2 ^ 52⌝ ∗
   instr_pre (pc + 4) (
@@ -166,20 +166,20 @@ Definition ldp_mapsto_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 R2 : string) (R
     R1 ↦ᵣ RVal_Bits r1 ∗
     R2 ↦ᵣ RVal_Bits r2 ∗
     Rbase ↦ᵣ RVal_Bits (if incr is Some i then bv_add_Z rbase i else rbase) ∗
-    (bv_add_Z rbase offset) ↦ₘ r1 ∗
-    (bv_add_Z rbase (offset + 8)) ↦ₘ r2 ∗
+    (bv_unsigned rbase + offset) ↦ₘ r1 ∗
+    (bv_unsigned rbase + offset + 8) ↦ₘ r2 ∗
     True
   ).
 Global Instance : LithiumUnfold (@ldp_mapsto_spec) := I.
 
-Definition ldr_mapsto_spec `{!islaG Σ} `{!threadG} (pc : Z) (pcval : Z) (R1 : string) (addr : bv 64) : iProp Σ :=
+Definition ldr_mapsto_spec `{!islaG Σ} `{!threadG} (pc : Z) (pcval : Z) (R1 : string) (addr : Z) : iProp Σ :=
   ∃ (r1 : bv 64),
   reg_col sys_regs ∗
   reg_col [(KindReg R1, UnknownShape)] ∗
   addr ↦ₘ r1 ∗
   ⌜pc = pcval⌝ ∗
-  ⌜bv_unsigned addr `mod` 8 = 0⌝ ∗
-  ⌜0 < bv_unsigned addr ∧ bv_unsigned addr + 16 < 2 ^ 52⌝ ∗
+  ⌜addr `mod` 8 = 0⌝ ∗
+  ⌜0 < addr ∧ addr + 16 < 2 ^ 52⌝ ∗
   instr_pre (pc + 4) (
     reg_col sys_regs ∗
     R1 ↦ᵣ RVal_Bits r1 ∗

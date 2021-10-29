@@ -39,7 +39,7 @@ Definition hello_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ∃ (i : nat),
   ⌜i + 1 < length hello_world_string⌝ ∗
   reg_col sys_regs ∗
-  [BV{64} 0x0000000010300690] ↦ₘ∗ hello_world_string ∗
+  0x0000000010300690 ↦ₘ∗ hello_world_string ∗
   "R2" ↦ᵣ RVal_Bits [BV{64} 0x101f1000] ∗
   "R1" ↦ᵣ RVal_Bits (bv_add_Z [BV{64} 0x0000000010300690] i) ∗
   "R0" ↦ᵣ RVal_Bits (bv_zero_extend 64 (hello_world_string !!! i)) ∗
@@ -55,7 +55,7 @@ Lemma hello_loop `{!islaG Σ} `{!threadG} :
   instr 0x000000001030001c (Some a1c) -∗
   instr 0x0000000010300020 None -∗
   □ instr_pre 0x0000000010300014 hello_loop_spec -∗
-  mmio_range [BV{64} 0x101f1000] 0x10 -∗
+  mmio_range 0x101f1000 0x10 -∗
   instr_body 0x0000000010300014 hello_loop_spec.
 Proof.
   iStartProof.
@@ -94,7 +94,7 @@ Lemma hello `{!islaG Σ} `{!threadG} :
   □ instr_pre 0x0000000010300014 hello_loop_spec -∗
   instr_body 0x0000000010300000 (
     reg_col sys_regs ∗
-    [BV{64} 0x0000000010300690] ↦ₘ∗ hello_world_string ∗
+    0x0000000010300690 ↦ₘ∗ hello_world_string ∗
     "_PC" ↦ᵣ RVal_Bits [BV{64} 0x0000000010300000 - 0x4] ∗
     "__PC_changed" ↦ᵣ RVal_Bool false ∗
     "R0" ↦ᵣ RegVal_Poison ∗

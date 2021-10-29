@@ -92,11 +92,11 @@ Definition binary_search_loop_spec : iProp Σ :=
   "R27" ↦ᵣ: λ r27, ⌜valu_has_shape r27 (BitsShape 64)⌝ ∗
   "R28" ↦ᵣ: λ r28, ⌜valu_has_shape r28 (BitsShape 64)⌝ ∗
   "SP_EL2" ↦ᵣ RVal_Bits sp ∗
-  xs ↦ₘ∗ data ∗
+  bv_unsigned xs ↦ₘ∗ data ∗
   □ instr_pre (bv_unsigned comp) (comp_spec stack_size R P) ∗
   P ∗
   ⌜stack_size < bv_unsigned sp < 2 ^ 52⌝ ∗
-  bv_sub_Z sp stack_size ↦ₘ? stack_size ∗
+  (bv_unsigned sp - stack_size) ↦ₘ? stack_size ∗
   ⌜bv_unsigned l < bv_unsigned r ≤ length data⌝ ∗
   ⌜bv_unsigned xs `mod` 8 = 0⌝ ∗
   ⌜bv_unsigned xs + (length data) * 8 < 2 ^ 52⌝ ∗
@@ -119,9 +119,9 @@ Definition binary_search_loop_spec : iProp Σ :=
       "R27" ↦ᵣ r27 ∗
       "R28" ↦ᵣ r28 ∗
       "SP_EL2" ↦ᵣ RVal_Bits sp ∗
-      xs ↦ₘ∗ data ∗
+      bv_unsigned xs ↦ₘ∗ data ∗
       P ∗
-      bv_sub_Z sp stack_size ↦ₘ? stack_size ∗
+      (bv_unsigned sp - stack_size) ↦ₘ? stack_size ∗
       ⌜∀ (i : nat) y, i < bv_unsigned l' → data !! i = Some y → R y x⌝ ∗
       ⌜∀ (i : nat) y, bv_unsigned l' ≤ i → data !! i = Some y → ¬ R y x⌝ ∗
       True
@@ -203,7 +203,7 @@ Definition binary_search_spec (stack_size : Z) : iProp Σ :=
   (c_call (stack_size + 64) (λ args sp RET,
     ∃ (data : list (bv 64)) R P,
     □ instr_pre (bv_unsigned (args !!! 0%nat)) (comp_spec stack_size R P) ∗
-    (args !!! 1%nat) ↦ₘ∗ data ∗
+    bv_unsigned (args !!! 1%nat) ↦ₘ∗ data ∗
     P ∗
     ⌜bv_unsigned (args !!! 2%nat) = length data⌝ ∗
     ⌜bv_unsigned sp `mod` 8 = 0⌝ ∗
@@ -211,7 +211,7 @@ Definition binary_search_spec (stack_size : Z) : iProp Σ :=
     ⌜bv_unsigned (args !!! 1%nat) + (length data) * 8 < 2 ^ 52⌝ ∗
     ⌜StronglySorted R data⌝ ∗ ⌜Transitive R⌝ ∗
     RET (λ rets,
-      (args !!! 1%nat) ↦ₘ∗ data ∗
+      bv_unsigned (args !!! 1%nat) ↦ₘ∗ data ∗
       P ∗
       ⌜∀ (i : nat) y, i < bv_unsigned (rets !!! 0%nat) → data !! i = Some y → R y (args !!! 3%nat)⌝ ∗
       ⌜∀ (i : nat) y, bv_unsigned (rets !!! 0%nat) ≤ i → data !! i = Some y → ¬ R y (args !!! 3%nat)⌝ ∗

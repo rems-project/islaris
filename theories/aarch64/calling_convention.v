@@ -23,7 +23,7 @@ Definition c_call_ret `{!islaG Σ} `{!threadG} (stack_size : Z) (regs : list val
   "R8" ↦ᵣ: λ r8, ∃ b8 : bv 64, ⌜r8 = RVal_Bits b8⌝ ∗
   "R30" ↦ᵣ RVal_Bits ret ∗
   "SP_EL2" ↦ᵣ RVal_Bits sp ∗
-  bv_sub_Z sp stack_size ↦ₘ? stack_size ∗
+  (bv_unsigned sp - stack_size) ↦ₘ? stack_size ∗
   Q [b0; b1; b2; b3; b4; b5; b6; b7; b8].
 Global Instance : LithiumUnfold (@c_call_ret) := I.
 
@@ -56,7 +56,7 @@ Definition c_call `{!islaG Σ} `{!threadG} (stack_size : Z) (P : list (bv 64) �
   "R30" ↦ᵣ RVal_Bits ret ∗
   "SP_EL2" ↦ᵣ RVal_Bits sp ∗
   ⌜stack_size < bv_unsigned sp < 2 ^ 52⌝ ∗
-  bv_sub_Z sp stack_size ↦ₘ? stack_size ∗
+  (bv_unsigned sp - stack_size) ↦ₘ? stack_size ∗
   P [b0; b1; b2; b3; b4; b5; b6; b7] sp (λ Q,
   instr_pre (bv_unsigned ret) (
       c_call_ret stack_size [r19; r20; r21; r22; r23; r24; r25; r26; r27; r28; r29] ret sp Q

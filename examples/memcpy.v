@@ -32,7 +32,7 @@ Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   reg_col CNVZ_regs ∗
   "R0" ↦ᵣ RVal_Bits dst ∗ "R1" ↦ᵣ RVal_Bits src ∗ "R2" ↦ᵣ RVal_Bits n ∗
   "R3" ↦ᵣ RVal_Bits i ∗ "R4" ↦ᵣ RVal_Bits tmp ∗
-  src ↦ₘ∗ srcdata ∗ dst ↦ₘ∗ dstdata ∗
+  bv_unsigned src ↦ₘ∗ srcdata ∗ bv_unsigned dst ↦ₘ∗ dstdata ∗
   ⌜bv_unsigned n = length srcdata⌝ ∗ ⌜bv_unsigned n = length dstdata⌝ ∗
   ⌜bv_unsigned i < bv_unsigned n⌝ ∗
   ⌜bv_unsigned src + bv_unsigned n < 2 ^ 52⌝ ∗
@@ -44,7 +44,7 @@ Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
       reg_col CNVZ_regs ∗
       "R0" ↦ᵣ RVal_Bits dst ∗ "R1" ↦ᵣ RVal_Bits src ∗ "R2" ↦ᵣ RVal_Bits n ∗
       "R4" ↦ᵣ RVal_Bits tmp ∗ "R3" ↦ᵣ RVal_Bits n ∗
-      src ↦ₘ∗ srcdata ∗ dst ↦ₘ∗ srcdata ∗
+      bv_unsigned src ↦ₘ∗ srcdata ∗ bv_unsigned dst ↦ₘ∗ srcdata ∗
       True
   )
 .
@@ -104,7 +104,7 @@ Lemma memcpy `{!islaG Σ} `{!threadG} :
     "R0" ↦ᵣ RVal_Bits dst ∗ "R1" ↦ᵣ RVal_Bits src ∗ "R2" ↦ᵣ RVal_Bits n ∗
     "R3" ↦ᵣ RVal_Bits tmp2 ∗ "R4" ↦ᵣ RVal_Bits tmp1 ∗
     "R30" ↦ᵣ RVal_Bits ret ∗
-    src ↦ₘ∗ srcdata ∗ dst ↦ₘ∗ dstdata ∗
+    bv_unsigned src ↦ₘ∗ srcdata ∗ bv_unsigned dst ↦ₘ∗ dstdata ∗
     ⌜bv_unsigned n = length srcdata⌝ ∗ ⌜bv_unsigned n = length dstdata⌝ ∗
     ⌜bv_unsigned src + bv_unsigned n < 2 ^ 52⌝ ∗
     ⌜bv_unsigned dst + bv_unsigned n < 2 ^ 52⌝ ∗
@@ -115,7 +115,7 @@ Lemma memcpy `{!islaG Σ} `{!threadG} :
       "R0" ↦ᵣ RVal_Bits dst ∗ "R1" ↦ᵣ RVal_Bits src ∗ "R2" ↦ᵣ RVal_Bits n ∗
       "R3" ↦ᵣ RVal_Bits tmp2 ∗ "R4" ↦ᵣ RVal_Bits tmp1 ∗
       "R30" ↦ᵣ RVal_Bits ret ∗
-      src ↦ₘ∗ srcdata ∗ dst ↦ₘ∗ srcdata ∗
+      bv_unsigned src ↦ₘ∗ srcdata ∗ bv_unsigned dst ↦ₘ∗ srcdata ∗
       True
   )).
 Proof.

@@ -59,7 +59,7 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   "R0" ↦ᵣ RegVal_Poison -∗
   "R27" ↦ᵣ RVal_Bits [BV{64} 0x101f1000] -∗
   "R28" ↦ᵣ RegVal_Poison -∗
-  mmio_range [BV{64} 0x101f1000] 8 -∗
+  mmio_range 0x101f1000 8 -∗
   spec_trace test_state_spec -∗
   WPasm [].
 Proof.
@@ -115,7 +115,7 @@ Definition test_state_fn2_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   "R1" ↦ᵣ RegVal_Poison ∗
   "R0" ↦ᵣ RegVal_Poison ∗
   "R27" ↦ᵣ RVal_Bits [BV{64} 0x101f1000] ∗
-  mmio_range [BV{64} 0x101f1000] 8 ∗
+  mmio_range 0x101f1000 8 ∗
   "R28" ↦ᵣ RegVal_Poison ∗
   spec_trace test_state_spec.
 Arguments test_state_fn2_spec /.

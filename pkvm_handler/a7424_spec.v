@@ -4,7 +4,7 @@ Require Export isla.examples.pkvm_handler.a7424.
 
 Lemma a7424_spec `{!islaG Σ} `{!threadG} pc:
   instr pc (Some a7424) -∗
-  instr_body pc (ldr_mapsto_spec pc 0x7424 "R5" [BV{64} 0x77f8]).
+  instr_body pc (ldr_mapsto_spec pc 0x7424 "R5" 0x77f8).
 Proof.
   iStartProof.
   repeat liAStep; liShow.

@@ -25,7 +25,7 @@ Definition uart1_putc_loop_spec : iProp Σ :=
   ∃ P,
   "R1" ↦ᵣ: λ _,
   "R2" ↦ᵣ RVal_Bits AUX_MU_LSR_REG ∗
-  mmio_range AUX_MU_LSR_REG 0x4 ∗
+  mmio_range (bv_unsigned AUX_MU_LSR_REG) 0x4 ∗
   reg_col sys_regs ∗
   spec_trace (spec_uart_wait_write P) ∗
   instr_pre 0x000000000008018c (
@@ -68,8 +68,8 @@ Definition uart1_putc_spec : iProp Σ :=
   "R1" ↦ᵣ: λ _,
   "R2" ↦ᵣ: λ _,
   "R30" ↦ᵣ RVal_Bits ret ∗
-  mmio_range AUX_MU_LSR_REG 0x4 ∗
-  mmio_range AUX_MU_IO_REG 0x4 ∗
+  mmio_range (bv_unsigned AUX_MU_LSR_REG) 0x4 ∗
+  mmio_range (bv_unsigned AUX_MU_IO_REG) 0x4 ∗
   reg_col sys_regs ∗
   spec_trace (spec_uart_write (bv_zero_extend 32 (bv_extract 0 8 c)) P) ∗
   instr_pre (bv_unsigned ret) (

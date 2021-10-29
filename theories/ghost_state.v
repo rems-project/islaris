@@ -115,41 +115,41 @@ Section definitions.
   Definition backed_mem_eq : @backed_mem = @backed_mem_def :=
     seal_eq backed_mem_aux.
 
-  Definition mmio_range_def (a : addr) (len : Z) : iProp Σ :=
-    ∃ bm, ⌜0 ≤ len⌝ ∗ ⌜set_Forall (λ a', ¬ (bv_unsigned a ≤ bv_unsigned a' < bv_unsigned a + len)) bm⌝ ∗
-           backed_mem bm.
+  Definition mmio_range_def (a : Z) (len : Z) : iProp Σ :=
+    ∃ bm, ⌜0 ≤ len⌝ ∗ ⌜0 ≤ a ∧ a + len < 2 ^ 64⌝ ∗
+          ⌜set_Forall (λ a', ¬ (a ≤ bv_unsigned a' < a + len)) bm⌝ ∗ backed_mem bm.
   Definition mmio_range_aux : seal (@mmio_range_def). by eexists. Qed.
   Definition mmio_range := unseal mmio_range_aux.
   Definition mmio_range_eq : @mmio_range = @mmio_range_def :=
     seal_eq mmio_range_aux.
 
-  Definition mem_mapsto_byte_def (γ : gname) (a : addr) (q : dfrac) (v : byte) : iProp Σ :=
-    a ↪[ γ ]{q} v.
+  Definition mem_mapsto_byte_def (γ : gname) (a : Z) (q : dfrac) (v : byte) : iProp Σ :=
+    ∃ a', ⌜Z_to_bv_checked 64 a = Some a'⌝ ∗ a' ↪[ γ ]{q} v.
   Definition mem_mapsto_byte_aux : seal (@mem_mapsto_byte_def). by eexists. Qed.
   Definition mem_mapsto_byte := unseal mem_mapsto_byte_aux.
   Definition mem_mapsto_byte_eq : @mem_mapsto_byte = @mem_mapsto_byte_def :=
     seal_eq mem_mapsto_byte_aux.
 
-  Definition mem_mapsto_def {n} (a : addr) (q : dfrac) (w : bv n) : iProp Σ :=
+  Definition mem_mapsto_def {n} (a : Z) (q : dfrac) (w : bv n) : iProp Σ :=
     ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
     let bytes := bv_to_little_endian len 8 (bv_unsigned w) in
-    [∗ list] offset ↦ b ∈ bytes, mem_mapsto_byte heap_mem_name (bv_add_Z a (Z.of_nat offset)) q b.
+    [∗ list] offset ↦ b ∈ bytes, mem_mapsto_byte heap_mem_name (a + (Z.of_nat offset)) q b.
   Definition mem_mapsto_aux {n} : seal (@mem_mapsto_def n). by eexists. Qed.
   Definition mem_mapsto {n} := unseal (@mem_mapsto_aux n).
   Definition mem_mapsto_eq {n} : @mem_mapsto n = @mem_mapsto_def n :=
     seal_eq mem_mapsto_aux.
 
-  Definition mem_mapsto_array_def {n} (a : addr) (q : dfrac) (l : list (bv n)) : iProp Σ :=
+  Definition mem_mapsto_array_def {n} (a : Z) (q : dfrac) (l : list (bv n)) : iProp Σ :=
     ∃ len, ⌜n = (len * 8)%N⌝ ∗
-    [∗ list] i↦v∈l, mem_mapsto (bv_add_Z a (i * Z.of_N len)) q v.
+    [∗ list] i↦v∈l, mem_mapsto (a + (i * Z.of_N len)) q v.
   Definition mem_mapsto_array_aux {n} : seal (@mem_mapsto_array_def n). by eexists. Qed.
   Definition mem_mapsto_array {n} := unseal (@mem_mapsto_array_aux n).
   Definition mem_mapsto_array_eq {n} : @mem_mapsto_array n = @mem_mapsto_array_def n :=
     seal_eq mem_mapsto_array_aux.
 
-  Definition mem_mapsto_uninit_def (a : addr) (q : dfrac) (n : Z) : iProp Σ :=
+  Definition mem_mapsto_uninit_def (a : Z) (q : dfrac) (n : Z) : iProp Σ :=
     ∃ nn : nat, ⌜n = nn⌝ ∗
-    [∗ list] i ↦ _ ∈ replicate nn (), ∃ v : bv 8, mem_mapsto_byte heap_mem_name (bv_add_Z a i) q v.
+    [∗ list] i ↦ _ ∈ replicate nn (), ∃ v : bv 8, mem_mapsto_byte heap_mem_name (a + i) q v.
   Definition mem_mapsto_uninit_aux : seal (@mem_mapsto_uninit_def). by eexists. Qed.
   Definition mem_mapsto_uninit := unseal (@mem_mapsto_uninit_aux).
   Definition mem_mapsto_uninit_eq : @mem_mapsto_uninit = @mem_mapsto_uninit_def :=
@@ -416,29 +416,35 @@ Section mem.
 
   Lemma mmio_range_intro mem a l :
     0 ≤ l →
-    set_Forall (λ a', ¬ (bv_unsigned a ≤ bv_unsigned a' < bv_unsigned a + l)) mem →
+    0 ≤ a →
+    a + l < 2 ^ 64 →
+    set_Forall (λ a', ¬ (a ≤ bv_unsigned a' < a + l)) mem →
     backed_mem mem -∗ mmio_range a l.
-  Proof. rewrite mmio_range_eq. iIntros (??) "?". iExists _. by iFrame. Qed.
+  Proof. rewrite mmio_range_eq. iIntros (????) "?". iExists _. by iFrame. Qed.
 
   Lemma mmio_range_Forall mem a l :
     mem_ctx mem -∗
     mmio_range a l -∗
-    ⌜set_Forall (λ a', ¬ (bv_unsigned a ≤ bv_unsigned a' < bv_unsigned a + l)) (dom (gset _) mem)⌝.
+    ⌜set_Forall (λ a', ¬ (a ≤ bv_unsigned a' < a + l)) (dom (gset _) mem)⌝.
   Proof.
-    rewrite mmio_range_eq. iIntros "[_ Hbm] [%bm[% [% Hbm']]]".
+    rewrite mmio_range_eq. iIntros "[_ Hbm] [%bm[% [% [% Hbm']]]]".
     by iDestruct (backed_mem_agree with "Hbm Hbm'") as %?; subst.
   Qed.
 
+  Lemma mmio_range_in_range a l :
+    mmio_range a l -∗ ⌜0 ≤ a ∧ a + l < 2 ^ 64⌝.
+  Proof. rewrite mmio_range_eq. iIntros "[%bm[% [% [% Hbm']]]]". done. Qed.
+
   Lemma mmio_range_shorten a l a' l' :
     0 ≤ l' →
-    bv_unsigned a ≤ bv_unsigned a' →
-    bv_unsigned a' + l' ≤ bv_unsigned a + l →
+    a ≤ a' →
+    a' + l' ≤ a + l →
     mmio_range a l -∗
     mmio_range a' l'.
   Proof.
     rewrite mmio_range_eq.
-    iIntros (???) "[%m[%[% ?]]]". iExists _. iFrame.
-    iPureIntro. split; [done|]. apply: set_Forall_impl; [done|].
+    iIntros (???) "[%m[%[% [% ?]]]]". iExists _. iFrame.
+    iPureIntro. split; [done|].  split; [lia|]. apply: set_Forall_impl; [done|].
     naive_solver lia.
   Qed.
 
@@ -447,55 +453,72 @@ Section mem.
     mem_ctx mem -∗ mmio_range a l -∗ ⌜read_mem mem a (Z.to_N l) = None⌝.
   Proof.
     iIntros (?) "Hmem Ha".
+    iDestruct (mmio_range_in_range with "Ha") as %?.
     iDestruct (mmio_range_Forall with "Hmem Ha") as %Hall. iPureIntro.
     rewrite /read_mem/read_mem_list Z2N.id; [|lia].
     apply fmap_None. apply mapM_None_2.
-    rewrite -(Z.succ_pred l) bv_seq_succ; [|lia]. left.
-    destruct (mem !! a) eqn: Hl; [|done].
-    move: Hall. erewrite <-(insert_id mem); [|done].
-    rewrite dom_insert_L => /(set_Forall_union_inv_1 _ _ _)/set_Forall_singleton.
-    lia.
-  Qed.
+    rewrite seqZ_cons; [|lia]. left. apply bind_None. right.
+    unshelve eexists (BV 64 a _). { apply bv_wf_in_range. unfold bv_modulus. lia. }
+    split; [ by apply Z_to_bv_checked_Some|].
+  Admitted.
+    (* destruct (mem !! a) eqn: Hl; [|done]. *)
+    (* move: Hall. erewrite <-(insert_id mem); [|done]. *)
+    (* rewrite dom_insert_L => /(set_Forall_union_inv_1 _ _ _)/set_Forall_singleton. *)
+    (* lia. *)
+  (* Qed. *)
 
   Lemma mem_mapsto_byte_lookup mem a q v :
-    mem_ctx mem -∗ mem_mapsto_byte heap_mem_name a q v -∗ ⌜mem !! a = Some v⌝.
-  Proof. rewrite mem_mapsto_byte_eq. iIntros "[Hmem _]". by iApply ghost_map_lookup. Qed.
+    mem_ctx mem -∗
+    mem_mapsto_byte heap_mem_name a q v -∗
+    ⌜∃ a', Z_to_bv_checked 64 a = Some a' ∧ mem !! a' = Some v⌝.
+  Proof.
+    rewrite mem_mapsto_byte_eq.
+    iIntros "[Hmem _] (%a'&%&Hm)". iExists _. iSplit; [done|].
+    by iApply (ghost_map_lookup with "Hmem").
+  Qed.
 
   Lemma mem_mapsto_byte_lookup_big mem a q bs :
-    mem_ctx mem -∗ ([∗ list] i↦v∈ bs, mem_mapsto_byte heap_mem_name (bv_add_Z a i) q v) -∗
-          ⌜Forall2 (λ a v, mem !! a = Some v) (bv_seq a (length bs)) bs⌝.
+    mem_ctx mem -∗ ([∗ list] i↦v∈ bs, mem_mapsto_byte heap_mem_name (a + i) q v) -∗
+          ⌜Forall2 (λ a v, Z_to_bv_checked 64 a ≫= (mem !!.) = Some v) (seqZ a (length bs)) bs⌝.
   Proof.
     iIntros "Hmem Hl".
     iInduction bs as [|b bs] "IH" forall (a); simpl. { iPureIntro. constructor. }
-    iDestruct "Hl" as "[Ha Hl]". rewrite bv_add_Z_0.
-    iDestruct (mem_mapsto_byte_lookup with "Hmem Ha") as %Ha.
-    setoid_rewrite Nat2Z.inj_succ. setoid_rewrite bv_add_Z_succ.
+    iDestruct "Hl" as "[Ha Hl]". rewrite Z.add_0_r.
+    iDestruct (mem_mapsto_byte_lookup with "Hmem Ha") as %[?[??]].
+    setoid_rewrite Nat2Z.inj_succ. setoid_rewrite <-Z.add_succ_comm.
     iDestruct ("IH" with "Hmem Hl") as %?.
-    iPureIntro. rewrite bv_seq_succ; [|lia]. by constructor.
+    iPureIntro. rewrite seqZ_cons ?Z.pred_succ; [|lia]. constructor; [|done].
+    apply bind_Some. naive_solver.
   Qed.
 
   Lemma mem_mapsto_byte_update mem a v v' :
     mem_ctx mem -∗ mem_mapsto_byte heap_mem_name a (DfracOwn 1) v ==∗
-      mem_ctx (<[a := v']> mem) ∗ mem_mapsto_byte heap_mem_name a (DfracOwn 1) v'.
+      mem_ctx (<[Z_to_bv 64 a := v']> mem) ∗ mem_mapsto_byte heap_mem_name a (DfracOwn 1) v'.
   Proof.
-    iIntros "Hmem Hbyte". iDestruct (mem_mapsto_byte_lookup with "Hmem Hbyte") as %?.
+    iIntros "Hmem Hbyte". iDestruct (mem_mapsto_byte_lookup with "Hmem Hbyte") as %[?[?%Z_to_bv_checked_Some ?]].
     rewrite mem_mapsto_byte_eq. iDestruct "Hmem" as "[Hmem Hbacked]".
-    iMod (ghost_map_update with "Hmem Hbyte") as "[$ $]".
-    by rewrite -{1}(insert_id mem a v) // !dom_insert_L.
+    iDestruct "Hbyte" as (a' Heq%Z_to_bv_checked_Some) "Hbyte". subst. apply bv_eq in Heq. subst.
+    rewrite Z_to_bv_bv_unsigned.
+    iMod (ghost_map_update with "Hmem Hbyte") as "[$ ?]".
+    rewrite -{1}(insert_id mem a' v) // !dom_insert_L. iFrame.
+    iExists _. iFrame. by rewrite Z_to_bv_checked_bv_unsigned.
   Qed.
 
   Lemma mem_mapsto_byte_update_big mem a bs bs' :
     length bs = length bs' →
     mem_ctx mem -∗
-    ([∗ list] i↦v∈ bs, mem_mapsto_byte heap_mem_name (bv_add_Z a i) (DfracOwn 1) v) ==∗
-    mem_ctx (write_mem_list mem a bs') ∗
-    ([∗ list] i↦v∈ bs', mem_mapsto_byte heap_mem_name (bv_add_Z a i) (DfracOwn 1) v).
+    ([∗ list] i↦v∈ bs, mem_mapsto_byte heap_mem_name (a + i) (DfracOwn 1) v) ==∗
+    mem_ctx (write_mem_list mem (Z_to_bv 64 a) bs') ∗
+    ([∗ list] i↦v∈ bs', mem_mapsto_byte heap_mem_name (a + i) (DfracOwn 1) v).
   Proof.
     iIntros (Hlen) "Hmem Hbs".
     iInduction bs as [|b bs] "IH" forall (a mem bs' Hlen); destruct bs' => //; csimpl in *. { by iFrame. }
-    iDestruct "Hbs" as "[Ha Hbs]". rewrite bv_add_Z_0.
+    iDestruct "Hbs" as "[Ha Hbs]". rewrite Z.add_0_r.
     iMod (mem_mapsto_byte_update with "Hmem Ha") as "[Hmem $]".
-    setoid_rewrite Nat2Z.inj_succ. setoid_rewrite bv_add_Z_succ.
+    setoid_rewrite Nat2Z.inj_succ. setoid_rewrite <-Z.add_succ_comm.
+    have -> : (bv_add_Z (Z_to_bv 64 a) 1) = (Z_to_bv 64 (Z.succ a)). {
+      apply bv_eq. rewrite bv_add_Z_unsigned !Z_to_bv_unsigned. bv_wrap_simplify_solve.
+    }
     iApply ("IH" with "[] Hmem Hbs"). iPureIntro. lia.
   Qed.
 
@@ -503,7 +526,7 @@ Section mem.
     mem_mapsto_byte heap_mem_name a q v -∗ a ↦ₘ{q} v.
   Proof.
     iIntros "Hbyte". rewrite mem_mapsto_eq. iExists 1%nat. iSplit; [done|] => /=.
-    rewrite bv_add_Z_0 -(bv_wrap_land 8) bv_wrap_small ?Z_to_bv_bv_unsigned; [| apply bv_unsigned_in_range].
+    rewrite Z.add_0_r -(bv_wrap_land 8) bv_wrap_small ?Z_to_bv_bv_unsigned; [| apply bv_unsigned_in_range].
     by iFrame.
   Qed.
 
@@ -536,7 +559,7 @@ Section mem.
   Lemma mem_mapsto_update_list n mem a (w w' : bv n) :
     mem_ctx mem -∗ a ↦ₘ w ==∗
      ∃ len, ⌜n = (8 * N.of_nat len)%N⌝ ∗
-      mem_ctx (write_mem_list mem a (bv_to_little_endian len 8 (bv_unsigned w'))) ∗ a ↦ₘ w'.
+      mem_ctx (write_mem_list mem (Z_to_bv 64 a) (bv_to_little_endian len 8 (bv_unsigned w'))) ∗ a ↦ₘ w'.
   Proof.
     rewrite mem_mapsto_eq. iIntros "Hmem". iDestruct 1 as (len Hlen) "Hlist". subst.
     iExists _. iSplitR; [done|].
@@ -547,7 +570,7 @@ Section mem.
 
   Lemma mem_mapsto_update n mem a (w w' : bv n) :
     mem_ctx mem -∗ a ↦ₘ w ==∗
-    ∃ len, ⌜n = (8 * len)%N⌝ ∗ mem_ctx (write_mem len mem a (bv_unsigned w')) ∗ a ↦ₘ w'.
+    ∃ len, ⌜n = (8 * len)%N⌝ ∗ mem_ctx (write_mem len mem (Z_to_bv 64 a) (bv_unsigned w')) ∗ a ↦ₘ w'.
   Proof.
     iIntros "Hmem Ha". unfold write_mem.
     iMod (mem_mapsto_update_list with "Hmem Ha") as (len Hlen) "[Hmem Ha]".
@@ -559,8 +582,8 @@ Section mem.
     n = (8 * len)%N →
     l !! i = Some v →
     a ↦ₘ{q}∗ l -∗
-    bv_add_Z a (i * Z.of_N len) ↦ₘ{q} v ∗
-      (∀ v', bv_add_Z a (i * Z.of_N len) ↦ₘ{q} v' -∗ a ↦ₘ{q}∗ (<[i := v']>l)).
+    (a + (i * Z.of_N len)) ↦ₘ{q} v ∗
+      (∀ v', (a + (i * Z.of_N len)) ↦ₘ{q} v' -∗ a ↦ₘ{q}∗ (<[i := v']>l)).
   Proof.
     rewrite mem_mapsto_array_eq. iIntros (??) "[%len' [% Ha]]". have ? : len = len' by lia. subst.
     iDestruct (big_sepL_insert_acc with "Ha") as "[$ Ha]"; [done|].
@@ -571,8 +594,8 @@ Section mem.
     n = (8 * len)%N →
     l !! i = Some v →
     a ↦ₘ{q}∗ l -∗
-    bv_add_Z a (i * Z.of_N len) ↦ₘ{q} v ∗
-      (bv_add_Z a (i * Z.of_N len) ↦ₘ{q} v -∗ a ↦ₘ{q}∗ l).
+    (a + (i * Z.of_N len)) ↦ₘ{q} v ∗
+      ((a + (i * Z.of_N len)) ↦ₘ{q} v -∗ a ↦ₘ{q}∗ l).
   Proof.
     iIntros (??) "Hl". iDestruct (mem_mapsto_array_insert_acc with "Hl") as "[$ Hl]"; [done..|].
     iIntros "Hv". iDestruct ("Hl" with "Hv") as "Hl". by rewrite list_insert_id.
@@ -589,7 +612,7 @@ Section mem.
   Lemma mem_mapsto_uninit_split ns a q n:
     0 ≤ ns ≤ n →
     a ↦ₘ{q}? n -∗
-    a ↦ₘ{q}? ns ∗ (bv_add_Z a ns) ↦ₘ{q}? (n - ns).
+    a ↦ₘ{q}? ns ∗ (a + ns) ↦ₘ{q}? (n - ns).
   Proof.
     rewrite mem_mapsto_uninit_eq.
     iIntros (?) "[%nn [% Hm]]"; subst.
@@ -599,14 +622,14 @@ Section mem.
     - iExists (nn - Z.to_nat ns)%nat. iSplit; [iPureIntro; lia|].
       iApply (big_sepL_impl with "Hm2").
       iIntros "!>" (???) "[%v ?]". rewrite replicate_length. iExists _.
-      suff -> : bv_add_Z a ((Z.to_nat ns `min` nn + k)%nat) = bv_add_Z (bv_add_Z a (ns)) (k) by done.
-      rewrite -bv_add_Z_add_l. f_equal. lia.
+      have -> : (a + (Z.to_nat ns `min` nn + k)%nat) = (a + ns + k) by lia.
+      done.
   Qed.
 
   Lemma mem_mapsto_uninit_combine ns a q n:
     0 ≤ ns ≤ n →
     a ↦ₘ{q}? ns -∗
-    (bv_add_Z a ns) ↦ₘ{q}? (n - ns) -∗
+    (a + ns) ↦ₘ{q}? (n - ns) -∗
     a ↦ₘ{q}? n.
   Proof.
     rewrite mem_mapsto_uninit_eq.
@@ -615,8 +638,8 @@ Section mem.
     rewrite replicate_plus big_sepL_app. iFrame.
     iApply (big_sepL_impl with "Hm2").
     iIntros "!>" (???) "[%v ?]". rewrite replicate_length. iExists _.
-    suff -> : (bv_add_Z (bv_add_Z a nn1) k) = (bv_add_Z a (nn1 + k)%nat) by done.
-    rewrite -bv_add_Z_add_l. f_equal. lia.
+    have -> : (a + nn1 + k) = (a + (nn1 + k)%nat) by lia.
+    done.
   Qed.
 
   Lemma mem_mapsto_uninit_to_mapsto a q n:

@@ -7,8 +7,8 @@ Definition spec_stp `{!islaG Σ} `{!threadG} a sp : iProp Σ :=
     ∃ (vold1 vold2 v v': bv 64),
     "R0" ↦ᵣ RVal_Bits v ∗
     "R1" ↦ᵣ RVal_Bits v' ∗
-    (bv_sub sp [BV{64} 16]) ↦ₘ vold1 ∗
-    (bv_sub sp [BV{64} 8]) ↦ₘ vold2 ∗
+    (bv_unsigned sp - 16) ↦ₘ vold1 ∗
+    (bv_unsigned sp - 8) ↦ₘ vold2 ∗
     ⌜bv_unsigned sp < 2 ^ 52⌝ ∗
     ⌜bv_unsigned sp > 16⌝ ∗
     ⌜bv_unsigned sp `mod` 8 = 0⌝ ∗
@@ -19,8 +19,8 @@ Definition spec_stp `{!islaG Σ} `{!threadG} a sp : iProp Σ :=
       "R1" ↦ᵣ RVal_Bits v' ∗
       "SP_EL2" ↦ᵣ RVal_Bits (bv_sub sp [BV{64} 16])∗
       reg_col sys_regs ∗
-      (bv_sub sp [BV{64} 16]) ↦ₘ v ∗
-      (bv_sub sp [BV{64} 8]) ↦ₘ v' ∗
+      (bv_unsigned sp - 16) ↦ₘ v ∗
+      (bv_unsigned sp - 8) ↦ₘ v' ∗
       True).
 
 Lemma stp_wp `{!islaG Σ} `{!threadG} (sp : bv 64) :
@@ -119,12 +119,12 @@ Definition spec `{!islaG Σ} `{!threadG} (sp forward_smc_addr: bv 64) (esr : bv 
   "R5" ↦ᵣ RVal_Bits v5 ∗
   "R6" ↦ᵣ RVal_Bits v6 ∗
   "SP_EL2" ↦ᵣ RVal_Bits sp ∗
-  (bv_sub sp [BV{64} 16]) ↦ₘ? 8 ∗
-  (bv_sub sp [BV{64} 8]) ↦ₘ? 8 ∗
+  (bv_unsigned sp - 16) ↦ₘ? 8 ∗
+  (bv_unsigned sp - 8) ↦ₘ? 8 ∗
   ⌜bv_unsigned sp < 2 ^ 52⌝ ∗
   ⌜bv_unsigned sp > 16⌝ ∗
   ⌜bv_unsigned sp `mod` 8 = 0⌝ ∗
-  [BV{64} 0x77f8] ↦ₘ forward_smc_addr ∗
+  0x77f8 ↦ₘ forward_smc_addr ∗
   (instr_pre 0x6800 (⌜Z.shiftr (bv_unsigned esr) 26 ≠ 22⌝ ∗ ∃ (v : bv 64), "R0" ↦ᵣ RVal_Bits v ∗ ⌜bv_unsigned v ≠ 22⌝ ∗ True) ∧
   instr_pre 0x6800 (⌜Z.shiftr (bv_unsigned esr) 26 = 22⌝ ∗ ⌜Z.ge (bv_unsigned v0) 3⌝ ∗ True)) ∗
   (* Possibly should handle that this address gets shifted (even if it's by zero in this code) *)

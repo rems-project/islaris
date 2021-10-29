@@ -306,10 +306,10 @@ Inductive seq_label : Set :=
 | SInstrTrap (pc : addr)
 .
 
-Definition read_mem_list (mem : mem_map) (a : addr) (len : N) : option (list byte) :=
-  mapM (M := option) (mem !!.) (bv_seq a (Z.of_N len)).
+Definition read_mem_list (mem : mem_map) (a : Z) (len : N) : option (list byte) :=
+  mapM (M := option) (λ x, Z_to_bv_checked 64 x ≫= (mem !!.)) (seqZ a (Z.of_N len)).
 
-Definition read_mem (mem : mem_map) (a : addr) (len : N) : option bvn :=
+Definition read_mem (mem : mem_map) (a : Z) (len : N) : option bvn :=
   (λ bs, BVN _ (Z_to_bv (8 * len) (little_endian_to_bv 8 bs))) <$> read_mem_list mem a len.
 
 Fixpoint write_mem_list (mem : mem_map) (a : addr) (v : list byte) : mem_map :=
@@ -357,14 +357,15 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       data = RVal_Bits (BVN (8 * len) data') ∧
       0 < Z.of_N len ∧
       (* If there is memory, we read from that memory. *)
-      if read_mem σ.(seq_mem) addr' len is Some _ then
-        read_mem σ.(seq_mem) addr' len = Some (BVN (8 * len) data'') ∧
+      if read_mem σ.(seq_mem) (bv_unsigned addr') len is Some _ then
+        read_mem σ.(seq_mem) (bv_unsigned addr') len = Some (BVN (8 * len) data'') ∧
         κ' = None ∧
         σ' = σ ∧
          ((θ' = θ <| seq_trace := t' |> ∧ data' = data'')
           ∨ (θ' = θ <| seq_nb_state := true|>))
       (* If there is no memory, we emit an event. *)
       else
+        bv_unsigned addr' + Z.of_N len < 2 ^ 64 ∧
         set_Forall (λ a, ¬ (bv_unsigned addr' ≤ bv_unsigned a < bv_unsigned addr' + Z.of_N len)) (dom (gset _) σ.(seq_mem)) ∧
         κ' = Some (SReadMem addr' data') ∧
         σ' = σ ∧
@@ -376,7 +377,7 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       data = RVal_Bits (BVN (8 * len) data') ∧
       0 < Z.of_N len ∧
       (* If there is memory, we write to that memory. *)
-      if read_mem σ.(seq_mem) addr' len is Some _ then
+      if read_mem σ.(seq_mem) (bv_unsigned addr') len is Some _ then
        (* TODO: say something about res, e.g. that there is NB if it is false? *)
         mem' = write_mem len σ.(seq_mem) addr' (bv_unsigned data') ∧
         κ' = None ∧
@@ -384,6 +385,7 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
         θ' = θ <| seq_trace := t' |>
       (* If there is no memory, we emit an event. *)
       else
+        bv_unsigned addr' + Z.of_N len < 2 ^ 64 ∧
         set_Forall (λ a, ¬ (bv_unsigned addr' ≤ bv_unsigned a < bv_unsigned addr' + Z.of_N len)) (dom (gset _) σ.(seq_mem)) ∧
         κ' = Some (SWriteMem addr' data') ∧
         σ' = σ ∧

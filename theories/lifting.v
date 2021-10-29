@@ -439,8 +439,8 @@ Section lifting.
   Lemma wp_read_mem n len a vread (vmem : bv n) es ann kind tag q:
     n = (8 * len)%N →
     0 < Z.of_N len →
-    a ↦ₘ{q} vmem -∗
-    (⌜vread = vmem⌝ -∗ a ↦ₘ{q} vmem -∗ WPasm es) -∗
+    bv_unsigned a ↦ₘ{q} vmem -∗
+    (⌜vread = vmem⌝ -∗ bv_unsigned a ↦ₘ{q} vmem -∗ WPasm es) -∗
     WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :: es).
   Proof.
     iIntros (??) "Hm Hcont". setoid_rewrite wp_asm_unfold. subst.
@@ -468,14 +468,14 @@ Section lifting.
     n = (8 * len)%N →
     0 < Z.of_N len →
     l !! i = Some vmem →
-    a = bv_add_Z a' (i * Z.of_N len) →
+    a' = bv_unsigned a - (i * Z.of_N len) →
     a' ↦ₘ{q}∗ l -∗
     (⌜vread = vmem⌝ -∗ a' ↦ₘ{q}∗ l -∗ WPasm es) -∗
     WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :: es).
   Proof.
     iIntros (??? ->) "Hm Hcont".
     iDestruct (mem_mapsto_array_lookup_acc with "Hm") as "[Hv Hm]"; [done..|].
-    iApply (wp_read_mem with "Hv"); [lia..|].
+    rewrite Z.sub_add. iApply (wp_read_mem with "Hv"); [lia..|].
     iIntros (?) "Hl". iApply ("Hcont" with "[//]"). by iApply "Hm".
   Qed.
 
@@ -483,7 +483,7 @@ Section lifting.
     n = (8 * len)%N →
     0 < Z.of_N len →
     Pκs [SReadMem a vread] →
-    mmio_range a (Z.of_N len) -∗
+    mmio_range (bv_unsigned a) (Z.of_N len) -∗
     spec_trace Pκs -∗
     (spec_trace (λ κs, Pκs (SReadMem a vread::κs)) -∗ WPasm es) -∗
     WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :: es).
@@ -495,6 +495,7 @@ Section lifting.
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (mmio_range_lookup with "Hmem Hm") as %Hread; [done|].
     rewrite N2Z.id in Hread.
+    iDestruct (mmio_range_in_range with "Hm") as %?.
     iDestruct (mmio_range_Forall with "Hmem Hm") as %?.
     iSplit. {
       iPureIntro. eexists _, _, _, _. simpl. econstructor; [done | by econstructor |] => /=.
@@ -511,8 +512,8 @@ Section lifting.
   Lemma wp_write_mem n len a (vold vnew : bv n) es ann res kind tag:
     n = (8 * len)%N →
     0 < Z.of_N len →
-    a ↦ₘ vold -∗
-    (a ↦ₘ vnew -∗ WPasm es) -∗
+    bv_unsigned a ↦ₘ vold -∗
+    (bv_unsigned a ↦ₘ vnew -∗ WPasm es) -∗
     WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :: es).
   Proof.
     iIntros (??) "Hm Hcont". subst. setoid_rewrite wp_asm_unfold.
@@ -530,7 +531,7 @@ Section lifting.
     inv_seq_step.
     revert select (∃ _, _) => -[?[?[?[?[??]]]]]; simplify_option_eq; destruct_and!; simplify_eq.
     iMod (mem_mapsto_update with "Hmem Hm") as (len' ?) "[Hmem Hm]".
-    have ? : len' = len by lia. subst. iFrame.
+    rewrite Z_to_bv_bv_unsigned. have ? : len' = len by lia. subst. iFrame.
     iModIntro. iSplitL; [|done].
     by iApply ("Hcont" with "Hm").
   Qed.
@@ -539,14 +540,14 @@ Section lifting.
     n = (8 * len)%N →
     0 < Z.of_N len →
     (i < length l)%nat →
-    a = bv_add_Z a' (i * Z.of_N len) →
+    a' = bv_unsigned a - (i * Z.of_N len) →
     a' ↦ₘ∗ l -∗
     (a' ↦ₘ∗ <[i := vnew]> l -∗ WPasm es) -∗
     WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :: es).
   Proof.
     iIntros (??[??]%lookup_lt_is_Some_2 ->) "Hm Hcont".
     iDestruct (mem_mapsto_array_insert_acc with "Hm") as "[Hv Hm]"; [done..|].
-    iApply (wp_write_mem with "Hv"); [lia..|].
+    rewrite Z.sub_add. iApply (wp_write_mem with "Hv"); [lia..|].
     iIntros "Hl". iApply ("Hcont"). by iApply "Hm".
   Qed.
 
@@ -554,7 +555,7 @@ Section lifting.
     n = (8 * len)%N →
     0 < Z.of_N len →
     Pκs [SWriteMem a vnew] →
-    mmio_range a (Z.of_N len) -∗
+    mmio_range (bv_unsigned a) (Z.of_N len) -∗
     spec_trace Pκs -∗
     (spec_trace (λ κs, Pκs (SWriteMem a vnew::κs)) -∗ WPasm es) -∗
     WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :: es).
@@ -566,6 +567,7 @@ Section lifting.
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iDestruct (mmio_range_lookup with "Hmem Hm") as %Hread; [done|].
     rewrite N2Z.id in Hread.
+    iDestruct (mmio_range_in_range with "Hm") as %?.
     iDestruct (mmio_range_Forall with "Hmem Hm") as %?.
     iSplit. {
       iPureIntro. eexists _, _, _, _. simpl. econstructor; [done | by econstructor |]. simpl.
