@@ -89,7 +89,7 @@ Proof.
     iApply (mem_mapsto_uninit_combine 1 with "[Hm7]"); [done|by iApply (mem_mapsto_mapsto_to_uninit _ _ 8)|].
     rewrite -!Z.add_assoc.
     iApply (mem_mapsto_uninit_combine 1 with "[Hm8]"); [done|by iApply (mem_mapsto_mapsto_to_uninit _ _ 8)|].
-    by rewrite mem_mapsto_uninit_0.
+    rewrite mem_mapsto_uninit_0. iPureIntro. lia.
   }
   do 4 (rewrite big_sepM_insert; [|by vm_compute]).
   iIntros "(?&?&?&?&Hsys)".

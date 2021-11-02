@@ -22,8 +22,8 @@ Proof.
   iStartProof.
   Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
+  all: try bv_solve.
   - revert select (_ ≠@{bv _} _) => /bv_eq. bv_solve.
-  - bv_solve.
 Qed.
 
 Definition a40_tst_imm_spec : iProp Σ :=

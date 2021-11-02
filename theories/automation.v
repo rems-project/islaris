@@ -732,20 +732,20 @@ Section instances.
   Lemma subsume_mem_uninit_mem_uninit a1 a2 n1 n2 G
         `{!BvSolve (0 ≤ n2 ∧ a1 ≤ a2 ∧ a2 + n2 ≤ a1 + n1)}:
     (tactic_hint (normalize_bv_unsigned (a2 - a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
-     tactic_hint (normalize_bv_unsigned (n1 - n2 - m1)) (λ m2, ⌜0 ≤ m2 < 2 ^ 64⌝ ∗ (
+     tactic_hint (normalize_bv_unsigned (n1 - n2 - m1)) (λ m2, ⌜0 ≤ m2 < 2 ^ 64 ∧ a1 + n1 < 2 ^ 64⌝ ∗ (
       a1 ↦ₘ? m1 -∗
      (a2 + n2) ↦ₘ? m2 -∗ G)))) -∗
      subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) G.
   Proof.
     unfold BvSolve, normalize_bv_unsigned, tactic_hint in *. iIntros "HG Ha".
     iDestruct "HG" as "(%m1&%Hm1&%&%m2&%Hm2&%&HG)".
-    have ? : 0 ≤ a1 ∧ a1 + n1 < 2 ^ 64 by admit.
+    iDestruct (mem_mapsto_uninit_in_range with "Ha") as %?.
     iDestruct (mem_mapsto_uninit_split m1 with "Ha") as "[? Ha]"; [bv_solve|].
     iDestruct (mem_mapsto_uninit_split n2 with "Ha") as "[? Ha]"; [bv_solve|].
     have -> : a1 + m1 = a2 by bv_solve.
     have -> : (n1 - m1 - n2) = m2 by bv_solve.
     iFrame. iApply ("HG" with "[$] [$]").
-  Admitted.
+  Qed.
   Global Instance subsume_mem_uninit_mem_uninit_inst a1 a2 n1 n2
          `{!BvSolve (0 ≤ n2 ∧ a1 ≤ a2 ∧ a2 + n2 ≤ a1 + n1)}:
     Subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) :=
@@ -759,22 +759,22 @@ Section instances.
         `{!BvSolve (0 ≤ n2 ∧ a1 ≤ a2 ∧ a2 ≤ a1 + n1 ∧ a1 + n1 ≤ a2 + n2)}:
     (tactic_hint (normalize_bv_unsigned (a2 - a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
      tactic_hint (normalize_bv_unsigned (n2 - (n1 - m1))) (λ m2, ⌜0 ≤ m2 < 2 ^ 64⌝ ∗
-     tactic_hint (normalize_bv_unsigned (a2 + n1 - m1)) (λ m3, ⌜n2 < 2 ^ 64⌝ ∗ (
+     tactic_hint (normalize_bv_unsigned (a2 + n1 - m1)) (λ m3, ⌜a2 + n2 < 2 ^ 64 ∧ m3 + m2 < 2 ^ 64⌝ ∗ (
      a1 ↦ₘ? m1 -∗
      m3 ↦ₘ? m2 ∗ G))))) -∗
      subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) G.
   Proof.
     unfold BvSolve, normalize_bv_unsigned, tactic_hint in *. iIntros "HG Ha".
     iDestruct "HG" as "(%m1&%Hm1&%&%m2&%Hm2&%&%m3&%Hm3&%&HG)".
-    have ? : 0 ≤ a1 ∧ a1 + n1 < 2 ^ 64 by admit.
+    iDestruct (mem_mapsto_uninit_in_range with "Ha") as %?.
     iDestruct (mem_mapsto_uninit_split m1 with "Ha") as "[? Ha]"; [bv_solve|].
     iDestruct ("HG" with "[$]") as "[H1 $]".
     have -> : a1 + m1 = a2 by bv_solve.
     iApply (mem_mapsto_uninit_combine with "Ha"); [bv_solve|].
-    have ? : 0 ≤ m3 ∧ m3 + m2 < 2 ^ 64 by admit.
+    iDestruct (mem_mapsto_uninit_in_range with "H1") as %?.
     have -> : (a2 + (n1 - m1)) = m3 by bv_solve.
     by have -> : (n2 - (n1 - m1)) = m2 by bv_solve.
-  Admitted.
+  Qed.
   Global Instance subsume_mem_uninit_mem_uninit2_inst a1 a2 n1 n2
         `{!BvSolve (0 ≤ n2 ∧ a1 ≤ a2 ∧ a2 ≤ a1 + n1 ∧ a1 + n1 ≤ a2 + n2)}:
     Subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) :=
@@ -803,11 +803,11 @@ Section instances.
     λ G, i2p (simpl_hyp_uninit_0 a n G).
 
   Lemma simpl_goal_uninit_0 a n G `{!BvSolve (n = 0)}:
-    G True -∗
+    G ⌜0 ≤ a ≤ 2 ^ 64⌝ -∗
     simplify_goal (a ↦ₘ? n) G.
   Proof.
     unfold BvSolve in *. subst. iIntros "?". iExists _.
-    iFrame. iIntros "_". by rewrite mem_mapsto_uninit_0.
+    iFrame. iIntros (?). by rewrite mem_mapsto_uninit_0.
   Qed.
   Global Instance simpl_goal_uninit_0_inst a n `{!BvSolve (n = 0)}:
     SimplifyGoal (a ↦ₘ? n) (Some 0%N) :=
@@ -1154,19 +1154,17 @@ Section instances.
       iDestruct (mem_mapsto_uninit_split (Z.of_N len) with "Ha2") as "[Ha2 Ha3]"; [lia|].
       iDestruct (mem_mapsto_uninit_to_mapsto with "Ha2") as (?? Heq) "Hl".
       rewrite N2Z.id N.mul_comm in Heq. subst.
-      admit.
-      (* have -> : bv_add_Z a0 (bv_unsigned a - bv_unsigned a0) = a by bv_solve. *)
-      (* iApply (wp_write_mem with "Hl"); [done|lia|]. iIntros "Hl". *)
-      (* iApply ("Hcont" with "Hl Ha1"). *)
-      (* have -> : (n0 - (bv_unsigned a - bv_unsigned a0) - Z.of_N len) = *)
-               (* (bv_unsigned a0 + n0 - (bv_unsigned a + Z.of_N len)) by bv_solve. *)
-      (* done. *)
+      have -> : a0 + (bv_unsigned a - a0) = bv_unsigned a by bv_solve.
+      iApply (wp_write_mem with "Hl"); [done|lia|]. iIntros "Hl".
+      iApply ("Hcont" with "Hl Ha1").
+      have -> : (n0 - (bv_unsigned a - a0) - Z.of_N len) = (a0 + n0 - (bv_unsigned a + Z.of_N len)) by lia.
+      done.
     - iDestruct "Hcont" as (?? Pκs Pκs') "[Hκs [% Hcont]]"; simplify_eq/=.
       iApply (wp_write_mmio with "[HP] Hκs"); [done | lia| spec_solver | | ].
       { iApply (mmio_range_shorten with "HP"); lia. }
       iIntros "Hspec". iApply "Hcont". iApply (spec_trace_mono with "Hspec").
       spec_solver.
-  Admitted.
+  Qed.
 
   Lemma li_wp_read_mem len n kind a vread tag ann es:
     (⌜n = (8 * len)%N⌝ ∗
