@@ -276,7 +276,9 @@ Proof.
   move: e v. match goal with | |- ∀ e, @?P e => eapply (exp_ott_ind (λ es, Forall P es) P) end => //=.
   - move => ?? IH?? /bind_Some[?[/IH??]]. simplify_option_eq. naive_solver.
   - move => ?? IH1 ? IH2 ?? /bind_Some[?[/IH1 ? /bind_Some [?[/IH2 ?]]]]. simplify_option_eq. naive_solver.
-  - admit.
+  - move => ? /Forall_lookup IH ?? ? /bind_Some[?[/mapM_Some /Forall2_same_length_lookup??]].
+    apply bind_Some. eexists _. split; [|done]. apply mapM_Some. apply/Forall2_same_length_lookup.
+    naive_solver.
   - move => ? IH1 ? IH2 ? IH3 ?? /bind_Some[x1[/IH1 ? /bind_Some[x2 [/IH2 ? /bind_Some[x3 [/IH3 ? Hb]]]]]].
     simplify_option_eq. repeat case_match => //; unfold ite in *; simplify_eq => //.
     all: move: Hb => /bind_Some[x4 [Hb ?]]; simplify_eq => //.
@@ -284,7 +286,7 @@ Proof.
     + unfold bvn_to_bv in *. case_decide as Hx => //. destruct Hx. simplify_eq/=.
       by destruct bv0.
   - move => *. by constructor.
-Admitted.
+Qed.
 
 
 Program Definition compute_wp_exp_hint `{!islaG Σ} e v :
@@ -292,13 +294,17 @@ Program Definition compute_wp_exp_hint `{!islaG Σ} e v :
   TacticHint (compute_wp_exp e) := λ H, {|
     tactic_hint_P T := T v;
 |}.
-Next Obligation. Admitted.
+Next Obligation.
+  iIntros (??????) "HT". rewrite /compute_wp_exp wp_exp_unfold. iExists _. iFrame. iPureIntro.
+  apply eval_exp'_sound. naive_solver.
+Qed.
 
 Ltac solve_compute_wp_exp :=
   let H := fresh in move => ? H;
   lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv bv_to_bvn decide decide_rel N_eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
-  lazymatch goal with | |- Some _ = _ => idtac | |- ?G => idtac G; fail end;
+  lazymatch goal with | |- Some _ = _ => idtac | |- ?G => idtac "solve_copmute_wp_exp failed:" G; fail end;
   try lazymatch goal with | |- Some (Val_Bits (BVN _ ?b)) = ?e => change (Some (Val_Bits (bv_to_bvn b)) = e) end;
+  autorewrite with bv_simplify;
   apply H.
 
 Global Hint Extern 10 (TacticHint (compute_wp_exp _)) =>
