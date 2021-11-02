@@ -182,6 +182,7 @@ Lemma riscv_test_safe regs (satpv x10v x2v mstatus_bits x11v : bv 64):
   mword_to_bv (plat_htif_tohost ()) = [BV{64} 0x0000000040001000] →
   bv_extract 17 1 mstatus_bits = [BV{1} 0] →
   bv_unsigned x2v `mod` 8 = 0 →
+  bv_unsigned x2v + 16 < 2 ^ 64 →
   0x0000000080000000 ≤ bv_unsigned x2v + 8 < 0x0000000080000000 + 0x0000000004000000 →
   PC regs = bv_to_mword [BV{64} 0x0000000010300000] →
   x2 regs = bv_to_mword x2v →
@@ -194,7 +195,7 @@ Lemma riscv_test_safe regs (satpv x10v x2v mstatus_bits x11v : bv 64):
   safe sail_module (riscv_test_initial_sail_state x2v regs) ∧
     (∀ κs σ', steps sail_module (riscv_test_initial_sail_state x2v regs) κs σ' → riscv_test_spec x11v κs).
 Proof.
-  move => ????????? ??? HPC Hx2 Hx10 Hx11 Hsatp Hcur_priv Hmisa Hmstatus.
+  move => ?????????? ??? HPC Hx2 Hx10 Hx11 Hsatp Hcur_priv Hmisa Hmstatus.
   apply: iris_transfer_refines.
   { apply iris_module_wf_isla_lang. }
   { move => ????. by apply (riscv_test_adequate mstatus_bits satpv x2v x10v x11v). }
