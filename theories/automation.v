@@ -1153,22 +1153,22 @@ Section instances.
   Proof. apply: wp_branch. Qed.
 
   Lemma li_wp_declare_const_bv v es ann b:
-    (∀ (n : bv b), WPasm ((subst_val_event (Val_Bits n) v) <$> es)) -∗
+    (∀ (n : bv b), WPasm (subst_trace (Val_Bits n) v es)) -∗
     WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
   Proof. apply: wp_declare_const_bv. Qed.
 
   Lemma li_wp_declare_const_bool v es ann:
-    (∀ b : bool, WPasm ((subst_val_event (Val_Bool b) v) <$> es)) -∗
+    (∀ b : bool, WPasm (subst_trace (Val_Bool b) v es)) -∗
     WPasm (Smt (DeclareConst v Ty_Bool) ann :: es).
   Proof. apply: wp_declare_const_bool. Qed.
 
   Lemma li_wp_declare_const_enum v es i ann:
-    (∀ c, WPasm ((subst_val_event (Val_Enum (i, c)) v) <$> es)) -∗
+    (∀ c, WPasm (subst_trace (Val_Enum (i, c)) v es)) -∗
     WPasm (Smt (DeclareConst v (Ty_Enum i)) ann :: es).
   Proof. apply: wp_declare_const_enum. Qed.
 
   Lemma li_wp_define_const n es ann e:
-    tactic_hint (compute_wp_exp e) (λ v, let_bind_hint v (λ v, WPasm (subst_val_event v n <$> es))) -∗
+    tactic_hint (compute_wp_exp e) (λ v, let_bind_hint v (λ v, WPasm (subst_trace v n es))) -∗
     WPasm (Smt (DefineConst n e) ann :: es).
   Proof.
     iIntros "Hexp". iApply wp_define_const. unfold let_bind_hint.
@@ -1474,6 +1474,19 @@ Ltac liAIntroduceLetInGoal :=
   end
 .
 
+Global Arguments subst_trace : simpl never.
+
+  Definition RED_SUBST_BLOCK {A} (x : A) : A := x.
+  Lemma tac_red_subst' t t' t'' x v:
+    (∀ tx, t' = tx → subst_trace v x t = tx) →
+    t' = t'' →
+    subst_trace v x t = t''.
+  Proof. naive_solver. Qed.
+  Lemma tac_red_subst `{!Arch} `{!islaG Σ} `{!threadG} Δ t t' x v:
+    subst_trace v x t = t' →
+    envs_entails Δ (WPasm t') →
+    envs_entails Δ (WPasm (subst_trace v x t)).
+  Proof. naive_solver. Qed.
 Ltac liAAsm :=
   lazymatch goal with
   | |- envs_entails ?Δ (WPasm ?es) =>
@@ -1499,6 +1512,23 @@ Ltac liAAsm :=
       | Assume _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume _ _ _) _)
       | Barrier _ _ => notypeclasses refine (tac_fast_apply (li_wp_barrier _ _ _) _)
       end
+    | subst_trace _ _ ?t =>
+        notypeclasses refine (tac_red_subst _ _ _ _ _ _ _); [
+          match goal with |- subst_trace _ _ ?t = _ => try unfold t end;
+          repeat match goal with
+                 | |- context [bv_to_bvn ?b] =>
+                     let H := fresh in
+                     pose (RED_SUBST_BLOCK bv_to_bvn b) as H; change (bv_to_bvn b) with H
+                 end;
+          refine (tac_red_subst' _ _ _ _ _ _ _); [
+            let H := fresh in move => ? H;
+            repeat match goal with | H := _ |- _ => clearbody H end;
+            vm_compute;
+            apply H |
+            repeat match goal with | H := RED_SUBST_BLOCK _ _ |- _ => unfold H; clear H end;
+            unfold RED_SUBST_BLOCK;
+            exact: eq_refl
+          ]|]
     | ?def => first [
                  iEval (unfold def); try clear def
                | fail "liAAsm: unknown asm" es
