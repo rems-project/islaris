@@ -460,12 +460,11 @@ Section mem.
     rewrite seqZ_cons; [|lia]. left. apply bind_None. right.
     unshelve eexists (BV 64 a _). { apply bv_wf_in_range. unfold bv_modulus. lia. }
     split; [ by apply Z_to_bv_checked_Some|].
-  Admitted.
-    (* destruct (mem !! a) eqn: Hl; [|done]. *)
-    (* move: Hall. erewrite <-(insert_id mem); [|done]. *)
-    (* rewrite dom_insert_L => /(set_Forall_union_inv_1 _ _ _)/set_Forall_singleton. *)
-    (* lia. *)
-  (* Qed. *)
+    apply ne_Some_eq_None => ? Hl.
+    move: Hall. erewrite <-(insert_id mem); [|done].
+    rewrite dom_insert_L => /(set_Forall_union_inv_1 _ _ _)/set_Forall_singleton.
+    rewrite /bv_unsigned. lia.
+  Qed.
 
   Lemma mem_mapsto_byte_lookup mem a q v :
     mem_ctx mem -∗

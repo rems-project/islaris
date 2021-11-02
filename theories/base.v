@@ -29,6 +29,11 @@ Tactic Notation "case_match" "as" ident(Hd) :=
   | |- context [ match ?x with _ => _ end ] => destruct x eqn:Hd
   end.
 
+Lemma ne_Some_eq_None {A} (o : option A):
+  (∀ x, o = Some x → False) →
+  o = None.
+Proof. destruct o => //. naive_solver. Qed.
+
 Definition bv_to_bits {n} (b : bv n) : list bool :=
   (λ i, Z.testbit (bv_unsigned b) i) <$> seqZ 0 (Z.of_N n).
 
