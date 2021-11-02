@@ -150,6 +150,42 @@ Lemma bv_wrap_add_idemp_r n x y :
   bv_wrap n (x + bv_wrap n y) = bv_wrap n (x + y).
 Proof. apply Zplus_mod_idemp_r. Qed.
 
+Lemma bv_wrap_opp_idemp n x :
+  bv_wrap n (- bv_wrap n x) = bv_wrap n (- x).
+Proof.
+  unfold bv_wrap. pose proof (bv_modulus_pos n).
+  destruct (decide (x `mod` bv_modulus n = 0)) as [Hx|Hx].
+  - rewrite !Z.mod_opp_l_z; [done |lia|done|lia|by rewrite Hx].
+  - rewrite !Z.mod_opp_l_nz, Z.mod_mod; [done|lia|lia|done|lia|by rewrite Z.mod_mod by lia].
+Qed.
+
+Lemma bv_wrap_mul_idemp n x y :
+  bv_wrap n (bv_wrap n x * bv_wrap n y) = bv_wrap n (x * y).
+Proof. etrans; [| apply Zmult_mod_idemp_r]. apply Zmult_mod_idemp_l. Qed.
+Lemma bv_wrap_mul_idemp_l n x y :
+  bv_wrap n (bv_wrap n x * y) = bv_wrap n (x * y).
+Proof. apply Zmult_mod_idemp_l. Qed.
+Lemma bv_wrap_mul_idemp_r n x y :
+  bv_wrap n (x * bv_wrap n y) = bv_wrap n (x * y).
+Proof. apply Zmult_mod_idemp_r. Qed.
+
+Lemma bv_wrap_sub_idemp n x y :
+  bv_wrap n (bv_wrap n x - bv_wrap n y) = bv_wrap n (x - y).
+Proof. by rewrite <-!Z.add_opp_r, <-bv_wrap_add_idemp_r, bv_wrap_opp_idemp, bv_wrap_add_idemp. Qed.
+Lemma bv_wrap_sub_idemp_l n x y :
+  bv_wrap n (bv_wrap n x - y) = bv_wrap n (x - y).
+Proof. by rewrite <-!Z.add_opp_r, bv_wrap_add_idemp_l. Qed.
+Lemma bv_wrap_sub_idemp_r n x y :
+  bv_wrap n (x - bv_wrap n y) = bv_wrap n (x - y).
+Proof. by rewrite <-!Z.add_opp_r, <-bv_wrap_add_idemp_r, bv_wrap_opp_idemp, bv_wrap_add_idemp_r. Qed.
+
+Lemma bv_wrap_succ_idemp n x :
+  bv_wrap n (Z.succ (bv_wrap n x)) = bv_wrap n (Z.succ x).
+Proof. by rewrite <-!Z.add_1_r, bv_wrap_add_idemp_l. Qed.
+Lemma bv_wrap_pred_idemp n x :
+  bv_wrap n (Z.pred (bv_wrap n x)) = bv_wrap n (Z.pred x).
+Proof. by rewrite <-!Z.sub_1_r, bv_wrap_sub_idemp_l. Qed.
+
 Lemma bv_wrap_add_inj n x1 x2 y :
   bv_wrap n x1 = bv_wrap n x2 ↔ bv_wrap n (x1 + y) = bv_wrap n (x2 + y).
 Proof.
@@ -375,6 +411,97 @@ Ltac bv_saturate :=
      learn_hyp (bv_unsigned_in_range _ b) | learn_hyp (bv_signed_in_range _ b)
   ] end.
 
+(** ** typeclass-based automation for simplifying bv_wrap *)
+Create HintDb bv_wrap_simplify_db discriminated.
+Global Hint Constants Opaque : bv_wrap_simplify_db.
+Global Hint Variables Opaque : bv_wrap_simplify_db.
+
+Class BvWrapSimplify (n : N) (z z' : Z) := {
+  bv_wrap_simplify_proof : bv_wrap n z = bv_wrap n z';
+}.
+Global Arguments bv_wrap_simplify_proof _ _ _ {_}.
+Global Hint Mode BvWrapSimplify + + - : bv_wrap_simplify_db.
+
+Lemma bv_wrap_simplify_id n z:
+  BvWrapSimplify n z z.
+Proof. by constructor. Qed.
+Global Hint Resolve bv_wrap_simplify_id | 1000 : bv_wrap_simplify_db.
+
+Lemma bv_wrap_simplify_succ n z z' `{!BvWrapSimplify n z z'}:
+  BvWrapSimplify n (Z.succ z) (Z.succ z').
+Proof.
+  constructor. by rewrite <-bv_wrap_succ_idemp, (bv_wrap_simplify_proof _ z z'), bv_wrap_succ_idemp.
+Qed.
+Global Hint Resolve bv_wrap_simplify_succ | 10 : bv_wrap_simplify_db.
+
+Lemma bv_wrap_simplify_pred n z z' `{!BvWrapSimplify n z z'}:
+  BvWrapSimplify n (Z.pred z) (Z.pred z').
+Proof.
+  constructor. by rewrite <-bv_wrap_pred_idemp, (bv_wrap_simplify_proof _ z z'), bv_wrap_pred_idemp.
+Qed.
+Global Hint Resolve bv_wrap_simplify_pred | 10 : bv_wrap_simplify_db.
+
+Lemma bv_wrap_simplify_opp n z z' `{!BvWrapSimplify n z z'}:
+  BvWrapSimplify n (- z) (- z').
+Proof.
+  constructor. by rewrite <-bv_wrap_opp_idemp, (bv_wrap_simplify_proof _ z z'), bv_wrap_opp_idemp.
+Qed.
+Global Hint Resolve bv_wrap_simplify_opp | 10 : bv_wrap_simplify_db.
+
+Lemma bv_wrap_simplify_add n z1 z1' z2 z2' `{!BvWrapSimplify n z1 z1'} `{!BvWrapSimplify n z2 z2'}:
+  BvWrapSimplify n (z1 + z2) (z1' + z2').
+Proof.
+  constructor.
+  by rewrite <-bv_wrap_add_idemp, (bv_wrap_simplify_proof _ z1 z1'),
+    (bv_wrap_simplify_proof _ z2 z2'), bv_wrap_add_idemp.
+Qed.
+Global Hint Resolve bv_wrap_simplify_add | 10 : bv_wrap_simplify_db.
+
+Lemma bv_wrap_simplify_sub n z1 z1' z2 z2' `{!BvWrapSimplify n z1 z1'} `{!BvWrapSimplify n z2 z2'}:
+  BvWrapSimplify n (z1 - z2) (z1' - z2').
+Proof.
+  constructor.
+  by rewrite <-bv_wrap_sub_idemp, (bv_wrap_simplify_proof _ z1 z1'),
+    (bv_wrap_simplify_proof _ z2 z2'), bv_wrap_sub_idemp.
+Qed.
+Global Hint Resolve bv_wrap_simplify_sub | 10 : bv_wrap_simplify_db.
+
+Lemma bv_wrap_simplify_mul n z1 z1' z2 z2' `{!BvWrapSimplify n z1 z1'} `{!BvWrapSimplify n z2 z2'}:
+  BvWrapSimplify n (z1 * z2) (z1' * z2').
+Proof.
+  constructor.
+  by rewrite <-bv_wrap_mul_idemp, (bv_wrap_simplify_proof _ z1 z1'),
+    (bv_wrap_simplify_proof _ z2 z2'), bv_wrap_mul_idemp.
+Qed.
+Global Hint Resolve bv_wrap_simplify_mul | 10 : bv_wrap_simplify_db.
+
+Lemma bv_wrap_simplify_bv_wrap n z z' `{!BvWrapSimplify n z z'}:
+  BvWrapSimplify n (bv_wrap n z) z'.
+Proof. constructor. rewrite bv_wrap_bv_wrap; [|done]. by rewrite (bv_wrap_simplify_proof _ z z'). Qed.
+Global Hint Resolve bv_wrap_simplify_bv_wrap | 10 : bv_wrap_simplify_db.
+
+(** [bv_wrap_simplify_left] applies for goals of the form [bv_wrap n z1 = _] and
+ tries to simplify them by removing any [bv_wrap] inside z1. *)
+Ltac bv_wrap_simplify_left :=
+  lazymatch goal with |- bv_wrap _ _ = _ => idtac end;
+  etrans; [ notypeclasses refine (bv_wrap_simplify_proof _ _ _); typeclasses eauto with bv_wrap_simplify_db | ]
+.
+
+(** [bv_wrap_simplify] applies for goals of the form [bv_wrap n z1 = bv_wrap n z2] and
+[bv_swrap n z1 = bv_swrap n z2] and tries to simplify them by removing any [bv_wrap]
+and [bv_swrap] inside z1 and z2. *)
+Ltac bv_wrap_simplify :=
+  unfold bv_signed, bv_swrap;
+  try match goal with | |- _ - _ = _ - _ => f_equal end;
+  bv_wrap_simplify_left;
+  symmetry;
+  bv_wrap_simplify_left;
+  symmetry.
+
+Ltac bv_wrap_simplify_solve :=
+  bv_wrap_simplify; f_equal; lia.
+
+(** ** ring_simplify-based automation for simplifying bv_wrap *)
 (* TODO: Where to put the following automation? And how should it best be implemented? *)
 Definition bv_wrap_simplify_marker (z1 z2 : Z) : Z := z1 + z2.
 
@@ -434,7 +561,7 @@ Local Ltac bv_wrap_simplify_cancel :=
 
 (** [bv_wrap_simplify_left] applies for goals of the form [bv_wrap n z1 = _] and
  tries to simplify them by removing any [bv_wrap] inside z1. *)
-Ltac bv_wrap_simplify_left :=
+Ltac bv_wrap_simplify_left' :=
   repeat lazymatch goal with
          | |- bv_wrap _ ?x = _ =>
              match x with
@@ -461,7 +588,7 @@ Ltac bv_wrap_simplify_left :=
 (** [bv_wrap_simplify] applies for goals of the form [bv_wrap n z1 = bv_wrap n z2] and
 [bv_swrap n z1 = bv_swrap n z2] and tries to simplify them by removing any [bv_wrap]
 and [bv_swrap] inside z1 and z2. *)
-Ltac bv_wrap_simplify :=
+Ltac bv_wrap_simplify' :=
   unfold bv_signed, bv_swrap;
   try match goal with | |- _ - _ = _ - _ => f_equal end;
   bv_wrap_simplify_left;
@@ -469,7 +596,7 @@ Ltac bv_wrap_simplify :=
   bv_wrap_simplify_left;
   symmetry.
 
-Ltac bv_wrap_simplify_solve :=
+Ltac bv_wrap_simplify_solve' :=
   bv_wrap_simplify; f_equal; lia.
 
 (** * Operations on [bv n] *)
