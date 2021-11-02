@@ -1516,6 +1516,7 @@ Ltac liAAsm :=
 
 Ltac liAExp :=
   lazymatch goal with
+  (* The following is subsumed by compute_wp_exp. *)
   (* | |- envs_entails ?Δ (wp_exp ?e _) => *)
     (* lazymatch e with *)
     (* | Val _ _ => notypeclasses refine (tac_fast_apply (li_wpe_val _ _ _) _) *)

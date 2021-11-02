@@ -261,10 +261,11 @@ Inductive sail_step : sail_state → option seq_label → sail_state → Prop :=
   adr = (Z_to_bv 64 (Z.of_nat a)) →
   (len = N.of_nat sz)%N →
   length bs' = sz →
-  (if read_mem_list h adr len is Some bs then
+  (if read_mem_list h a len is Some bs then
     κ = None ∧
     bs = bs'
   else
+    a + Z.of_N len ≤ 2 ^ 64 ∧
     set_Forall (λ ad, ¬ (a ≤ bv_unsigned ad < a + Z.of_N len)) (dom (gset _) h) ∧
     κ = Some (SReadMem adr (Z_to_bv (8 * len) (little_endian_to_bv 8 bs')))) →
   sail_step (SAIL (Read_mem Read_plain a sz e) rs h ins false) κ (SAIL (e (byte_to_memory_byte <$> bs')) rs h ins false)
@@ -272,10 +273,11 @@ Inductive sail_step : sail_state → option seq_label → sail_state → Prop :=
   adr = (Z_to_bv 64 (Z.of_nat a)) →
   (len = N.of_nat sz)%N →
   bs = byte_to_memory_byte <$> bs' →
-  (if read_mem_list h adr len is Some _ then
+  (if read_mem_list h a len is Some _ then
     write_mem_list h (Z_to_bv 64 (Z.of_nat a)) bs' = h' ∧
     κ = None
   else
+    a + Z.of_N len ≤ 2 ^ 64 ∧
     set_Forall (λ ad, ¬ (a ≤ bv_unsigned ad < a + Z.of_N len)) (dom (gset _) h) ∧
     h = h' ∧
     κ = Some (SWriteMem adr (Z_to_bv (8 * len) (little_endian_to_bv 8 bs')))) →
@@ -615,8 +617,10 @@ Proof.
   erewrite mem_bytes_of_bits_to_bv; [|done].
   rewrite mctx_interp_Write_mem.
   apply: raw_sim_safe_here => /= -[|Hsafe]. { unfold seq_to_val. by case. }
-  have {Hsafe}[? Hor] : 0 < Z.of_N len' ∧ (is_Some (read_mem_list mem a' len') ∨
-    (read_mem_list mem a' len' = None ∧ set_Forall (λ ad, ¬ (bv_unsigned a' ≤ bv_unsigned ad < bv_unsigned a' + Z.of_N len')) (dom (gset _) mem))). {
+  have {Hsafe}[? Hor] : 0 < Z.of_N len' ∧ (is_Some (read_mem_list mem (bv_unsigned a') len') ∨
+    (read_mem_list mem (bv_unsigned a') len' = None ∧
+       bv_unsigned a' + Z.of_N len' ≤ 2 ^ 64 ∧
+       set_Forall (λ ad, ¬ (bv_unsigned a' ≤ bv_unsigned ad < bv_unsigned a' + Z.of_N len')) (dom (gset _) mem))). {
     move: Hsafe => [?[?[?[? Hstep]]]]. inv_seq_step.
     revert select (∃ m, _) => -[?[?[?[Ha'[ _ [??]]]]]].
     injection Ha'. intros ?%Eqdep_dec.inj_pair2_eq_dec. 2: { by move => ??; apply decide; apply _. } subst.
@@ -629,7 +633,7 @@ Proof.
   have Heq2 : (bv_unsigned (mword_to_bv (n2:=(Z.to_N (8 * Z.of_N len'))) v) = (bv_unsigned v')).
   { rewrite /v' !mword_to_bv_unsigned //; lia. }
   constructor => _. split. {
-    right. move: Hor => [[? Hm]//|[Hm ?]].
+    right. move: Hor => [[? Hm]//|[Hm [??]]].
     all: eexists _, _; eapply SailWriteMem; [done..|].
     all: by rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned Hm.
   }
@@ -645,7 +649,7 @@ Proof.
     }
     rewrite /write_mem N_nat_Z Heq2.
     apply: raw_sim_weaken; [by apply Hsim| lia].
-  - move => [?[??]]. simplify_eq. eexists _. split. {
+  - move => [?[?[??]]]. simplify_eq. eexists _. split. {
       apply: (steps_l' _ _ _ _ _ []); [ |by apply: steps_refl| by rewrite right_id_L].
       econstructor. econstructor; [done| by econstructor|] => /=.
       eexists _, _, v'. split_and! => //.
@@ -673,8 +677,10 @@ Proof.
   have Heq : Z.of_nat (Word.wordToNat a) = bv_unsigned a'.
   { rewrite /a' mword_to_bv_unsigned // Word.wordToN_nat nat_N_Z. done. }
   constructor => Hsafe.
-  have {Hsafe}[? Hor] : 0 < Z.of_N len' ∧ (is_Some (read_mem_list mem a' len') ∨
-    (read_mem_list mem a' len' = None ∧ set_Forall (λ ad, ¬ (bv_unsigned a' ≤ bv_unsigned ad < bv_unsigned a' + Z.of_N len')) (dom (gset _) mem))). {
+  have {Hsafe}[? Hor] : 0 < Z.of_N len' ∧ (is_Some (read_mem_list mem (bv_unsigned a') len') ∨
+    (read_mem_list mem (bv_unsigned a') len' = None ∧
+       bv_unsigned a' + Z.of_N len' ≤ 2 ^ 64 ∧
+       set_Forall (λ ad, ¬ (bv_unsigned a' ≤ bv_unsigned ad < bv_unsigned a' + Z.of_N len')) (dom (gset _) mem))). {
     efeed pose proof Hsafe as He.
     { apply: steps_l'; [|apply steps_refl|done].
       constructor. econstructor; [done|eapply (DeclareConstBitVecS' (bv_0 _))|] => /=. done. }
@@ -687,9 +693,9 @@ Proof.
     + move: Hmem => /fmap_None. naive_solver.
   }
   split. {
-    right. move: Hor => [[? Hm]//|[Hm ?]].
+    right. move: Hor => [[? Hm]//|[Hm [??]]].
     all: eexists _, _; eapply SailReadMem; [done..| | by rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned Hm].
-    - move: Hm => /mapM_Some /Forall2_length <-. rewrite bv_seq_length. lia.
+    - move: Hm => /mapM_Some /Forall2_length <-. rewrite seqZ_length. lia.
     - apply replicate_length.
   }
   move => ? ? ? ? Hstep. inversion_clear Hstep; simplify_eq.
@@ -706,7 +712,7 @@ Proof.
       rewrite /read_mem Hm/=. split_and! => //. by left.
     }
     apply: raw_sim_weaken; [by apply Hsim|lia].
-  - move => [??]. simplify_eq. eexists _. split. {
+  - move => [?[??]]. simplify_eq. eexists _. split. {
       apply: steps_l'.
       { econstructor. econstructor; [done| by econstructor|] => /=. done. } 2: done.
       apply: (steps_l' _ _ _ _ (Some _)); [ |by apply: steps_refl| by rewrite right_id_L ].
