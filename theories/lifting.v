@@ -622,7 +622,7 @@ Section lifting.
   Qed.
 
   Lemma wp_declare_const_bv v es ann b:
-    (∀ (n : bv b), WPasm (subst_trace (Val_Bits n) v es)) -∗
+    (∀ (n : bv b), WPasm ((subst_val_event (Val_Bits n) v) <$> es)) -∗
     WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
   Proof.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.
@@ -644,7 +644,7 @@ Section lifting.
   Qed.
 
   Lemma wp_declare_const_bool v es ann:
-    (∀ (b : bool), WPasm (subst_trace (Val_Bool b) v es)) -∗
+    (∀ (b : bool), WPasm ((subst_val_event (Val_Bool b) v) <$> es)) -∗
     WPasm (Smt (DeclareConst v Ty_Bool) ann :: es).
   Proof.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.
@@ -665,7 +665,7 @@ Section lifting.
   Qed.
 
   Lemma wp_declare_const_enum v es i ann:
-    (∀ c, WPasm (subst_trace (Val_Enum (i, c)) v es)) -∗
+    (∀ c, WPasm ((subst_val_event (Val_Enum (i, c)) v) <$> es)) -∗
     WPasm (Smt (DeclareConst v (Ty_Enum i)) ann :: es).
   Proof.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.
@@ -686,7 +686,7 @@ Section lifting.
   Qed.
 
   Lemma wp_define_const n es ann e:
-    WPexp e {{ v, WPasm (subst_trace v n es) }} -∗
+    WPexp e {{ v, WPasm ((subst_val_event v n) <$> es) }} -∗
     WPasm (Smt (DefineConst n e) ann :: es).
   Proof.
     rewrite wp_asm_unfold wp_exp_unfold. iDestruct 1 as (v Hv) "Hcont".
