@@ -1153,22 +1153,22 @@ Section instances.
   Proof. apply: wp_branch. Qed.
 
   Lemma li_wp_declare_const_bv v es ann b:
-    (∀ (n : bv b), WPasm (subst_trace (Val_Bits n) v es)) -∗
+    (∀ (n : bv b), WPasm ((subst_val_event (Val_Bits n) v) <$> es)) -∗
     WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
   Proof. apply: wp_declare_const_bv. Qed.
 
   Lemma li_wp_declare_const_bool v es ann:
-    (∀ b : bool, WPasm (subst_trace (Val_Bool b) v es)) -∗
+    (∀ b : bool, WPasm ((subst_val_event (Val_Bool b) v) <$> es)) -∗
     WPasm (Smt (DeclareConst v Ty_Bool) ann :: es).
   Proof. apply: wp_declare_const_bool. Qed.
 
   Lemma li_wp_declare_const_enum v es i ann:
-    (∀ c, WPasm (subst_trace (Val_Enum (i, c)) v es)) -∗
+    (∀ c, WPasm ((subst_val_event (Val_Enum (i, c)) v) <$> es)) -∗
     WPasm (Smt (DeclareConst v (Ty_Enum i)) ann :: es).
   Proof. apply: wp_declare_const_enum. Qed.
 
   Lemma li_wp_define_const n es ann e:
-    tactic_hint (compute_wp_exp e) (λ v, let_bind_hint v (λ v, WPasm (subst_trace v n es))) -∗
+    tactic_hint (compute_wp_exp e) (λ v, let_bind_hint v (λ v, WPasm (subst_val_event v n <$> es))) -∗
     WPasm (Smt (DefineConst n e) ann :: es).
   Proof.
     iIntros "Hexp". iApply wp_define_const. unfold let_bind_hint.
@@ -1474,8 +1474,6 @@ Ltac liAIntroduceLetInGoal :=
   end
 .
 
-Global Arguments subst_trace : simpl never.
-
 Ltac liAAsm :=
   lazymatch goal with
   | |- envs_entails ?Δ (WPasm ?es) =>
@@ -1501,10 +1499,6 @@ Ltac liAAsm :=
       | Assume _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume _ _ _) _)
       | Barrier _ _ => notypeclasses refine (tac_fast_apply (li_wp_barrier _ _ _) _)
       end
-    | subst_trace _ _ ?t => iEval (
-       try unfold t;
-       lazy [TRACE_LET subst_trace fmap subst_val_event subst_val_smt subst_val_exp
-             subst_val_base_val eq_var_name Z.eqb Pos.eqb subst_val_valu map list_fmap ])
     | ?def => first [
                  iEval (unfold def); try clear def
                | fail "liAAsm: unknown asm" es

@@ -247,19 +247,16 @@ Inductive trace_label : Set :=
 | LAssumeReg (r : register_name) (al : accessor_list) (v : valu)
 .
 
-Definition subst_trace (v : base_val) (x : var_name) (t : trc) :=
-  subst_val_event v x <$> t.
-
 Inductive trace_step : trc → reg_map → option trace_label → trc → Prop :=
 | DeclareConstBitVecS x n ann es b Heq regs:
-    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) regs None (subst_trace (Val_Bits (BV b n Heq)) x es)
+    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) regs None (subst_val_event (Val_Bits (BV b n Heq)) x <$> es)
 | DeclareConstBoolS x ann es b regs:
-    trace_step (Smt (DeclareConst x Ty_Bool) ann :: es) regs None (subst_trace (Val_Bool b) x es)
+    trace_step (Smt (DeclareConst x Ty_Bool) ann :: es) regs None (subst_val_event (Val_Bool b) x <$> es)
 | DeclareConstEnumS x ann es regs i c:
-    trace_step (Smt (DeclareConst x (Ty_Enum i)) ann :: es) regs None (subst_trace (Val_Enum (i, c)) x es)
+    trace_step (Smt (DeclareConst x (Ty_Enum i)) ann :: es) regs None (subst_val_event (Val_Enum (i, c)) x <$> es)
 | DefineConstS x e v ann es regs:
     eval_exp e = Some v ->
-    trace_step (Smt (DefineConst x e) ann :: es) regs None (subst_trace v x es)
+    trace_step (Smt (DefineConst x e) ann :: es) regs None (subst_val_event v x <$> es)
 | AssertS e b ann es regs:
     eval_exp e = Some (Val_Bool b) ->
     trace_step (Smt (Assert e) ann :: es) regs (Some (LAssert b)) es
@@ -287,7 +284,7 @@ Inductive trace_step : trc → reg_map → option trace_label → trc → Prop :
 .
 
 Lemma DeclareConstBitVecS' {n} (b : bv n) x ann es regs:
-  trace_step (Smt (DeclareConst x (Ty_BitVec n)) ann :: es) regs None (subst_trace (Val_Bits b) x es).
+  trace_step (Smt (DeclareConst x (Ty_BitVec n)) ann :: es) regs None (subst_val_event (Val_Bits b) x <$> es).
 Proof. destruct b. constructor. Qed.
 
 Record seq_global_state := {
