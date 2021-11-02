@@ -1492,6 +1492,9 @@ Ltac liAOther :=
     end
   end.
 
+Ltac liASimpl :=
+  try progress simpl.
+
 Ltac liAStep :=
  liEnforceInvariantAndUnfoldInstantiatedEvars;
  try liAIntroduceLetInGoal;
@@ -1503,4 +1506,4 @@ Ltac liAStep :=
   | liStep
   | liLetBindHint
   | liUnfoldLate
-]; liSimpl.
+]; liASimpl.
