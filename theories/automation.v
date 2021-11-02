@@ -304,7 +304,7 @@ Ltac solve_compute_wp_exp :=
   lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv bv_to_bvn decide decide_rel N_eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
   lazymatch goal with | |- Some _ = _ => idtac | |- ?G => idtac "solve_copmute_wp_exp failed:" G; fail end;
   try lazymatch goal with | |- Some (Val_Bits (BVN _ ?b)) = ?e => change (Some (Val_Bits (bv_to_bvn b)) = e) end;
-  autorewrite with bv_simplify;
+  autorewrite with isla_coq_rewrite;
   apply H.
 
 Global Hint Extern 10 (TacticHint (compute_wp_exp _)) =>
