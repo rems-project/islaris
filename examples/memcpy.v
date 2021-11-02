@@ -69,6 +69,8 @@ Proof.
 
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
+  all: try (revert select (bv_extract 2 1 _ = _); normalize_and_simpl_goal).
+  all: try (revert select (bv_extract 2 1 _ ≠ _); normalize_and_simpl_goal).
   all: try bv_simplify_arith_hyp select (bv_extract _ _ _ ≠ _).
   all: try bv_simplify_arith_hyp select (bv_extract _ _ _ = _).
   - bv_solve.

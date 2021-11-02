@@ -242,6 +242,66 @@ Ltac solve_normalize_bv_wrap :=
 Global Hint Extern 10 (TacticHint (normalize_bv_wrap _)) =>
   eapply normalize_bv_wrap_hint; solve_normalize_bv_wrap : typeclass_instances.
 
+(** * [compute_wp_exp] *)
+Definition compute_wp_exp {Σ} `{!islaG Σ} (e : exp) (T : base_val → iProp Σ) : iProp Σ :=
+  WPexp e {{ T }}.
+Arguments compute_wp_exp : simpl never.
+Typeclasses Opaque compute_wp_exp.
+
+Fixpoint eval_exp' (e : exp) : option base_val :=
+  match e with
+  | Val x _ => Some x
+  | Unop uo e' _ =>
+    eval_exp' e' ≫= eval_unop uo
+  | Binop uo e1 e2 _ =>
+    v1 ← eval_exp' e1; v2 ← eval_exp' e2; eval_binop uo v1 v2
+  | Manyop m es _ => vs ← mapM eval_exp' es; eval_manyop m vs
+  | Ite e1 e2 e3 _ =>
+    v1 ← eval_exp' e1; v2 ← eval_exp' e2; v3 ← eval_exp' e3;
+    match v1 with
+    | Val_Bool b =>
+        match v2, v3 with
+        | Val_Bits b2, Val_Bits b3 =>
+            b3' ← bvn_to_bv b2.(bvn_n) b3;
+            Some (Val_Bits (ite b b2.(bvn_val) b3'))
+        | _, _ => Some (ite b v2 v3)
+        end
+    | _ => None
+    end
+  end.
+
+Lemma eval_exp'_sound e v :
+  eval_exp' e = Some v → eval_exp e = Some v.
+Proof.
+  move: e v. match goal with | |- ∀ e, @?P e => eapply (exp_ott_ind (λ es, Forall P es) P) end => //=.
+  - move => ?? IH?? /bind_Some[?[/IH??]]. simplify_option_eq. naive_solver.
+  - move => ?? IH1 ? IH2 ?? /bind_Some[?[/IH1 ? /bind_Some [?[/IH2 ?]]]]. simplify_option_eq. naive_solver.
+  - admit.
+  - move => ? IH1 ? IH2 ? IH3 ?? /bind_Some[x1[/IH1 ? /bind_Some[x2 [/IH2 ? /bind_Some[x3 [/IH3 ? Hb]]]]]].
+    simplify_option_eq. repeat case_match => //; unfold ite in *; simplify_eq => //.
+    all: move: Hb => /bind_Some[x4 [Hb ?]]; simplify_eq => //.
+    + by destruct bv5; simplify_eq/=.
+    + unfold bvn_to_bv in *. case_decide as Hx => //. destruct Hx. simplify_eq/=.
+      by destruct bv0.
+  - move => *. by constructor.
+Admitted.
+
+
+Program Definition compute_wp_exp_hint `{!islaG Σ} e v :
+  (∀ x, Some v = x → eval_exp' e = x) →
+  TacticHint (compute_wp_exp e) := λ H, {|
+    tactic_hint_P T := T v;
+|}.
+Next Obligation. Admitted.
+
+Ltac solve_compute_wp_exp :=
+  let H := fresh in move => ? H;
+  simpl;
+  apply H.
+
+Global Hint Extern 10 (TacticHint (compute_wp_exp _)) =>
+  eapply compute_wp_exp_hint; solve_compute_wp_exp : typeclass_instances.
+
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
@@ -1100,7 +1160,7 @@ Section instances.
   Proof. apply: wp_declare_const_enum. Qed.
 
   Lemma li_wp_define_const n es ann e:
-    WPexp e {{ v, let_bind_hint v (λ v, WPasm (subst_trace v n es)) }} -∗
+    tactic_hint (compute_wp_exp e) (λ v, let_bind_hint v (λ v, WPasm (subst_trace v n es))) -∗
     WPasm (Smt (DefineConst n e) ann :: es).
   Proof.
     iIntros "Hexp". iApply wp_define_const. unfold let_bind_hint.
@@ -1108,7 +1168,7 @@ Section instances.
   Qed.
 
   Lemma li_wp_assert es ann e:
-    WPexp e {{ v, ∃ b, ⌜v = Val_Bool b⌝ ∗ (⌜b = true⌝ -∗ WPasm es) }} -∗
+    tactic_hint (compute_wp_exp e) (λ v, ∃ b, ⌜v = Val_Bool b⌝ ∗ (⌜b = true⌝ -∗ WPasm es)) -∗
     WPasm (Smt (Assert e) ann :: es).
   Proof. apply: wp_assert. Qed.
 
@@ -1448,15 +1508,15 @@ Ltac liAAsm :=
 
 Ltac liAExp :=
   lazymatch goal with
-  | |- envs_entails ?Δ (wp_exp ?e _) =>
-    lazymatch e with
-    | Val _ _ => notypeclasses refine (tac_fast_apply (li_wpe_val _ _ _) _)
-    | Manyop _ _ _ => notypeclasses refine (tac_fast_apply (li_wpe_manyop _ _ _ _) _)
-    | Unop _ _ _ => notypeclasses refine (tac_fast_apply (li_wpe_unop _ _ _ _) _)
-    | Binop _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wpe_binop _ _ _ _ _) _)
-    | Ite _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wpe_ite _ _ _ _ _) _)
-    | _ => fail "liAExp: unknown exp" e
-    end
+  (* | |- envs_entails ?Δ (wp_exp ?e _) => *)
+    (* lazymatch e with *)
+    (* | Val _ _ => notypeclasses refine (tac_fast_apply (li_wpe_val _ _ _) _) *)
+    (* | Manyop _ _ _ => notypeclasses refine (tac_fast_apply (li_wpe_manyop _ _ _ _) _) *)
+    (* | Unop _ _ _ => notypeclasses refine (tac_fast_apply (li_wpe_unop _ _ _ _) _) *)
+    (* | Binop _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wpe_binop _ _ _ _ _) _) *)
+    (* | Ite _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wpe_ite _ _ _ _ _) _) *)
+    (* | _ => fail "liAExp: unknown exp" e *)
+    (* end *)
   | |- envs_entails ?Δ (wp_a_exp ?e _) =>
     lazymatch e with
     | AExp_Val (AVal_Var _ []) _ => notypeclasses refine (tac_fast_apply (li_wpae_var_reg _ _ _) _)
