@@ -151,6 +151,30 @@ Lemma valu_has_bits_shape v n:
   valu_has_shape v (BitsShape n) → ∃ b : bv n, v = RVal_Bits b.
 Proof. destruct v as [[| |[]|]| | | | | | | |] => //= <-. naive_solver. Qed.
 
+Definition valu_shape_implies (s1 s2 : valu_shape) : Prop :=
+  (* TODO: add missing cases*)
+  match s1, s2 with
+  | ExactShape v1, _ => valu_has_shape v1 s2
+  | BitsShape n1, BitsShape n2 => n1 = n2
+  | _, UnknownShape => True
+  | _, _ => False
+  end.
+Arguments valu_shape_implies _ _ : simpl nomatch.
+Lemma valu_shape_implies_sound s1 s2 v:
+  valu_shape_implies s1 s2 → valu_has_shape v s1 → valu_has_shape v s2.
+Proof. destruct s1, s2 => //=; naive_solver. Qed.
+
+Definition valu_shape_implies_trivial (s1 s2 : valu_shape) : bool :=
+  match s1, s2 with
+  | BitsShape b1, BitsShape b2 => (b1 =? b2)%N
+  | _, UnknownShape => true
+  | _, _ => false
+  end.
+Lemma valu_shape_implies_trivial_sound s1 s2:
+  valu_shape_implies_trivial s1 s2 = true →
+  valu_shape_implies s1 s2.
+Proof. destruct s1, s2 => //= /N.eqb_eq. done. Qed.
+
 (*** operational sematics *)
 
 Definition addr := bv 64.

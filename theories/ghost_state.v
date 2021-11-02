@@ -132,6 +132,12 @@ Section definitions.
   Definition struct_reg_mapsto_eq : @struct_reg_mapsto = @struct_reg_mapsto_def :=
     seal_eq struct_reg_mapsto_aux.
 
+  Definition gen_reg_mapsto (γ1 γ2 : gname) (r : reg_kind) (q : frac) (v: valu) : iProp Σ :=
+    match r with
+    | KindReg r' => reg_mapsto γ1 r' q v
+    | KindField r' f' => struct_reg_mapsto γ2 r' f' q v
+    end.
+
   Definition reg_mapsto_pred_def (γ : gname) (r : string) (q : frac) (P: valu → iProp Σ) : iProp Σ :=
     ∃ v, reg_mapsto γ r q v ∗ P v.
   Definition reg_mapsto_pred_aux : seal (@reg_mapsto_pred_def). by eexists. Qed.
@@ -147,11 +153,7 @@ Section definitions.
     seal_eq struct_reg_mapsto_pred_aux.
 
   Definition reg_col `{!threadG} (regs : list (reg_kind * valu_shape)) : iProp Σ :=
-    [∗ list] v ∈ regs, ∃ vact, ⌜valu_has_shape vact v.2⌝ ∗
-      match v.1 with
-      | KindReg r => reg_mapsto thread_regs_name r 1 vact
-      | KindField r f => struct_reg_mapsto thread_struct_regs_name r f 1 vact
-      end.
+    [∗ list] v ∈ regs, ∃ vact, ⌜valu_has_shape vact v.2⌝ ∗ gen_reg_mapsto thread_regs_name thread_struct_regs_name v.1 1 vact.
 
   Definition regs_ctx `{!threadG} (regs : reg_map) : iProp Σ :=
     ∃ rs (srs : gmap (string * string) valu),
@@ -258,6 +260,10 @@ Notation "r # f ↦ᵣ{ q } : P" := (struct_reg_mapsto_pred thread_struct_regs_n
   (at level 20, f at level 10, q at level 50, format "r  #  f  ↦ᵣ{ q } :  P") : bi_scope.
 Notation "r  #  f  ↦ᵣ: P" := (struct_reg_mapsto_pred thread_struct_regs_name r f 1 P%I)
   (at level 20, f at level 10) : bi_scope.
+
+Notation "r ↦ᵣₖ{ q } v" := (gen_reg_mapsto thread_regs_name thread_struct_regs_name r q v)
+  (at level 20, q at level 50, format "r  ↦ᵣₖ{ q }  v") : bi_scope.
+Notation "r ↦ᵣₖ v" := (gen_reg_mapsto thread_regs_name thread_struct_regs_name r 1 v) (at level 20) : bi_scope.
 
 Notation "a ↦ₘ{ q } v" := (mem_mapsto a q v)
   (at level 20, q at level 50, format "a  ↦ₘ{ q }  v") : bi_scope.
@@ -428,11 +434,7 @@ Section reg.
   Proof. done. Qed.
 
   Lemma reg_col_cons r s col :
-    reg_col ((r, s)::col) ⊣⊢ (∃ v, ⌜valu_has_shape v s⌝ ∗
-                                 match r with
-                                 | KindReg r => r ↦ᵣ v
-                                 | KindField r f => r # f ↦ᵣ v
-                                 end) ∗ reg_col col.
+    reg_col ((r, s)::col) ⊣⊢ (∃ v, ⌜valu_has_shape v s⌝ ∗ r ↦ᵣₖ v) ∗ reg_col col.
   Proof. done. Qed.
 End reg.
 

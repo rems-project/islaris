@@ -88,6 +88,27 @@ Tactic Notation "case_match" "as" ident(Hd) :=
   | |- context [ match ?x with _ => _ end ] => destruct x eqn:Hd
   end.
 
+Definition REMEMBER_MARK {A} (x y : A) : Prop := x = y.
+Ltac remember_mark v :=
+  let x := fresh "x" in
+  let H := fresh "H" in
+  pose (x := v);
+  pattern v;
+  lazymatch goal with
+  | |- ?P _ => change_no_check (P x)
+  end;
+  pose proof (H := @eq_refl _ v);
+  change (REMEMBER_MARK x v) in H;
+  clearbody x;
+  cbv beta.
+
+Ltac subst_remembered :=
+  repeat match goal with
+         | H : REMEMBER_MARK ?x ?v |- _ =>
+             change (x = v) in H;
+             subst x
+         end.
+
 (* TODO: replace with upsteamed version, https://gitlab.mpi-sws.org/iris/stdpp/-/merge_requests/337 *)
 Lemma ne_Some_eq_None {A} (mx : option A): (∀ x, mx ≠ Some x) → mx = None.
 Proof. destruct mx; congruence. Qed.

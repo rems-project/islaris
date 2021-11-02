@@ -408,6 +408,96 @@ Ltac solve_compute_wp_exp :=
 Global Hint Extern 10 (TacticHint (compute_wp_exp _)) =>
   eapply compute_wp_exp_hint; solve_compute_wp_exp : typeclass_instances.
 
+(** ** [regcol_compute_hint] *)
+Definition regcol_compute_hint {Σ A B} (f : A → option B) (x : A) (T : B → iProp Σ) : iProp Σ :=
+  ∃ y, ⌜f x = Some y⌝ ∗ T y.
+Arguments regcol_compute_hint : simpl never.
+Typeclasses Opaque regcol_compute_hint.
+
+Program Definition regcol_compute_hint_hint {Σ A B} (f : A → option B) x a :
+  (∀ y, Some x = y → f a = y) →
+  TacticHint (regcol_compute_hint (Σ:=Σ) f a) := λ H, {|
+    tactic_hint_P T := T x;
+|}.
+Next Obligation. move => ????????. iIntros "HT". iExists _. iFrame. iPureIntro. naive_solver. Qed.
+
+Ltac remember_regcol :=
+  repeat match goal with
+   | |- context [ExactShape ?v] =>
+     assert_fails (is_var v);
+     remember_mark v
+   | |- context [PropShape ?v] =>
+     assert_fails (is_var v);
+     remember_mark v
+   end.
+
+Global Hint Extern 10 (TacticHint (regcol_compute_hint _ _)) =>
+  eapply regcol_compute_hint_hint;
+  let H := fresh in intros ? H;
+  remember_regcol;
+  vm_compute;
+  subst_remembered;
+  apply H : typeclass_instances.
+
+(** * [regcol cancellation] *)
+Fixpoint regcol_extract (r : reg_kind) (regs : list (reg_kind * valu_shape)) : option (valu_shape * list (reg_kind * valu_shape)) :=
+  match regs with
+  | (r', s)::regs' =>
+      if reg_kind_eqb r r' then
+        Some (s, regs')
+      else
+        prod_map id ((r',s)::.) <$> regcol_extract r regs'
+  | [] => None
+  end.
+Lemma regcol_extract_Some `{!islaG Σ} `{!threadG} r regs s:
+  regcol_extract r regs = Some s →
+  reg_col regs -∗ ∃ v, ⌜valu_has_shape v s.1⌝ ∗ r ↦ᵣₖ v ∗ reg_col s.2.
+Proof.
+  iIntros (Hr) "Hregs". iInduction regs as [|[r' s'] regs'] "IH" forall (s Hr) => //.
+  rewrite reg_col_cons. iDestruct "Hregs" as "[[%v [% Hv]] Hregs]".
+  simpl in *. rewrite reg_kind_eqb_eq in Hr. case_bool_decide; simplify_eq/=.
+  { iExists _. by iFrame. }
+  move: Hr => /fmap_Some[[??]/=[??]]; subst => /=.
+  iDestruct ("IH" with "[//] Hregs") as (v' ?) "[? ?]" => /=.
+  iExists _. rewrite reg_col_cons. iFrame. iSplit; [done|].
+  iExists _. by iFrame.
+Qed.
+
+Fixpoint regcol_cancel (regs1 regs2 : list (reg_kind * valu_shape)) : list (reg_kind * valu_shape) * list (reg_kind * valu_shape) * list (valu_shape * valu_shape) :=
+  match regs2 with
+  | (r, s2)::rs =>
+      if regcol_extract r regs1 is Some (s1, regs1') then
+        let '(regs1'', regs2'', c) := regcol_cancel regs1' rs in
+        let i := valu_shape_implies_trivial s1 s2 in
+        (regs1'', regs2'', if i then c else (s1, s2)::c)
+      else
+        let '(regs1'', regs2'', c) := regcol_cancel regs1 rs in
+        (regs1'', (r, s2)::regs2'', c)
+  | [] => (regs1, [], [])
+  end.
+Lemma regcol_cancel_sound `{!islaG Σ} `{!threadG} regs1 regs2 res:
+  regcol_cancel regs1 regs2 = res →
+  Forall (λ c, ∀ v, valu_has_shape v c.1 → valu_has_shape v c.2) res.2 →
+  reg_col regs1 -∗ reg_col res.1.1 ∗ (reg_col res.1.2 -∗ reg_col regs2).
+Proof.
+  iIntros (Hres Hc) "Hregs1".
+  iInduction regs2 as [|[r2 s2] regs2] "IH" forall (regs1 res Hres Hc); simplify_eq/=.
+  { iFrame. iIntros "$". }
+  destruct (regcol_extract r2 regs1) as [[? regs1']|] eqn:He.
+  - iDestruct (regcol_extract_Some with "Hregs1") as (v1 ?) "[? Hregs1]"; [done|].
+    destruct (regcol_cancel regs1' regs2) as [[??]?] eqn:?; simplify_eq/=.
+    iDestruct ("IH" with "[//] [%] Hregs1") as "[$ H2]" => /=.
+    { case_match => //. by apply: Forall_inv_tail. }
+    iIntros "Hregs". rewrite reg_col_cons. iDestruct ("H2" with "Hregs") as "$".
+    iExists _. iFrame. iPureIntro.
+    case_match.
+    + apply: valu_shape_implies_sound; [|done]. by apply valu_shape_implies_trivial_sound.
+    + move: Hc => /(@Forall_inv _ _ _). naive_solver.
+  - destruct (regcol_cancel regs1 regs2) as [[??]?] eqn:?; simplify_eq/=.
+    iDestruct ("IH" with "[//] [//] Hregs1") as "[? H2]" => /=. iFrame.
+    rewrite !reg_col_cons. iIntros "[$ ?]". by iApply "H2".
+Qed.
+
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
@@ -566,8 +656,14 @@ Section instances.
   Global Instance reg_related r v : RelatedTo (r ↦ᵣ v) := {|
     rt_fic := FindRegMapsTo r;
   |}.
-
   Global Instance struct_reg_related r f v : RelatedTo (r # f ↦ᵣ v) := {|
+    rt_fic := FindStructRegMapsTo r f;
+  |}.
+
+  Global Instance reg_col_reg_related r s rs : RelatedTo (reg_col ((KindReg r, s)::rs)) := {|
+    rt_fic := FindRegMapsTo r;
+  |}.
+  Global Instance reg_col_struct_reg_related r f s rs : RelatedTo (reg_col ((KindField r f, s)::rs)) := {|
     rt_fic := FindStructRegMapsTo r f;
   |}.
 
@@ -671,6 +767,39 @@ Section instances.
   Global Instance subsume_struct_regcol_reg_inst regs r f v:
     Subsume (reg_col regs) (r # f ↦ᵣ v) :=
     λ G, i2p (subsume_struct_regcol_reg regs r f v G).
+
+  Lemma subsume_reg_regcol regs r v s G:
+    (⌜valu_has_shape v s⌝ ∗ reg_col regs ∗ G) -∗
+    subsume (r ↦ᵣ v) (reg_col ((KindReg r, s)::regs)) G.
+  Proof. iIntros "[% [Hregs $]] Hr". rewrite reg_col_cons. eauto with iFrame. Qed.
+  Global Instance subsume_reg_regcol_inst regs r v s:
+    Subsume (r ↦ᵣ v) (reg_col ((KindReg r, s)::regs)) :=
+    λ G, i2p (subsume_reg_regcol regs r v s G).
+  Lemma subsume_struct_reg_regcol regs r f v s G:
+    (⌜valu_has_shape v s⌝ ∗ reg_col regs ∗ G) -∗
+    subsume (r # f ↦ᵣ v) (reg_col ((KindField r f, s)::regs)) G.
+  Proof. iIntros "[% [Hregs $]] Hr". rewrite reg_col_cons. eauto with iFrame. Qed.
+  Global Instance subsume_struct_reg_regcol_inst regs r f v s:
+    Subsume (r # f ↦ᵣ v) (reg_col ((KindField r f, s)::regs)) :=
+    λ G, i2p (subsume_struct_reg_regcol regs r f v s G).
+
+  Lemma subsume_regcol_regcol regs1 regs2 G:
+    (tactic_hint (regcol_compute_hint (λ '(regs1, regs2), Some (regcol_cancel regs1 regs2)) (regs1, regs2))
+                 (λ '(regs1', regs2', c),
+       ⌜foldr (λ c, and (valu_shape_implies c.1 c.2)) True c⌝ ∗
+       (reg_col regs1' -∗ reg_col regs2' ∗ G))) -∗
+    subsume (reg_col regs1) (reg_col regs2) G.
+  Proof.
+    unfold tactic_hint, regcol_compute_hint.
+    iDestruct 1 as ([[regs1' regs2'] c] [=] Hf) "HT". move/Forall_fold_right in Hf.
+    iIntros "Hregs".
+    iDestruct (regcol_cancel_sound with "Hregs") as "[? H2]"; [done| |] => /=.
+    { apply: Forall_impl; [|done] => /= ????. by apply: valu_shape_implies_sound; [|done]. }
+    iDestruct ("HT" with "[$]") as "[? $]". by iApply "H2".
+  Qed.
+  Global Instance subsume_regcol_regcol_inst regs1 regs2:
+    Subsume (reg_col regs1) (reg_col regs2) :=
+    λ G, i2p (subsume_regcol_regcol regs1 regs2 G).
 
   Lemma subsume_reg_reg_pred r v P G:
     P v ∗ G -∗
@@ -930,22 +1059,6 @@ Section instances.
   Global Instance simpl_goal_reg_col_nil_inst :
     SimplifyGoal (reg_col []) (Some 100%N) :=
     λ T, i2p (simpl_goal_reg_col_nil T).
-
-  Lemma simpl_goal_reg_col_cons r col s T:
-    (T (match r with
-        | KindReg r => r ↦ᵣ: (λ v, ⌜valu_has_shape v s⌝)
-        | KindField r f => r # f ↦ᵣ: (λ v, ⌜valu_has_shape v s⌝)
-        end ∗ reg_col col)) -∗
-           simplify_goal (reg_col ((r, s)::col)) T.
-  Proof.
-    iIntros "?". iExists _. iFrame.
-    rewrite reg_col_cons. iIntros "[Hr $]". case_match.
-    - rewrite reg_mapsto_pred_eq. iDestruct "Hr" as (?) "[? %]". eauto with iFrame.
-    - rewrite struct_reg_mapsto_pred_eq. iDestruct "Hr" as (?) "[? %]". eauto with iFrame.
-  Qed.
-  Global Instance simpl_goal_reg_col_cons_inst r col s :
-    SimplifyGoal (reg_col ((r, s)::col)) (Some 100%N) :=
-    λ T, i2p (simpl_goal_reg_col_cons r col s T).
 
   Lemma li_wp_next_instr:
     (∃ (nPC newPC : addr),
