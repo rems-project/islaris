@@ -617,8 +617,8 @@ Section mem.
   Qed.
 
   Lemma mem_mapsto_uninit_in_range n a q:
-    a ↦ₘ{q}? n -∗ ⌜0 ≤ a ∧ a + n ≤ 2 ^ 64⌝.
-  Proof. rewrite mem_mapsto_uninit_eq. iDestruct 1 as (nn ? ?) "?". done. Qed.
+    a ↦ₘ{q}? n -∗ ⌜0 ≤ a ∧ 0 ≤ n ∧ a + n ≤ 2 ^ 64⌝.
+  Proof. rewrite mem_mapsto_uninit_eq. iDestruct 1 as (nn ? ?) "?". iPureIntro. lia. Qed.
 
   Lemma mem_mapsto_uninit_0 a:
     a ↦ₘ? 0 ⊣⊢ ⌜0 ≤ a ≤ 2 ^ 64⌝.

@@ -216,21 +216,21 @@ Global Hint Extern 10 (TacticHint (normalize_instr_addr _)) =>
   eapply normalize_instr_addr_hint; solve_normalize_instr_addr : typeclass_instances.
 
 
-(** * [normalize_bv_unsigned] *)
+(** * [normalize_bv_wrap] *)
 
-Definition normalize_bv_unsigned {Σ} (a1 : Z) (T : Z → iProp Σ) : iProp Σ :=
+Definition normalize_bv_wrap {Σ} (a1 : Z) (T : Z → iProp Σ) : iProp Σ :=
   ∃ a2, ⌜bv_wrap 64 a1 = bv_wrap 64 a2⌝ ∗ T a2.
-Arguments normalize_bv_unsigned : simpl never.
-Typeclasses Opaque normalize_bv_unsigned.
+Arguments normalize_bv_wrap : simpl never.
+Typeclasses Opaque normalize_bv_wrap.
 
-Program Definition normalize_bv_unsigned_hint {Σ} a1 a2 :
+Program Definition normalize_bv_wrap_hint {Σ} a1 a2 :
   (∀ x, bv_wrap 64 a2 = x → block bv_wrap 64%N a1 = x) →
-  TacticHint (normalize_bv_unsigned (Σ:=Σ) a1) := λ H, {|
+  TacticHint (normalize_bv_wrap (Σ:=Σ) a1) := λ H, {|
     tactic_hint_P T := T a2;
 |}.
-Next Obligation. unfold normalize_bv_unsigned, block. move => ??? Heq ?. iIntros "?". iExists _. iFrame. iPureIntro. by apply: Heq. Qed.
+Next Obligation. unfold normalize_bv_wrap, block. move => ??? Heq ?. iIntros "?". iExists _. iFrame. iPureIntro. by apply: Heq. Qed.
 
-Ltac solve_normalize_bv_unsigned :=
+Ltac solve_normalize_bv_wrap :=
   let H := fresh in move => ? H;
   bv_simplify;
   repeat match goal with | |- context [bv_wrap ?n ?x] => reduce_closed (bv_wrap n x) end;
@@ -239,8 +239,8 @@ Ltac solve_normalize_bv_unsigned :=
   lazymatch goal with | |- bv_wrap _ ?z = _ => ring_simplify z end;
   apply H.
 
-Global Hint Extern 10 (TacticHint (normalize_bv_unsigned _)) =>
-  eapply normalize_bv_unsigned_hint; solve_normalize_bv_unsigned : typeclass_instances.
+Global Hint Extern 10 (TacticHint (normalize_bv_wrap _)) =>
+  eapply normalize_bv_wrap_hint; solve_normalize_bv_wrap : typeclass_instances.
 
 (** * Registering extensions *)
 (** More automation for modular arithmetics. *)
@@ -731,15 +731,14 @@ Section instances.
   *)
   Lemma subsume_mem_uninit_mem_uninit a1 a2 n1 n2 G
         `{!BvSolve (0 ≤ n2 ∧ a1 ≤ a2 ∧ a2 + n2 ≤ a1 + n1)}:
-    (tactic_hint (normalize_bv_unsigned (a2 - a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
-     tactic_hint (normalize_bv_unsigned (n1 - n2 - m1)) (λ m2, ⌜0 ≤ m2 < 2 ^ 64 ∧ a1 + n1 < 2 ^ 64⌝ ∗ (
+    (tactic_hint (normalize_bv_wrap (a2 - a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
+     tactic_hint (normalize_bv_wrap (n1 - n2 - m1)) (λ m2, ⌜0 ≤ m2 < 2 ^ 64 ∧ n1 < 2 ^ 64⌝ ∗ (
       a1 ↦ₘ? m1 -∗
      (a2 + n2) ↦ₘ? m2 -∗ G)))) -∗
      subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) G.
   Proof.
-    unfold BvSolve, normalize_bv_unsigned, tactic_hint in *. iIntros "HG Ha".
+    unfold BvSolve, normalize_bv_wrap, tactic_hint in *. iIntros "HG Ha".
     iDestruct "HG" as "(%m1&%Hm1&%&%m2&%Hm2&%&HG)".
-    iDestruct (mem_mapsto_uninit_in_range with "Ha") as %?.
     iDestruct (mem_mapsto_uninit_split m1 with "Ha") as "[? Ha]"; [bv_solve|].
     iDestruct (mem_mapsto_uninit_split n2 with "Ha") as "[? Ha]"; [bv_solve|].
     have -> : a1 + m1 = a2 by bv_solve.
@@ -754,17 +753,18 @@ Section instances.
   (* This handles the case where the kypothesis does not fully containe the goal. I.e.
      |--- hyp ---|
           |-- goal --|
-  *)
+   *)
+  (* This rule breaks if one of the uninit spans 2^64 bytes but that seems quite rare. *)
   Lemma subsume_mem_uninit_mem_uninit2 a1 a2 n1 n2 G
         `{!BvSolve (0 ≤ n2 ∧ a1 ≤ a2 ∧ a2 ≤ a1 + n1 ∧ a1 + n1 ≤ a2 + n2)}:
-    (tactic_hint (normalize_bv_unsigned (a2 - a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
-     tactic_hint (normalize_bv_unsigned (n2 - (n1 - m1))) (λ m2, ⌜0 ≤ m2 < 2 ^ 64⌝ ∗
-     tactic_hint (normalize_bv_unsigned (a2 + n1 - m1)) (λ m3, ⌜a2 + n2 < 2 ^ 64 ∧ m3 + m2 < 2 ^ 64⌝ ∗ (
+    (tactic_hint (normalize_bv_wrap (a2 - a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
+     tactic_hint (normalize_bv_wrap (n2 - (n1 - m1))) (λ m2, ⌜0 ≤ m2 < 2 ^ 64⌝ ∗
+     tactic_hint (normalize_bv_wrap (a2 + n1 - m1)) (λ m3, ⌜a2 + n2 < 2 ^ 64 ∧ m3 + m2 < 2 ^ 64⌝ ∗ (
      a1 ↦ₘ? m1 -∗
      m3 ↦ₘ? m2 ∗ G))))) -∗
      subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) G.
   Proof.
-    unfold BvSolve, normalize_bv_unsigned, tactic_hint in *. iIntros "HG Ha".
+    unfold BvSolve, normalize_bv_wrap, tactic_hint in *. iIntros "HG Ha".
     iDestruct "HG" as "(%m1&%Hm1&%&%m2&%Hm2&%&%m3&%Hm3&%&HG)".
     iDestruct (mem_mapsto_uninit_in_range with "Ha") as %?.
     iDestruct (mem_mapsto_uninit_split m1 with "Ha") as "[? Ha]"; [bv_solve|].
@@ -780,6 +780,7 @@ Section instances.
     Subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) :=
     λ G, i2p (subsume_mem_uninit_mem_uninit2 a1 a2 n1 n2 G).
 
+  (* This rule breaks if one of the uninit spans 2^64 bytes but that seems quite rare. *)
   Lemma subsume_mem_mapsto_mem_uninit a1 a2 n (b : bv n) n2 G:
     (⌜a1 = a2⌝ ∗ ⌜Z.of_N (n `div` 8) ≤ n2⌝ ∗
     (a2 + (Z.of_N (n `div` 8))) ↦ₘ? (n2 - (Z.of_N (n `div` 8))) ∗ G) -∗
