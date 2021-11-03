@@ -22,7 +22,7 @@ jobs:
 
     env:
       OCAML: "ocaml-base-compiler.4.11.1"
-      OPAM_PINS: "coq version 8.14.0   cerberus git git+https://github.com/rems-project/cerberus.git#7eb94d628845555cb5425f4f4b48890b345efdc5   isla-lang git git+https://git@github.com/rems-project/isla-lang.git#6389ce45bbcbe7a613ba04e1708f9982cfc8d5d6"
+      OPAM_PINS: "coq version 8.14.0   cerberus git git+https://github.com/rems-project/cerberus.git#7eb94d628845555cb5425f4f4b48890b345efdc5   isla-lang git git+https://git@github.com/rems-project/isla-lang.git#2ae174f72c8d3481e93a1d275c97b740415cbb5f"
       CPU_CORES: "1"
       DENY_WARNINGS: "1"
       CI_RUNNER: "dummy"
