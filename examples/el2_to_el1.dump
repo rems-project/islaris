@@ -7,6 +7,6 @@
 //@constraint: = ((_ extract 1  1 ) SPSR_EL2) 0b0
 //SPSR_EL2.IL is 0b0.
 //@constraint: = ((_ extract 20 20) SPSR_EL2) 0b0
-//ELR_EL2 is set to a concrete address.
-//@constraint: = ELR_EL2 0x0000000000100000
+//ELR_EL2 contains an address with a 0 tag bit.
+//@constraint: = ((_ extract 55 55) ELR_EL2) 0b0
    80008:	d69f03e0 	eret
