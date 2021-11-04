@@ -236,11 +236,13 @@ let rec pp_a_exp ff e =
   | Ast.AExp_Unop(o,e,a)      ->
       pp "AExp_Unop (%a) (%a) %a" pp_unop o pp_a_exp e pp_lrng a
   | Ast.AExp_Binop(o,e1,e2,a) ->
-      pp "AExp_Binop (%a) (%a) (%a) %a" pp_binop o pp_a_exp e1 pp_a_exp e2 pp_lrng a
+      pp "AExp_Binop (%a) (%a) (%a) %a" pp_binop o
+        pp_a_exp e1 pp_a_exp e2 pp_lrng a
   | Ast.AExp_Manyop(o,l,a)    ->
       pp "AExp_Manyop %a %a %a" pp_manyop o (pp_list pp_a_exp) l pp_lrng a
   | Ast.AExp_Ite(i,t,e,a)     ->
-      pp "AExp_Ite (%a) (%a) (%a) %a" pp_a_exp i pp_a_exp t pp_a_exp e pp_lrng a
+      pp "AExp_Ite (%a) (%a) (%a) %a"
+        pp_a_exp i pp_a_exp t pp_a_exp e pp_lrng a
 
 let pp_smt ff e =
   let pp fmt = Format.fprintf ff fmt in
@@ -308,7 +310,8 @@ let pp_events : event list Format.pp = fun ff events ->
   in
   List.iter print_event events
 
-let rec pp_forking_trace : trace Format.pp = fun ff (ForkingTrace(trcs, cont)) ->
+let rec pp_forking_trace : trace Format.pp = fun ff tr ->
+  let ForkingTrace(trcs, cont) = tr in
   let pp fmt = Format.fprintf ff fmt in
   pp "%a" pp_events trcs;
   pp "%a" pp_maybe_fork cont
@@ -330,23 +333,24 @@ and pp_maybe_fork : maybe_fork Format.pp = fun ff mf ->
      pp "@]@;]"
   | Ast.NoFork        -> pp "@;tnil"
 
-let pp_traces_def : string -> trace Format.pp = fun id ff trc ->
+let pp_trace_def : string -> trace Format.pp = fun id ff trc ->
   let pp fmt = Format.fprintf ff fmt in
   pp "@[<v 2>Definition %s : isla_trace :=" id;
   pp "%a" pp_forking_trace trc;
   pp "@]@;."
 
-
-(** [pp_trace_file name] is the entry point of the pretty-printer. [name] is the name
-of the generated Definition. *)
-let pp_traces_file : string -> trace Format.pp = fun id ff trs ->
+(** [pp_trace_file name] is the entry point of the pretty-printer. A [name] is
+provided as argument: it is used for the generated Coq "Definition". *)
+let pp_trace_file : string -> trace Format.pp = fun id ff tr ->
   let pp fmt = Format.fprintf ff fmt in
   pp "@[<v 0>From isla Require Import opsem.@;@;";
-  pp "%a@]" (pp_traces_def id) trs
+  pp "%a@]" (pp_trace_def id) tr
 
-let write_traces_to_file : string -> trace -> string -> unit = fun id trs fname ->
+let write_trace_to_file : string -> trace -> string -> unit =
+    fun id tr fname ->
   let buffer = Buffer.create 4096 in
-  Format.fprintf (Format.formatter_of_buffer buffer) "%a@." (pp_traces_file id) trs;
+  let fmt = Format.formatter_of_buffer buffer in
+  Format.fprintf fmt "%a@." (pp_trace_file id) tr;
   (* Check if we should write the file (inexistent / contents different). *)
   let must_write =
     try Buffer.contents (Buffer.from_file fname) <> Buffer.contents buffer
@@ -354,7 +358,8 @@ let write_traces_to_file : string -> trace -> string -> unit = fun id trs fname 
   in
   if must_write then Buffer.to_file fname buffer
 
-let write_traces : string -> trace -> string option -> unit = fun id tr fname ->
+let write_trace : string -> trace -> string option -> unit =
+    fun id tr fname ->
   match fname with
-  | Some(fname) -> write_traces_to_file id tr fname
-  | None        -> Format.printf "%a@." (pp_traces_file id) tr
+  | Some(fname) -> write_trace_to_file id tr fname
+  | None        -> Format.printf "%a@." (pp_trace_file id) tr

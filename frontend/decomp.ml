@@ -30,7 +30,7 @@ let gen_coq : Arch.t -> string -> string -> string -> unit =
   (* Filtering the events to minimise the trace. *)
   let trs = filter_events (event_filter arch) trs in
   (* Generating the Coq file. *)
-  Coq_pp.write_traces name trs (Some(coq_f))
+  Coq_pp.write_trace name trs (Some(coq_f))
 
 (** Keys allowed in name templates. *)
 let template_keys : (string * string) list = [

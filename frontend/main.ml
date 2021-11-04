@@ -38,7 +38,7 @@ let run_isla : isla_config -> string -> unit = fun cfg input_file ->
     try Parser.parse_file input_file with Parser.Parse_error(msg) ->
       panic "Error while parsing [%s]\n%s" input_file msg
   in
-  Coq_pp.write_traces cfg.def_name trs cfg.output_file
+  Coq_pp.write_trace cfg.def_name trs cfg.output_file
 
 (** [run_dump cfg input_file] runs the Dump mode on the file [input_file] with
     the configuration [cfg]. *)
