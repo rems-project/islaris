@@ -338,7 +338,7 @@ Definition let_bind_hint {A B} (x : A) (f : A → B) : B :=
   f x.
 
 Inductive instr_kind {Σ} : Type :=
-| IKInstr (ins : option (list trc)) | IKPre (l : bool) (P : iProp Σ).
+| IKInstr (ins : option isla_trace) | IKPre (l : bool) (P : iProp Σ).
 Definition FindInstrKind {Σ} `{!Arch} `{!islaG Σ} `{!threadG} (a : Z) (l : bool) := {|
   fic_A := @instr_kind Σ;
   fic_Prop ik :=
@@ -915,25 +915,22 @@ Section instances.
      ⌜newPC = Z_to_bv 64 normPC⌝ ∗
      find_in_context (FindInstrKind normPC true) (λ ik,
      match ik with
-     | IKInstr (Some ts) =>
-       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, arch_pc_reg ↦ᵣ RVal_Bits newPC -∗ WPasm t
+     | IKInstr (Some t) => arch_pc_reg ↦ᵣ RVal_Bits newPC -∗ WPasm t
      | IKInstr (None) =>
        ∃ Pκs, spec_trace Pκs ∗ ⌜scons (SInstrTrap newPC) snil ⊆ Pκs⌝ ∗ True
      | IKPre l P => P
      end
     ))) -∗
-    WPasm [].
+    WPasm tnil.
   Proof.
     unfold normalize_instr_addr. iDestruct 1 as (??) "(HPC&%normPC&%Hnorm&->&Hwp)".
     have ? := bv_unsigned_in_range _ nPC.
     iDestruct "Hwp" as (ins) "[Hi Hwp]".
     destruct ins as [[?|]|?] => /=.
-    - iDestruct "Hwp" as (?) "Hl".
-      iDestruct (instr_addr_in_range with "Hi") as %?.
+    - iDestruct (instr_addr_in_range with "Hi") as %?.
       rewrite !bv_wrap_small // in Hnorm. subst.
-      iApply (wp_next_instr with "HPC Hi [Hl]") => //.
-      iIntros "!>" (i Hi) "?". rewrite Z_to_bv_bv_unsigned.
-      iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
+      iApply (wp_next_instr with "HPC Hi") => //.
+      iIntros "!> ?". rewrite Z_to_bv_bv_unsigned.
       iApply ("Hwp" with "[$]").
     - iDestruct "Hwp" as (?) "(?&%Hscons&?)".
       iDestruct (instr_addr_in_range with "Hi") as %?.
@@ -952,8 +949,8 @@ Section instances.
      ⌜newPC = Z_to_bv 64 normPC⌝ ∗
      find_in_context (FindInstrKind normPC l) (λ ik,
      match ik with
-     | IKInstr (Some ts) =>
-       ⌜ts ≠ []⌝ ∗ [∧ list] t∈ts, P -∗ arch_pc_reg ↦ᵣ RVal_Bits newPC -∗ WPasm t
+     | IKInstr (Some t) =>
+       P -∗ arch_pc_reg ↦ᵣ RVal_Bits newPC -∗ WPasm t
      | IKInstr None =>
        P -∗ ∃ Pκs, spec_trace Pκs ∗ ⌜scons (SInstrTrap newPC) snil ⊆ Pκs⌝ ∗ True
      | IKPre l' Q => ⌜implb l' l⌝ ∗ (P -∗ Q)
@@ -963,15 +960,11 @@ Section instances.
   Proof.
     unfold normalize_instr_addr.  iDestruct 1 as (? normPC Hnorm -> ins) "[Hinstr Hwp]".
     destruct ins as [[?|]|?] => /=.
-    - iDestruct "Hwp" as (?) "Hl".
-      iDestruct (instr_addr_in_range with "Hinstr") as %?.
+    - iDestruct (instr_addr_in_range with "Hinstr") as %?.
       rewrite (bv_wrap_small _ normPC) // in Hnorm. subst.
       iApply (instr_pre_wand with "[-]"); [by erewrite implb_same| | | iIntros "HP"; iApply "HP"].
-      2: iApply (instr_pre_intro_Some with "[$]"); [done..|].
-      { by rewrite bv_wrap_bv_wrap. }
-      iIntros (i Hi) "??".
-      iDestruct (big_andL_elem_of with "Hl") as "Hwp"; [done|].
-      iApply ("Hwp" with "[$] [$]").
+      2: by iApply (instr_pre_intro_Some with "[$]"); [done..|].
+      by rewrite bv_wrap_bv_wrap.
     - iDestruct (instr_addr_in_range with "Hinstr") as %?.
       rewrite (bv_wrap_small _ normPC) // in Hnorm. subst.
       iApply (instr_pre_wand with "[-]"); [by erewrite implb_same| | | iIntros "HP"; iApply "HP"].
@@ -983,6 +976,14 @@ Section instances.
       by iApply (instr_pre_wand with "Hinstr").
   Qed.
 
+  Lemma li_wp_fork ts:
+    (⌜ts ≠ []⌝ ∗ [∧ list] t ∈ ts, WPasm t) -∗
+    WPasm (tfork ts).
+  Proof.
+    iIntros "[% Hwp]". iApply wp_fork; [done|].
+    iIntros (t Ht). by iApply (big_andL_elem_of with "Hwp").
+  Qed.
+
   Lemma li_wp_read_reg r v ann es :
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
@@ -990,7 +991,7 @@ Section instances.
       | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
            (reg_col regs -∗ WPasm es))
       end)) -∗
-    WPasm (ReadReg r [] v ann :: es).
+    WPasm (ReadReg r [] v ann :t: es).
   Proof.
     unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
@@ -1014,7 +1015,7 @@ Section instances.
               end)))%type) regs) (λ i,
                (reg_col regs -∗ WPasm es))
       end))) -∗
-    WPasm (ReadReg r [Field f] v ann :: es).
+    WPasm (ReadReg r [Field f] v ann :t: es).
   Proof.
     unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (???) "[Hr Hwp]" => /=. case_match; simplify_eq.
@@ -1054,7 +1055,7 @@ Section instances.
       | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
                       ⌜∀ v', valu_has_shape v' (regs !!! i).2 → v' = v⌝ ∗ (reg_col regs -∗ WPasm es))
       end)) -∗
-    WPasm (AssumeReg r [] v ann :: es).
+    WPasm (AssumeReg r [] v ann :t: es).
   Proof.
     unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
@@ -1081,7 +1082,7 @@ Section instances.
                   ⌜(rs !!! i).2 = v⌝ ∗ (reg_col regs -∗ WPasm es)) else False
           end)
       end))) -∗
-    WPasm (AssumeReg r [Field f] v ann :: es).
+    WPasm (AssumeReg r [Field f] v ann :t: es).
   Proof.
     unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (?) "[Hr Hwp]" => /=. case_match; simplify_eq.
@@ -1111,7 +1112,7 @@ Section instances.
       | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
           (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r ↦ᵣ v -∗ WPasm es))
       end)) -∗
-    WPasm (WriteReg r [] v ann :: es).
+    WPasm (WriteReg r [] v ann :t: es).
   Proof.
     unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
@@ -1130,7 +1131,7 @@ Section instances.
       | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs) (λ i,
           (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r # f ↦ᵣ vnew -∗ WPasm es))
       end))) -∗
-    WPasm (WriteReg r [Field f] v ann :: es).
+    WPasm (WriteReg r [Field f] v ann :t: es).
   Proof.
     unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (vnew ? rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
@@ -1144,32 +1145,32 @@ Section instances.
 
   Lemma li_wp_branch_address v ann es:
     WPasm es -∗
-    WPasm (BranchAddress v ann :: es).
+    WPasm (BranchAddress v ann :t: es).
   Proof. apply: wp_branch_address. Qed.
 
   Lemma li_wp_branch c desc ann es:
     WPasm es -∗
-    WPasm (Branch c desc ann :: es).
+    WPasm (Branch c desc ann :t: es).
   Proof. apply: wp_branch. Qed.
 
   Lemma li_wp_declare_const_bv v es ann b:
-    (∀ (n : bv b), WPasm ((subst_val_event (Val_Bits n) v) <$> es)) -∗
-    WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :: es).
+    (∀ (n : bv b), WPasm (subst_trace (Val_Bits n) v es)) -∗
+    WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :t: es).
   Proof. apply: wp_declare_const_bv. Qed.
 
   Lemma li_wp_declare_const_bool v es ann:
-    (∀ b : bool, WPasm ((subst_val_event (Val_Bool b) v) <$> es)) -∗
-    WPasm (Smt (DeclareConst v Ty_Bool) ann :: es).
+    (∀ b : bool, WPasm (subst_trace (Val_Bool b) v es)) -∗
+    WPasm (Smt (DeclareConst v Ty_Bool) ann :t: es).
   Proof. apply: wp_declare_const_bool. Qed.
 
   Lemma li_wp_declare_const_enum v es i ann:
-    (∀ c, WPasm ((subst_val_event (Val_Enum (i, c)) v) <$> es)) -∗
-    WPasm (Smt (DeclareConst v (Ty_Enum i)) ann :: es).
+    (∀ c, WPasm (subst_trace (Val_Enum (i, c)) v es)) -∗
+    WPasm (Smt (DeclareConst v (Ty_Enum i)) ann :t: es).
   Proof. apply: wp_declare_const_enum. Qed.
 
   Lemma li_wp_define_const n es ann e:
-    tactic_hint (compute_wp_exp e) (λ v, let_bind_hint v (λ v, WPasm (subst_val_event v n <$> es))) -∗
-    WPasm (Smt (DefineConst n e) ann :: es).
+    tactic_hint (compute_wp_exp e) (λ v, let_bind_hint v (λ v, WPasm (subst_trace v n es))) -∗
+    WPasm (Smt (DefineConst n e) ann :t: es).
   Proof.
     iIntros "Hexp". iApply wp_define_const. unfold let_bind_hint.
     iApply (wpe_wand with "Hexp"). iIntros (?) "$".
@@ -1177,17 +1178,17 @@ Section instances.
 
   Lemma li_wp_assert es ann e:
     tactic_hint (compute_wp_exp e) (λ v, ∃ b, ⌜v = Val_Bool b⌝ ∗ (⌜b = true⌝ -∗ WPasm es)) -∗
-    WPasm (Smt (Assert e) ann :: es).
+    WPasm (Smt (Assert e) ann :t: es).
   Proof. apply: wp_assert. Qed.
 
   Lemma li_wp_assume es ann e:
     WPaexp e {{ v, ⌜v = Val_Bool true⌝ ∗ WPasm es }} -∗
-    WPasm (Assume e ann :: es).
+    WPasm (Assume e ann :t: es).
   Proof. apply: wp_assume. Qed.
 
   Lemma li_wp_barrier es v ann:
     WPasm es -∗
-    WPasm (Barrier v ann :: es).
+    WPasm (Barrier v ann :t: es).
   Proof. apply: wp_barrier. Qed.
 
   Lemma li_wp_write_mem len n success kind a (vnew : bv n) tag ann es:
@@ -1211,7 +1212,7 @@ Section instances.
         (spec_trace Pκs' -∗ WPasm es)
       end
     )) -∗
-    WPasm (WriteMem (RVal_Bool success) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :: es).
+    WPasm (WriteMem (RVal_Bool success) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :t: es).
   Proof.
     iDestruct 1 as (?? mk) "[HP Hcont]" => /=. case_match.
     - iDestruct "Hcont" as (->) "Hcont". iApply (wp_write_mem with "HP Hcont"); [done | lia].
@@ -1249,7 +1250,7 @@ Section instances.
         ∃ Pκs Pκs', spec_trace Pκs ∗ ⌜scons (SReadMem a vread) Pκs' ⊆ Pκs⌝ ∗
         (spec_trace Pκs' -∗ WPasm es)
       end)) -∗
-    WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :: es).
+    WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :t: es).
   Proof.
     iDestruct 1 as (?? mk) "[Hmem Hcont]" => /=. case_match.
     - iDestruct "Hcont" as (?) "Hcont". subst => /=. iApply (wp_read_mem with "Hmem Hcont"); [done|lia].
@@ -1451,17 +1452,17 @@ Ltac liAIntroduceLetInGoal :=
       let H := fresh "GOAL" in
       pose H := (LET_ID Φ);
       change_no_check (envs_entails Δ (wp_a_exp e H))
-    | WPasm (?e::?es) =>
+    | WPasm (?e:t:?es) =>
       let H := fresh "TRACE" in
       assert_fails (is_var es);
       pose H := (TRACE_LET es);
-      change_no_check (envs_entails Δ (WPasm (e::H)))
-    | WPasm (TRACE_LET (?e::?es)) =>
+      change_no_check (envs_entails Δ (WPasm (e:t:H)))
+    | WPasm (TRACE_LET (?e:t:?es)) =>
       let H := fresh "TRACE" in
       pose H := (TRACE_LET es);
-      change_no_check (envs_entails Δ (WPasm (e::H)))
-    | WPasm (TRACE_LET []) =>
-      change_no_check (envs_entails Δ (WPasm []))
+      change_no_check (envs_entails Δ (WPasm (e:t:H)))
+    | WPasm (TRACE_LET tnil) =>
+      change_no_check (envs_entails Δ (WPasm tnil))
     | (?r ↦ᵣ: ?P)%I =>
       let H := fresh "GOAL" in
       pose H := (LET_ID P);
@@ -1478,8 +1479,9 @@ Ltac liAAsm :=
   lazymatch goal with
   | |- envs_entails ?Δ (WPasm ?es) =>
     lazymatch es with
-    | [] => notypeclasses refine (tac_fast_apply (li_wp_next_instr) _)
-    | ?e :: _ =>
+    | tnil => notypeclasses refine (tac_fast_apply (li_wp_next_instr) _)
+    | tfork _ => notypeclasses refine (tac_fast_apply (li_wp_fork _) _)
+    | ?e :t: _ =>
       lazymatch e with
       | ReadReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg _ _ _ _) _)
       | ReadReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg_struct _ _ _ _ _) _)

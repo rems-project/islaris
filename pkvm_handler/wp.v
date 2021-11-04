@@ -158,9 +158,9 @@ Proof.
   unfold spec.
   iStartProof.
   repeat liAStep; liShow.
-  + iDestruct select (_ ∧ _)%I as "[_ ?]".
-    repeat liAStep; liShow.
   + iDestruct select (_ ∧ _)%I as "[? _]".
+    repeat liAStep; liShow.
+  + iDestruct select (_ ∧ _)%I as "[_ ?]".
     repeat liAStep; liShow.
   Unshelve.
   all: prepare_sidecond.
@@ -168,11 +168,11 @@ Proof.
   * rewrite <- H4.
     assert(G: bv_unsigned (bv_concat 64 [BV{32} 0] esr) = bv_unsigned esr); [bv_solve|].
     by rewrite G in H3.
-  * rewrite <- H4.
-    assert(G: bv_unsigned (bv_concat 64 [BV{32} 0] esr) = bv_unsigned esr); [bv_solve|].
-    by rewrite G in H3.
   * contradict H4.
     rewrite H3.
     rewrite <- H4.
     by bits_simplify.
+  * rewrite <- H4.
+    assert(G: bv_unsigned (bv_concat 64 [BV{32} 0] esr) = bv_unsigned esr); [bv_solve|].
+    by rewrite G in H3.
 Qed.

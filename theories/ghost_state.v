@@ -11,7 +11,7 @@ Set Default Proof Using "Type".
 Import uPred.
 
 Definition instrtblUR : cmra :=
-  agreeR (gmapO addr (leibnizO (list trc))).
+  agreeR (gmapO addr (leibnizO isla_trace)).
 
 Definition backed_memUR : cmra :=
   agreeR (leibnizO (gset addr)).
@@ -37,7 +37,7 @@ Class threadG := ThreadG {
   thread_struct_regs_name : gname;
 }.
 
-Definition to_instrtbl : gmap addr (list trc) → instrtblUR :=
+Definition to_instrtbl : gmap addr isla_trace → instrtblUR :=
   to_agree.
 
 Definition to_backed_mem : gset addr → backed_memUR :=
@@ -46,21 +46,21 @@ Definition to_backed_mem : gset addr → backed_memUR :=
 Section definitions.
   Context `{!heapG Σ}.
 
-  Definition instr_table_def (i : gmap addr (list trc)) : iProp Σ :=
+  Definition instr_table_def (i : gmap addr isla_trace) : iProp Σ :=
     own heap_instrs_name (to_instrtbl i).
   Definition instr_table_aux : seal (@instr_table_def). by eexists. Qed.
   Definition instr_table := unseal instr_table_aux.
   Definition instr_table_eq : @instr_table = @instr_table_def :=
     seal_eq instr_table_aux.
 
-  Definition instr_def (a : Z) (i: option (list trc)) : iProp Σ :=
+  Definition instr_def (a : Z) (i: option isla_trace) : iProp Σ :=
     ∃ instrs b, ⌜Z_to_bv_checked 64 a = Some b⌝ ∗ ⌜instrs !! b = i⌝ ∗ instr_table instrs.
   Definition instr_aux : seal (@instr_def). by eexists. Qed.
   Definition instr := unseal instr_aux.
   Definition instr_eq : @instr = @instr_def :=
     seal_eq instr_aux.
 
-  Definition instr_ctx (intrs : gmap addr (list trc)) : iProp Σ :=
+  Definition instr_ctx (intrs : gmap addr isla_trace) : iProp Σ :=
     instr_table intrs.
 
   Definition reg_mapsto_def (γ : gname) (r : string) (q : frac) (v: valu) : iProp Σ :=
