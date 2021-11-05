@@ -11,8 +11,8 @@ Require Import isla.examples.riscv64_test.
 Lemma sim_instr_a0:
   sim_instr (Uncompressed [BV{32} 0x00000513]) a0.
 Proof.
-  move => regs. eexists _. split; [by left|].
-  unfold step_cpu. red_sim. unfold execute. red_sim.
+  move => regs. unfold step_cpu, a0.
+  red_sim. unfold execute. red_sim.
   unfold execute_ITYPE. red_sim.
   Unshelve. all: sim_simpl_goal.
   - rewrite mword_to_bv_add_vec //.
@@ -21,8 +21,7 @@ Qed.
 Lemma sim_instr_a4:
   sim_instr (Uncompressed [BV{32} 0x00150513]) a4.
 Proof.
-  move => regs. eexists _. split; [by left|].
-  unfold step_cpu. red_sim. unfold execute. red_sim.
+  move => regs. unfold step_cpu, a4. red_sim. unfold execute. red_sim.
   unfold execute_ITYPE. red_sim.
   Unshelve. all: sim_simpl_goal.
   all: rewrite mword_to_bv_add_vec //.
@@ -31,8 +30,7 @@ Qed.
 Lemma sim_instr_a8:
   sim_instr (Uncompressed [BV{32} 0x00b13423]) a8.
 Proof.
-  move => regs. eexists _. split; [by left|].
-  unfold step_cpu. red_sim. unfold execute. red_sim.
+  move => regs. unfold step_cpu, a8. red_sim. unfold execute. red_sim.
   unfold execute_STORE. red_sim. rewrite x2_nextPC.
   unfold check_misaligned. rewrite Hassume0.
   repeat (rewrite (access_vec_dec_concrete B0); [|shelve]).
@@ -83,8 +81,7 @@ Admitted.
 Lemma sim_instr_ac:
   sim_instr (Uncompressed [BV{32} 0x00813583]) ac.
 Proof.
-  move => regs. eexists _. split; [by left|].
-  unfold step_cpu. red_sim. unfold execute. red_sim.
+  move => regs. unfold step_cpu, ac. red_sim. unfold execute. red_sim.
   unfold execute_LOAD. red_sim.
   unfold check_misaligned. rewrite Hassume0.
   repeat (rewrite (access_vec_dec_concrete B0); [|shelve]).
@@ -114,17 +111,17 @@ Admitted.
 Lemma sim_instr_a10:
   sim_instr (Uncompressed [BV{32} 0x00b50463]) a10.
 Proof.
-  move => regs.
+  move => regs. unfold step_cpu, a10. red_sim. unfold execute; red_sim.
+  unfold execute_BTYPE; red_sim.
+  apply: sim_read_reg_l; [done|]; red_sim.
+  rewrite x10_nextPC x11_nextPC.
   destruct (eq_vec (x10 regs) (x11 regs)) eqn: Hb1; sim_simpl_hyp Hb1.
-  all: eexists _; split. 1: by left. 2: by right; left.
-  all: unfold step_cpu; red_sim; unfold execute; red_sim.
-  all: unfold execute_BTYPE; red_sim.
-  all: apply: sim_read_reg_l; [done|]; red_sim.
-  all: rewrite x10_nextPC x11_nextPC Hb1; red_sim.
-  rewrite bit_to_bool_false; [|shelve]. red_sim.
+  - apply: (sim_tfork 0); [done|]. red_sim.
+    rewrite bit_to_bool_false; [|shelve]. red_sim.
+  - apply: (sim_tfork 1); [done|]. red_sim.
   Unshelve. all: sim_simpl_goal.
-  - rewrite (eq_vec_to_bv 64) // bool_decide_eq_true in Hb1. by rewrite Hb1.
-  - move: Hassume. normalize_and_simpl_goal => //= Hb.
+  + rewrite (eq_vec_to_bv 64) // bool_decide_eq_true in Hb1. by rewrite Hb1.
+  + move: Hassume. normalize_and_simpl_goal => //= Hb.
     have Hbit : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. {
       rename select (bv_extract 1 1 _ = _) into He.
       bitify_hyp He. move: (He 0 ltac:(done)) => {}He.
@@ -133,7 +130,7 @@ Proof.
     bitify_hyp Hb. move: (Hb 0 ltac:(done)) => {}Hb.
     bits_simplify_hyp Hb.
     rewrite Z.add_bit1 Hbit andb_false_r in Hb. done.
-  - move: Hassume. normalize_and_simpl_goal => //=.
+  + move: Hassume. normalize_and_simpl_goal => //=.
     have Hbit : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. {
       rename select (bv_extract 1 1 _ = _) into He.
       bitify_hyp He. move: (He 0 ltac:(done)) => {}He.
@@ -141,9 +138,7 @@ Proof.
     }
     bits_simplify. have ? : n = 0 by lia. subst.
     by rewrite Z.add_bit1 Hbit andb_false_r.
-  - rewrite (eq_vec_to_bv 64) // bool_decide_eq_false in Hb1. done.
-  - rewrite mword_to_bv_add_vec //.
-  - move: Hassume. normalize_and_simpl_goal => //=.
+  + move: Hassume. normalize_and_simpl_goal => //=.
     apply bitU_of_bool_B0.
     rewrite (getBit_get_word_testbit 64) // mword_to_bv_add_vec //=.
     match goal with
@@ -156,7 +151,9 @@ Proof.
       by bits_simplify_hyp He.
     }
     by rewrite andb_false_r.
-  - rewrite mword_to_bv_add_vec //.
+  + rewrite mword_to_bv_add_vec //.
+  + rewrite (eq_vec_to_bv 64) // bool_decide_eq_false in Hb1. done.
+  + rewrite mword_to_bv_add_vec //.
 Qed.
 
 Definition riscv_test_sail_instrs : gmap addr encoded_instruction :=

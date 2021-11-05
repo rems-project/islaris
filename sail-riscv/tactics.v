@@ -67,7 +67,7 @@ Ltac cbn_sim :=
        negb sumbool_of_bool set
        projT1 build_ex __id andb orb
        _rec_execute compressed_measure Zwf_guarded
-       subst_val_event subst_val_valu subst_val_smt subst_val_exp subst_val_base_val fmap list_fmap eq_var_name Z.eqb Pos.eqb map
+       subst_trace subst_val_event subst_val_valu subst_val_smt subst_val_exp subst_val_base_val fmap list_fmap eq_var_name Z.eqb Pos.eqb map
     ].
 
 Create HintDb simpl_regs_rewrite.
@@ -132,31 +132,31 @@ Ltac red_monad_sim :=
          | |- sim _ (Done _) (TryMCtx _ _) _  => apply sim_pop_try_Done
          | |- sim _ (assert_exp' _ _) _ _  => apply sim_assert_exp';
               [try done; shelve| let H := fresh in move => H; try clear H]
-         | |- sim _ _ _ (Smt (DeclareConst _ Ty_Bool) _::_)  => apply: sim_DeclareConstBool
-         | |- sim _ _ _ (Smt (DeclareConst _ (Ty_BitVec _)) _::?e2) =>
+         | |- sim _ _ _ (Smt (DeclareConst _ Ty_Bool) _:t:_)  => apply: sim_DeclareConstBool
+         | |- sim _ _ _ (Smt (DeclareConst _ (Ty_BitVec _)) _:t:?e2) =>
              lazymatch e2 with
-             | ReadMem _ _ _ _ _ _ :: _ => fail
+             | ReadMem _ _ _ _ _ _ :t: _ => fail
              | _ => apply: sim_DeclareConstBitVec
              end
-         | |- sim _ _ _ (Smt (DeclareConst _ (Ty_Enum _)) _::_)  => apply: sim_DeclareConstEnum
-         | |- sim _ _ _ (Smt (DefineConst _ _) _::_)  => apply: sim_DefineConst; [simpl; done|]
-         | |- sim _ _ _ (Smt (Assert _) _::_)  => apply: sim_Assert; [simpl; shelve|]
-         | |- sim _ _ _ (Branch _ _ _::_)  => apply: sim_Branch
-         | |- sim _ _ _ (BranchAddress _ _::_)  => apply: sim_BranchAddress
-         | |- sim _ _ _ (Assume _ _::_)  =>
+         | |- sim _ _ _ (Smt (DeclareConst _ (Ty_Enum _)) _:t:_)  => apply: sim_DeclareConstEnum
+         | |- sim _ _ _ (Smt (DefineConst _ _) _:t:_)  => apply: sim_DefineConst; [simpl; done|]
+         | |- sim _ _ _ (Smt (Assert _) _:t:_)  => apply: sim_Assert; [simpl; shelve|]
+         | |- sim _ _ _ (Branch _ _ _:t:_)  => apply: sim_Branch
+         | |- sim _ _ _ (BranchAddress _ _:t:_)  => apply: sim_BranchAddress
+         | |- sim _ _ _ (Assume _ _:t:_)  =>
              let H := fresh "Hassume" in apply: sim_Assume => H; simpl in H; sim_simpl_hyp H
-         | |- sim _ _ _ (AssumeReg _ _ _ _::_)  =>
+         | |- sim _ _ _ (AssumeReg _ _ _ _:t:_)  =>
              let H := fresh "Hassume" in apply: sim_AssumeReg => H; simpl in H; sim_simpl_hyp H
-         | |- sim _ _ _ (ReadReg _ _ _ _::_)  => apply: sim_ReadReg_config; [reflexivity | try done; shelve|]
-         | |- sim _ (read_reg _) _ (ReadReg _ _ _ _::_)  => apply: sim_read_reg; [done | done | try done; shelve|]
+         | |- sim _ _ _ (ReadReg _ _ _ _:t:_)  => apply: sim_ReadReg_config; [reflexivity | try done; shelve|]
+         | |- sim _ (read_reg _) _ (ReadReg _ _ _ _:t:_)  => apply: sim_read_reg; [done | done | try done; shelve|]
          | |- sim _ (write_reg nextPC_ref _) _ _  => apply: sim_write_reg_private; [done..|]
          | |- sim _ (read_reg nextPC_ref) _ _  => apply: sim_read_reg_l; [done..|]
-         | |- sim _ (write_reg _ _) _ (WriteReg _ _ _ _::_)  => apply: sim_write_reg; [done | shelve |]
+         | |- sim _ (write_reg _ _) _ (WriteReg _ _ _ _:t:_)  => apply: sim_write_reg; [done | shelve |]
          | |- sim _ (Write_ea _ _ _ _) _ _  => apply: sim_Write_ea
-         | |- sim _ (Prompt_monad.write_mem _ _ _ _ _) _ (WriteMem _ _ _ _ _ _ _ ::_)  => apply sim_write_mem; [done|done|done|done|shelve|shelve|]
-         | |- sim _ (Prompt_monad.read_mem _ _ _ _) _ (Smt (DeclareConst _ (Ty_BitVec _)) _::ReadMem _ _ _ _ _ _ ::_) =>
+         | |- sim _ (Prompt_monad.write_mem _ _ _ _ _) _ (WriteMem _ _ _ _ _ _ _ :t:_)  => apply sim_write_mem; [done|done|done|done|shelve|shelve|]
+         | |- sim _ (Prompt_monad.read_mem _ _ _ _) _ (Smt (DeclareConst _ (Ty_BitVec _)) _:t:ReadMem _ _ _ _ _ _ :t:_) =>
              apply sim_read_mem; [done|done|done|shelve|] => ?? ->
-         | |- sim _ (Done _) NilMCtx []  => apply: sim_done
+         | |- sim _ (Done _) NilMCtx tnil  => apply: sim_done
          end.
 
 

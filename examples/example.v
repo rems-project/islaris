@@ -13,7 +13,7 @@ compiled via GCC:
 
 Definition start_address := [BV{64} (0x0000000010300000)].
 Definition test_state_local := {|
-  seq_trace  := [];
+  seq_trace  := tnil;
   seq_regs   :=
     <[ "_PC" := RVal_Bits start_address ]> $
     <[ "R30" := RegVal_Poison ]> $
@@ -61,7 +61,7 @@ Lemma test_state_iris `{!islaG Σ} `{!threadG} :
   "R28" ↦ᵣ RegVal_Poison -∗
   mmio_range 0x101f1000 8 -∗
   spec_trace test_state_spec -∗
-  WPasm [].
+  WPasm tnil.
 Proof.
   iStartProof.
   repeat liAStep; liShow.
@@ -180,7 +180,7 @@ Qed.
 *)
 
 Definition test_state2_local (n1 : Z) Hin := {|
-  seq_trace  := [];
+  seq_trace  := tnil;
   seq_regs   :=
     <[ "R1" := RVal_Bits (BV 64 n1 Hin) ]> $
     <[ "_PC" := RVal_Bits start_address ]> $
@@ -228,7 +228,7 @@ Lemma test_state2_iris `{!islaG Σ} `{!threadG} n1 Hin :
   "PSTATE" # "C" ↦ᵣ RVal_Bits [BV{1} 0] -∗
   "PSTATE" # "V" ↦ᵣ RVal_Bits [BV{1} 0] -∗
   spec_trace test_state2_spec -∗
-  WPasm [].
+  WPasm tnil.
 Proof.
   iStartProof.
   repeat liAStep; liShow.

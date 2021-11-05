@@ -10,10 +10,11 @@ let event_filter : Arch.t -> event -> bool = fun arch e ->
   match e with
   | AssumeReg(n,_,_,_)
   | ReadReg(n,_,_,_)
-  | WriteReg(n,_,_,_) -> not (List.mem n arch.arch_ignored_regs)
-  | Cycle(_)          -> false
-  | MarkReg(_, _, _)  -> false
-  | _                 -> true
+  | WriteReg(n,_,_,_)     -> not (List.mem n arch.arch_ignored_regs)
+  | Cycle(_)              -> false
+  | MarkReg(_, _, _)      -> false
+  | Smt(DefineEnum(_), _) -> false
+  | _                     -> true
 
 (** [gen_coq arch name isla_f coq_f] processes Isla file [isla_f] and produces
     a corresponding Coq file [coq_f] whose main definition is named [name]. In
@@ -29,7 +30,7 @@ let gen_coq : Arch.t -> string -> string -> string -> unit =
   (* Filtering the events to minimise the trace. *)
   let trs = filter_events (event_filter arch) trs in
   (* Generating the Coq file. *)
-  Coq_pp.write_traces name trs (Some(coq_f))
+  Coq_pp.write_trace name trs (Some(coq_f))
 
 (** Keys allowed in name templates. *)
 let template_keys : (string * string) list = [
@@ -77,7 +78,7 @@ let build_task : Arch.t -> Template.t -> string -> decomp_line -> task =
   in
   let task_command =
     Printf.sprintf "isla-footprint %s -f isla_footprint_no_init \
-      -C %s --simplify-registers -s -x -i %s %s > %s 2> /dev/null"
+      -C %s --simplify-registers --tree -s -x -i %s %s > %s 2> /dev/null"
       task_arch.arch_snapshot_file task_arch.arch_isla_config
       d.dl_revopcode constrs task_isla_file
   in

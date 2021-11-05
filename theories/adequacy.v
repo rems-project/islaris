@@ -27,17 +27,17 @@ Global Instance subG_islaPreG {Σ} : subG islaΣ Σ → islaPreG Σ.
 Proof. solve_inG. Qed.
 
 Definition initial_local_state `{!Arch} (regs : reg_map) : seq_local_state := {|
-  seq_trace := [];
+  seq_trace := tnil;
   seq_regs := regs;
   seq_pc_reg := arch_pc_reg;
   seq_nb_state := false;
 |}.
 
-Lemma isla_adequacy Σ `{!Arch} `{!islaPreG Σ} (instrs : gmap addr (list trc)) (mem : mem_map) (regs : list reg_map) (Pκs : spec) t2 σ2 κs n:
+Lemma isla_adequacy Σ `{!Arch} `{!islaPreG Σ} (instrs : gmap addr isla_trace) (mem : mem_map) (regs : list reg_map) (Pκs : spec) t2 σ2 κs n:
   Pκs [] →
   (∀ {HG : islaG Σ},
     ⊢ instr_table instrs -∗ backed_mem (dom _ mem) -∗ spec_trace Pκs -∗ ([∗ map] a↦b∈mem, bv_unsigned a ↦ₘ b)
-    ={⊤}=∗ [∗ list] rs ∈ regs, ∀ (_ : threadG), ([∗ map] r↦v∈rs, r ↦ᵣ v) -∗ WPasm []) →
+    ={⊤}=∗ [∗ list] rs ∈ regs, ∀ (_ : threadG), ([∗ map] r↦v∈rs, r ↦ᵣ v) -∗ WPasm tnil) →
   nsteps n (initial_local_state <$> regs, {| seq_instrs := instrs; seq_mem := mem |}) κs (t2, σ2) →
   (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧ Pκs κs.
 Proof.

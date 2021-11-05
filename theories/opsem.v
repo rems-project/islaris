@@ -4,6 +4,21 @@ Open Scope Z_scope.
 
 (* TODO: move to a separate file? *)
 (*** General facts and definitions about isla_lang. *)
+Inductive isla_trace : Set :=
+| tnil
+| tcons (e : event) (t : isla_trace)
+| tfork (ts : list isla_trace).
+Notation "e :t: t" := (tcons e t) (at level 60, right associativity,
+ format "'[v' e  :t: '/' t ']'" ) : stdpp_scope.
+Global Instance isla_trace_inhabited : Inhabited isla_trace := populate tnil.
+
+Fixpoint subst_trace (v : base_val) (x : var_name) (t : isla_trace) :=
+  match t with
+  | tnil => tnil
+  | tcons e t' => tcons (subst_val_event v x e) (subst_trace v x t')
+  | tfork ts => tfork (subst_trace v x <$> ts)
+  end.
+
 Global Instance valu_inhabited : Inhabited valu := populate (RVal_Bool true).
 Global Instance enum_id_eq_decision : EqDecision enum_id.
 Proof. solve_decision. Qed.
@@ -241,59 +256,62 @@ Inductive trace_label : Set :=
 | LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : N) (tag : valu_option)
 | LBranchAddress (v : valu)
 | LBranch (c : Z) (desc : string)
-| LDone (next : trc)
+| LDone (next : isla_trace)
 | LAssert (b : bool)
 | LAssume (b : bool)
 | LAssumeReg (r : register_name) (al : accessor_list) (v : valu)
 .
 
-Inductive trace_step : trc → reg_map → option trace_label → trc → Prop :=
+Inductive trace_step : isla_trace → reg_map → option trace_label → isla_trace → Prop :=
 | DeclareConstBitVecS x n ann es b Heq regs:
-    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :: es) regs None (subst_val_event (Val_Bits (BV b n Heq)) x <$> es)
+    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :t: es) regs None (subst_trace (Val_Bits (BV b n Heq)) x es)
 | DeclareConstBoolS x ann es b regs:
-    trace_step (Smt (DeclareConst x Ty_Bool) ann :: es) regs None (subst_val_event (Val_Bool b) x <$> es)
+    trace_step (Smt (DeclareConst x Ty_Bool) ann :t: es) regs None (subst_trace (Val_Bool b) x es)
 | DeclareConstEnumS x ann es regs i c:
-    trace_step (Smt (DeclareConst x (Ty_Enum i)) ann :: es) regs None (subst_val_event (Val_Enum (i, c)) x <$> es)
+    trace_step (Smt (DeclareConst x (Ty_Enum i)) ann :t: es) regs None (subst_trace (Val_Enum (i, c)) x es)
 | DefineConstS x e v ann es regs:
     eval_exp e = Some v ->
-    trace_step (Smt (DefineConst x e) ann :: es) regs None (subst_val_event v x <$> es)
+    trace_step (Smt (DefineConst x e) ann :t: es) regs None (subst_trace v x es)
 | AssertS e b ann es regs:
     eval_exp e = Some (Val_Bool b) ->
-    trace_step (Smt (Assert e) ann :: es) regs (Some (LAssert b)) es
+    trace_step (Smt (Assert e) ann :t: es) regs (Some (LAssert b)) es
 | AssumeS e b ann es regs:
     eval_a_exp regs e = Some (Val_Bool b) ->
-    trace_step (Assume e ann :: es) regs (Some (LAssume b)) es
+    trace_step (Assume e ann :t: es) regs (Some (LAssume b)) es
 | AssumeRegS r al v ann es regs:
-    trace_step (AssumeReg r al v ann :: es) regs (Some (LAssumeReg r al v)) es
+    trace_step (AssumeReg r al v ann :t: es) regs (Some (LAssumeReg r al v)) es
 | ReadRegS r al v ann es regs:
-    trace_step (ReadReg r al v ann :: es) regs (Some (LReadReg r al v)) es
+    trace_step (ReadReg r al v ann :t: es) regs (Some (LReadReg r al v)) es
 | WriteRegS r al v ann es regs:
-    trace_step (WriteReg r al v ann :: es) regs (Some (LWriteReg r al v)) es
+    trace_step (WriteReg r al v ann :t: es) regs (Some (LWriteReg r al v)) es
 | ReadMemS data kind addr len tag ann es regs:
-    trace_step (ReadMem data kind addr len tag ann :: es) regs (Some (LReadMem data kind addr len tag)) es
+    trace_step (ReadMem data kind addr len tag ann :t: es) regs (Some (LReadMem data kind addr len tag)) es
 | WriteMemS res kind addr data len tag ann es regs:
-    trace_step (WriteMem res kind addr data len tag ann :: es) regs (Some (LWriteMem res kind addr data len tag)) es
+    trace_step (WriteMem res kind addr data len tag ann :t: es) regs (Some (LWriteMem res kind addr data len tag)) es
 | BranchAddressS v ann es regs:
-    trace_step (BranchAddress v ann :: es) regs (Some (LBranchAddress v)) es
+    trace_step (BranchAddress v ann :t: es) regs (Some (LBranchAddress v)) es
 | BranchS c desc ann es regs:
-    trace_step (Branch c desc ann :: es) regs (Some (LBranch c desc)) es
-| DoneES es regs:
-    trace_step [] regs (Some (LDone es)) es
+    trace_step (Branch c desc ann :t: es) regs (Some (LBranch c desc)) es
 | BarrierS v ann es regs :
-    trace_step (Barrier v ann :: es) regs None es
+    trace_step (Barrier v ann :t: es) regs None es
+| ForkES es ts regs:
+    es ∈ ts →
+    trace_step (tfork ts) regs None es
+| DoneES es regs:
+    trace_step tnil regs (Some (LDone es)) es
 .
 
 Lemma DeclareConstBitVecS' {n} (b : bv n) x ann es regs:
-  trace_step (Smt (DeclareConst x (Ty_BitVec n)) ann :: es) regs None (subst_val_event (Val_Bits b) x <$> es).
+  trace_step (Smt (DeclareConst x (Ty_BitVec n)) ann :t: es) regs None (subst_trace (Val_Bits b) x es).
 Proof. destruct b. constructor. Qed.
 
 Record seq_global_state := {
-  seq_instrs : gmap addr (list trc);
+  seq_instrs : gmap addr isla_trace;
   seq_mem    : mem_map;
 }.
 Global Instance eta_seq_global_state : Settable _ := settable! Build_seq_global_state <seq_instrs; seq_mem>.
 Record seq_local_state := {
-  seq_trace    : trc;
+  seq_trace    : isla_trace;
   seq_regs     : reg_map;
   seq_pc_reg   : register_name;
   seq_nb_state : bool;
@@ -403,7 +421,7 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       σ' = σ ∧
       ∃ pc : bv 64, θ.(seq_regs) !! θ.(seq_pc_reg) = Some (RVal_Bits pc) ∧
       match σ.(seq_instrs) !! pc with
-      | Some trcs => θ' = θ <| seq_trace := t'|> ∧ es ∈ trcs ∧ κ' = None
+      | Some es' => θ' = θ <| seq_trace := t'|> ∧ es = es' ∧ κ' = None
       | None => κ' = Some (SInstrTrap pc) ∧ θ' = θ <| seq_nb_state := true|>
       end
     | Some (LAssert b) =>
@@ -420,7 +438,7 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
 .
 
 Record seq_val := {
-  seq_val_trace  : trc;
+  seq_val_trace  : isla_trace;
   seq_val_regs   : reg_map;
   seq_val_pc_reg : register_name;
 }.

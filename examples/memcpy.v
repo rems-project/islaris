@@ -71,15 +71,6 @@ Proof.
   all: try bv_solve.
   all: try bv_simplify_arith_hyp select (bv_extract _ _ _ ≠ _).
   all: try bv_simplify_arith_hyp select (bv_extract _ _ _ = _).
-  - bv_solve.
-  - rewrite -(take_drop (Z.to_nat (bv_unsigned i)) (<[_ := _]> dstdata)).
-    rewrite -(take_drop (Z.to_nat (bv_unsigned i)) srcdata).
-    f_equal.
-    + by rewrite take_insert.
-    + erewrite drop_S. 2: { apply: list_lookup_insert. bv_solve. }
-      erewrite (drop_S srcdata); [|done].
-      rewrite !drop_ge ?insert_length; [ |bv_solve..].
-      f_equal. bv_solve.
   - rewrite insert_length. bv_solve.
   - bv_solve.
   - bv_simplify.
@@ -90,6 +81,15 @@ Proof.
     erewrite take_S_r; [|done].
     rewrite take_insert; [|lia].
     f_equal; [done|]. f_equal. bv_solve.
+  - bv_solve.
+  - rewrite -(take_drop (Z.to_nat (bv_unsigned i)) (<[_ := _]> dstdata)).
+    rewrite -(take_drop (Z.to_nat (bv_unsigned i)) srcdata).
+    f_equal.
+    + by rewrite take_insert.
+    + erewrite drop_S. 2: { apply: list_lookup_insert. bv_solve. }
+      erewrite (drop_S srcdata); [|done].
+      rewrite !drop_ge ?insert_length; [ |bv_solve..].
+      f_equal. bv_solve.
 Qed.
 
 Lemma memcpy `{!islaG Σ} `{!threadG} :
@@ -122,6 +122,6 @@ Proof.
   iStartProof.
   Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
-  - bv_simplify_hyp select (n ≠ _). bv_solve.
   - by destruct dstdata, srcdata.
+  - bv_simplify_hyp select (n ≠ _). bv_solve.
 Time Qed.
