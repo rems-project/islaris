@@ -199,6 +199,28 @@ Lemma normalize_instr_addr_add_tac a n r:
   bv_wrap 64 (bv_unsigned (bv_add (Z_to_bv 64 a) n)) = r.
 Proof. move => <-. by rewrite bv_add_unsigned Z_to_bv_unsigned bv_wrap_bv_wrap // bv_wrap_add_idemp_l. Qed.
 
+(* This kind of addresses appear for ret on riscv64 *)
+Lemma normalize_instr_addr_riscv64_ret_tac a r:
+  bv_extract 0 1 a = [BV{1} 0] →
+  bv_wrap 64 (bv_unsigned a) = r →
+  bv_wrap 64 (bv_unsigned (bv_or (bv_and (bv_add a [BV{64} 0]) [BV{64} 0xfffffffffffffffe])  [BV{64} 0])) = r.
+Proof.
+  move => Ha <-. have -> : (bv_add a [BV{64} 0]) = a by bv_solve.
+  f_equal. apply/bv_eq.
+  bits_simplify.
+  have -> : 18446744073709551614 = Z.ones 63 ≪ 1 by done.
+  rewrite Z.shiftl_spec //.
+  destruct (decide (n = 0)).
+  - rewrite (Z.testbit_neg_r _ (n - 1)); [|lia].
+    rewrite andb_false_r.
+    bitify_hyp Ha.
+    have {}Ha := (Ha n ltac:(done)).
+    bits_simplify_hyp Ha. rewrite -Ha.
+    f_equal. lia.
+  - rewrite Z.ones_spec_low; [|lia].
+    by rewrite andb_true_r.
+Qed.
+
 Ltac solve_normalize_instr_addr :=
   unfold normalize_instr_addr; unLET;
   try lazymatch goal with
@@ -206,6 +228,9 @@ Ltac solve_normalize_instr_addr :=
   end;
   try lazymatch goal with
   | |- bv_wrap _ (bv_unsigned (bv_add (Z_to_bv 64 _) _)) = _ => apply normalize_instr_addr_add_tac
+  end;
+  try lazymatch goal with
+  | |- bv_wrap _ (bv_unsigned (bv_or (bv_and (bv_add _ _) _) _)) = _ => apply normalize_instr_addr_riscv64_ret_tac;[done|]
   end;
   try lazymatch goal with
   | |- bv_wrap _ (_ + ?a) = _ => reduce_closed a

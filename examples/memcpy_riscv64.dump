@@ -1,0 +1,21 @@
+//@constraint: = ((_ extract 1 1) PC) 0b0
+   0:	00060e63          	beqz	a2,1c <.LBB0_2>
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: bvuge x11 rv_ram_base
+//@constraint: bvult x11 (bvadd rv_ram_base rv_ram_size)
+   4:	00058683          	lb	a3,0(a1)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: bvuge x10 rv_ram_base
+//@constraint: bvult x10 (bvadd rv_ram_base rv_ram_size)
+   8:	00d50023          	sb	a3,0(a0)
+   c:	fff60613          	addi	a2,a2,-1
+  10:	00150513          	addi	a0,a0,1
+  14:	00158593          	addi	a1,a1,1
+//@constraint: = ((_ extract 1 1) PC) 0b0
+  18:	fe0616e3          	bnez	a2,4 <.LBB0_1>
+//@constraint: = ((_ extract 1 1) x1) 0b0
+  1c:	00008067          	ret
