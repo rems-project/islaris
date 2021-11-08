@@ -1025,7 +1025,7 @@ Section instances.
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)
       | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
-           (reg_col regs -∗ WPasm es))
+           (reg_col regs -∗ ⌜valu_has_shape v (regs !!! i).2⌝ -∗ WPasm es))
       end)) -∗
     WPasm (ReadReg r [] v ann :t: es).
   Proof.
@@ -1033,8 +1033,9 @@ Section instances.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg with "Hr").
     - iDestruct "Hwp" as (? [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+      erewrite list_lookup_total_correct; [|done].
       iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|] => /=.
-      iApply (wp_read_reg with "Hr"). iIntros "% Hr". iApply "Hwp". iApply "Hregs".
+      iApply (wp_read_reg with "Hr"). iIntros "% Hr". subst. iApply ("Hwp" with "[-] [//]"). iApply "Hregs".
       iExists _. by iFrame.
   Qed.
 
@@ -1049,6 +1050,7 @@ Section instances.
               | StructShape ss => list_find_idx (λ y, y.1 = f) ss
               | _ => None
               end)))%type) regs) (λ i,
+               (* TODO: Add somehing like ⌜valu_has_shape v (regs !!! i).2⌝ -∗ here?  *)
                (reg_col regs -∗ WPasm es))
       end))) -∗
     WPasm (ReadReg r [Field f] v ann :t: es).
