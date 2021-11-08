@@ -6,14 +6,14 @@ type maybe_fork = Ast.lrng Ast.maybe_fork
 
 (** [filter_events pred trs] returns a copy of [trs] in which only events that
     satisfy the predicate [pred] have been kept. *)
-let rec filter_events : (event -> bool) -> trace -> trace = fun pred tr ->
+let rec filter_events : (int -> event -> bool) -> trace -> trace = fun pred tr ->
   let Ast.ForkingTrace(es, mf) = tr in
   let mf =
     match mf with
     | Ast.Fork(n, trs) -> Ast.Fork(n, List.map (filter_events pred) trs)
     | Ast.NoFork       -> Ast.NoFork
   in
-  Ast.ForkingTrace(List.filter pred es, mf)
+  Ast.ForkingTrace(List.filteri pred es, mf)
 
 module Parser = struct
   exception Parse_error of string
