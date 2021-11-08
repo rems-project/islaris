@@ -3,14 +3,32 @@ open Parse_dump
 open Extra
 open Arch
 
+let is_concrete_base_val : Ast.base_val -> bool = fun v ->
+  let open Ast in
+  match v with
+  | Val_Symbolic _ -> false
+  | _              -> true
+
+let rec is_concrete_valu : Ast.valu -> bool = fun v ->
+  let open Ast in
+  match v with
+  | RegVal_Base(v)   -> is_concrete_base_val v
+  | RegVal_Struct(s) -> List.for_all (fun v -> is_concrete_valu (snd v)) s
+  | _                -> false
+
 (** [event_filter arch e] returns true for all events that are not "Cycle" and
     that are not operations on ingnored registers for architecture [arch]. *)
-let event_filter : Arch.t -> event -> bool = fun arch e ->
+let event_filter : Arch.t -> int -> event -> bool = fun arch i e ->
   let open Ast in
   match e with
   | AssumeReg(n,_,_,_)
   | ReadReg(n,_,_,_)
-  | WriteReg(n,_,_,_)     -> not (List.mem n arch.arch_ignored_regs)
+  | WriteReg(n,_,_,_) when (List.mem n arch.arch_ignored_regs)
+                          -> false
+  | ReadReg(_,_,v,_) when (is_concrete_valu v)
+                          -> false
+  | Smt(Assert(_), _) when i <> 0
+                          -> false
   | Cycle(_)              -> false
   | MarkReg(_, _, _)      -> false
   | Smt(DefineEnum(_), _) -> false

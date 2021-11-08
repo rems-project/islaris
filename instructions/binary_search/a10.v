@@ -3,8 +3,6 @@ From isla Require Import opsem.
 Definition a10 : isla_trace :=
   AssumeReg "PSTATE" [Field "EL"] (RegVal_Base (Val_Bits [BV{2%N} 0x2%Z])) Mk_annot :t:
   AssumeReg "PSTATE" [Field "SP"] (RegVal_Base (Val_Bits [BV{1%N} 0x1%Z])) Mk_annot :t:
-  ReadReg "PSTATE" [Field "SP"] (RegVal_Struct [("SP", RegVal_Base (Val_Bits [BV{1%N} 0x1%Z]))]) Mk_annot :t:
-  ReadReg "PSTATE" [Field "EL"] (RegVal_Struct [("EL", RegVal_Base (Val_Bits [BV{2%N} 0x2%Z]))]) Mk_annot :t:
   Smt (DeclareConst 38%Z (Ty_BitVec 64%N)) Mk_annot :t:
   ReadReg "SP_EL2" [] (RegVal_Base (Val_Symbolic 38%Z)) Mk_annot :t:
   Smt (DefineConst 59%Z (Unop (Extract 63%N 0%N) (Unop (ZeroExtend 64%N) (Val (Val_Symbolic 38%Z) Mk_annot) Mk_annot) Mk_annot)) Mk_annot :t:
