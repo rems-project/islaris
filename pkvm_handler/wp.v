@@ -38,7 +38,7 @@ Proof.
 Qed.
 
 Definition mrs_regs_32 :=
-  (λ r, (KindReg r, BitsShape 64)) <$>
+  (λ r, (KindReg r, BitsShape 32)) <$>
   ["CPTR_EL2"; "CPTR_EL3"; "CPACR_EL1";
   "CNTHCTL_EL2"; "MDCR_EL2"; "ICC_SRE_EL2";
   "CNTKCTL_EL1"; "MDCR_EL3";
