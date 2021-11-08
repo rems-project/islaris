@@ -19,6 +19,9 @@ Arguments N.mul : simpl never.
 Arguments bool_decide : simpl never.
 Typeclasses Opaque prefix.
 
+(* TODO: upstream? *)
+Typeclasses Opaque Z.ge Z.le.
+
 Ltac unLET :=
   repeat match goal with
          | H := _ |- _ => unfold H in *; clear H
@@ -212,6 +215,14 @@ Proof.
   have ?: j = j' by nia. subst. have : i = i' by lia. naive_solver.
 Qed.
 
+
+Lemma Zleb_bool_decide z1 z2:
+  z1 <=? z2 = bool_decide (z1 ≤ z2).
+Proof.
+  case_bool_decide => //; try apply Zle_is_le_bool => //.
+  destruct (z1 <=? z2) eqn: Hle => //. move: Hle => /Zle_is_le_bool.
+  done.
+Qed.
 
 (* This has as better performance characteristic wrt. simpl compared
 to list_find since list_find_idx does not contain prod_map. *)

@@ -61,21 +61,10 @@ Proof.
   - admit.
   - admit.
   - admit.
-  - rewrite Hassume9. by apply bv_neq.
   - admit.
   - admit.
-  - rewrite Hassume9. by apply bv_neq.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
+  - by rewrite mword_to_bv_add_vec.
+  - by rewrite mword_to_bv_add_vec.
 Admitted.
 
 Lemma sim_instr_ac:
@@ -121,23 +110,6 @@ Proof.
   - apply: (sim_tfork 1); [done|]. red_sim.
   Unshelve. all: sim_simpl_goal.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_true in Hb1. by rewrite Hb1.
-  + move: Hassume. normalize_and_simpl_goal => //= Hb.
-    have Hbit : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. {
-      rename select (bv_extract 1 1 _ = _) into He.
-      bitify_hyp He. move: (He 0 ltac:(done)) => {}He.
-      by bits_simplify_hyp He.
-    }
-    bitify_hyp Hb. move: (Hb 0 ltac:(done)) => {}Hb.
-    bits_simplify_hyp Hb.
-    rewrite Z.add_bit1 Hbit andb_false_r in Hb. done.
-  + move: Hassume. normalize_and_simpl_goal => //=.
-    have Hbit : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. {
-      rename select (bv_extract 1 1 _ = _) into He.
-      bitify_hyp He. move: (He 0 ltac:(done)) => {}He.
-      by bits_simplify_hyp He.
-    }
-    bits_simplify. have ? : n = 0 by lia. subst.
-    by rewrite Z.add_bit1 Hbit andb_false_r.
   + move: Hassume. normalize_and_simpl_goal => //=.
     apply bitU_of_bool_B0.
     rewrite (getBit_get_word_testbit 64) // mword_to_bv_add_vec //=.

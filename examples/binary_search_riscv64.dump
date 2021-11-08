@@ -1,0 +1,181 @@
+0000000000000000 <binary_search>:
+   0:	fc010113          	addi	sp,sp,-64
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000038) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000038) (bvadd rv_ram_base rv_ram_size)
+//@spec: sd_spec pc "x1" "x2" (56)
+//@spec_tactic: all: bv_solve.
+   4:	02113c23          	sd	ra,56(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000030) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000030) (bvadd rv_ram_base rv_ram_size)
+//@spec: sd_spec pc "x8" "x2" (48)
+//@spec_tactic: all: bv_solve.
+   8:	02813823          	sd	s0,48(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000028) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000028) (bvadd rv_ram_base rv_ram_size)
+//@spec: sd_spec pc "x9" "x2" (40)
+//@spec_tactic: all: bv_solve.
+   c:	02913423          	sd	s1,40(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000020) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000020) (bvadd rv_ram_base rv_ram_size)
+//@spec: sd_spec pc "x18" "x2" (32)
+//@spec_tactic: all: bv_solve.
+  10:	03213023          	sd	s2,32(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000018) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000018) (bvadd rv_ram_base rv_ram_size)
+//@spec: sd_spec pc "x19" "x2" (24)
+//@spec_tactic: all: bv_solve.
+  14:	01313c23          	sd	s3,24(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000010) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000010) (bvadd rv_ram_base rv_ram_size)
+//@spec: sd_spec pc "x20" "x2" (16)
+//@spec_tactic: all: bv_solve.
+  18:	01413823          	sd	s4,16(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000008) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000008) (bvadd rv_ram_base rv_ram_size)
+//@spec: sd_spec pc "x21" "x2" (8)
+//@spec_tactic: all: bv_solve.
+  1c:	01513423          	sd	s5,8(sp)
+//@constraint: = ((_ extract 1 1) PC) 0b0
+  20:	04060a63          	beqz	a2,74 <.LBB0_5>
+  24:	00068913          	mv	s2,a3
+  28:	00060a93          	mv	s5,a2
+  2c:	00058993          	mv	s3,a1
+  30:	00050a13          	mv	s4,a0
+  34:	00000493          	li	s1,0
+//@constraint: = ((_ extract 1 1) PC) 0b0
+  38:	00c0006f          	j	44 <.LBB0_3>
+
+000000000000003c <.LBB0_2>:
+  3c:	00040a93          	mv	s5,s0
+//@constraint: = ((_ extract 1 1) PC) 0b0
+  40:	0354fc63          	bleu	s5,s1,78 <.LBB0_6>
+
+0000000000000044 <.LBB0_3>:
+  44:	409a8533          	sub	a0,s5,s1
+  48:	00155513          	srli	a0,a0,0x1
+  4c:	00950433          	add	s0,a0,s1
+  50:	00341513          	slli	a0,s0,0x3
+  54:	01350533          	add	a0,a0,s3
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x10) 0b000
+//@constraint: bvuge x10 rv_ram_base
+//@constraint: bvult x10 (bvadd rv_ram_base rv_ram_size)
+  58:	00053503          	ld	a0,0(a0)
+  5c:	00090593          	mv	a1,s2
+//@constraint: = ((_ extract 1 1) x20) 0b0
+  60:	000a00e7          	jalr	s4
+//@constraint: = ((_ extract 1 1) PC) 0b0
+  64:	fc050ce3          	beqz	a0,3c <.LBB0_2>
+  68:	00140493          	addi	s1,s0,1
+//@constraint: = ((_ extract 1 1) PC) 0b0
+  6c:	fd54ece3          	bltu	s1,s5,44 <.LBB0_3>
+//@constraint: = ((_ extract 1 1) PC) 0b0
+  70:	0080006f          	j	78 <.LBB0_6>
+
+0000000000000074 <.LBB0_5>:
+  74:	00000493          	li	s1,0
+
+0000000000000078 <.LBB0_6>:
+  78:	00048513          	mv	a0,s1
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000008) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000008) (bvadd rv_ram_base rv_ram_size)
+//@spec: ld_spec pc "x21" "x2" (8)
+//@spec_tactic: all: bv_solve.
+  7c:	00813a83          	ld	s5,8(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000010) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000010) (bvadd rv_ram_base rv_ram_size)
+//@spec: ld_spec pc "x20" "x2" (16)
+//@spec_tactic: all: bv_solve.
+  80:	01013a03          	ld	s4,16(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000018) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000018) (bvadd rv_ram_base rv_ram_size)
+//@spec: ld_spec pc "x19" "x2" (24)
+//@spec_tactic: all: bv_solve.
+  84:	01813983          	ld	s3,24(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000020) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000020) (bvadd rv_ram_base rv_ram_size)
+//@spec: ld_spec pc "x18" "x2" (32)
+//@spec_tactic: all: bv_solve.
+  88:	02013903          	ld	s2,32(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000028) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000028) (bvadd rv_ram_base rv_ram_size)
+//@spec: ld_spec pc "x9" "x2" (40)
+//@spec_tactic: all: bv_solve.
+  8c:	02813483          	ld	s1,40(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000030) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000030) (bvadd rv_ram_base rv_ram_size)
+//@spec: ld_spec pc "x8" "x2" (48)
+//@spec_tactic: all: bv_solve.
+  90:	03013403          	ld	s0,48(sp)
+//@constraint: = ((_ extract 2 2) misa.bits) 0b1
+//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = cur_privilege Machine
+//@constraint: = ((_ extract 2 0) x2) 0b000
+//@constraint: bvuge (bvadd x2 0x0000000000000038) rv_ram_base
+//@constraint: bvult (bvadd x2 0x0000000000000038) (bvadd rv_ram_base rv_ram_size)
+//@spec: ld_spec pc "x1" "x2" (56)
+//@spec_tactic: all: bv_solve.
+  94:	03813083          	ld	ra,56(sp)
+  98:	04010113          	addi	sp,sp,64
+//@constraint: = ((_ extract 1 1) x1) 0b0
+  9c:	00008067          	ret
+
+00000000000000a0 <compare_int>:
+  a0:	00a5b533          	sltu	a0,a1,a0
+  a4:	00154513          	xori	a0,a0,1
+//@constraint: = ((_ extract 1 1) x1) 0b0
+  a8:	00008067          	ret

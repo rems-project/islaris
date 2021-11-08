@@ -1053,6 +1053,13 @@ Section properties.
     intros Hb1. apply bv_eq.
     by rewrite bv_zero_extend_unsigned', bv_concat_unsigned', Hb1, Z.shiftl_0_l, Z.lor_0_l.
   Qed.
+
+  Lemma bv_zero_extend_idemp b:
+    bv_zero_extend n b = b.
+  Proof. apply bv_eq. by rewrite bv_zero_extend_unsigned. Qed.
+  Lemma bv_sign_extend_idemp b:
+    bv_sign_extend n b = b.
+  Proof. apply bv_eq_signed. by rewrite bv_sign_extend_signed. Qed.
 End properties.
 
 (** ** Lemmas about [bv_to_little] and [bv_of_little] *)
