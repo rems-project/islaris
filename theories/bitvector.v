@@ -975,6 +975,22 @@ Section properties.
     bv_wrap_simplify_solve.
   Qed.
 
+  Lemma bv_add_0_l b1 b2 :
+    bv_unsigned b1 = 0 →
+    bv_add b1 b2 = b2.
+  Proof.
+    intros Hb. apply bv_eq.
+    rewrite bv_add_unsigned, Hb, Z.add_0_l, bv_wrap_small; [done|apply bv_unsigned_in_range].
+  Qed.
+
+  Lemma bv_add_0_r b1 b2 :
+    bv_unsigned b2 = 0 →
+    bv_add b1 b2 = b1.
+  Proof.
+    intros Hb. apply bv_eq.
+    rewrite bv_add_unsigned, Hb, Z.add_0_r, bv_wrap_small; [done|apply bv_unsigned_in_range].
+  Qed.
+
   Lemma bv_add_Z_0 b : bv_add_Z b 0 = b.
   Proof.
     unfold bv_add_Z. rewrite Z.add_0_r.

@@ -242,7 +242,6 @@ Global Hint Extern 10 (TacticHint (normalize_instr_addr _)) =>
 
 
 (** * [normalize_bv_wrap] *)
-
 Definition normalize_bv_wrap {Σ} (a1 : Z) (T : Z → iProp Σ) : iProp Σ :=
   ∃ a2, ⌜bv_wrap 64 a1 = bv_wrap 64 a2⌝ ∗ T a2.
 Arguments normalize_bv_wrap : simpl never.
@@ -254,6 +253,18 @@ Program Definition normalize_bv_wrap_hint {Σ} a1 a2 :
     tactic_hint_P T := T a2;
 |}.
 Next Obligation. unfold normalize_bv_wrap, block. move => ??? Heq ?. iIntros "?". iExists _. iFrame. iPureIntro. by apply: Heq. Qed.
+
+(* Transform constants bigger than bv_modulus 64 - 256 into negative numbers *)
+#[export] Hint Extern 10 (BvWrapSimplify 64 (Z.pos ?p) ?z) =>
+  assert_succeeds (
+    lazymatch isPcst p with | true => idtac end;
+    assert (bv_modulus 64 - 256 ≤ Z.pos p) by done
+    );
+  let x := eval vm_compute in (Z.pos p - bv_modulus 64) in
+  unify z x;
+  constructor;
+  done
+  : bv_wrap_simplify_db.
 
 Ltac solve_normalize_bv_wrap :=
   let H := fresh in move => ? H;

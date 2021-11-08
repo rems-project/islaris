@@ -34,6 +34,9 @@ Lemma ne_Some_eq_None {A} (o : option A):
   o = None.
 Proof. destruct o => //. naive_solver. Qed.
 
+Lemma Is_true_eq_false (b : bool) : ¬ b ↔ b = false.
+Proof. destruct b; naive_solver. Qed.
+
 Definition bv_to_bits {n} (b : bv n) : list bool :=
   (λ i, Z.testbit (bv_unsigned b) i) <$> seqZ 0 (Z.of_N n).
 
