@@ -3,36 +3,34 @@ open Parse_dump
 open Extra
 open Arch
 
-let is_concrete_base_val : Ast.base_val -> bool = fun v ->
-  let open Ast in
-  match v with
-  | Val_Symbolic _ -> false
-  | _              -> true
+let no_aggressive_simplification = ref false
 
-let rec is_concrete_valu : Ast.valu -> bool = fun v ->
+let rec is_symbolic : Ast.valu -> bool = fun v ->
   let open Ast in
   match v with
-  | RegVal_Base(v)   -> is_concrete_base_val v
-  | RegVal_Struct(s) -> List.for_all (fun v -> is_concrete_valu (snd v)) s
-  | _                -> false
+  | RegVal_Base(Val_Symbolic(_)) -> true
+  | RegVal_Base(_              ) -> false
+  | RegVal_Struct(s)             ->
+      List.exists (fun v -> is_symbolic (snd v)) s
+  | _                            -> true
 
 (** [event_filter arch e] returns true for all events that are not "Cycle" and
     that are not operations on ingnored registers for architecture [arch]. *)
 let event_filter : Arch.t -> int -> event -> bool = fun arch i e ->
+  let ignored n = List.mem n arch.arch_ignored_regs in
   let open Ast in
   match e with
   | AssumeReg(n,_,_,_)
   | ReadReg(n,_,_,_)
-  | WriteReg(n,_,_,_) when (List.mem n arch.arch_ignored_regs)
-                          -> false
-  | ReadReg(_,_,v,_) when (is_concrete_valu v)
-                          -> false
-  | Smt(Assert(_), _) when i <> 0
-                          -> false
-  | Cycle(_)              -> false
-  | MarkReg(_, _, _)      -> false
-  | Smt(DefineEnum(_), _) -> false
-  | _                     -> true
+  | WriteReg(n,_,_,_) when ignored n                     -> false
+  | ReadReg(_,_,_,_)
+  | Smt(Assert(_), _) when !no_aggressive_simplification -> true
+  | ReadReg(_,_,v,_)                                     -> is_symbolic v
+  | Smt(Assert(_), _)                                    -> i = 0
+  | Cycle(_)
+  | MarkReg(_, _, _)
+  | Smt(DefineEnum(_), _)                                -> false
+  | _                                                    -> true
 
 (** [gen_coq arch name isla_f coq_f] processes Isla file [isla_f] and produces
     a corresponding Coq file [coq_f] whose main definition is named [name]. In
@@ -201,7 +199,8 @@ let gen_dune : Arch.t -> string list -> Format.formatter -> unit =
   pp " (theories isla isla.%s))@." arch.arch_coq_name
 
 (* Entry point. *)
-let run arch name_template output_dir coq_prefix nb_jobs input_file =
+let run no_simp arch name_template output_dir coq_prefix nb_jobs input_file =
+  no_aggressive_simplification := no_simp;
   (* Process the decompilation file. *)
   let lines = Parse_dump.parse input_file in
   (* Run isla-footprint on the instructions. *)
