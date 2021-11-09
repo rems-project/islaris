@@ -18,6 +18,7 @@ type dump_config = {
   output_dir : string; (** Directory where to write the generated files. *)
   coq_prefix : string list; (** Coq module path prefix for generated files. *)
   nb_jobs : int; (** Max number of threads to run in parallel. *)
+  no_simp : bool; (** Avoids agressively simplifying traces. *)
 }
 
 (** Running mode. *)
@@ -43,8 +44,8 @@ let run_isla : isla_config -> string -> unit = fun cfg input_file ->
 (** [run_dump cfg input_file] runs the Dump mode on the file [input_file] with
     the configuration [cfg]. *)
 let run_dump : dump_config -> string -> unit = fun cfg ->
-  Decomp.run cfg.arch cfg.name_template cfg.output_dir cfg.coq_prefix
-    cfg.nb_jobs
+  Decomp.run cfg.no_simp cfg.arch cfg.name_template cfg.output_dir
+    cfg.coq_prefix cfg.nb_jobs
 
 (** [run cfg] runs the program in the mode specified by [cfg]. Any error leads
     to the program being terminated cleanly. *)
@@ -73,6 +74,13 @@ let is_valid_coq_ident : string -> bool = fun s ->
 
 let default_coq_dir : string -> string list = fun base ->
   ["isla"; "examples"; base]
+
+let no_simp =
+  let doc =
+    "Disable aggressive trace simplifications."
+  in
+  let i = Arg.(info ["s"; "no-simplifications"] ~doc) in
+  Arg.(value & flag & i)
 
 let arch =
   let doc =
@@ -223,7 +231,7 @@ let opts_config : config Term.t =
     in
     {def_name; output_file}
   in
-  let build_dump_config arch output def_name coq_prefix j input_file =
+  let build_dump_config no_simp arch output def_name coq_prefix j input_file =
     let arch =
       try Arch.find_arch arch with Not_found ->
         panic "Unknown architecture name \"%s\"." arch
@@ -282,9 +290,9 @@ let opts_config : config Term.t =
           input file, use the --coqdir option.";
       default_coq_dir base
     in
-    {arch; name_template; output_dir; coq_prefix; nb_jobs = j}
+    {arch; name_template; output_dir; coq_prefix; nb_jobs = j; no_simp}
   in
-  let build arch output def_name mode_flag coq_prefix j input_file =
+  let build no_simp arch output def_name mode_flag coq_prefix j input_file =
     let mode_name =
       match mode_flag with
       | Some(m) -> m
@@ -305,12 +313,13 @@ let opts_config : config Term.t =
       | Isla_mode                        ->
           panic "Option --coqdir is only available in Dump mode.";
       | Dump_mode                        ->
-          Dump(build_dump_config arch output def_name coq_prefix j input_file)
+          Dump(build_dump_config no_simp arch output def_name coq_prefix j
+            input_file)
     in
     {input_file; mode}
   in
   let open Term in
-  pure build $ arch $ output $ def_name $ mode_flag $ coq_prefix $ j
+  pure build $ no_simp $ arch $ output $ def_name $ mode_flag $ coq_prefix $ j
     $ input_file
 
 let cmd =
