@@ -40,7 +40,12 @@ generate_el2_to_el1: examples/el2_to_el1.dump
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/el2_to_el1 --coqdir=isla.instructions.el2_to_el1
 .PHONY: generate_el2_to_el1
 
-generate: generate_aarch64 generate_riscv64 generate_el2_to_el1
+generate_clz: examples/clz.dump
+	@echo "[isla-coq] $<"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/clz --coqdir=isla.instructions.clz
+.PHONY: generate_clz
+
+generate: generate_aarch64 generate_riscv64 generate_el2_to_el1 generate_clz
 .PHONY: generate
 
 clean:

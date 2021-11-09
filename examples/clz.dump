@@ -1,0 +1,4 @@
+0000000000000000 <clz>:
+//@linearize: zHighestSetBit
+   0:	dac01000 	clz	x0, x0
+   4:	d65f03c0 	ret

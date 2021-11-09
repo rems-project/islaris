@@ -210,6 +210,7 @@ type decomp_line = {
   dl_instr     : string;
   dl_comment   : string option;
   dl_spec      : spec option;
+  dl_linearize : string list (* Functions Isla should linearize. *)
 }
 
 (** [parse input_file] parses file [input_file] to obtain a list of annotated,
@@ -232,6 +233,7 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
     let spec_tactics = ref [] in
     let imports = ref [] in
     let admitted = ref false in
+    let linearize = ref [] in
     let handle_annot annot =
       let no_parse fmt = no_parse annot fmt in
       let tag = annot.line_data.annot_tag in
@@ -269,6 +271,11 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
           if !admitted then
             no_parse "A \"%s\" annotation has already been given." tag;
           admitted := true
+      | ("linearize"   , Some(s)     ) ->
+          let l = List.map String.trim (String.split_on_char ',' s) in
+          (* TODO check for duplicates. *)
+          linearize := !linearize @ l
+      | ("linearize"   , None        )
       | ("constraint"  , None        )
       | ("base_address", None        )
       | ("spec"        , None        )
@@ -309,6 +316,7 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
       dl_instr     = line.line_data.instr_instr;
       dl_comment   = line.line_data.instr_comment;
       dl_spec      = spec;
+      dl_linearize = !linearize
     }
   in
   let rec build annots acc lines =

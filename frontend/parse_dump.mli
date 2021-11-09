@@ -36,6 +36,8 @@ type decomp_line = {
   (** Possible comment. *)
   dl_spec      : spec option;
   (** Possible specification. *)
+  dl_linearize : string list;
+  (** Functions Isla shoud linearize. *)
 }
 
 (** [parse input_file] parses file [input_file] to obtain a list of annotated,
