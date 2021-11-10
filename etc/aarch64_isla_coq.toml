@@ -124,11 +124,17 @@ ignore = [
 # Bit 26 being set allows cache-maintenance ops in EL0
 "SCTLR_EL1" = "0x0000000004000002"
 
+# Bit 1 (NS): exception levels lower than EL3 are in Non-secure state.
+# Bit 8 (HCE): HVC instructions are enabled at EL3, EL2, and EL1.
+# Bit 10 (RW): set aarch64 stuff.
+"SCR_EL3" = "0x00000501"
+
 "PSTATE.EL" = "0b10"
 "PSTATE.SP" = "0b1"
 "PSTATE.nRW" = "0b0"
 "SCTLR_EL2" = "0x0000000004000002"
-"SCR_EL3" = "0x00000401"
+"MDCR_EL2" = "0x00000000"
+"MDCR_EL3" = "0x00000000"
 "EDSCR" = "0x00000000"
 "OSDLR_EL1" = "0x00000000"
 "OSLSR_EL1" = "0x00000000"

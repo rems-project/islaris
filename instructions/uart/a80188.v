@@ -9,7 +9,7 @@ Definition a80188 : isla_trace :=
   AssumeReg "TCR_EL2" [] (RegVal_Base (Val_Bits [BV{64%N} 0x0%Z])) Mk_annot :t:
   AssumeReg "PSTATE" [Field "EL"] (RegVal_Base (Val_Bits [BV{2%N} 0x2%Z])) Mk_annot :t:
   AssumeReg "PSTATE" [Field "nRW"] (RegVal_Base (Val_Bits [BV{1%N} 0x0%Z])) Mk_annot :t:
-  AssumeReg "SCR_EL3" [] (RegVal_Base (Val_Bits [BV{32%N} 0x401%Z])) Mk_annot :t:
+  AssumeReg "SCR_EL3" [] (RegVal_Base (Val_Bits [BV{32%N} 0x501%Z])) Mk_annot :t:
   Smt (DeclareConst 36%Z (Ty_BitVec 64%N)) Mk_annot :t:
   ReadReg "R1" [] (RegVal_Base (Val_Symbolic 36%Z)) Mk_annot :t:
   Smt (DefineConst 40%Z (Binop (Eq) (Manyop (Bvmanyarith Bvor) [Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot; Unop (Extract 0%N 0%N) (Binop ((Bvarith Bvlshr)) (Unop (Extract 31%N 0%N) (Val (Val_Symbolic 36%Z) Mk_annot) Mk_annot) (Val (Val_Bits [BV{32%N} 0x5%Z]) Mk_annot) Mk_annot) Mk_annot] Mk_annot) (Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot) Mk_annot)) Mk_annot :t:

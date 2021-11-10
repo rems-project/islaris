@@ -117,13 +117,13 @@ Definition initial_pstate : list (reg_kind * valu_shape) := [
 
 Definition el2_to_el1_sys_regs :=
   let regs32 :=
-    [ "CPTR_EL2" ; "CPTR_EL3" ; "CPACR_EL1" ; "CNTHCTL_EL2" ; "MDCR_EL2"
-    ; "MDCR_EL3" ; "ICC_SRE_EL2" ; "ICC_SRE_EL3" ; "CNTKCTL_EL1"
+    [ "CPTR_EL2" ; "CPTR_EL3" ; "CPACR_EL1" ; "CNTHCTL_EL2"
+    ; "ICC_SRE_EL2" ; "ICC_SRE_EL3" ; "CNTKCTL_EL1"
     ; "ICH_HCR_EL2" ; "ICC_SRE_EL1_NS" ; "PMUSERENR_EL0" ; "MPAMHCR_EL2"
     ; "HSTR_EL2" ]
   in
   let regs64 :=
-    [ "MPAM2_EL2" ; "MPAMIDR_EL1" ; "MPAM3_EL3" ; "MPIDR_EL1" ; "EventRegister" ]
+    [ "MPAM2_EL2" ; "MPAMIDR_EL1" ; "MPAM3_EL3" ; "MPIDR_EL1" ]
   in
   let with_value :=
     [ ("CFG_ID_AA64PFR0_EL1_EL0", RVal_Bits [BV{4} 1])
@@ -133,15 +133,18 @@ Definition el2_to_el1_sys_regs :=
     ; ("OSLSR_EL1", RVal_Bits [BV{32} 0])
     ; ("EDSCR"    , RVal_Bits [BV{32} 0])
     ; ("MDSCR_EL1", RVal_Bits [BV{32} 0])
+    ; ("MDCR_EL2" , RVal_Bits [BV{32} 0])
+    ; ("MDCR_EL3" , RVal_Bits [BV{32} 0])
     ; ("HCR_EL2"  , RVal_Bits [BV{64} 0x0000000080000000])
-    ; ("SCR_EL3"  , RVal_Bits [BV{32} 0x00000401])
+    ; ("SCR_EL3"  , RVal_Bits [BV{32} 0x00000501])
     ; ("SCTLR_EL1", RVal_Bits [BV{64} 0x0000000004000002])
     ; ("SCTLR_EL2", RVal_Bits [BV{64} 0x0000000004000002])
     ; ("TCR_EL1", RVal_Bits [BV{64} 0]) ]
   in
   ((λ r, (KindReg r, BitsShape 32)) <$> regs32) ++
   ((λ r, (KindReg r, BitsShape 64)) <$> regs64) ++
-  ((λ '(r, v), (KindReg r, ExactShape v)) <$> with_value).
+  ((λ '(r, v), (KindReg r, ExactShape v)) <$> with_value) ++
+  [ (KindReg "EventRegister", BitsShape 1) ].
 
 Definition el2_to_el1_spec (v0 v1 : bv 64) (spsr : bv 32) : iProp Σ := (
   "R0" ↦ᵣ RVal_Bits v0 ∗
@@ -154,6 +157,7 @@ Definition el2_to_el1_spec (v0 v1 : bv 64) (spsr : bv 32) : iProp Σ := (
     "ELR_EL2" ↦ᵣ RVal_Bits [BV{64} 0x100000] ∗
     "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
     reg_col (pstate_of_spsr spsr) ∗
+    reg_col el2_to_el1_sys_regs ∗
     True
   )
 )%I.

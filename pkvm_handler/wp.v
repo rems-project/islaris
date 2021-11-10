@@ -40,8 +40,8 @@ Qed.
 Definition mrs_regs_32 :=
   (λ r, (KindReg r, BitsShape 32)) <$>
   ["CPTR_EL2"; "CPTR_EL3"; "CPACR_EL1";
-  "CNTHCTL_EL2"; "MDCR_EL2"; "ICC_SRE_EL2";
-  "CNTKCTL_EL1"; "MDCR_EL3";
+  "CNTHCTL_EL2"; "ICC_SRE_EL2";
+  "CNTKCTL_EL1";
   "ICH_HCR_EL2"; "ICC_SRE_EL1_NS";
   "PMUSERENR_EL0"; "ICC_SRE_EL3";
   "MPAMHCR_EL2"; "HSTR_EL2"].
@@ -175,4 +175,4 @@ Proof.
   * rewrite <- H4.
     assert(G: bv_unsigned (bv_concat 64 [BV{32} 0] esr) = bv_unsigned esr); [bv_solve|].
     by rewrite G in H3.
-Qed.
+ Qed.

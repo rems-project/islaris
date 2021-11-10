@@ -4,7 +4,7 @@ Require Import isla.automation.
 Definition sys_regs : list (reg_kind * valu_shape) := [
   (KindReg "SCTLR_EL1" , ExactShape (RVal_Bits [BV{64} 0x0000000004000002] ));
   (KindReg "SCTLR_EL2" , ExactShape (RVal_Bits [BV{64} 0x0000000004000002] ));
-  (KindReg "SCR_EL3" , ExactShape (RVal_Bits [BV{32} 0x00000401] ));
+  (KindReg "SCR_EL3" , ExactShape (RVal_Bits [BV{32} 0x00000501] ));
   (KindReg "TCR_EL2" , ExactShape (RVal_Bits [BV{64} 0] ));
   (KindReg "HCR_EL2" , ExactShape (RVal_Bits [BV{64} 0x0000000080000000] ));
   (KindReg "CFG_ID_AA64PFR0_EL1_EL0" , ExactShape (RVal_Bits [BV{4} 1] ));
@@ -16,6 +16,8 @@ Definition sys_regs : list (reg_kind * valu_shape) := [
   (KindReg "EDSCR" , ExactShape (RVal_Bits [BV{32} 0] ));
   (KindReg "MPIDR_EL1" , ExactShape (RVal_Bits [BV{64} 0] ));
   (KindReg "MDSCR_EL1" , ExactShape (RVal_Bits [BV{32} 0] ));
+  (KindReg "MDCR_EL2" , ExactShape (RVal_Bits [BV{32} 0] ));
+  (KindReg "MDCR_EL3" , ExactShape (RVal_Bits [BV{32} 0] ));
   (KindField "PSTATE" "SP" , ExactShape (RVal_Bits [BV{1} 1] ));
   (KindField "PSTATE" "EL" , ExactShape (RVal_Bits [BV{2} 2] ));
   (KindField "PSTATE" "nRW" , ExactShape (RVal_Bits [BV{1} 0] ));
@@ -54,7 +56,7 @@ Definition sys_regs_map : reg_map :=
      ("V", RVal_Bits [BV{1} 0]); ("DIT", RegVal_Poison)]) ]> $
   <[ "SCTLR_EL1" := RVal_Bits [BV{64} 0x0000000004000002] ]> $
   <[ "SCTLR_EL2" := RVal_Bits [BV{64} 0x0000000004000002] ]> $
-  <[ "SCR_EL3" := RVal_Bits [BV{32} 0x00000401] ]> $
+  <[ "SCR_EL3" := RVal_Bits [BV{32} 0x00000501] ]> $
   <[ "TCR_EL2" := RVal_Bits [BV{64} 0] ]> $
   <[ "HCR_EL2" := RVal_Bits [BV{64} 0x0000000080000000] ]> $
   <[ "CFG_ID_AA64PFR0_EL1_EL0" := RVal_Bits [BV{4} 1] ]> $
@@ -65,7 +67,9 @@ Definition sys_regs_map : reg_map :=
   <[ "OSDLR_EL1" := RVal_Bits [BV{32} 0] ]> $
   <[ "EDSCR" := RVal_Bits [BV{32} 0] ]> $
   <[ "MPIDR_EL1" := RVal_Bits [BV{64} 0] ]> $
-  <[ "MDSCR_EL1" := RVal_Bits [BV{32} 0] ]> $ 
+  <[ "MDSCR_EL1" := RVal_Bits [BV{32} 0] ]> $
+  <[ "MDCR_EL2" := RVal_Bits [BV{32} 0] ]> $
+  <[ "MDCR_EL3" := RVal_Bits [BV{32} 0] ]> $
   <[ "__isla_monomorphize_writes" := RVal_Bool false ]> $
   <[ "__isla_monomorphize_reads" := RVal_Bool false ]> $
   <[ "__highest_el_aarch32" := RVal_Bool false ]> $
