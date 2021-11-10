@@ -60,6 +60,11 @@ Proof.
   - apply/lt_Npow2; [lia|]. bv_saturate. unfold bv_modulus in *. rewrite Heq. lia.
 Qed.
 
+Lemma uint_plain_to_bv_unsigned n (b : mword n) :
+  0 ≤ n →
+  uint_plain b = bv_unsigned (mword_to_bv (n2:=Z.to_N n) b).
+Proof. move => ?. rewrite mword_to_bv_unsigned //. lia. Qed.
+
 Lemma eq_vec_to_bv n1 {n2} (b1 b2 : mword n2) :
   n2 = Z.of_N n1 →
   eq_vec b1 b2 = (bool_decide (mword_to_bv b1 =@{bv n1} mword_to_bv b2)).
@@ -72,11 +77,38 @@ Proof.
     by rewrite !mword_to_bv_unsigned // Hb.
 Qed.
 
-Lemma getBit_get_word_testbit n2 n z (w : mword n):
-  n = Z.of_N n2 → (0 < n) →
-  getBit (get_word w) z = Z.testbit (bv_unsigned (mword_to_bv (n2:=n2) w)) (Z.of_nat z).
-Proof. etrans; [apply getBit_testbit|]; [lia|]. by rewrite mword_to_bv_unsigned. Qed.
+Lemma mword_to_bv_subrange_vec_dec z1 z2 n2 n1 (b : mword n1) H1 H2:
+  n1 = Z.of_N n2 →
+  mword_to_bv (subrange_vec_dec (H:=H1) (H0:=H2) b z1 z2) =
+    bv_extract (Z.to_N z2) (Z.to_N (z1 + 1 - z2)) (mword_to_bv (n2:=n2) b).
+Proof.
+  move => ?.
+  have /Z.leb_le? := use_ArithFact H1.
+  have /andb_true_iff[/Z.leb_le? /Z.ltb_lt?] := use_ArithFact H2.
+  unfold subrange_vec_dec. apply bv_eq.
+  rewrite bv_extract_unsigned !mword_to_bv_unsigned; [|lia..].
+  rewrite wordToN_get_word_cast_to_mword wordToN_split2 wordToN_cast_word wordToN_split1 wordToN_cast_word.
+  rewrite !Z_nat_N !Z2N.id ?N2Z.inj_div ?N2Z.inj_mod ?N2Z.inj_pow ?Z2N.id; [|lia..].
+  have -> : Z.of_N (N.of_nat (Z.to_nat z1 + 1)) = z1 + 1 by lia.
+  rewrite -Z.shiftr_div_pow2 -?Z.land_ones; [|lia..].
+  apply Z.bits_inj_iff' => n Hn.
+  rewrite ?bv_wrap_spec ?Z.shiftr_spec ?Z.shiftl_spec ?Z.land_spec ?Z_ones_spec; [|lia..].
+  repeat case_bool_decide => //; try lia. by rewrite andb_true_r.
+Qed.
 
+Lemma getBit_get_word_testbit n z (w : mword n):
+  (0 < n) →
+  getBit (get_word w) z = Z.testbit (bv_unsigned (mword_to_bv (n2:=Z.to_N n) w)) (Z.of_nat z).
+Proof. etrans; [apply getBit_testbit|]; [lia|]. rewrite mword_to_bv_unsigned //. lia. Qed.
+
+Lemma access_vec_dec_to_bv  n1 (b : mword n1) z :
+  0 ≤ z →
+  0 < n1 →
+  access_vec_dec b z = bitU_of_bool (Z.testbit (bv_unsigned (mword_to_bv (n2:=Z.to_N n1) b)) z).
+Proof.
+  move => ??. rewrite /access_vec_dec/access_mword_dec. f_equal. rewrite getBit_get_word_testbit => //.
+  f_equal. lia.
+Qed.
 
 Lemma bitlistFromWord_to_bv n1 n2 (v : mword n1):
   n1 = Z.of_N n2 →
@@ -101,6 +133,21 @@ Proof.
   rewrite N2Z.inj_mod N2Z.inj_add. f_equal. by rewrite Hn N2Z.id.
 Qed.
 Arguments add_vec : simpl never.
+
+Lemma mword_to_bv_add_vec_int n1 n2 (b : mword n1) z:
+  0 ≤ z → (* not strictly necessary but makes the proof easier *)
+  n1 = Z.of_N n2 →
+  mword_to_bv (n2:=n2) (add_vec_int b z) = bv_add_Z (mword_to_bv b) z.
+Proof.
+  move => ??.
+  apply bv_eq. rewrite mword_to_bv_unsigned // bv_add_Z_unsigned mword_to_bv_unsigned //.
+  rewrite /add_vec_int/Operators.arith_op_bv_int/arith_op_bv/=!get_word_mword_of_int.
+  rewrite -!Word.NToWord_Z_to_N //; [|lia].
+  rewrite !Word.wordToN_NToWord_eqn -Npow2_pow Z_nat_N.
+  rewrite -bv_wrap_add_idemp_r !N2Z.inj_mod N2Z.inj_pow !Z2N.id; [|lia..].
+  unfold bv_wrap, bv_modulus in *. f_equal; [|f_equal; lia].
+  do 3 f_equal. lia.
+Qed.
 
 Lemma mem_bytes_of_bits_to_bv n (v : mword n) len H:
   n = 8 * len →

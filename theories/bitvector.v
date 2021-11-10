@@ -1046,6 +1046,20 @@ Section properties.
     bv_or b1 b2 = b1.
   Proof. intros Hb. apply bv_eq. by rewrite bv_or_unsigned, Hb, Z.lor_0_r. Qed.
 
+  Lemma bv_extract_0_unsigned l b:
+    bv_unsigned (bv_extract 0 l b) = bv_wrap l (bv_unsigned b).
+  Proof. rewrite bv_extract_unsigned, Z.shiftr_0_r. done. Qed.
+
+  Lemma bv_extract_0_bv_add_distr l b1 b2:
+    (l ≤ n)%N →
+    bv_extract 0 l (bv_add b1 b2) = bv_add (bv_extract 0 l b1) (bv_extract 0 l b2).
+  Proof.
+    intros ?.
+    apply bv_eq. rewrite !bv_extract_0_unsigned, !bv_add_unsigned, !bv_extract_0_unsigned.
+    rewrite bv_wrap_bv_wrap by done.
+    bv_wrap_simplify_solve.
+  Qed.
+
   Lemma bv_concat_0 m n2 b1 (b2 : bv n2) :
     bv_unsigned b1 = 0 →
     bv_concat m b1 b2 = bv_zero_extend m b2.
@@ -1057,6 +1071,7 @@ Section properties.
   Lemma bv_zero_extend_idemp b:
     bv_zero_extend n b = b.
   Proof. apply bv_eq. by rewrite bv_zero_extend_unsigned. Qed.
+
   Lemma bv_sign_extend_idemp b:
     bv_sign_extend n b = b.
   Proof. apply bv_eq_signed. by rewrite bv_sign_extend_signed. Qed.

@@ -208,6 +208,10 @@ Lemma get_word_inj n (m1 m2 : mword n):
   get_word m1 = get_word m2 → m1 = m2.
 Proof. by destruct n. Qed.
 
+Lemma get_word_mword_of_int n H z:
+  get_word (@mword_of_int n H z) = Word.ZToWord (Z.to_nat n) z.
+Proof. destruct n => //=. case_match. Qed.
+
 Lemma lt_Npow2 n n1:
   (0 ≤ n1)%Z →
   (n < NatLib.Npow2 (Z.to_nat n1))%N ↔ (Z.of_N n < 2 ^ n1)%Z.
@@ -509,12 +513,39 @@ Proof.
   naive_solver lia.
 Qed.
 
+
+Lemma wordToN_get_word_cast_to_mword n m (b : Word.word n) Heq:
+  Word.wordToN (get_word (n:=m) (cast_to_mword b Heq)) = Word.wordToN b.
+Proof.
+  destruct Heq.
+  unfold cast_to_mword.
+Admitted.
+(*
+  destruct b; subst => //=.
+  - by destruct b.
+  - have ? : n = Z.to_nat (Z.pos p) by lia. subst.
+    move: b Heq.
+    set (px := (Z.pos p)).
+    (* Set Printing Coercions. *)
+    (* Set Printing All. *)
+    unfold mword_of_nat.
+Admitted.
+*)
+Lemma wordToN_cast_word n m (b : Word.word n) (Heq : n = m):
+  Word.wordToN (cast_word b Heq) = Word.wordToN b.
+Proof. destruct Heq. by rewrite cast_word_refl. Qed.
+
+
 Lemma wlsb_testbit n (w : Word.word (S n)):
   Word.wlsb w = Z.testbit (Z.of_N (Word.wordToN w)) 0.
 Proof.
   have [b [? ->]]:= Word.shatter_word_S w. simpl.
   rewrite Z.bit0_odd. by destruct b; rewrite ?N2Z.inj_succ ?Z.odd_succ N2Z.inj_mul ?Z.even_mul ?Z.odd_mul /=.
 Qed.
+
+Lemma wordToN_split1 sz1 sz2 (w : Word.word (sz1 + sz2)) :
+  Word.wordToN (Word.split1 sz1 sz2 w) = (Word.wordToN w `mod` 2 ^ N.of_nat sz1)%N.
+Proof. by rewrite !Word.wordToN_nat Word.wordToNat_split1 Nat2N.inj_mod Nat2N.inj_pow. Qed.
 
 Lemma wordToN_split2 sz1 sz2 (w : Word.word (sz1 + sz2)) :
   Word.wordToN (Word.split2 sz1 sz2 w) = (Word.wordToN w `div` 2 ^ N.of_nat sz1)%N.

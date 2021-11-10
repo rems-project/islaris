@@ -1,6 +1,7 @@
 Require Import Sail.Base.
 Require Import Sail.State_monad.
 Require Import Sail.State_lifting.
+Require Import isla.bitvector_auto.
 Require Import isla.sail_riscv.sail_opsem.
 
 Arguments read_accessor : simpl nomatch.
@@ -10,6 +11,11 @@ Ltac hnf_sim :=
   | |- sim _ ?e1 _ _ =>
       let e' := eval hnf in e1 in
       change (e1) with e'
+  end.
+
+Ltac reduce_closed_mword_to_bv :=
+  repeat match goal with
+  | |- context [@mword_to_bv ?n1 ?n2 ?b] => reduce_closed (@mword_to_bv n1 n2 b)
   end.
 
 Ltac reduce_closed_sim :=
@@ -103,7 +109,7 @@ Ltac sim_simpl_goal :=
          | |- (?a1, ?a2) = (?b1, ?b2) => apply f_equal_help; [apply f_equal_help; [done|] |]
          | |- _::_ = _::_ => apply f_equal_help; [apply f_equal_help; [done|] |]
          end;
-  try apply negb_true_iff;
+  try lazymatch goal with | |- negb _ = true => apply negb_true_iff end;
   try apply bool_decide_eq_true_2;
   try apply bool_decide_eq_false_2;
   (* autorewrite with mword_to_bv_rewrite; *)
@@ -176,6 +182,51 @@ Ltac red_sim :=
         progress red_monad_sim
       ].
 
+Lemma check_misaligned_false b w:
+  bv_unsigned (bv_extract 0 (match w with | BYTE => 0 | HALF => 1 | WORD => 2 | DOUBLE => 3 end) (mword_to_bv (n2:=64) b)) = 0 →
+  check_misaligned b w = false.
+Proof.
+  move => He. rewrite /check_misaligned.
+  destruct (plat_enable_misaligned_access ()) => //.
+  rewrite !access_vec_dec_to_bv //.
+  case_match => //; rewrite !bitU_of_bool_B0 //.
+  all: bitify_hyp He.
+  all: lazymatch goal with | |- Z.testbit _ ?n = _ => specialize (He n ltac:(done)) end.
+  all: by bits_simplify_hyp He.
+Qed.
+
+Lemma within_mmio_writable_false b w H z:
+  z = bv_unsigned (mword_to_bv (n2:=64) b) →
+  (z < bv_unsigned (mword_to_bv (n2:=64) (plat_clint_base ())) ∨
+    bv_unsigned (mword_to_bv (n2:=64) (plat_clint_base ())) +
+      bv_unsigned (mword_to_bv (n2:=64) (plat_clint_size ())) < z + w)
+  ∧
+  (
+  bv_unsigned (mword_to_bv (n2:=64) (to_bits 64 (elf_tohost ()))) ≠ z ∧
+    (bv_wrap 64 (bv_unsigned (mword_to_bv (n2:=64) (to_bits 64 (elf_tohost ()))) + 4) ≠ z ∨ w ≠ 4) ∨ 8 < w)
+  →
+  @within_mmio_writable b w H = false.
+Proof.
+  move => -> [Hclint Helf].
+  rewrite /within_mmio_writable/within_clint/within_htif_writable. apply orb_false_intro.
+  - apply andb_false_iff. rewrite !Z.leb_gt. by rewrite /uint/= !uint_plain_to_bv_unsigned.
+  - rewrite andb_false_iff orb_false_iff andb_false_iff /= Z.eqb_neq !Z.leb_gt.
+    by rewrite !(eq_vec_to_bv 64) // !bool_decide_eq_false !bv_neq mword_to_bv_add_vec_int.
+Qed.
+
+Lemma within_phys_mem_true b w H z:
+  z = bv_unsigned (mword_to_bv (n2:=64) b) →
+  bv_unsigned (mword_to_bv (n2:=64) (plat_ram_base ())) ≤ z
+  ∧ z + w
+    ≤ bv_unsigned (mword_to_bv (n2:=64) (plat_ram_base ())) +
+      bv_unsigned (mword_to_bv (n2:=64) (plat_ram_size ())) →
+  @within_phys_mem b w H = true.
+Proof.
+  move => -> ?. rewrite /within_phys_mem.
+  by rewrite andb_true_intro // !Z.leb_le /uint/= !uint_plain_to_bv_unsigned.
+Qed.
+
+
 Lemma sim_haveFExt Σ K e2:
   (∀ b, sim Σ (Done b) K e2) →
   sim Σ (haveFExt ()) K e2.
@@ -234,4 +285,16 @@ Proof.
   move => Hsim.
   unfold is_RV64D. red_sim.
   apply: sim_haveDExt => -[]; by red_sim.
+Qed.
+
+Lemma sim_effectivePrivilege Σ K t m priv e2:
+  bv_extract 17 1 (mword_to_bv (n2:=64) (Mstatus_Mstatus_chunk_0 m)) = [BV{1} 0] →
+  sim Σ (Done priv) K e2 →
+  sim Σ (effectivePrivilege t m priv) K e2.
+Proof.
+  move => Hm Hsim.
+  unfold effectivePrivilege.
+  destruct t as [[]|[]|[[] []]|[]]; red_sim => //; rewrite if_false //.
+  all: unfold _get_Mstatus_MPRV; rewrite (eq_vec_to_bv 1); [|done].
+  all: by rewrite (mword_to_bv_subrange_vec_dec 17 17 64) // Hm.
 Qed.

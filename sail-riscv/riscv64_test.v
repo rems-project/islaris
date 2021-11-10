@@ -32,70 +32,76 @@ Lemma sim_instr_a8:
 Proof.
   move => regs. unfold step_cpu, a8. red_sim. unfold execute. red_sim.
   unfold execute_STORE. red_sim. rewrite x2_nextPC.
-  unfold check_misaligned. rewrite Hassume0.
-  repeat (rewrite (access_vec_dec_concrete B0); [|shelve]).
-  red_sim.
-  unfold translateAddr. red_sim.
-  unfold effectivePrivilege. red_sim.
-  rewrite mstatus_nextPC.
-  have -> : (_get_Mstatus_MPRV (mstatus regs)) = ('b "0") by shelve.
-  red_sim.
+  rewrite if_false; [|shelve]. red_sim.
+  unfold translateAddr. red_sim. rewrite mstatus_nextPC.
+  apply sim_effectivePrivilege; [done|]. red_sim.
   unfold translateAddr_priv. red_sim.
   apply: sim_read_reg_l; [done|]. red_sim.
   apply: sim_read_reg_l; [done|]. red_sim.
   unfold translationMode. rewrite cur_privilege_nextPC.
-  have -> : (cur_privilege regs) = Machine by shelve. red_sim.
+  have -> : (cur_privilege regs) = Machine by destruct (cur_privilege regs). red_sim.
   apply: sim_read_reg_l; [done|]. red_sim. rewrite x11_nextPC.
   unfold mem_write_value, mem_write_value_meta. red_sim.
   apply: sim_read_reg_l; [done|]. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim.
-  unfold effectivePrivilege. red_sim. rewrite mstatus_nextPC.
-  have -> : (_get_Mstatus_MPRV (mstatus regs)) = ('b "0") by shelve.
-  red_sim. rewrite Hassume. red_sim.
+  apply: sim_read_reg_l; [done|]. red_sim. rewrite mstatus_nextPC.
+  apply sim_effectivePrivilege; [done|]. red_sim.
+  rewrite Hassume. red_sim.
   rewrite if_false; [|shelve]. rewrite if_true; [|shelve]. red_sim.
   Unshelve. all: sim_simpl_goal.
   all: rewrite -?Hassume1 -?Hassume2 -?Hassume3 -?Hassume4 -?Hassume5 -?Hassume6 -?Hassume7 //.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
+  - apply check_misaligned_false. rewrite mword_to_bv_add_vec; [|done]. reduce_closed_mword_to_bv.
+    by rewrite bv_extract_0_bv_add_distr // Hassume11.
+  - eapply within_mmio_writable_false.
+    + rewrite mword_to_bv_add_vec; [|done]. reduce_closed_mword_to_bv. done.
+    + rewrite ->Hassume1, Hassume2, Hassume5, Hassume6, Hassume7, !bv_add_unsigned, !bv_unsigned_BV in *.
+      lia.
+  - eapply within_phys_mem_true.
+    + rewrite mword_to_bv_add_vec; [|done]. reduce_closed_mword_to_bv. done.
+    + move: Hassume13. move: Hassume11 => /bv_eq. rewrite bv_extract_0_unsigned.
+      rewrite ->Hassume1, Hassume2, !bv_add_unsigned, !bv_unsigned_BV in *.
+      unfold bv_wrap, bv_modulus in *. lia.
   - by rewrite mword_to_bv_add_vec.
   - by rewrite mword_to_bv_add_vec.
-Admitted.
+    Unshelve. exact: inhabitant.
+Qed.
 
 Lemma sim_instr_ac:
   sim_instr (Uncompressed [BV{32} 0x00813583]) ac.
 Proof.
   move => regs. unfold step_cpu, ac. red_sim. unfold execute. red_sim.
   unfold execute_LOAD. red_sim.
-  unfold check_misaligned. rewrite Hassume0.
-  repeat (rewrite (access_vec_dec_concrete B0); [|shelve]).
-  red_sim.
-  unfold translateAddr. red_sim.
-  unfold effectivePrivilege. red_sim.
-  rewrite mstatus_nextPC.
-  have -> : (_get_Mstatus_MPRV (mstatus regs)) = ('b "0") by shelve.
-  red_sim.
+  rewrite if_false; [|shelve]. red_sim.
+  unfold translateAddr. red_sim. rewrite mstatus_nextPC.
+  apply sim_effectivePrivilege; [done|]. red_sim.
   unfold translateAddr_priv. red_sim.
   apply: sim_read_reg_l; [done|]. red_sim.
   apply: sim_read_reg_l; [done|]. red_sim.
   unfold translationMode. rewrite cur_privilege_nextPC.
-  have -> : (cur_privilege regs) = Machine by shelve. red_sim.
+  have -> : (cur_privilege regs) = Machine by destruct (cur_privilege regs). red_sim.
   apply: sim_read_reg_l; [done|]. red_sim. rewrite x2_nextPC.
   unfold mem_read. red_sim.
   apply: sim_read_reg_l; [done|]. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim.
-  unfold effectivePrivilege. red_sim. rewrite mstatus_nextPC.
-  have -> : (_get_Mstatus_MPRV (mstatus regs)) = ('b "0") by shelve.
-  red_sim.
-  have -> : plat_enable_pmp () = false by simplify_eq. red_sim.
+  apply: sim_read_reg_l; [done|]. red_sim. rewrite mstatus_nextPC.
+  apply sim_effectivePrivilege; [done|]. red_sim.
+  rewrite Hassume. red_sim.
   rewrite if_false; [|shelve]. rewrite if_true; [|shelve]. red_sim.
   Unshelve. all: sim_simpl_goal.
-Admitted.
+  - apply check_misaligned_false. rewrite mword_to_bv_add_vec; [|done]. reduce_closed_mword_to_bv.
+    by rewrite bv_extract_0_bv_add_distr // Hassume11.
+  - eapply within_mmio_writable_false.
+    + rewrite mword_to_bv_add_vec; [|done]. reduce_closed_mword_to_bv. done.
+    + rewrite ->Hassume1, Hassume2, Hassume5, Hassume6, Hassume7, !bv_add_unsigned, !bv_unsigned_BV in *.
+      lia.
+  - eapply within_phys_mem_true.
+    + rewrite mword_to_bv_add_vec; [|done]. reduce_closed_mword_to_bv. done.
+    + move: Hassume13. move: Hassume11 => /bv_eq. rewrite bv_extract_0_unsigned.
+      rewrite ->Hassume1, Hassume2, !bv_add_unsigned, !bv_unsigned_BV in *.
+      unfold bv_wrap, bv_modulus in *. lia.
+  - by rewrite mword_to_bv_add_vec.
+  - by rewrite Word.sext0 /= mword_to_bv_to_mword // bv_sign_extend_idemp.
+  - by rewrite mword_to_bv_add_vec.
+    Unshelve. exact: inhabitant.
+Qed.
 
 Lemma sim_instr_a10:
   sim_instr (Uncompressed [BV{32} 0x00b50463]) a10.
@@ -110,12 +116,8 @@ Proof.
   - apply: (sim_tfork 1); [done|]. red_sim.
   Unshelve. all: sim_simpl_goal.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_true in Hb1. by rewrite Hb1.
-  + move: Hassume. normalize_and_simpl_goal => //=.
-    apply bitU_of_bool_B0.
-    rewrite (getBit_get_word_testbit 64) // mword_to_bv_add_vec //=.
-    match goal with
-    | |- context [@mword_to_bv ?n1 ?n2 ?b] => reduce_closed (@mword_to_bv n1 n2 b)
-    end.
+  + rewrite access_vec_dec_to_bv // bitU_of_bool_B0 //.
+    rewrite mword_to_bv_add_vec //=. reduce_closed_mword_to_bv.
     rewrite bv_add_unsigned bv_wrap_spec_low // Z.add_bit1 /=.
     have -> : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. {
       rename select (bv_extract 1 1 _ = _) into He.
