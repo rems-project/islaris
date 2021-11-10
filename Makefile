@@ -10,7 +10,12 @@ tests:
 all_and_tests: tests all
 .PHONY: all_and_tests
 
-generate_aarch64:
+update_etc:
+	@dune build _build/install/default/etc/coq-isla/aarch64_isla_coq.toml
+	@dune build _build/install/default/etc/coq-isla/riscv64_isla_coq.toml
+.PHONY: update_etc
+
+generate_aarch64: update_etc
 	@echo "[isla-coq] examples/memory_instructions.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memory_instructions.dump -j 8 -o instructions  -n "instr_{instr}" --coqdir=isla.instructions
 	@rm instructions/instrs.v
@@ -28,19 +33,19 @@ generate_aarch64:
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq -j 8 pkvm_handler/pkvm_handler.dump
 .PHONY: generate_aarch64
 
-generate_riscv64:
+generate_riscv64: update_etc
 	@echo "[isla-coq] examples/riscv64_test.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/riscv64_test.dump -j 8 -o instructions/riscv64_test --coqdir=isla.instructions.riscv64_test --arch=riscv64
 	@echo "[isla-coq] examples/memcpy_riscv64.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memcpy_riscv64.dump -j 8 -o instructions/memcpy_riscv64 --coqdir=isla.instructions.memcpy_riscv64 --arch=riscv64
 .PHONY: generate_riscv64
 
-generate_el2_to_el1: examples/el2_to_el1.dump
+generate_el2_to_el1: examples/el2_to_el1.dump update_etc
 	@echo "[isla-coq] $<"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/el2_to_el1 --coqdir=isla.instructions.el2_to_el1
 .PHONY: generate_el2_to_el1
 
-generate_clz: examples/clz.dump
+generate_clz: examples/clz.dump update_etc
 	@echo "[isla-coq] $<"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/clz --coqdir=isla.instructions.clz
 .PHONY: generate_clz
