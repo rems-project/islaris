@@ -210,7 +210,8 @@ type decomp_line = {
   dl_instr     : string;
   dl_comment   : string option;
   dl_spec      : spec option;
-  dl_linearize : string list (* Functions Isla should linearize. *)
+  dl_linearize : string list; (* Functions Isla should linearize. *)
+  dl_isla_cfg  : string option;
 }
 
 (** [parse input_file] parses file [input_file] to obtain a list of annotated,
@@ -225,6 +226,7 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
     no_parse annot "This annotation is not attached to an instruction."
   in
   let offset = ref UInt64.zero in
+  let isla_cfg = ref None in
   let build_decomp_line annots line =
     (* Handle all annotations (effectful). *)
     let base_addr_given = ref false in
@@ -275,6 +277,10 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
           let l = List.map String.trim (String.split_on_char ',' s) in
           (* TODO check for duplicates. *)
           linearize := !linearize @ l
+      | ("isla-config" , Some(s)     ) ->
+          (* TODO check not several given. *)
+          isla_cfg := Some(s)
+      | ("isla-config" , None        )
       | ("linearize"   , None        )
       | ("constraint"  , None        )
       | ("base_address", None        )
@@ -316,7 +322,8 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
       dl_instr     = line.line_data.instr_instr;
       dl_comment   = line.line_data.instr_comment;
       dl_spec      = spec;
-      dl_linearize = !linearize
+      dl_linearize = !linearize;
+      dl_isla_cfg  = !isla_cfg;
     }
   in
   let rec build annots acc lines =
