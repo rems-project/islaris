@@ -50,6 +50,42 @@ Proof.
   have /lt_Npow2:= Word.wordToN_bound (get_word b). subst. lia.
 Qed.
 
+Lemma mword_to_bv_signed {n1 n2} (b : mword n1):
+  n1 = Z.of_N n2 →
+  bv_signed (mword_to_bv (n2:=n2) b) = Word.wordToZ (get_word b).
+Proof.
+  move => Heq.
+  rewrite /bv_signed mword_to_bv_unsigned // Word.wordToZ_wordToN /bv_swrap.
+  move: (get_word b) => {}b.
+  destruct (Z.to_nat n1) eqn:?.
+  { rewrite (Word.shatter_word_0 b) /=. have -> : n2 = 0%N by lia. done. }
+  case_match as Hwmsb.
+  - move: Hwmsb => /Word.wmsb_true_bound.
+    rewrite -Npow2_pow. have {1}-> : N.of_nat n = Z.to_N (n1 - 1) by lia.
+    move => /N2Z.inj_le. rewrite N2Z.inj_pow Z2N.id ?ZLib.pow2_div2; [|lia..] => ?.
+    rewrite /bv_wrap (Zmod_in_range 1).
+    + rewrite /bv_modulus -Npow2_pow N2Z.inj_pow.
+      have -> : N.of_nat (S n) = n2 by lia.
+      lia.
+    + rewrite -bv_half_modulus_twice; [|lia].
+      rewrite /bv_half_modulus /bv_modulus.
+      have -> : Z.of_N n2 = n1 by lia.
+      have := Word.wordToN_bound b.
+      have {2}->: (S n) = Z.to_nat n1 by lia.
+      move => /lt_Npow2 ?.
+      split; try lia.
+      suff : Z.of_N (Word.wordToN b) < (2 ^ n1 `div` 2 + 2 ^ n1 `div` 2) by lia.
+      rewrite Z.add_diag -Z_div_exact_2 //. 1: lia.
+      rewrite Zpow_facts.Zpower_mod // Z.pow_0_l' //. lia.
+  - move: Hwmsb => /Word.wmsb_false_bound.
+    have {2}-> : n = Z.to_nat (n1 - 1) by lia. move => /lt_Npow2.
+    rewrite ZLib.pow2_div2; [|lia] => ?. rewrite bv_wrap_small; [lia|].
+    rewrite -bv_half_modulus_twice; [|lia].
+    rewrite /bv_half_modulus /bv_modulus.
+    have {3}-> : Z.of_N n2 = n1 by lia.
+    lia.
+Qed.
+
 Lemma mword_to_bv_to_mword {n1 n2} (b : bv n1) `{!ArithFact (n2 >=? 0)} :
   n2 = Z.of_N n1 →
   (@mword_to_bv n2 n1 (bv_to_mword b)) = b.
@@ -147,6 +183,38 @@ Proof.
   rewrite -bv_wrap_add_idemp_r !N2Z.inj_mod N2Z.inj_pow !Z2N.id; [|lia..].
   unfold bv_wrap, bv_modulus in *. f_equal; [|f_equal; lia].
   do 3 f_equal. lia.
+Qed.
+
+Lemma mword_to_bv_EXTS n1 n2' n2 (b : mword n1) H:
+  0 ≤ n1 →
+  n2' = Z.of_N n2 →
+  mword_to_bv (n2:=n2) (@EXTS _ n2' b H) = bv_sign_extend _ (mword_to_bv (n2:=(Z.to_N n1)) b).
+Proof.
+  move => ??.
+  have /Z.geb_le? := use_ArithFact H.
+  apply bv_eq_signed. rewrite mword_to_bv_signed //. rewrite /EXTS/sign_extend/exts_vec/=.
+  rewrite wordToZ_get_word_cast_to_mword Word.sext_wordToZ bv_sign_extend_signed ?mword_to_bv_signed //.
+  all: lia.
+Qed.
+Arguments EXTS : simpl never.
+
+#[local] Hint Rewrite wordToN_spec_high Z_of_bool_spec_high using lia : rewrite_bits_db.
+Lemma mword_to_bv_update_vec_dec n1 n2 (b : mword n1) b1 z b2:
+  bool_of_bitU b1 = Some b2 →
+  n1 = Z.of_N n2 →
+  z < n1 →
+  0 ≤ z →
+  mword_to_bv (n2:=n2) (update_vec_dec b z b1) = bv_or
+    (bv_and (bv_not (Z_to_bv n2 (1 ≪ z))) (mword_to_bv b))
+    (Z_to_bv n2 (Z_of_bool (negb b2) ≪ z)).
+Proof.
+  move => Hb ???.
+  apply bv_eq. rewrite mword_to_bv_unsigned //.
+  rewrite /update_vec_dec/opt_def /update_mword_dec Hb.
+  rewrite /update_mword_bool_dec get_word_with_word wordToN_setBit;[|lia..].
+  rewrite bv_or_unsigned bv_and_unsigned bv_not_unsigned !Z_to_bv_unsigned mword_to_bv_unsigned//.
+  rewrite Z2Nat.id; [|lia]. rewrite !bv_wrap_land.
+  bitblast.
 Qed.
 
 Lemma mem_bytes_of_bits_to_bv n (v : mword n) len H:

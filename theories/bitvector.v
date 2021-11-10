@@ -1036,6 +1036,14 @@ Section properties.
     bv_wrap_simplify_solve.
   Qed.
 
+  Lemma bv_and_comm b1 b2:
+    bv_and b1 b2 = bv_and b2 b1.
+  Proof. apply bv_eq. by rewrite !bv_and_unsigned, Z.land_comm. Qed.
+
+  Lemma bv_or_comm b1 b2:
+    bv_or b1 b2 = bv_or b2 b1.
+  Proof. apply bv_eq. by rewrite !bv_or_unsigned, Z.lor_comm. Qed.
+
   Lemma bv_or_0_l b1 b2 :
     bv_unsigned b1 = 0 →
     bv_or b1 b2 = b2.

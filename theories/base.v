@@ -3,6 +3,7 @@ From stdpp Require Export prelude strings gmap.
 From RecordUpdate Require Export RecordSet.
 From iris.proofmode Require Import tactics.
 From refinedc.lang Require Export base.
+From refinedc.lithium Require Export Z_bitblast.
 Require Export isla.bitvector.
 Export RecordSetNotations.
 
@@ -223,6 +224,20 @@ Proof.
   destruct (z1 <=? z2) eqn: Hle => //. move: Hle => /Zle_is_le_bool.
   done.
 Qed.
+
+Lemma Z_add_nocarry_lor a b:
+  Z.land a b = 0 →
+  a + b = Z.lor a b.
+Proof. intros ?. rewrite <-Z.lxor_lor by done. by rewrite Z.add_nocarry_lxor. Qed.
+
+Lemma Z_of_bool_spec_low b :
+  Z.testbit (Z_of_bool b) 0 = b.
+Proof. by destruct b. Qed.
+
+Lemma Z_of_bool_spec_high b z:
+  0 < z →
+  Z.testbit (Z_of_bool b) z = false.
+Proof. move => ?. destruct b => /=; by rewrite ?Z.bits_0 // Z_bits_1_above. Qed.
 
 (* This has as better performance characteristic wrt. simpl compared
 to list_find since list_find_idx does not contain prod_map. *)

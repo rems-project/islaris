@@ -63,7 +63,7 @@ Ltac reduce_closed_sim :=
 
 Ltac cbn_sim :=
   cbn [returnm bind bind0 sim_regs
-       x2_ref x9_ref x10_ref x11_ref misa_ref mstatus_ref PC_ref nextPC_ref cur_privilege_ref
+       x1_ref x2_ref x9_ref x10_ref x11_ref x12_ref misa_ref mstatus_ref PC_ref nextPC_ref cur_privilege_ref
        regval_of of_regval read_from write_to regval_from_reg
        Misa_of_regval regval_of_Misa
        read_kind_of_flags
@@ -78,7 +78,8 @@ Ltac cbn_sim :=
 
 Create HintDb simpl_regs_rewrite.
 #[export]
-Hint Rewrite x2_nextPC x10_nextPC nextPC_x10 x11_nextPC nextPC_x11 mstatus_nextPC misa_nextPC
+Hint Rewrite x1_nextPC x2_nextPC x10_nextPC nextPC_x10 x11_nextPC nextPC_x11
+  x12_nextPC nextPC_x12 x13_nextPC nextPC_x13 mstatus_nextPC misa_nextPC
   cur_privilege_nextPC PC_nextPC nextPC_nextPC : simpl_regs_rewrite.
 Ltac sim_simpl_regs :=
   autorewrite with simpl_regs_rewrite.
@@ -110,6 +111,7 @@ Ltac sim_simpl_goal :=
          | |- _::_ = _::_ => apply f_equal_help; [apply f_equal_help; [done|] |]
          end;
   try lazymatch goal with | |- negb _ = true => apply negb_true_iff end;
+  try lazymatch goal with | |- negb _ = false => apply negb_false_iff end;
   try apply bool_decide_eq_true_2;
   try apply bool_decide_eq_false_2;
   (* autorewrite with mword_to_bv_rewrite; *)
@@ -121,6 +123,8 @@ Ltac sim_simpl_goal :=
 (*          end. *)
 Ltac sim_simpl_hyp H :=
   try (injection H; clear H; intros H);
+  try lazymatch type of H with negb _ = true => apply negb_true_iff in H end;
+  try lazymatch type of H with negb _ = false => apply negb_false_iff in H end;
   try apply bool_decide_eq_true_1 in H;
   try apply bool_decide_eq_false_1 in H;
   try (apply Eqdep_dec.inj_pair2_eq_dec in H; [|by move => ??; apply decide; apply _]).
@@ -157,6 +161,7 @@ Ltac red_monad_sim :=
          | |- sim _ (read_reg _) _ (ReadReg _ _ _ _:t:_)  => apply: sim_read_reg; [done | done | try done; shelve|]
          | |- sim _ (write_reg nextPC_ref _) _ _  => apply: sim_write_reg_private; [done..|]
          | |- sim _ (read_reg nextPC_ref) _ _  => apply: sim_read_reg_l; [done..|]
+         | |- sim _ (get_next_pc ()) _ _  => apply: sim_read_reg_l; [done..|]
          | |- sim _ (write_reg _ _) _ (WriteReg _ _ _ _:t:_)  => apply: sim_write_reg; [done | shelve |]
          | |- sim _ (Write_ea _ _ _ _) _ _  => apply: sim_Write_ea
          | |- sim _ (Prompt_monad.write_mem _ _ _ _ _) _ (WriteMem _ _ _ _ _ _ _ :t:_)  => apply sim_write_mem; [done|done|done|done|shelve|shelve|]

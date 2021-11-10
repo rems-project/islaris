@@ -160,6 +160,9 @@ Lemma regstate_eta (regs : regstate) :
   |}.
 Proof. now destruct regs. Qed.
 
+Lemma x1_nextPC regs n:
+  (x1 {[ regs with nextPC := n ]} ) = x1 regs.
+Proof. now rewrite (regstate_eta regs). Qed.
 Lemma x2_nextPC regs n:
   (x2 {[ regs with nextPC := n ]} ) = x2 regs.
 Proof. now rewrite (regstate_eta regs). Qed.
@@ -174,6 +177,18 @@ Lemma x11_nextPC regs n:
 Proof. now rewrite (regstate_eta regs). Qed.
 Lemma nextPC_x11 regs n:
   (nextPC {[ regs with x11 := n ]} ) = nextPC regs.
+Proof. now rewrite (regstate_eta regs). Qed.
+Lemma x12_nextPC regs n:
+  (x12 {[ regs with nextPC := n ]} ) = x12 regs.
+Proof. now rewrite (regstate_eta regs). Qed.
+Lemma nextPC_x12 regs n:
+  (nextPC {[ regs with x12 := n ]} ) = nextPC regs.
+Proof. now rewrite (regstate_eta regs). Qed.
+Lemma x13_nextPC regs n:
+  (x13 {[ regs with nextPC := n ]} ) = x13 regs.
+Proof. now rewrite (regstate_eta regs). Qed.
+Lemma nextPC_x13 regs n:
+  (nextPC {[ regs with x13 := n ]} ) = nextPC regs.
 Proof. now rewrite (regstate_eta regs). Qed.
 Lemma mstatus_nextPC regs n:
   (mstatus {[ regs with nextPC := n ]} ) = mstatus regs.
@@ -203,6 +218,10 @@ Proof. by destruct n. Qed.
 Lemma get_word_to_word n H (w : Word.word (Z.to_nat n)):
   get_word (to_word H w) = w.
 Proof. destruct n => //. Qed.
+
+Lemma get_word_with_word n (b : mword n) f:
+  (get_word (with_word (P:=id) f b)) = f (get_word b).
+Proof. by destruct n. Qed.
 
 Lemma get_word_inj n (m1 m2 : mword n):
   get_word m1 = get_word m2 → m1 = m2.
@@ -530,11 +549,115 @@ Admitted.
     (* Set Printing All. *)
     unfold mword_of_nat.
 Admitted.
-*)
+ *)
+Lemma wordToZ_get_word_cast_to_mword n m (b : Word.word n) Heq:
+  Word.wordToZ (get_word (n:=m) (cast_to_mword b Heq)) = Word.wordToZ b.
+Proof.
+  destruct Heq.
+  unfold cast_to_mword.
+Admitted.
+
 Lemma wordToN_cast_word n m (b : Word.word n) (Heq : n = m):
   Word.wordToN (cast_word b Heq) = Word.wordToN b.
 Proof. destruct Heq. by rewrite cast_word_refl. Qed.
 
+Lemma wordToN_WS n b (w : Word.word n):
+  (Z.of_N (Word.wordToN (Word.WS b w))) = Z.lor (Z_of_bool b) (Z.of_N (Word.wordToN w) ≪ 1).
+Proof.
+  simpl. destruct b.
+  - rewrite N2Z.inj_succ. rewrite -Z_add_nocarry_lor /=.
+    + rewrite Z.shiftl_mul_pow2; lia.
+    + bitblast. rewrite Z_bits_1_above //. lia.
+  - rewrite Z.lor_0_l Z.shiftl_mul_pow2 //. lia.
+Qed.
+
+Lemma wordToN_spec_high n i (w : Word.word n):
+  n ≤ i →
+  Z.testbit (Z.of_N (Word.wordToN w)) i = false.
+Proof.
+  move => ?.
+  eapply Z_bounded_iff_bits_nonneg; [..|reflexivity] => //; try lia.
+  move: w. have -> : n = Z.to_nat n by lia. move => w.
+  have /lt_Npow2? := Word.wordToN_bound w.
+  apply: Z.lt_le_trans; [naive_solver lia|].
+  apply Z.pow_le_mono_r; lia.
+Qed.
+
+#[local] Hint Rewrite wordToN_spec_high Z_of_bool_spec_high using lia : rewrite_bits_db.
+
+Lemma bitwp_spec f n (w1 w2 : Word.word n) z:
+  f false false = false →
+  0 ≤ z →
+  Z.testbit (Z.of_N (Word.wordToN (Word.bitwp f w1 w2))) z =
+    f (Z.testbit (Z.of_N (Word.wordToN w1)) z)
+      (Z.testbit (Z.of_N (Word.wordToN w2)) z).
+Proof.
+  move => ?. elim: n w1 w2 z.
+  - move => w1 w2 z ?. have -> := Word.shatter_word_0 w1. have -> := Word.shatter_word_0 w2.
+    by rewrite /= Z.bits_0.
+  - move => n IH w1 w2 z ?.
+    have [b1 [? ->]] := Word.shatter_word_S w1. have [b2 [? ->]] := Word.shatter_word_S w2.
+    cbn [Word.bitwp].
+    rewrite !wordToN_WS /= !Z.lor_spec !Z.shiftl_spec //.
+    destruct (decide (z = 0)); subst.
+    + by rewrite !(Z.testbit_neg_r _ (-1)) // !orb_false_r !Z_of_bool_spec_low.
+    + rewrite !Z_of_bool_spec_high /=; [|lia..]. rewrite IH //. lia.
+Qed.
+
+Lemma wordToN_wor n (w1 w2 : Word.word n):
+  Z.of_N (Word.wordToN (Word.wor w1 w2)) = Z.lor (Z.of_N (Word.wordToN w1)) (Z.of_N (Word.wordToN w2)).
+Proof. rewrite /Word.wor. apply Z.bits_inj_iff' => ??. by rewrite bitwp_spec // Z.lor_spec. Qed.
+
+Lemma wordToN_wand n (w1 w2 : Word.word n):
+  Z.of_N (Word.wordToN (Word.wand w1 w2)) = Z.land (Z.of_N (Word.wordToN w1)) (Z.of_N (Word.wordToN w2)).
+Proof. rewrite /Word.wand. apply Z.bits_inj_iff' => ??. by rewrite bitwp_spec // Z.land_spec. Qed.
+
+Lemma wordToN_wnot n (w : Word.word n):
+  Z.of_N (Word.wordToN (Word.wnot w)) = Z.land (Z.lnot (Z.of_N (Word.wordToN w))) (Z.ones n).
+Proof.
+  elim: w => //. move => b ?? IH.
+  cbn [Word.wnot]. rewrite !wordToN_WS /= IH.
+  bitblast.
+  all: try have -> : i = 0 by lia.
+  all: rewrite ?Z_of_bool_spec_low//; lia.
+Qed.
+
+Lemma wordToN_wlshiftl n (w : Word.word n) (m : nat):
+  Z.of_N (Word.wordToN w) < 2 ^ (n - m) →
+  Z.of_N (Word.wordToN (Word.wlshift w m)) = (Z.of_N (Word.wordToN w)) ≪ m.
+Proof.
+  move => Hl.
+  rewrite !Word.wordToN_nat Word.wordToNat_wlshift -!Word.wordToN_nat Z.shiftl_mul_pow2; [| lia].
+  rewrite Nat2N.inj_mul Nat2N.inj_mod !Nat2N.inj_pow Nat2N.inj_sub -Word.wordToN_nat.
+  destruct (decide (m ≤ n)). 2: {
+    move: Hl. rewrite Z.pow_neg_r; lia.
+  }
+  rewrite N2Z.inj_mul N2Z.inj_mod !N2Z.inj_pow !N2Z.inj_sub; [|lia].
+  rewrite Z.mod_small; lia.
+Qed.
+
+
+Lemma wordToN_setBit n (z : nat) (w : Word.word n) b:
+  0 ≤ z →
+  (z < n)%nat →
+  Z.of_N (Word.wordToN (setBit w z b)) =
+    Z.lor (Z.land (Z.lnot (1 ≪ z)) (Z.of_N (Word.wordToN w))) (Z_of_bool (negb b) ≪ z).
+Proof.
+  unfold setBit => ??. destruct n; [lia|].
+  have H1 : Z.of_N (Word.wordToN (Word.natToWord (S n) 1)) = 1. {
+    rewrite Word.wordToN_nat Word.wordToNat_natToWord_idempotent //.
+    rewrite NatLib.Npow2_S. have := NatLib.Npow2_pos n. lia.
+  }
+  destruct b.
+  - rewrite Z.shiftl_0_l Z.lor_0_r wordToN_wand wordToN_wnot Word.wlshift_alt wordToN_wlshiftl H1. 2: {
+      rewrite -(Z.succ_pred (_ - _)) Z.pow_succ_r; lia.
+    }
+    bitblast.
+  - rewrite wordToN_wor wordToN_wand wordToN_wnot Word.wlshift_alt wordToN_wlshiftl H1. 2: {
+      rewrite -(Z.succ_pred (_ - _)) Z.pow_succ_r; lia.
+    }
+    bitblast.
+Qed.
 
 Lemma wlsb_testbit n (w : Word.word (S n)):
   Word.wlsb w = Z.testbit (Z.of_N (Word.wordToN w)) 0.

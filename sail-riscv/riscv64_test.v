@@ -98,7 +98,7 @@ Proof.
       rewrite ->Hassume1, Hassume2, !bv_add_unsigned, !bv_unsigned_BV in *.
       unfold bv_wrap, bv_modulus in *. lia.
   - by rewrite mword_to_bv_add_vec.
-  - by rewrite Word.sext0 /= mword_to_bv_to_mword // bv_sign_extend_idemp.
+  - rewrite mword_to_bv_EXTS // mword_to_bv_to_mword //.
   - by rewrite mword_to_bv_add_vec.
     Unshelve. exact: inhabitant.
 Qed.
