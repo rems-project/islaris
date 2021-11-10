@@ -12,6 +12,7 @@ all_and_tests: tests all
 
 update_etc:
 	@dune build _build/install/default/etc/coq-isla/aarch64_isla_coq.toml
+	@dune build _build/install/default/etc/coq-isla/aarch64_isla_coq_el1.toml
 	@dune build _build/install/default/etc/coq-isla/riscv64_isla_coq.toml
 .PHONY: update_etc
 
@@ -52,7 +53,12 @@ generate_clz: examples/clz.dump update_etc
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/clz --coqdir=isla.instructions.clz
 .PHONY: generate_clz
 
-generate: generate_aarch64 generate_riscv64 generate_el2_to_el1 generate_clz
+generate_simple_hvc: examples/simple_hvc.dump update_etc
+	@echo "[isla-coq] $<"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/simple_hvc --coqdir=isla.instructions.simple_hvc
+.PHONY: generate_simple_hvc
+
+generate: generate_aarch64 generate_riscv64 generate_el2_to_el1 generate_clz generate_simple_hvc
 .PHONY: generate
 
 clean:

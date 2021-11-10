@@ -1,0 +1,38 @@
+0000000000080000 <__start>:
+//@isla-config: aarch64_isla_coq.toml
+   80000:	d2a00140 	mov	x0, #0xa0000               	// #655360
+   80004:	d51cc000 	msr	vbar_el2, x0
+   80008:	d2b00000 	mov	x0, #0x80000000            	// #2147483648
+   8000c:	d51c1100 	msr	hcr_el2, x0
+   80010:	d2807880 	mov	x0, #0x3c4                 	// #964
+   80014:	d51c4000 	msr	spsr_el2, x0
+   80018:	d2a00120 	mov	x0, #0x90000               	// #589824
+   8001c:	d51c4020 	msr	elr_el2, x0
+//SPSR_EL2.M of the form 0b0010x (where bit X corresponds to saved PSTATE.SP).
+//@constraint: = ((_ extract 4  4 ) SPSR_EL2) 0b0
+//@constraint: = ((_ extract 3  2 ) SPSR_EL2) 0b01
+//@constraint: = ((_ extract 1  1 ) SPSR_EL2) 0b0
+//SPSR_EL2.IL is 0b0.
+//@constraint: = ((_ extract 20 20) SPSR_EL2) 0b0
+//ELR_EL2 contains an address with a 0 tag bit.
+//@constraint: = ((_ extract 55 55) ELR_EL2) 0b0
+   80020:	d69f03e0 	eret
+
+0000000000090000 <enter_el1>:
+//@isla-config: aarch64_isla_coq_el1.toml
+   90000:	aa1f03e0 	mov	x0, xzr
+//@constraint: = VBAR_EL2 0x00000000000a0000
+   90004:	d4000002 	hvc	#0x0
+
+00000000000a0000 <el2_exception_vector>:
+//@isla-config: aarch64_isla_coq.toml
+   a0400:	d2800540 	mov	x0, #0x2a                  	// #42
+//SPSR_EL2.M of the form 0b0010x (where bit X corresponds to saved PSTATE.SP).
+//@constraint: = ((_ extract 4  4 ) SPSR_EL2) 0b0
+//@constraint: = ((_ extract 3  2 ) SPSR_EL2) 0b01
+//@constraint: = ((_ extract 1  1 ) SPSR_EL2) 0b0
+//SPSR_EL2.IL is 0b0.
+//@constraint: = ((_ extract 20 20) SPSR_EL2) 0b0
+//ELR_EL2 contains an address with a 0 tag bit.
+//@constraint: = ((_ extract 55 55) ELR_EL2) 0b0
+   a0404:	d69f03e0 	eret
