@@ -191,5 +191,5 @@ Proof.
     rewrite bv_and_comm.
     f_equal.
     * f_equal. by apply bv_eq.
-    * apply bv_eq. vm_compute.
-Admitted.
+    * by apply bv_eq.
+Qed.

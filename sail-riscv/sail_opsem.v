@@ -206,7 +206,7 @@ Lemma mword_to_bv_update_vec_dec n1 n2 (b : mword n1) b1 z b2:
   0 ≤ z →
   mword_to_bv (n2:=n2) (update_vec_dec b z b1) = bv_or
     (bv_and (bv_not (Z_to_bv n2 (1 ≪ z))) (mword_to_bv b))
-    (Z_to_bv n2 (Z_of_bool (negb b2) ≪ z)).
+    (Z_to_bv n2 (Z_of_bool b2 ≪ z)).
 Proof.
   move => Hb ???.
   apply bv_eq. rewrite mword_to_bv_unsigned //.

@@ -39,6 +39,11 @@ cd coq
 
 # Adjust riscv_extras.v for RV32, RV64 and duopod to import "Require Import Lia."
 
+# Fix setBit in lib/sail/Values.v by replacing
+#   if b then masked else wor masked bit
+# with
+#   if b then wor masked bit else masked
+
 sed -i s/omega/lia/ RV32/riscv_extras.v
 sed -i s/omega/lia/ RV64/riscv_extras.v
 sed -i s/omega/lia/ duopod/riscv_extras.v

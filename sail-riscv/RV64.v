@@ -641,7 +641,7 @@ Lemma wordToN_setBit n (z : nat) (w : Word.word n) b:
   0 ≤ z →
   (z < n)%nat →
   Z.of_N (Word.wordToN (setBit w z b)) =
-    Z.lor (Z.land (Z.lnot (1 ≪ z)) (Z.of_N (Word.wordToN w))) (Z_of_bool (negb b) ≪ z).
+    Z.lor (Z.land (Z.lnot (1 ≪ z)) (Z.of_N (Word.wordToN w))) (Z_of_bool b ≪ z).
 Proof.
   unfold setBit => ??. destruct n; [lia|].
   have H1 : Z.of_N (Word.wordToN (Word.natToWord (S n) 1)) = 1. {
@@ -649,11 +649,11 @@ Proof.
     rewrite NatLib.Npow2_S. have := NatLib.Npow2_pos n. lia.
   }
   destruct b.
-  - rewrite Z.shiftl_0_l Z.lor_0_r wordToN_wand wordToN_wnot Word.wlshift_alt wordToN_wlshiftl H1. 2: {
+  - rewrite wordToN_wor wordToN_wand wordToN_wnot Word.wlshift_alt wordToN_wlshiftl H1. 2: {
       rewrite -(Z.succ_pred (_ - _)) Z.pow_succ_r; lia.
     }
     bitblast.
-  - rewrite wordToN_wor wordToN_wand wordToN_wnot Word.wlshift_alt wordToN_wlshiftl H1. 2: {
+  - rewrite Z.shiftl_0_l Z.lor_0_r wordToN_wand wordToN_wnot Word.wlshift_alt wordToN_wlshiftl H1. 2: {
       rewrite -(Z.succ_pred (_ - _)) Z.pow_succ_r; lia.
     }
     bitblast.
