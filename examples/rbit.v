@@ -4,7 +4,15 @@ From isla.instructions.rbit Require Import instrs.
 Lemma simplify_stuff (b n : bv 64) :
   bv_extract 0 1 (bv_shiftr b n) = bool_to_bv 1 (Z.testbit (bv_unsigned b) (bv_unsigned n)).
 Proof.
-Admitted.
+  bv_simplify. rewrite /bv_wrap.
+  assert (bv_modulus 1 = 2) as -> by done.
+  generalize (bv_unsigned b) (bv_unsigned n) => bz nz; clear b n.
+  assert (∀ b, bool_to_Z b `mod` 2 = bool_to_Z b) as -> by move => [] //.
+  rewrite -(Z.land_ones _ 1); last done.
+  bitblast; rewrite /= ?Z.testbit_0_l //.
+  - assert (i = 0) as -> by lia. by rewrite Z_of_bool_spec_low.
+  - symmetry. apply Z_of_bool_spec_high. lia.
+Qed.
 
 Lemma simplify_more {N} (b : bv N) (n k : Z):
   0 ≤ n →
