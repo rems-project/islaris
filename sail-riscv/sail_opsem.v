@@ -114,16 +114,17 @@ Proof.
 Qed.
 
 Lemma mword_to_bv_subrange_vec_dec z1 z2 n2 n1 (b : mword n1) H1 H2:
+  (∀ b Heq, Word.wordToN (get_word (@cast_to_mword (Z.to_nat z1 - Z.to_nat z2 + 1) (z1 - z2 + 1) b Heq)) = Word.wordToN b) → (* TODO: remove this once there is a proof of wordToN_get_word_cast_to_mword *)
   n1 = Z.of_N n2 →
   mword_to_bv (subrange_vec_dec (H:=H1) (H0:=H2) b z1 z2) =
     bv_extract (Z.to_N z2) (Z.to_N (z1 + 1 - z2)) (mword_to_bv (n2:=n2) b).
 Proof.
-  move => ?.
+  move => Hx ?.
   have /Z.leb_le? := use_ArithFact H1.
   have /andb_true_iff[/Z.leb_le? /Z.ltb_lt?] := use_ArithFact H2.
   unfold subrange_vec_dec. apply bv_eq.
   rewrite bv_extract_unsigned !mword_to_bv_unsigned; [|lia..].
-  rewrite wordToN_get_word_cast_to_mword wordToN_split2 wordToN_cast_word wordToN_split1 wordToN_cast_word.
+  rewrite Hx wordToN_split2 wordToN_cast_word wordToN_split1 wordToN_cast_word.
   rewrite !Z_nat_N !Z2N.id ?N2Z.inj_div ?N2Z.inj_mod ?N2Z.inj_pow ?Z2N.id; [|lia..].
   have -> : Z.of_N (N.of_nat (Z.to_nat z1 + 1)) = z1 + 1 by lia.
   rewrite -Z.shiftr_div_pow2 -?Z.land_ones; [|lia..].
@@ -186,14 +187,15 @@ Proof.
 Qed.
 
 Lemma mword_to_bv_EXTS n1 n2' n2 (b : mword n1) H:
+  (∀ b Heq, Word.wordToZ (get_word (@cast_to_mword (Z.to_nat n1 + Z.to_nat (n2' - n1)) n2' b Heq)) = Word.wordToZ b) → (* TODO: remove this once there is a proof of wordToZ_get_word_cast_to_mword *)
   0 ≤ n1 →
   n2' = Z.of_N n2 →
   mword_to_bv (n2:=n2) (@EXTS _ n2' b H) = bv_sign_extend _ (mword_to_bv (n2:=(Z.to_N n1)) b).
 Proof.
-  move => ??.
+  move => Hx ??.
   have /Z.geb_le? := use_ArithFact H.
-  apply bv_eq_signed. rewrite mword_to_bv_signed //. rewrite /EXTS/sign_extend/exts_vec/=.
-  rewrite wordToZ_get_word_cast_to_mword Word.sext_wordToZ bv_sign_extend_signed ?mword_to_bv_signed //.
+  apply bv_eq_signed. rewrite mword_to_bv_signed //. rewrite /EXTS/sign_extend/exts_vec/= Hx.
+  rewrite Word.sext_wordToZ bv_sign_extend_signed ?mword_to_bv_signed //.
   all: lia.
 Qed.
 Arguments EXTS : simpl never.
@@ -660,13 +662,14 @@ Proof.
 Qed.
 
 Lemma sim_write_reg {A E} Σ (r : register_ref _ _ A) e2 v K v' ann:
+  name r ≠ "tlb48" ∧ name r ≠ "tlb39" →
   set_regval (name r) (regval_of r v) Σ.(sim_regs) = Some (write_to r v Σ.(sim_regs)) →
   v' = register_value_to_valu (regval_of r v) →
   sim (Σ <|sim_regs := write_to r v Σ.(sim_regs)|>) (Done tt) K e2 →
   sim (E:=E) Σ (write_reg r v) K (WriteReg (name r) [] v' ann :t: e2).
 Proof.
   destruct Σ => /=.
-  move => Hset -> Hsim ? isla_regs ? ?? Hwf ? Hdone. rewrite mctx_interp_Write_reg.
+  move => ? Hset -> Hsim ? isla_regs ? ?? Hwf ? Hdone. rewrite mctx_interp_Write_reg.
   apply: raw_sim_step_i. { right. eexists _, _. by constructor. }
   move => ????/= Hstep. inversion_clear Hstep; simplify_eq. split; [done|].
   apply: raw_sim_safe_here => /= -[|Hsafe]. { unfold seq_to_val. by case. }
@@ -680,7 +683,7 @@ Proof.
   apply: raw_sim_weaken; [apply Hsim => /=| ].
   - move => r' vi'. destruct (decide (r' = name r)); simplify_eq.
     + rewrite lookup_insert. move: Hset => /get_set_regval.
-      unfold get_regval_or_config => ->. naive_solver.
+      unfold get_regval_or_config => ->; naive_solver.
     + rewrite lookup_insert_ne //.
       erewrite get_set_regval_config_ne; [|done..]. by apply: Hwf.
   - apply/lookup_insert_None. unfold private_regs_wf in *.

@@ -239,268 +239,6 @@ Proof.
   rewrite -Npow2_pow Z_nat_N. etrans; [ apply N2Z.inj_lt |].
   by rewrite N2Z.inj_pow Z2N.id.
 Qed.
-(*
-Definition get_regval' (reg_name : string) (s : regstate) : option register_value :=
-  match reg_name with
-  | "satp" => Some (satp_ref.(regval_of) (satp_ref.(read_from) s))
-  | "tlb48" => Some (tlb48_ref.(regval_of) (tlb48_ref.(read_from) s))
-  | "tlb39" => Some (tlb39_ref.(regval_of) (tlb39_ref.(read_from) s))
-  | "htif_payload_writes" => Some (htif_payload_writes_ref.(regval_of) (htif_payload_writes_ref.(read_from) s))
-  | "htif_cmd_write" => Some (htif_cmd_write_ref.(regval_of) (htif_cmd_write_ref.(read_from) s))
-  | "htif_exit_code" => Some (htif_exit_code_ref.(regval_of) (htif_exit_code_ref.(read_from) s))
-  | "htif_done" => Some (htif_done_ref.(regval_of) (htif_done_ref.(read_from) s))
-  | "htif_tohost" => Some (htif_tohost_ref.(regval_of) (htif_tohost_ref.(read_from) s))
-  | "mtimecmp" => Some (mtimecmp_ref.(regval_of) (mtimecmp_ref.(read_from) s))
-  | "fcsr" => Some (fcsr_ref.(regval_of) (fcsr_ref.(read_from) s))
-  | "f31" => Some (f31_ref.(regval_of) (f31_ref.(read_from) s))
-  | "f30" => Some (f30_ref.(regval_of) (f30_ref.(read_from) s))
-  | "f29" => Some (f29_ref.(regval_of) (f29_ref.(read_from) s))
-  | "f28" => Some (f28_ref.(regval_of) (f28_ref.(read_from) s))
-  | "f27" => Some (f27_ref.(regval_of) (f27_ref.(read_from) s))
-  | "f26" => Some (f26_ref.(regval_of) (f26_ref.(read_from) s))
-  | "f25" => Some (f25_ref.(regval_of) (f25_ref.(read_from) s))
-  | "f24" => Some (f24_ref.(regval_of) (f24_ref.(read_from) s))
-  | "f23" => Some (f23_ref.(regval_of) (f23_ref.(read_from) s))
-  | "f22" => Some (f22_ref.(regval_of) (f22_ref.(read_from) s))
-  | "f21" => Some (f21_ref.(regval_of) (f21_ref.(read_from) s))
-  | "f20" => Some (f20_ref.(regval_of) (f20_ref.(read_from) s))
-  | "f19" => Some (f19_ref.(regval_of) (f19_ref.(read_from) s))
-  | "f18" => Some (f18_ref.(regval_of) (f18_ref.(read_from) s))
-  | "f17" => Some (f17_ref.(regval_of) (f17_ref.(read_from) s))
-  | "f16" => Some (f16_ref.(regval_of) (f16_ref.(read_from) s))
-  | "f15" => Some (f15_ref.(regval_of) (f15_ref.(read_from) s))
-  | "f14" => Some (f14_ref.(regval_of) (f14_ref.(read_from) s))
-  | "f13" => Some (f13_ref.(regval_of) (f13_ref.(read_from) s))
-  | "f12" => Some (f12_ref.(regval_of) (f12_ref.(read_from) s))
-  | "f11" => Some (f11_ref.(regval_of) (f11_ref.(read_from) s))
-  | "f10" => Some (f10_ref.(regval_of) (f10_ref.(read_from) s))
-  | "f9" => Some (f9_ref.(regval_of) (f9_ref.(read_from) s))
-  | "f8" => Some (f8_ref.(regval_of) (f8_ref.(read_from) s))
-  | "f7" => Some (f7_ref.(regval_of) (f7_ref.(read_from) s))
-  | "f6" => Some (f6_ref.(regval_of) (f6_ref.(read_from) s))
-  | "f5" => Some (f5_ref.(regval_of) (f5_ref.(read_from) s))
-  | "f4" => Some (f4_ref.(regval_of) (f4_ref.(read_from) s))
-  | "f3" => Some (f3_ref.(regval_of) (f3_ref.(read_from) s))
-  | "f2" => Some (f2_ref.(regval_of) (f2_ref.(read_from) s))
-  | "f1" => Some (f1_ref.(regval_of) (f1_ref.(read_from) s))
-  | "f0" => Some (f0_ref.(regval_of) (f0_ref.(read_from) s))
-  | "float_fflags" => Some (float_fflags_ref.(regval_of) (float_fflags_ref.(read_from) s))
-  | "float_result" => Some (float_result_ref.(regval_of) (float_result_ref.(read_from) s))
-  | "utval" => Some (utval_ref.(regval_of) (utval_ref.(read_from) s))
-  | "ucause" => Some (ucause_ref.(regval_of) (ucause_ref.(read_from) s))
-  | "uepc" => Some (uepc_ref.(regval_of) (uepc_ref.(read_from) s))
-  | "uscratch" => Some (uscratch_ref.(regval_of) (uscratch_ref.(read_from) s))
-  | "utvec" => Some (utvec_ref.(regval_of) (utvec_ref.(read_from) s))
-  | "pmpaddr15" => Some (pmpaddr15_ref.(regval_of) (pmpaddr15_ref.(read_from) s))
-  | "pmpaddr14" => Some (pmpaddr14_ref.(regval_of) (pmpaddr14_ref.(read_from) s))
-  | "pmpaddr13" => Some (pmpaddr13_ref.(regval_of) (pmpaddr13_ref.(read_from) s))
-  | "pmpaddr12" => Some (pmpaddr12_ref.(regval_of) (pmpaddr12_ref.(read_from) s))
-  | "pmpaddr11" => Some (pmpaddr11_ref.(regval_of) (pmpaddr11_ref.(read_from) s))
-  | "pmpaddr10" => Some (pmpaddr10_ref.(regval_of) (pmpaddr10_ref.(read_from) s))
-  | "pmpaddr9" => Some (pmpaddr9_ref.(regval_of) (pmpaddr9_ref.(read_from) s))
-  | "pmpaddr8" => Some (pmpaddr8_ref.(regval_of) (pmpaddr8_ref.(read_from) s))
-  | "pmpaddr7" => Some (pmpaddr7_ref.(regval_of) (pmpaddr7_ref.(read_from) s))
-  | "pmpaddr6" => Some (pmpaddr6_ref.(regval_of) (pmpaddr6_ref.(read_from) s))
-  | "pmpaddr5" => Some (pmpaddr5_ref.(regval_of) (pmpaddr5_ref.(read_from) s))
-  | "pmpaddr4" => Some (pmpaddr4_ref.(regval_of) (pmpaddr4_ref.(read_from) s))
-  | "pmpaddr3" => Some (pmpaddr3_ref.(regval_of) (pmpaddr3_ref.(read_from) s))
-  | "pmpaddr2" => Some (pmpaddr2_ref.(regval_of) (pmpaddr2_ref.(read_from) s))
-  | "pmpaddr1" => Some (pmpaddr1_ref.(regval_of) (pmpaddr1_ref.(read_from) s))
-  | "pmpaddr0" => Some (pmpaddr0_ref.(regval_of) (pmpaddr0_ref.(read_from) s))
-  | "pmp15cfg" => Some (pmp15cfg_ref.(regval_of) (pmp15cfg_ref.(read_from) s))
-  | "pmp14cfg" => Some (pmp14cfg_ref.(regval_of) (pmp14cfg_ref.(read_from) s))
-  | "pmp13cfg" => Some (pmp13cfg_ref.(regval_of) (pmp13cfg_ref.(read_from) s))
-  | "pmp12cfg" => Some (pmp12cfg_ref.(regval_of) (pmp12cfg_ref.(read_from) s))
-  | "pmp11cfg" => Some (pmp11cfg_ref.(regval_of) (pmp11cfg_ref.(read_from) s))
-  | "pmp10cfg" => Some (pmp10cfg_ref.(regval_of) (pmp10cfg_ref.(read_from) s))
-  | "pmp9cfg" => Some (pmp9cfg_ref.(regval_of) (pmp9cfg_ref.(read_from) s))
-  | "pmp8cfg" => Some (pmp8cfg_ref.(regval_of) (pmp8cfg_ref.(read_from) s))
-  | "pmp7cfg" => Some (pmp7cfg_ref.(regval_of) (pmp7cfg_ref.(read_from) s))
-  | "pmp6cfg" => Some (pmp6cfg_ref.(regval_of) (pmp6cfg_ref.(read_from) s))
-  | "pmp5cfg" => Some (pmp5cfg_ref.(regval_of) (pmp5cfg_ref.(read_from) s))
-  | "pmp4cfg" => Some (pmp4cfg_ref.(regval_of) (pmp4cfg_ref.(read_from) s))
-  | "pmp3cfg" => Some (pmp3cfg_ref.(regval_of) (pmp3cfg_ref.(read_from) s))
-  | "pmp2cfg" => Some (pmp2cfg_ref.(regval_of) (pmp2cfg_ref.(read_from) s))
-  | "pmp1cfg" => Some (pmp1cfg_ref.(regval_of) (pmp1cfg_ref.(read_from) s))
-  | "pmp0cfg" => Some (pmp0cfg_ref.(regval_of) (pmp0cfg_ref.(read_from) s))
-  | "tselect" => Some (tselect_ref.(regval_of) (tselect_ref.(read_from) s))
-  | "stval" => Some (stval_ref.(regval_of) (stval_ref.(read_from) s))
-  | "scause" => Some (scause_ref.(regval_of) (scause_ref.(read_from) s))
-  | "sepc" => Some (sepc_ref.(regval_of) (sepc_ref.(read_from) s))
-  | "sscratch" => Some (sscratch_ref.(regval_of) (sscratch_ref.(read_from) s))
-  | "stvec" => Some (stvec_ref.(regval_of) (stvec_ref.(read_from) s))
-  | "sideleg" => Some (sideleg_ref.(regval_of) (sideleg_ref.(read_from) s))
-  | "sedeleg" => Some (sedeleg_ref.(regval_of) (sedeleg_ref.(read_from) s))
-  | "mhartid" => Some (mhartid_ref.(regval_of) (mhartid_ref.(read_from) s))
-  | "marchid" => Some (marchid_ref.(regval_of) (marchid_ref.(read_from) s))
-  | "mimpid" => Some (mimpid_ref.(regval_of) (mimpid_ref.(read_from) s))
-  | "mvendorid" => Some (mvendorid_ref.(regval_of) (mvendorid_ref.(read_from) s))
-  | "minstret_written" => Some (minstret_written_ref.(regval_of) (minstret_written_ref.(read_from) s))
-  | "minstret" => Some (minstret_ref.(regval_of) (minstret_ref.(read_from) s))
-  | "mtime" => Some (mtime_ref.(regval_of) (mtime_ref.(read_from) s))
-  | "mcycle" => Some (mcycle_ref.(regval_of) (mcycle_ref.(read_from) s))
-  | "mcountinhibit" => Some (mcountinhibit_ref.(regval_of) (mcountinhibit_ref.(read_from) s))
-  | "scounteren" => Some (scounteren_ref.(regval_of) (scounteren_ref.(read_from) s))
-  | "mcounteren" => Some (mcounteren_ref.(regval_of) (mcounteren_ref.(read_from) s))
-  | "mscratch" => Some (mscratch_ref.(regval_of) (mscratch_ref.(read_from) s))
-  | "mtval" => Some (mtval_ref.(regval_of) (mtval_ref.(read_from) s))
-  | "mepc" => Some (mepc_ref.(regval_of) (mepc_ref.(read_from) s))
-  | "mcause" => Some (mcause_ref.(regval_of) (mcause_ref.(read_from) s))
-  | "mtvec" => Some (mtvec_ref.(regval_of) (mtvec_ref.(read_from) s))
-  | "medeleg" => Some (medeleg_ref.(regval_of) (medeleg_ref.(read_from) s))
-  | "mideleg" => Some (mideleg_ref.(regval_of) (mideleg_ref.(read_from) s))
-  | "mie" => Some (mie_ref.(regval_of) (mie_ref.(read_from) s))
-  | "mip" => Some (mip_ref.(regval_of) (mip_ref.(read_from) s))
-  | "mstatus" => Some (mstatus_ref.(regval_of) (mstatus_ref.(read_from) s))
-  | "mstatush" => Some (mstatush_ref.(regval_of) (mstatush_ref.(read_from) s))
-  | "misa" => Some (misa_ref.(regval_of) (misa_ref.(read_from) s))
-  | "cur_inst" => Some (cur_inst_ref.(regval_of) (cur_inst_ref.(read_from) s))
-  | "cur_privilege" => Some (cur_privilege_ref.(regval_of) (cur_privilege_ref.(read_from) s))
-  | "x31" => Some (x31_ref.(regval_of) (x31_ref.(read_from) s))
-  | "x30" => Some (x30_ref.(regval_of) (x30_ref.(read_from) s))
-  | "x29" => Some (x29_ref.(regval_of) (x29_ref.(read_from) s))
-  | "x28" => Some (x28_ref.(regval_of) (x28_ref.(read_from) s))
-  | "x27" => Some (x27_ref.(regval_of) (x27_ref.(read_from) s))
-  | "x26" => Some (x26_ref.(regval_of) (x26_ref.(read_from) s))
-  | "x25" => Some (x25_ref.(regval_of) (x25_ref.(read_from) s))
-  | "x24" => Some (x24_ref.(regval_of) (x24_ref.(read_from) s))
-  | "x23" => Some (x23_ref.(regval_of) (x23_ref.(read_from) s))
-  | "x22" => Some (x22_ref.(regval_of) (x22_ref.(read_from) s))
-  | "x21" => Some (x21_ref.(regval_of) (x21_ref.(read_from) s))
-  | "x20" => Some (x20_ref.(regval_of) (x20_ref.(read_from) s))
-  | "x19" => Some (x19_ref.(regval_of) (x19_ref.(read_from) s))
-  | "x18" => Some (x18_ref.(regval_of) (x18_ref.(read_from) s))
-  | "x17" => Some (x17_ref.(regval_of) (x17_ref.(read_from) s))
-  | "x16" => Some (x16_ref.(regval_of) (x16_ref.(read_from) s))
-  | "x15" => Some (x15_ref.(regval_of) (x15_ref.(read_from) s))
-  | "x14" => Some (x14_ref.(regval_of) (x14_ref.(read_from) s))
-  | "x13" => Some (x13_ref.(regval_of) (x13_ref.(read_from) s))
-  | "x12" => Some (x12_ref.(regval_of) (x12_ref.(read_from) s))
-  | "x11" => Some (x11_ref.(regval_of) (x11_ref.(read_from) s))
-  | "x10" => Some (x10_ref.(regval_of) (x10_ref.(read_from) s))
-  | "x9" => Some (x9_ref.(regval_of) (x9_ref.(read_from) s))
-  | "x8" => Some (x8_ref.(regval_of) (x8_ref.(read_from) s))
-  | "x7" => Some (x7_ref.(regval_of) (x7_ref.(read_from) s))
-  | "x6" => Some (x6_ref.(regval_of) (x6_ref.(read_from) s))
-  | "x5" => Some (x5_ref.(regval_of) (x5_ref.(read_from) s))
-  | "x4" => Some (x4_ref.(regval_of) (x4_ref.(read_from) s))
-  | "x3" => Some (x3_ref.(regval_of) (x3_ref.(read_from) s))
-  | "x2" => Some (x2_ref.(regval_of) (x2_ref.(read_from) s))
-  | "x1" => Some (x1_ref.(regval_of) (x1_ref.(read_from) s))
-  | "instbits" => Some (instbits_ref.(regval_of) (instbits_ref.(read_from) s))
-  | "nextPC" => Some (nextPC_ref.(regval_of) (nextPC_ref.(read_from) s))
-  | "PC" => Some (PC_ref.(regval_of) (PC_ref.(read_from) s))
-  | _ => None
-  end.
-
-Lemma get_regval'_eq r regs:
-  get_regval r regs = get_regval' r regs.
-Proof.
-  unfold get_regval.
-  have Hcase : ∀ s e1 e2 (v : option register_value),
-      (r = s → e1 = v) →
-      (r ≠ s → e2 = v) →
-      (if string_dec r s then e1 else e2) = v. {
-    move => s ?????. destruct (string_dec r s); eauto.
-  }
-  repeat (apply Hcase; [move => ->; done| move => ?]).
-  unfold get_regval'.
-  destruct r => //.
-Admitted.
-(*
-  all: destruct r => //. 1: admit.
-  all: destruct r => //.
-  1: destruct a0 as [[] [] [] [] [] [] [] []] => //.
-  all: destruct r => //.
-                    repeat (case_match => //).
-*)
-*)
-Lemma get_set_regval r regs regs' v:
-  set_regval r v regs = Some regs' ->
-  get_regval r regs' = Some v.
-Proof.
-  unfold set_regval, get_regval.
-  have Hcase : ∀ s e1 e2 e1' e2',
-      (r = s → e1 = Some regs' → e1' = Some v) →
-      (e2 = Some regs' → e2' = Some v) →
-      (if string_dec r s then e1 else e2) = Some regs' →
-      (if string_dec r s then e1' else e2') = Some v. {
-    move => s ??????. destruct (string_dec r s); eauto.
-  }
-  Time repeat (apply Hcase; [shelve|]). done.
-  Unshelve.
-  Time all: clear Hcase; move => ?; simpl; destruct v => //= ?; simplify_eq; try by destruct regs.
-Admitted.
-
-
-Lemma get_set_regval_ne r r' regs regs' v:
-  set_regval r' v regs = Some regs' →
-  r ≠ r' →
-  get_regval r regs' = get_regval r regs.
-Proof.
-  (*
-  rewrite !get_regval'_eq.
-  unfold get_regval'.
-  destruct r => //.
-  destruct a as [[] [] [] [] [] [] [] []]; try fast_done.
-  all: destruct r => //.
-  all: destruct a as [[] [] [] [] [] [] [] []]; try fast_done.
-  all: destruct r => //.
-  all: try destruct a as [[] [] [] [] [] [] [] []]; try fast_done.
-
-  destruct (decide (r = String 's' ))
-                    do 100 try case_match => //.
-  - do 100 try case_match => //.
-*)
-  unfold set_regval, get_regval.
-  move => Hset Hneq.
-  have Hcase : ∀ s (e1 e2 e1' e2' : option register_value),
-      (r = s → e1 = e1') →
-      (e2 = e2') →
-      (if string_dec r s then e1 else e2) = (if string_dec r s then e1' else e2'). {
-    move => s ??????. destruct (string_dec r s); eauto.
-  }
-  have Hcase2 : ∀ s e1 e2 (P : Prop),
-      (r' = s → e1 = Some regs' → P) →
-      (e2 = Some regs' → P) →
-      (if string_dec r' s then e1 else e2) = Some regs' →
-      P. {
-    move => s ??????. destruct (string_dec r' s); eauto.
-  }
-  repeat (apply Hcase; [shelve|]). done.
-  Unshelve.
-  (* - clear Hcase. move => ?; subst r. simpl. move: Hset. *)
-  (*   destruct r'. 1: done. *)
-  (*   Set Nested Proofs Allowed. *)
-  (*   Lemma string_dec_length A s1 s2 e1 e2: *)
-  (*     String.length s1 ≠ String.length s2 → *)
-  (*     (if string_dec s1 s2 then e1 else e2) =@{A} e2. *)
-  (*   Proof. Admitted. *)
-  (*   Create HintDb string_dec_rewrite. *)
-  (*   Hint Rewrite string_dec_length using done : string_dec_rewrite. *)
-  (*   destruct r'. 1: { autorewrite with string_dec_rewrite. done. } *)
-  (*   autorewrite with string_dec_rewrite.  *)
-  (*   destruct r'. 1: { autorewrite with string_dec_rewrite. repeat rewrite ->string_dec_length by done. done. } 1: admit. *)
-  (*   destruct r' => //. 1: admit. *)
-  (*   destruct r' => //. 1: admit. *)
-  (*   repeat (apply Hcase2; [shelve|]); done. *)
-  (* all: clear Hcase; move => ?; subst r; simpl; move: Hset; repeat (apply Hcase2; [shelve|]); done. *)
-Admitted.
-
-
-Lemma get_regval_None_stable r regs regs':
-  get_regval r regs = None →
-  get_regval r regs' = None.
-Proof.
-  have Hcase : ∀ s (e1 e2 e1' e2' : option register_value),
-      (r = s → e1 = None → e1' = None) →
-      (e2 = None → e2' = None) →
-      (if string_dec r s then e1 else e2) = None →
-      (if string_dec r s then e1' else e2') = None. {
-    move => s ??????. destruct (string_dec r s); eauto.
-  }
-  repeat (apply Hcase; [done|]). done.
-Qed.
 
 Lemma length_bitlistFromWord_rev n (w : Word.word n):
   length (bitlistFromWord_rev w) = n.
@@ -531,14 +269,31 @@ Proof.
   unfold bitlistFromWord. rewrite rev_reverse reverse_lookup_Some bitlistFromWord_rev_lookup_Some ?length_bitlistFromWord_rev.
   naive_solver lia.
 Qed.
+(*
+(* Set Printing All. *)
+Lemma cast_to_mword_eq_refl n m (w : Word.word (Z.to_nat n)) (Heq : _ = m) (Heq2 : Z.to_nat n = Z.to_nat m):
+  get_word (cast_to_mword w Heq) = eq_rect _ Word.word w _ Heq2.
+Proof.
+  unfold cast_to_mword. destruct m => //=.
+Abort.
+*)
+  (* destruct Heq. *)
+  (* unfold cast_to_mword. *)
+  (* destruct n => //=. *)
+  (* - Eval vm_compute in Z.of_nat (Z.to_nat (Z.pos p)). *)
 
-
+(*
 Lemma wordToN_get_word_cast_to_mword n m (b : Word.word n) Heq:
   Word.wordToN (get_word (n:=m) (cast_to_mword b Heq)) = Word.wordToN b.
 Proof.
+  (* have ?: m = 64. { by admit. } *)
+  (* have ? : n = 64%nat by lia. *)
+  (* subst. done. *)
   destruct Heq.
+  Set Printing All.
   unfold cast_to_mword.
-Admitted.
+Abort.
+*)
 (*
   destruct b; subst => //=.
   - by destruct b.
@@ -550,12 +305,14 @@ Admitted.
     unfold mword_of_nat.
 Admitted.
  *)
+(*
 Lemma wordToZ_get_word_cast_to_mword n m (b : Word.word n) Heq:
   Word.wordToZ (get_word (n:=m) (cast_to_mword b Heq)) = Word.wordToZ b.
 Proof.
   destruct Heq.
   unfold cast_to_mword.
-Admitted.
+Abort.
+*)
 
 Lemma wordToN_cast_word n m (b : Word.word n) (Heq : n = m):
   Word.wordToN (cast_word b Heq) = Word.wordToN b.
@@ -784,3 +541,363 @@ Qed.
 Lemma bool_of_bitU_of_bool b:
   bool_of_bitU (bitU_of_bool b) = Some b.
 Proof. by destruct b. Qed.
+
+
+Lemma get_set_regval r regs regs' v:
+  r ≠ "tlb48" ∧ r ≠ "tlb39" →
+  set_regval r v regs = Some regs' ->
+  get_regval r regs' = Some v.
+Proof.
+  move => [??].
+  unfold set_regval, get_regval.
+  have Hcase : ∀ s e1 e2 e1' e2',
+      (r = s → e1 = Some regs' → e1' = Some v) →
+      (e2 = Some regs' → e2' = Some v) →
+      (if string_dec r s then e1 else e2) = Some regs' →
+      (if string_dec r s then e1' else e2') = Some v. {
+    move => s ??????. destruct (string_dec r s); eauto.
+  }
+  Time repeat (apply Hcase; [shelve|]). done.
+  Unshelve.
+  Time all: clear Hcase; move => ?; simpl; destruct v => //= ?; simplify_eq; try by destruct regs.
+Qed.
+
+Record register_ref_record := RegRef {
+  reg_ref_type : Type;
+  reg_ref_ref : register_ref regstate register_value reg_ref_type
+}.
+Arguments RegRef {_} _.
+
+Definition riscv_regs := [
+  ("satp", RegRef satp_ref);
+  ("tlb48", RegRef tlb48_ref);
+  ("tlb39", RegRef tlb39_ref);
+  ("htif_payload_writes", RegRef htif_payload_writes_ref);
+  ("htif_cmd_write", RegRef htif_cmd_write_ref);
+  ("htif_exit_code", RegRef htif_exit_code_ref);
+  ("htif_done", RegRef htif_done_ref);
+  ("htif_tohost", RegRef htif_tohost_ref);
+  ("mtimecmp", RegRef mtimecmp_ref);
+  ("fcsr", RegRef fcsr_ref);
+  ("f31", RegRef f31_ref);
+  ("f30", RegRef f30_ref);
+  ("f29", RegRef f29_ref);
+  ("f28", RegRef f28_ref);
+  ("f27", RegRef f27_ref);
+  ("f26", RegRef f26_ref);
+  ("f25", RegRef f25_ref);
+  ("f24", RegRef f24_ref);
+  ("f23", RegRef f23_ref);
+  ("f22", RegRef f22_ref);
+  ("f21", RegRef f21_ref);
+  ("f20", RegRef f20_ref);
+  ("f19", RegRef f19_ref);
+  ("f18", RegRef f18_ref);
+  ("f17", RegRef f17_ref);
+  ("f16", RegRef f16_ref);
+  ("f15", RegRef f15_ref);
+  ("f14", RegRef f14_ref);
+  ("f13", RegRef f13_ref);
+  ("f12", RegRef f12_ref);
+  ("f11", RegRef f11_ref);
+  ("f10", RegRef f10_ref);
+  ("f9", RegRef f9_ref);
+  ("f8", RegRef f8_ref);
+  ("f7", RegRef f7_ref);
+  ("f6", RegRef f6_ref);
+  ("f5", RegRef f5_ref);
+  ("f4", RegRef f4_ref);
+  ("f3", RegRef f3_ref);
+  ("f2", RegRef f2_ref);
+  ("f1", RegRef f1_ref);
+  ("f0", RegRef f0_ref);
+  ("float_fflags", RegRef float_fflags_ref);
+  ("float_result", RegRef float_result_ref);
+  ("utval", RegRef utval_ref);
+  ("ucause", RegRef ucause_ref);
+  ("uepc", RegRef uepc_ref);
+  ("uscratch", RegRef uscratch_ref);
+  ("utvec", RegRef utvec_ref);
+  ("pmpaddr15", RegRef pmpaddr15_ref);
+  ("pmpaddr14", RegRef pmpaddr14_ref);
+  ("pmpaddr13", RegRef pmpaddr13_ref);
+  ("pmpaddr12", RegRef pmpaddr12_ref);
+  ("pmpaddr11", RegRef pmpaddr11_ref);
+  ("pmpaddr10", RegRef pmpaddr10_ref);
+  ("pmpaddr9", RegRef pmpaddr9_ref);
+  ("pmpaddr8", RegRef pmpaddr8_ref);
+  ("pmpaddr7", RegRef pmpaddr7_ref);
+  ("pmpaddr6", RegRef pmpaddr6_ref);
+  ("pmpaddr5", RegRef pmpaddr5_ref);
+  ("pmpaddr4", RegRef pmpaddr4_ref);
+  ("pmpaddr3", RegRef pmpaddr3_ref);
+  ("pmpaddr2", RegRef pmpaddr2_ref);
+  ("pmpaddr1", RegRef pmpaddr1_ref);
+  ("pmpaddr0", RegRef pmpaddr0_ref);
+  ("pmp15cfg", RegRef pmp15cfg_ref);
+  ("pmp14cfg", RegRef pmp14cfg_ref);
+  ("pmp13cfg", RegRef pmp13cfg_ref);
+  ("pmp12cfg", RegRef pmp12cfg_ref);
+  ("pmp11cfg", RegRef pmp11cfg_ref);
+  ("pmp10cfg", RegRef pmp10cfg_ref);
+  ("pmp9cfg", RegRef pmp9cfg_ref);
+  ("pmp8cfg", RegRef pmp8cfg_ref);
+  ("pmp7cfg", RegRef pmp7cfg_ref);
+  ("pmp6cfg", RegRef pmp6cfg_ref);
+  ("pmp5cfg", RegRef pmp5cfg_ref);
+  ("pmp4cfg", RegRef pmp4cfg_ref);
+  ("pmp3cfg", RegRef pmp3cfg_ref);
+  ("pmp2cfg", RegRef pmp2cfg_ref);
+  ("pmp1cfg", RegRef pmp1cfg_ref);
+  ("pmp0cfg", RegRef pmp0cfg_ref);
+  ("tselect", RegRef tselect_ref);
+  ("stval", RegRef stval_ref);
+  ("scause", RegRef scause_ref);
+  ("sepc", RegRef sepc_ref);
+  ("sscratch", RegRef sscratch_ref);
+  ("stvec", RegRef stvec_ref);
+  ("sideleg", RegRef sideleg_ref);
+  ("sedeleg", RegRef sedeleg_ref);
+  ("mhartid", RegRef mhartid_ref);
+  ("marchid", RegRef marchid_ref);
+  ("mimpid", RegRef mimpid_ref);
+  ("mvendorid", RegRef mvendorid_ref);
+  ("minstret_written", RegRef minstret_written_ref);
+  ("minstret", RegRef minstret_ref);
+  ("mtime", RegRef mtime_ref);
+  ("mcycle", RegRef mcycle_ref);
+  ("mcountinhibit", RegRef mcountinhibit_ref);
+  ("scounteren", RegRef scounteren_ref);
+  ("mcounteren", RegRef mcounteren_ref);
+  ("mscratch", RegRef mscratch_ref);
+  ("mtval", RegRef mtval_ref);
+  ("mepc", RegRef mepc_ref);
+  ("mcause", RegRef mcause_ref);
+  ("mtvec", RegRef mtvec_ref);
+  ("medeleg", RegRef medeleg_ref);
+  ("mideleg", RegRef mideleg_ref);
+  ("mie", RegRef mie_ref);
+  ("mip", RegRef mip_ref);
+  ("mstatus", RegRef mstatus_ref);
+  ("mstatush", RegRef mstatush_ref);
+  ("misa", RegRef misa_ref);
+  ("cur_inst", RegRef cur_inst_ref);
+  ("cur_privilege", RegRef cur_privilege_ref);
+  ("x31", RegRef x31_ref);
+  ("x30", RegRef x30_ref);
+  ("x29", RegRef x29_ref);
+  ("x28", RegRef x28_ref);
+  ("x27", RegRef x27_ref);
+  ("x26", RegRef x26_ref);
+  ("x25", RegRef x25_ref);
+  ("x24", RegRef x24_ref);
+  ("x23", RegRef x23_ref);
+  ("x22", RegRef x22_ref);
+  ("x21", RegRef x21_ref);
+  ("x20", RegRef x20_ref);
+  ("x19", RegRef x19_ref);
+  ("x18", RegRef x18_ref);
+  ("x17", RegRef x17_ref);
+  ("x16", RegRef x16_ref);
+  ("x15", RegRef x15_ref);
+  ("x14", RegRef x14_ref);
+  ("x13", RegRef x13_ref);
+  ("x12", RegRef x12_ref);
+  ("x11", RegRef x11_ref);
+  ("x10", RegRef x10_ref);
+  ("x9", RegRef x9_ref);
+  ("x8", RegRef x8_ref);
+  ("x7", RegRef x7_ref);
+  ("x6", RegRef x6_ref);
+  ("x5", RegRef x5_ref);
+  ("x4", RegRef x4_ref);
+  ("x3", RegRef x3_ref);
+  ("x2", RegRef x2_ref);
+  ("x1", RegRef x1_ref);
+  ("instbits", RegRef instbits_ref);
+  ("nextPC", RegRef nextPC_ref);
+  ("PC", RegRef PC_ref)
+].
+
+Lemma get_regval_refs_eq r regs regs':
+  (∀ rf, (r, rf) ∈ riscv_regs → rf.(reg_ref_ref).(read_from) regs' = rf.(reg_ref_ref).(read_from) regs) →
+  get_regval r regs' = get_regval r regs.
+Proof.
+  unfold get_regval.
+  have Hcase : ∀ s (e1 e2 e1' e2' : option register_value) rf' rfs,
+      (read_from (reg_ref_ref rf') regs' = read_from (reg_ref_ref rf') regs → e1 = e1') →
+      ((∀ rf, (r, rf) ∈ rfs → read_from (reg_ref_ref rf) regs' = read_from (reg_ref_ref rf) regs) → e2 = e2') →
+      (∀ rf, (r, rf) ∈ (s, rf')::rfs → read_from (reg_ref_ref rf) regs' = read_from (reg_ref_ref rf) regs) →
+      (if string_dec r s then e1 else e2) = (if string_dec r s then e1' else e2'). {
+    move => s ?????? He1 He2 Hf2. destruct (string_dec r s); set_solver.
+  }
+  repeat (apply Hcase; [ by destruct regs, regs' => -> |]). done.
+Qed.
+
+Lemma set_regval_refs_eq r regs regs' v:
+  set_regval r v regs = Some regs' →
+  ∃ rf v', (r, rf) ∈ riscv_regs ∧ regs' = rf.(reg_ref_ref).(write_to) v' regs.
+Proof.
+  have Hcase : ∀ s e1 e2 rf' rfs',
+      (r = s → e1 = Some regs' → ∃ v', regs' = write_to (reg_ref_ref rf') v' regs) →
+      (e2 = Some regs' → ∃ rf v', (r, rf) ∈ rfs' ∧ regs' = write_to (reg_ref_ref rf) v' regs) →
+      (if string_dec r s then e1 else e2) = Some regs' →
+      ∃ rf v', (r, rf) ∈ (s, rf')::rfs' ∧ regs' = write_to (reg_ref_ref rf) v' regs. {
+    move => s ???? He1 He2. destruct (string_dec r s); set_solver.
+  }
+  repeat (apply Hcase; [ destruct v => //=; (try destruct o => //=) => ? Hx; injection Hx; by eexists _|]).
+  done.
+Qed.
+
+
+Lemma get_set_regval_ne r r' regs regs' v:
+  set_regval r' v regs = Some regs' →
+  r ≠ r' →
+  get_regval r regs' = get_regval r regs.
+Proof.
+  move => /set_regval_refs_eq[rf1 [? [Hin1 ->]]] Hneq.
+  apply get_regval_refs_eq => rf2 Hin2.
+  have Hcase : ∀ a b (P : Prop) r rf (rfs : list (string * register_ref_record)),
+      (a = r → b = rf → P) →
+      ((a, b) ∈ rfs → P) →
+      (a, b) ∈ (r, rf)::rfs → P. {
+    move => ???????? /elem_of_cons[|]; naive_solver.
+  }
+  destruct regs.
+  revert Hin1.
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 8 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  by move =>/elem_of_nil.
+Qed.
+  (*
+  rewrite !get_regval'_eq.
+  unfold get_regval'.
+  destruct r => //.
+  destruct a as [[] [] [] [] [] [] [] []]; try fast_done.
+  all: destruct r => //.
+  all: destruct a as [[] [] [] [] [] [] [] []]; try fast_done.
+  all: destruct r => //.
+  all: try destruct a as [[] [] [] [] [] [] [] []]; try fast_done.
+
+  destruct (decide (r = String 's' ))
+                    do 100 try case_match => //.
+  - do 100 try case_match => //.
+   *)
+  (*
+  unfold set_regval, get_regval.
+
+  move => [??] Hset Hneq.
+  have Hcase : ∀ s (e1 e2 e1' e2' : option register_value),
+      (r = s → e1 = e1') →
+      (e2 = e2') →
+      (if string_dec r s then e1 else e2) = (if string_dec r s then e1' else e2'). {
+    move => s ??????. destruct (string_dec r s); eauto.
+  }
+  have Hcase2 : ∀ s e1 e2 (P : Prop),
+      (r' = s → e1 = Some regs' → P) →
+      (e2 = Some regs' → P) →
+      (if string_dec r' s then e1 else e2) = Some regs' →
+      P. {
+    move => s ??????. destruct (string_dec r' s); eauto.
+  }
+  repeat (apply Hcase; [shelve|]). done.
+  Unshelve.
+  all: try abstract (clear Hcase; intros ?; subst r; revert Hset;
+    repeat (apply Hcase2; [intros ?; try (exfalso; done); try (destruct v => //= -[<-]; by destruct regs) |]); done).
+    apply Hcase2. ; [intros ?; by contradict Hneq |]). ; [shelve|]
+    repeat (apply Hcase2; [shelve|]); done.
+ all: clear Hcase; move => ?; subst r; move: Hset; repeat (apply Hcase2; [shelve|]); done.
+
+  have HcaseNone : ∀ s o e2 (P : Prop),
+      (if o is Some x then (s = r' → x = regs' → P) else True) →
+      (e2 = Some regs' → P) →
+      (if string_dec r' s then o else e2) = Some regs' →
+      P. {
+    move => s o ?????. destruct (string_dec r' s); eauto; destruct o; simplify_eq; naive_solver.
+  }
+  have Hcase : ∀ s (e1 e2 e2' : option register_value),
+      (e2 = e2') →
+      (if string_dec r s then e1 else e2) = (if string_dec r s then e1 else e2'). {
+    move => s ????. destruct (string_dec r s); eauto.
+  }
+  have Hcase2 : ∀ s (e1 e2 e1' e2' : option register_value),
+    (r ≠ s) →
+    (e2 = e2') →
+    (if string_dec r s then e1 else e2) = (if string_dec r s then e1' else e2'). {
+    move => s ??????. destruct (string_dec r s); eauto. done.
+  }
+  destruct regs, v => /=.
+  - repeat (refine (HcaseNone _ _ _ _ _ _); [try exact: I; shelve|]). move => ?. discriminate.
+  - repeat (refine (HcaseNone _ _ _ _ _ _); [try exact: I; shelve|]). move => ?. discriminate.
+  - repeat (refine (HcaseNone _ _ _ _ _ _); [try exact: I; shelve|]). move => ?. discriminate.
+  Unshelve.
+  + admit.
+  + admit.
+  + admit.
+  + idtac.
+    idtac.
+    move => <- <- ? /=. repeat apply Hcase. apply Hcase2; [assumption|]. repeat apply Hcase. done.
+
+  move => Hset Hneq.
+  have Hcase : ∀ s (e1 e2 e1' e2' : option register_value),
+      (r = s → e1 = e1') →
+      (e2 = e2') →
+      (if string_dec r s then e1 else e2) = (if string_dec r s then e1' else e2'). {
+    move => s ??????. destruct (string_dec r s); eauto.
+  }
+  have Hcase2 : ∀ s e1 e2 (P : Prop),
+      (r' = s → e1 = Some regs' → P) →
+      (e2 = Some regs' → P) →
+      (if string_dec r' s then e1 else e2) = Some regs' →
+      P. {
+    move => s ??????. destruct (string_dec r' s); eauto.
+  }
+  repeat (apply Hcase; [shelve|]). done.
+  Unshelve.
+ (* all: clear Hcase; move => ?; subst r; move: Hset; repeat (apply Hcase2; [shelve|]); done. *)
+
+    (* { move => ? /=. destruct v, regs => //= -[<-] //=. } *)
+    (* destruct r'. 1: done. *)
+  (*   Set Nested Proofs Allowed. *)
+  (*   Lemma string_dec_length A s1 s2 e1 e2: *)
+  (*     String.length s1 ≠ String.length s2 → *)
+  (*     (if string_dec s1 s2 then e1 else e2) =@{A} e2. *)
+  (*   Proof. Admitted. *)
+  (*   Create HintDb string_dec_rewrite. *)
+  (*   Hint Rewrite string_dec_length using done : string_dec_rewrite. *)
+  (*   destruct r'. 1: { autorewrite with string_dec_rewrite. done. } *)
+  (*   autorewrite with string_dec_rewrite.  *)
+  (*   destruct r'. 1: { autorewrite with string_dec_rewrite. repeat rewrite ->string_dec_length by done. done. } 1: admit. *)
+  (*   destruct r' => //. 1: admit. *)
+  (*   destruct r' => //. 1: admit. *)
+  (*   repeat (apply Hcase2; [shelve|]); done. *)
+  (* all: clear Hcase; move => ?; subst r; simpl; move: Hset; repeat (apply Hcase2; [shelve|]); done. *)
+Admitted.
+*)
+
+Lemma get_regval_None_stable r regs regs':
+  get_regval r regs = None →
+  get_regval r regs' = None.
+Proof.
+  have Hcase : ∀ s (e1 e2 e1' e2' : option register_value),
+      (r = s → e1 = None → e1' = None) →
+      (e2 = None → e2' = None) →
+      (if string_dec r s then e1 else e2) = None →
+      (if string_dec r s then e1' else e2') = None. {
+    move => s ??????. destruct (string_dec r s); eauto.
+  }
+  repeat (apply Hcase; [done|]). done.
+Qed.

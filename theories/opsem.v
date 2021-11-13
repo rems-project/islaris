@@ -19,6 +19,13 @@ Fixpoint subst_trace (v : base_val) (x : var_name) (t : isla_trace) :=
   | tfork ts => tfork (subst_trace v x <$> ts)
   end.
 
+Fixpoint isla_trace_length (t : isla_trace) : nat :=
+  match t with
+  | tnil => 0
+  | tcons _ t' => S (isla_trace_length t')
+  | tfork ts => S (sum_list (isla_trace_length <$> ts))
+  end.
+
 Global Instance valu_inhabited : Inhabited valu := populate (RVal_Bool true).
 Global Instance enum_id_eq_decision : EqDecision enum_id.
 Proof. solve_decision. Qed.
