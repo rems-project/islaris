@@ -211,6 +211,9 @@ Proof.
   rewrite <-Z.pow_add_r by lia. f_equal. lia.
 Qed.
 
+Lemma bv_wrap_idemp n b : bv_wrap n (bv_wrap n b) = bv_wrap n b.
+Proof. unfold bv_wrap. by rewrite Zmod_mod. Qed.
+
 Lemma bv_wf_bitwise_op {n} op bop n1 n2 :
   (∀ k, Z.testbit (op n1 n2) k = bop (Z.testbit n1 k) (Z.testbit n2 k)) →
   (0 ≤ n1 → 0 ≤ n2 → 0 ≤ op n1 n2) →
