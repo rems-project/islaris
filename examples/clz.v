@@ -26,9 +26,9 @@ Lemma clz stack_size :
   instr_body 0x0 (clz_spec stack_size).
 Proof.
   move => ?. iStartProof.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
-  do 100 liAStep; liShow.
+  (* do 100 liAStep; liShow. *)
+  (* do 100 liAStep; liShow. *)
+  (* do 100 liAStep; liShow. *)
 Admitted.
 
 End proof.
