@@ -58,7 +58,12 @@ generate_simple_hvc: examples/simple_hvc.dump update_etc
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/simple_hvc --coqdir=isla.instructions.simple_hvc
 .PHONY: generate_simple_hvc
 
-generate: generate_aarch64 generate_riscv64 generate_el2_to_el1 generate_clz generate_simple_hvc
+generate_rbit: examples/rbit.dump update_etc
+	@echo "[isla-coq] $<"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/rbit --coqdir=isla.instructions.rbit
+.PHONY: generate_clz
+
+generate: generate_aarch64 generate_riscv64 generate_el2_to_el1 generate_clz generate_simple_hvc generate_rbit
 .PHONY: generate
 
 clean:
