@@ -40,6 +40,7 @@ Definition partial_trace (v : base_val) (t : isla_trace) : isla_trace :=
       if v is Val_Bool _ then subst_trace v x t' else false_trace
   | _ => false_trace
   end.
+Arguments partial_trace : simpl never.
 
 Global Instance valu_inhabited : Inhabited valu := populate (RVal_Bool true).
 Global Instance enum_id_eq_decision : EqDecision enum_id.
