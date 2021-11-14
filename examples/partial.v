@@ -20,3 +20,4 @@ Proof.
   (* all: try bv_solve. *)
   - bv_simplify.
 Abort.
+End proof.
