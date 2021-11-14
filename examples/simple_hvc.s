@@ -6,14 +6,14 @@ _start:
   msr vbar_el2, x0
 
   // Hypervisor configuration: aarch64 mode for EL1.
-  mov x0, (1 << 31)
+  mov x0, 0x80000000
   msr hcr_el2, x0
 
   // Configure EL1 state (use SP_EL0, no interupts).
   mov x0, 0x3c4
   msr spsr_el2, x0
 
-  mov x0, #0x90000
+  mov x0, 0x90000
   msr elr_el2, x0       // (Written to the ELR_EL2 system register.)
   eret                  // Simulate an "exception return" to move to EL1.
 
@@ -53,7 +53,7 @@ el2_exception_vector:
   b .
   // Synchronous - Lower EL with AArch64.
   .align 7
-  mov x0, 42 // 0x80c00
+  mov x0, 42
   eret
   // IRQ - Lower EL with AArch64.
   .align 7
