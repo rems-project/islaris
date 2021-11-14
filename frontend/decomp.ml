@@ -101,11 +101,16 @@ let build_task : Arch.t -> Template.t -> string -> decomp_line -> task =
     | None    -> task_arch.arch_isla_config
     | Some(f) -> Filename.concat Config.etc f
   in
+  let (partial_flag, opcode) =
+    match d.dl_partial with
+    | None    -> ("", d.dl_revopcode)
+    | Some(f) -> ("--partial", "'" ^ f ^ "'")
+  in
   let task_command =
     Printf.sprintf "isla-footprint %s -f isla_footprint_no_init \
-      -C %s --simplify-registers --tree -s -x -i %s %s %s > %s 2> /dev/null"
-      task_arch.arch_snapshot_file isla_cfg
-      d.dl_revopcode constrs linearize task_isla_file
+      -C %s --simplify-registers --tree -s -x %s -i %s %s %s > %s 2> /dev/null"
+      task_arch.arch_snapshot_file isla_cfg partial_flag
+      opcode constrs linearize task_isla_file
   in
   {task_command; task_name; task_isla_file; task_coq_file; task_arch}
 

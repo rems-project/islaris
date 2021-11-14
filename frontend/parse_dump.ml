@@ -212,6 +212,7 @@ type decomp_line = {
   dl_spec      : spec option;
   dl_linearize : string list; (* Functions Isla should linearize. *)
   dl_isla_cfg  : string option;
+  dl_partial   : string option;
 }
 
 (** [parse input_file] parses file [input_file] to obtain a list of annotated,
@@ -236,6 +237,7 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
     let imports = ref [] in
     let admitted = ref false in
     let linearize = ref [] in
+    let partial = ref None in
     let handle_annot annot =
       let no_parse fmt = no_parse annot fmt in
       let tag = annot.line_data.annot_tag in
@@ -280,7 +282,11 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
       | ("isla-config" , Some(s)     ) ->
           (* TODO check not several given. *)
           isla_cfg := Some(s)
+      | ("partial"     , Some(s)     ) ->
+          (* TODO check not several given. *)
+          partial := Some(s)
       | ("isla-config" , None        )
+      | ("partial"     , None        )
       | ("linearize"   , None        )
       | ("constraint"  , None        )
       | ("base_address", None        )
@@ -324,6 +330,7 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
       dl_spec      = spec;
       dl_linearize = !linearize;
       dl_isla_cfg  = !isla_cfg;
+      dl_partial   = !partial;
     }
   in
   let rec build annots acc lines =

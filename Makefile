@@ -30,6 +30,8 @@ generate_aarch64: update_etc
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/binary_search.dump -j 8 -o instructions/binary_search --coqdir=isla.instructions.binary_search
 	@echo "[isla-coq] examples/uart.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/uart.dump -j 8 -o instructions/uart --coqdir=isla.instructions.uart
+	@echo "[isla-coq] examples/partial.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/partial.dump -j 8 -o instructions/partial --coqdir=isla.instructions.partial
 	@echo "[isla-coq] pkvm_handler/pkvm_handler.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq -j 8 pkvm_handler/pkvm_handler.dump
 .PHONY: generate_aarch64

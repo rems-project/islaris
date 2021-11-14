@@ -40,6 +40,8 @@ type decomp_line = {
   (** Functions Isla shoud linearize. *)
   dl_isla_cfg  : string option;
   (** Potential non-default Isla configuration file name to use. *)
+  dl_partial   : string option;
+  (** --partial flag to pass to isla. *)
 }
 
 (** [parse input_file] parses file [input_file] to obtain a list of annotated,
