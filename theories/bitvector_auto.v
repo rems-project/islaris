@@ -217,6 +217,18 @@ Proof.
   lia.
 Qed.
 
+Lemma Z_ones_spec' m n : 0 ≤ n → Z.testbit (Z.ones n) m = bool_decide (m < n) && bool_decide (0 ≤ m)%Z.
+Proof.
+  intros.
+  destruct (Z.le_gt_cases 0 m).
+  + rewrite Z_ones_spec; [|lia|lia].
+    rewrite (bool_decide_eq_true_2 (0 ≤ m)); [|lia].
+    by rewrite andb_true_r.
+  + rewrite (bool_decide_eq_false_2 (0 ≤ m)); [|lia].
+    rewrite Z.testbit_neg_r; [|lia].
+    by rewrite andb_false_r.
+Qed. 
+
 Ltac onesify n :=
   lazymatch n with
   | O => idtac
@@ -245,7 +257,7 @@ Ltac onesify_hyp n H :=
   orb_false_l orb_false_r orb_true_l orb_true_r : bits_simplify.
 
 #[export] Hint Rewrite
-  Z_ones_spec Z.testbit_neg_r Z.shiftl_spec Z.shiftr_spec Z.lnot_spec using lia : bits_simplify.
+  Z_ones_spec' Z.testbit_neg_r Z.shiftl_spec Z.shiftr_spec Z.lnot_spec using lia : bits_simplify.
 
 #[export] Hint Rewrite <- Z.land_ones using lia : bits_simplify.
 
@@ -257,6 +269,12 @@ Ltac bool_decide_split :=
   | G : context [bool_decide (?a < ?b)] |- _ =>
     destruct (Z.lt_ge_cases a b);
     [rewrite !(bool_decide_eq_true_2 (a < b)) in G | rewrite !(bool_decide_eq_false_2 (a < b)) in G ]; try lia
+  | |- context [bool_decide (?a ≤ ?b)] =>
+    destruct (Z.le_gt_cases a b);
+    [rewrite !(bool_decide_eq_true_2 (a ≤ b)) | rewrite !(bool_decide_eq_false_2 (a ≤ b)) ]; try lia
+  | G : context [bool_decide (?a ≤ ?b)] |- _ =>
+    destruct (Z.le_gt_cases a b);
+    [rewrite !(bool_decide_eq_true_2 (a ≤ b)) in G | rewrite !(bool_decide_eq_false_2 (a ≤ b)) in G ]; try lia
   end.
 
 Ltac neg_bits_zero :=
@@ -270,15 +288,16 @@ Ltac bits_simplify :=
   onesify (64%nat);
   repeat match goal with b : bv _ |- _ => match goal with G : bv_unsigned b = _ |- _ => rewrite G; clear G end end;
   repeat match goal with B : bv ?n |- _ => rewrite !(bv_and_ones B) end; unfold bv_unsigned_land;
-  apply Z.bits_inj_iff';
+  try (apply Z.bits_inj_iff';
   let n := fresh "n" in
   let Hn := fresh "Hn" in
-  intros n Hn;
+  intros n Hn) ;
   repeat (first [
     progress autorewrite with bits_simplify |
     progress bool_decide_split |
     progress neg_bits_zero |
-    progress simpl
+    progress simpl |
+    (f_equal; lia)
   ]).
 
 Ltac bitify_hyp H :=

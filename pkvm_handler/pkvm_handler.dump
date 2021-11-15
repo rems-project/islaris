@@ -25,15 +25,13 @@
 //@constraint: = (bvand (bvadd _PC 0x00000000000003d4) 0xfff0000000000007) 0x0000000000000000
 //@spec: ldr_mapsto_spec pc 0x7424 "R5" 0x77f8
     7424:	58001ea5 	ldr	x5, 77f8 <__kvm_hyp_host_forward_smc+0x64>
+//@partial: 1 10 100101 00 imm:16 00110
     7428:	d2800006 	mov	x6, #0x0                   	// #0
-//@spec: movk_spec pc "R6" 0 0
-//@spec_tactic: by bits_simplify.
+//@partial: 1 11 100101 01 imm:16 00110
     742c:	f2a00006 	movk	x6, #0x0, lsl #16
-//@spec: movk_spec pc "R6" 0 0
-//@spec_tactic: by bits_simplify.
+//@partial: 1 11 100101 10 imm:16 00110
     7430:	f2c00006 	movk	x6, #0x0, lsl #32
-//@spec: movk_spec pc "R6" 0 0
-//@spec_tactic: by bits_simplify.
+//@partial: 1 11 100101 11 imm:16 00110
     7434:	f2e00006 	movk	x6, #0x0, lsl #48
 //@spec: sub_R_R_R_self_spec pc "R5" "R6"
 //@spec_tactic: all:bv_solve.

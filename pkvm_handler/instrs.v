@@ -17,11 +17,8 @@ Require Export isla.examples.pkvm_handler.a7424.
 Require Export isla.examples.pkvm_handler.a7424_spec.
 Require Export isla.examples.pkvm_handler.a7428.
 Require Export isla.examples.pkvm_handler.a742c.
-Require Export isla.examples.pkvm_handler.a742c_spec.
 Require Export isla.examples.pkvm_handler.a7430.
-Require Export isla.examples.pkvm_handler.a7430_spec.
 Require Export isla.examples.pkvm_handler.a7434.
-Require Export isla.examples.pkvm_handler.a7434_spec.
 Require Export isla.examples.pkvm_handler.a7438.
 Require Export isla.examples.pkvm_handler.a7438_spec.
 Require Export isla.examples.pkvm_handler.a743c.

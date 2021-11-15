@@ -203,16 +203,19 @@ Definition lsr_R_spec `{!islaG Σ} `{!threadG} (pc : Z) (R1 : string) (shift : Z
   ).
 Global Instance : LithiumUnfold (@lsr_R_spec) := I.
 
-Definition movk_spec `{!islaG Σ} `{!threadG} (pc : Z) (R : string) (start : Z) (result : Z) : iProp Σ :=
+Local Open Scope Z_scope.
+
+Definition movk_spec `{!islaG Σ} `{!threadG} (pc : Z) (R : string) (v' : bv 16) (ind : N) : iProp Σ :=
   ∃ (v : bv 64),
   reg_col sys_regs ∗
   R ↦ᵣ RVal_Bits v ∗
-  ⌜bv_unsigned v = start⌝ ∗
   instr_pre (pc + 4) (
-    ∃ (vresult : bv 64),
     reg_col sys_regs ∗
-    R ↦ᵣ RVal_Bits vresult ∗
-    ⌜bv_unsigned vresult = result⌝ ∗
+    R ↦ᵣ 
+      RVal_Bits 
+        (bv_concat 64 
+          (bv_extract (16 * (ind + 1)) (16 * (3 - ind)) v)
+          (bv_concat (16 * (ind + 1)) v' (bv_extract 0 (16 * ind) v))) ∗
     True
   ).
 Global Instance : LithiumUnfold (@movk_spec) := I.
