@@ -1,6 +1,7 @@
 Require Import isla.aarch64.aarch64.
 From isla.instructions.rbit Require Import instrs.
 
+(*PROOF_START*)
 Lemma simplify_stuff (b n : bv 64) :
   bv_extract 0 1 (bv_shiftr b n) = bool_to_bv 1 (Z.testbit (bv_unsigned b) (bv_unsigned n)).
 Proof.
@@ -45,7 +46,9 @@ Proof.
       destruct (i - n) eqn:? => //. exfalso. apply n0.
       split; last lia. lia.
 Qed.
+(*PROOF_END*)
 
+(*SPEC_START*)
 Fixpoint rbit_Z_aux (N : nat) (z : Z) (n : nat) : Z :=
   match n with
   | O   => 0
@@ -53,10 +56,12 @@ Fixpoint rbit_Z_aux (N : nat) (z : Z) (n : nat) : Z :=
   end.
 
 Definition rbit_Z N z := rbit_Z_aux N z N.
+(*SPEC_END*)
 
 Section proof.
 Context `{!islaG Σ} `{!threadG}.
 
+(*SPEC_START*)
 Definition rbit_spec (stack_size : Z) : iProp Σ := (
   c_call stack_size (λ args sp RET,
     ∃ (x : Z) P,
@@ -68,14 +73,18 @@ Definition rbit_spec (stack_size : Z) : iProp Σ := (
       True)
   )
 )%I.
+(*SPEC_END*)
 Global Instance : LithiumUnfold (rbit_spec) := I.
 
 Lemma rbit stack_size :
+(*SPEC_START*)
   0 ≤ stack_size →
+(*SPEC_END*)
   instr 0x0 (Some a0) -∗
   instr 0x4 (Some a4) -∗
   instr_body 0x0 (rbit_spec stack_size).
 Proof.
+(*PROOF_START*)
   move => ?. iStartProof.
   repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
@@ -97,6 +106,7 @@ Proof.
   end.
 
   vm_compute. by case_match.
+(*PROOF_END*)
 Qed.
 
 End proof.

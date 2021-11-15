@@ -26,6 +26,7 @@ $ PATH=$PWD/bin:$PATH dune exec -- isla-coq examples/memcpy.dump -d -o instructi
 
 *)
 
+(*PROOF_START*)
 Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ∃ (tmp src dst i n : bv 64) (srcdata dstdata : list byte),
   reg_col sys_regs ∗
@@ -48,6 +49,7 @@ Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
       True
   )
 .
+(*PROOF_END*)
 
 Arguments memcpy_loop_spec /.
 
@@ -60,6 +62,7 @@ Lemma memcpy_loop `{!islaG Σ} `{!threadG} :
   □ instr_pre 0x0000000010300008 memcpy_loop_spec -∗
   instr_body 0x0000000010300008 memcpy_loop_spec.
 Proof.
+(*PROOF_START*)
   iStartProof.
   Time repeat liAStep; liShow.
   liInst Hevar (Z.to_nat (bv_unsigned i)).
@@ -90,6 +93,7 @@ Proof.
       erewrite (drop_S srcdata); [|done].
       rewrite !drop_ge ?insert_length; [ |bv_solve..].
       f_equal. bv_solve.
+(*PROOF_END*)
 Qed.
 
 Lemma memcpy `{!islaG Σ} `{!threadG} :
@@ -97,6 +101,7 @@ Lemma memcpy `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300004 (Some a4) -∗
   instr 0x000000001030001c (Some a1c) -∗
   □ instr_pre 0x0000000010300008 memcpy_loop_spec -∗
+(*SPEC_START*)
   instr_body 0x0000000010300000 (
     ∃ (tmp1 tmp2 src dst n ret : bv 64) (srcdata dstdata : list byte),
     reg_col sys_regs ∗
@@ -117,11 +122,14 @@ Lemma memcpy `{!islaG Σ} `{!threadG} :
       "R30" ↦ᵣ RVal_Bits ret ∗
       bv_unsigned src ↦ₘ∗ srcdata ∗ bv_unsigned dst ↦ₘ∗ srcdata ∗
       True
+(*SPEC_END*)
   )).
 Proof.
+(*PROOF_START*)
   iStartProof.
   Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
   - by destruct dstdata, srcdata.
   - bv_simplify_hyp select (n ≠ _). bv_solve.
+(*PROOF_END*)
 Time Qed.

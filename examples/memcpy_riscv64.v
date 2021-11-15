@@ -3,6 +3,7 @@ From isla.instructions.memcpy_riscv64 Require Import instrs.
 
 (* #[export] Hint Rewrite @insert_length : bv_simplify. *)
 
+(*PROOF_START*)
 Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ∃ (tmp src dst n : bv 64) (srcdata dstdata : list byte) (i : nat),
   reg_col sys_regs ∗
@@ -24,6 +25,7 @@ Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
       True
   )
 .
+(*PROOF_END*)
 
 Arguments memcpy_loop_spec /.
 
@@ -37,6 +39,7 @@ Lemma memcpy_loop `{!islaG Σ} `{!threadG} :
   □ instr_pre 0x0000000010300004 memcpy_loop_spec -∗
   instr_body 0x0000000010300004 memcpy_loop_spec.
 Proof.
+(*PROOF_START*)
   iStartProof.
   Time repeat liAStep; liShow.
   liInst Hevar i.
@@ -63,12 +66,14 @@ Proof.
     erewrite take_S_r; [|done].
     rewrite take_insert; [|lia].
     f_equal; [done|]. f_equal. bv_solve.
+(*PROOF_END*)
 Qed.
 
 Lemma memcpy `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some a0) -∗
   instr 0x000000001030001c (Some a1c) -∗
   □ instr_pre 0x0000000010300004 memcpy_loop_spec -∗
+(*SPEC_START*)
   instr_body 0x0000000010300000 (
     ∃ (tmp src dst n ret : bv 64) (srcdata dstdata : list byte),
     reg_col sys_regs ∗
@@ -88,8 +93,10 @@ Lemma memcpy `{!islaG Σ} `{!threadG} :
       "x1" ↦ᵣ RVal_Bits ret ∗
       bv_unsigned src ↦ₘ∗ srcdata ∗ bv_unsigned dst ↦ₘ∗ srcdata ∗
       True
+(*SPEC_END*)
   )).
 Proof.
+(*PROOF_START*)
   iStartProof.
   Time repeat liAStep; liShow.
   liInst Hevar5 0%nat.
@@ -98,4 +105,5 @@ Proof.
   all: try bv_solve.
   - by destruct dstdata, srcdata.
   - bv_simplify_hyp select (n ≠ _). bv_solve.
+(*PROOF_END*)
 Time Qed.

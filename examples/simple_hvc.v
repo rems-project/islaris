@@ -4,6 +4,7 @@ From isla.instructions.simple_hvc Require Import instrs.
 Section proof.
 Context `{!islaG Σ} `{!threadG}.
 
+(*SPEC_START*)
 Definition initial_pstate : list (reg_kind * valu_shape) := [
   (KindField "PSTATE" "SP"   , ExactShape (RVal_Bits [BV{1} 1]));
   (KindField "PSTATE" "EL"   , ExactShape (RVal_Bits [BV{2} 2]));
@@ -78,17 +79,20 @@ Definition simple_hvc_spec (v0 v1 : bv 64) (v2 : bv 32) : iProp Σ := (
     True
   )
 )%I.
+(*SPEC_END*)
 Global Instance : LithiumUnfold (simple_hvc_spec) := I.
 
 Lemma simple_hvc v0 v1 v2 :
   ([∗ list] c ∈ instr_map, instr c.1 (Some c.2))%I -∗
   instr_body 0x0000000000080000 (simple_hvc_spec v0 v1 v2).
 Proof.
+(*PROOF_START*)
   move => * /=.
   iStartProof.
   repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
   all: bv_solve.
+(*PROOF_END*)
 Qed.
 
 End proof.

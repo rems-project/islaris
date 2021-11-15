@@ -4,6 +4,7 @@ From isla.instructions.uart Require Import instrs.
 Section proof.
 Context `{!islaG Σ} `{!threadG}.
 
+(*SPEC_START*)
 Notation bus_to_reg32 b := (b - 0x3f000000) (only parsing).
 Definition AUX_MU_LSR_REG : addr := [BV{64} bus_to_reg32 0x7e215054].
 Definition AUX_MU_IO_REG : addr := [BV{64} bus_to_reg32 0x7e215040].
@@ -20,7 +21,9 @@ Definition spec_uart_wait_write (P : spec) : spec :=
 
 Definition spec_uart_write (c : bv 32) (P : spec) : spec :=
   spec_uart_wait_write (scons (SWriteMem AUX_MU_IO_REG c) P).
+(*SPEC_END*)
 
+(*PROOF_START*)
 Definition uart1_putc_loop_spec : iProp Σ :=
   ∃ P,
   "R1" ↦ᵣ: λ _,
@@ -37,6 +40,7 @@ Definition uart1_putc_loop_spec : iProp Σ :=
     True
   )
 .
+(*PROOF_END*)
 Global Instance : LithiumUnfold (uart1_putc_loop_spec) := I.
 
 Lemma uart1_putc_loop :
@@ -46,6 +50,7 @@ Lemma uart1_putc_loop :
   □ instr_pre 0x0000000000080180 uart1_putc_loop_spec -∗
   instr_body 0x0000000000080180 uart1_putc_loop_spec.
 Proof.
+(*PROOF_START*)
   iStartProof.
   Time repeat liAStep; liShow.
   liInst Hevar P.
@@ -60,8 +65,10 @@ Proof.
     rewrite sif_false; [done|]. apply not_true_iff_false.
     bitify_hyp Hn. move: (Hn 0 ltac:(done)) => {}Hn.
     by bits_simplify_hyp Hn.
+(*PROOF_END*)
 Time Qed.
 
+(*SPEC_START*)
 Definition uart1_putc_spec : iProp Σ :=
   ∃ P (c ret : bv 64),
   "R0" ↦ᵣ RVal_Bits c ∗
@@ -82,6 +89,7 @@ Definition uart1_putc_spec : iProp Σ :=
     True
   )
 .
+(*SPEC_END*)
 Global Instance : LithiumUnfold (uart1_putc_spec) := I.
 
 Lemma uart1_putc :
@@ -99,6 +107,7 @@ Lemma uart1_putc :
 
   instr_body 0x0000000000080168 (uart1_putc_spec).
 Proof.
+(*PROOF_START*)
   iStartProof.
   Time repeat liAStep; liShow.
   - rewrite sif_true; [|li_shelve_sidecond].
@@ -114,5 +123,6 @@ Proof.
     by bits_simplify_hyp Hn.
   + rename select (_ ≠ [BV{1} 1]) into Hn. contradict Hn. bits_simplify.
     by have -> : n1 = 0 by lia.
+(*PROOF_END*)
 Time Qed.
 End proof.

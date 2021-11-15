@@ -4,11 +4,13 @@ From isla.instructions.binary_search_riscv64 Require Import instrs.
 Section proof.
 Context `{!islaG Σ} `{!threadG}.
 
+(*SPEC_START*)
 Definition comp_spec (stack_size : Z) (R : bv 64 → bv 64 → Prop) (P : iProp Σ) : iProp Σ :=
   (c_call stack_size (λ args sp RET,
      P ∗
      RET (λ rets, ∃ b : bool, ⌜rets !!! 0%nat = bool_to_bv 64 b⌝ ∗ ⌜b ↔ R (args !!! 0%nat) (args !!! 1%nat)⌝ ∗ P ∗ True)
   ))%I.
+(*SPEC_END*)
 Typeclasses Opaque comp_spec.
 Global Instance : LithiumUnfold (comp_spec) := I.
 
@@ -16,8 +18,11 @@ Lemma compare_int_spec :
   instr 0x00000000103000a0 (Some aa0) -∗
   instr 0x00000000103000a4 (Some aa4) -∗
   instr 0x00000000103000a8 (Some aa8) -∗
+(*SPEC_START*)
   instr_body 0x00000000103000a0 (comp_spec 0 (λ x y, bv_unsigned x ≤ bv_unsigned y) (True)).
+(*SPEC_END*)
 Proof.
+(*PROOF_START*)
   iStartProof.
   Time repeat liAStep; liShow.
   liInst Hevar (bv_unsigned b10 <=? bv_unsigned b11). rewrite Zleb_bool_decide.
@@ -26,8 +31,10 @@ Proof.
   all: try bv_solve.
   - bv_simplify. repeat case_bool_decide => //; bv_solve.
   - naive_solver.
+(*PROOF_END*)
 Qed.
 
+(*PROOF_START*)
 Definition binary_search_loop_spec : iProp Σ :=
   ∃ (x l r comp xs tmp1 sp : bv 64) (data : list (bv 64)),
   ∃ stack_size R P,
@@ -99,6 +106,7 @@ Proof.
   move => Hneg ????. have [||||<-|?]:= StronglySorted_lookup_le R l j i y x => //.
   contradict Hneg. by etrans.
 Qed.
+(*PROOF_END*)
 
 Lemma binary_search_loop :
   instr 0x000000001030003c (Some a3c) -∗
@@ -118,6 +126,7 @@ Lemma binary_search_loop :
   □ instr_pre 0x0000000010300044 binary_search_loop_spec -∗
   instr_body 0x0000000010300044 binary_search_loop_spec.
 Proof.
+(*PROOF_START*)
   iStartProof.
   Time repeat liAStep; liShow.
   liInst Hevar (Z.to_nat (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2)).
@@ -140,9 +149,11 @@ Proof.
   - bv_simplify_arith_hyp select (_ ≤ _).
     bv_simplify_arith_hyp select (¬ (_ < _)).
     naive_solver bv_solve.
+(*PROOF_END*)
 Qed.
 
 
+(*SPEC_START*)
 Definition binary_search_spec (stack_size : Z) : iProp Σ :=
   (c_call (stack_size + 64) (λ args sp RET,
     ∃ (data : list (bv 64)) R P,
@@ -161,10 +172,13 @@ Definition binary_search_spec (stack_size : Z) : iProp Σ :=
       ⌜∀ (i : nat) y, bv_unsigned (rets !!! 0%nat) ≤ i → data !! i = Some y → ¬ R y (args !!! 3%nat)⌝ ∗
       True))
   )%I.
+(*SPEC_END*)
 Global Instance : LithiumUnfold (binary_search_spec) := I.
 
 Lemma binary_search stack_size :
+(*SPEC_START*)
   0 ≤ stack_size →
+(*SPEC_END*)
   instr 0x0000000010300000 (Some a0) -∗
   instr 0x0000000010300004 (Some a4) -∗
   instr 0x0000000010300008 (Some a8) -∗
@@ -195,6 +209,7 @@ Lemma binary_search stack_size :
   □ instr_pre 0x0000000010300044 binary_search_loop_spec -∗
   instr_body 0x0000000010300000 (binary_search_spec stack_size).
 Proof.
+(*PROOF_START*)
   move => ?. iStartProof.
   Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
@@ -204,6 +219,7 @@ Proof.
   - bv_simplify_hyp select (_ ≠ [BV{64} 0]). bv_solve.
   - eauto.
   - eauto.
+(*PROOF_END*)
 Time Qed.
 
 End proof.
