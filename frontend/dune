@@ -1,7 +1,7 @@
 (executable
  (name main)
- (public_name isla-coq)
- (package coq-isla)
+ (public_name islaris)
+ (package islaris)
  (flags (:standard -warn-error -A -w -27 -w -26))
  (foreign_stubs (language c) (names stubs))
  (libraries cmdliner pprint integers str unix threads isla-lang))

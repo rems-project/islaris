@@ -1,4 +1,4 @@
 (lang dune 2.7)
-(name isla-coq)
+(name islaris)
 (using coq 0.2)
 (using menhir 2.1)

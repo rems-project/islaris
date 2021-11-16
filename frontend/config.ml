@@ -2,7 +2,7 @@
 
 open Extra
 
-let pkgname : string = "coq-isla"
+let pkgname : string = "islaris"
 
 let prefix : Filename.dirpath =
   (* Obtain a normalised path to the executable. *)

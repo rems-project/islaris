@@ -1,6 +1,6 @@
 (coq.theory
  (name isla.examples)
- (package coq-isla)
+ (package islaris)
  (flags -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "???")
  (theories isla isla.instructions))

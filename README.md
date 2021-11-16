@@ -1,14 +1,13 @@
-# isla-coq
-Isla-lang in Coq
+# Islaris: verification of machine code against authoritative ISA semantics
 
 ## Setup
 
-It is recommended to install the dependencies of isla-coq via opam
+It is recommended to install the dependencies of Islaris via opam
 (version 2.0.0 or newer) into a new switch. This can be done via the
 following commands:
 
 ```
-opam switch create . ocaml-base-compiler.4.11.1 --no-install
+opam switch create . ocaml-base-compiler.4.12.0 --no-install
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
 opam pin add -n -y cerberus "git+https://github.com/rems-project/cerberus.git#7eb94d628845555cb5425f4f4b48890b345efdc5"
@@ -92,7 +91,7 @@ followed by `@`), as well as label lines found in objdump output are ignored.
 See file `examples/binary_search.dump` for a more complete example of valid
 syntax.
 
-To run the development version of `isla-footprint` (necessary for `isla-coq`),
+To run the development version of `isla-footprint` (necessary for `islaris`),
 we provide a script in `bin/isla-footprint` that must be placed in the `PATH`.
 ```sh
 # Run this command at the root of the repo.
@@ -100,17 +99,17 @@ export PATH=$PWD/bin:$PATH
 ```
 We can then run the front end with the following command:
 ```sh
-dune exec -- isla-coq pkvm_handler/pkvm_handler.dump
+dune exec -- islaris pkvm_handler/pkvm_handler.dump
 ```
-This will generate one coq file per address containing the trace for the instruction at
+This will generate one Coq file per address containing the trace for the instruction at
 that address and a file called `instrs.v` containing a mapping from addresses to
 traces. `instrs.v` may need to be manually modified to correctly qualify imports.
 
-Note that you can also extend the `PATH` directly when calling `isla-coq`, by
+Note that you can also extend the `PATH` directly when calling `islaris`, by
 using the following command instead.
 ```sh
 # This assumes you are at the root of the repo.
-PATH=$PWD/bin:$PATH dune exec -- isla-coq pkvm_handler/pkvm_handler.dump
+PATH=$PWD/bin:$PATH dune exec -- islaris pkvm_handler/pkvm_handler.dump
 ```
 
 # TODOs

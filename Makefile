@@ -1,5 +1,5 @@
 all:
-	@dune build _build/default/coq-isla.install --display short
+	@dune build _build/default/islaris.install --display short
 .PHONY: all
 
 tests:
@@ -11,58 +11,58 @@ all_and_tests: tests all
 .PHONY: all_and_tests
 
 update_etc:
-	@dune build _build/install/default/etc/coq-isla/aarch64_isla_coq.toml
-	@dune build _build/install/default/etc/coq-isla/aarch64_isla_coq_el1.toml
-	@dune build _build/install/default/etc/coq-isla/riscv64_isla_coq.toml
+	@dune build _build/install/default/etc/islaris/aarch64_isla_coq.toml
+	@dune build _build/install/default/etc/islaris/aarch64_isla_coq_el1.toml
+	@dune build _build/install/default/etc/islaris/riscv64_isla_coq.toml
 .PHONY: update_etc
 
 generate_aarch64: update_etc
-	@echo "[isla-coq] examples/memory_instructions.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memory_instructions.dump -j 8 -o instructions  -n "instr_{instr}" --coqdir=isla.instructions
+	@echo "[islaris] examples/memory_instructions.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/memory_instructions.dump -j 8 -o instructions  -n "instr_{instr}" --coqdir=isla.instructions
 	@rm instructions/instrs.v
-	@echo "[isla-coq] examples/hello.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/hello.dump -j 8 -o instructions/hello --coqdir=isla.instructions.hello
-	@echo "[isla-coq] examples/example.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/example.dump -j 8 -o instructions/example --coqdir=isla.instructions.example
-	@echo "[isla-coq] examples/memcpy.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memcpy.dump -j 8 -o instructions/memcpy --coqdir=isla.instructions.memcpy
-	@echo "[isla-coq] examples/binary_search.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/binary_search.dump -j 8 -o instructions/binary_search --coqdir=isla.instructions.binary_search
-	@echo "[isla-coq] examples/uart.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/uart.dump -j 8 -o instructions/uart --coqdir=isla.instructions.uart
-	@echo "[isla-coq] examples/partial.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/partial.dump -j 8 -o instructions/partial --coqdir=isla.instructions.partial
-	@echo "[isla-coq] pkvm_handler/pkvm_handler.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq -j 8 pkvm_handler/pkvm_handler.dump
+	@echo "[islaris] examples/hello.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/hello.dump -j 8 -o instructions/hello --coqdir=isla.instructions.hello
+	@echo "[islaris] examples/example.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/example.dump -j 8 -o instructions/example --coqdir=isla.instructions.example
+	@echo "[islaris] examples/memcpy.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/memcpy.dump -j 8 -o instructions/memcpy --coqdir=isla.instructions.memcpy
+	@echo "[islaris] examples/binary_search.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/binary_search.dump -j 8 -o instructions/binary_search --coqdir=isla.instructions.binary_search
+	@echo "[islaris] examples/uart.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/uart.dump -j 8 -o instructions/uart --coqdir=isla.instructions.uart
+	@echo "[islaris] examples/partial.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/partial.dump -j 8 -o instructions/partial --coqdir=isla.instructions.partial
+	@echo "[islaris] pkvm_handler/pkvm_handler.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris -j 8 pkvm_handler/pkvm_handler.dump
 .PHONY: generate_aarch64
 
 generate_riscv64: update_etc
-	@echo "[isla-coq] examples/riscv64_test.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/riscv64_test.dump -j 8 -o instructions/riscv64_test --coqdir=isla.instructions.riscv64_test --arch=riscv64
-	@echo "[isla-coq] examples/memcpy_riscv64.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/memcpy_riscv64.dump -j 8 -o instructions/memcpy_riscv64 --coqdir=isla.instructions.memcpy_riscv64 --arch=riscv64
-	@echo "[isla-coq] examples/binary_search_riscv64.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq examples/binary_search_riscv64.dump -j 8 -o instructions/binary_search_riscv64 --coqdir=isla.instructions.binary_search_riscv64 --arch=riscv64
+	@echo "[islaris] examples/riscv64_test.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/riscv64_test.dump -j 8 -o instructions/riscv64_test --coqdir=isla.instructions.riscv64_test --arch=riscv64
+	@echo "[islaris] examples/memcpy_riscv64.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/memcpy_riscv64.dump -j 8 -o instructions/memcpy_riscv64 --coqdir=isla.instructions.memcpy_riscv64 --arch=riscv64
+	@echo "[islaris] examples/binary_search_riscv64.dump"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/binary_search_riscv64.dump -j 8 -o instructions/binary_search_riscv64 --coqdir=isla.instructions.binary_search_riscv64 --arch=riscv64
 .PHONY: generate_riscv64
 
 generate_el2_to_el1: examples/el2_to_el1.dump update_etc
-	@echo "[isla-coq] $<"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/el2_to_el1 --coqdir=isla.instructions.el2_to_el1
+	@echo "[islaris] $<"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris $< -j 8 -o instructions/el2_to_el1 --coqdir=isla.instructions.el2_to_el1
 .PHONY: generate_el2_to_el1
 
 generate_clz: examples/clz.dump update_etc
-	@echo "[isla-coq] $<"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/clz --coqdir=isla.instructions.clz
+	@echo "[islaris] $<"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris $< -j 8 -o instructions/clz --coqdir=isla.instructions.clz
 .PHONY: generate_clz
 
 generate_simple_hvc: examples/simple_hvc.dump update_etc
-	@echo "[isla-coq] $<"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/simple_hvc --coqdir=isla.instructions.simple_hvc
+	@echo "[islaris] $<"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris $< -j 8 -o instructions/simple_hvc --coqdir=isla.instructions.simple_hvc
 .PHONY: generate_simple_hvc
 
 generate_rbit: examples/rbit.dump update_etc
-	@echo "[isla-coq] $<"
-	@PATH=$$PWD/bin:$$PATH dune exec -- isla-coq $< -j 8 -o instructions/rbit --coqdir=isla.instructions.rbit
+	@echo "[islaris] $<"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris $< -j 8 -o instructions/rbit --coqdir=isla.instructions.rbit
 .PHONY: generate_clz
 
 generate: generate_aarch64 generate_riscv64 generate_el2_to_el1 generate_clz generate_simple_hvc generate_rbit
@@ -80,7 +80,7 @@ uninstall:
 	@dune uninstall
 .PHONY: uninstall
 
-builddep-opamfiles: builddep/coq-isla-builddep.opam
+builddep-opamfiles: builddep/islaris-builddep.opam
 	@true
 .PHONY: builddep-opamfiles
 
@@ -88,7 +88,7 @@ builddep-opamfiles: builddep/coq-isla-builddep.opam
 # build. Uses a very ugly hack to use sed for removing the last 4
 # lines since head -n -4 does not work on MacOS
 # (https://stackoverflow.com/a/24298204)
-builddep/coq-isla-builddep.opam: coq-isla.opam Makefile
+builddep/islaris-builddep.opam: islaris.opam Makefile
 	@echo "# Creating builddep package."
 	@mkdir -p builddep
 	@sed '$$d' $< | sed '$$d' | sed '$$d' | sed '$$d' | sed -E 's/^name: *"(.*)" */name: "\1-builddep"/' > $@
@@ -97,7 +97,7 @@ builddep/coq-isla-builddep.opam: coq-isla.opam Makefile
 #  1) dependencies of RefinedC are installed,
 #  2) they will remain satisfied even if other packages are updated/installed,
 #  3) we do not have to pin the RefinedC package itself (which takes time).
-builddep: builddep/coq-isla-builddep.opam
+builddep: builddep/islaris-builddep.opam
 	@echo "# Installing package $^."
 	@opam install $(OPAMFLAGS) $^
 .PHONY: builddep
