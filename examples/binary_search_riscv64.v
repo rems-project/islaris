@@ -24,15 +24,15 @@ Lemma compare_int_spec :
 Proof.
 (*PROOF_START*)
   iStartProof.
-  Time repeat liAStep; liShow.
+  liARun.
   liInst Hevar (bv_unsigned b10 <=? bv_unsigned b11). rewrite Zleb_bool_decide.
-  Time repeat liAStep; liShow.
+  liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   - bv_simplify. repeat case_bool_decide => //; bv_solve.
   - naive_solver.
 (*PROOF_END*)
-Qed.
+Time Qed.
 
 (*PROOF_START*)
 Definition binary_search_loop_spec : iProp Σ :=
@@ -128,9 +128,9 @@ Lemma binary_search_loop :
 Proof.
 (*PROOF_START*)
   iStartProof.
-  Time repeat liAStep; liShow.
+  liARun.
   liInst Hevar (Z.to_nat (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2)).
-  Time repeat liAStep; liShow.
+  liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   all: try (rename select (_ ↔ R _ _) into HR).
@@ -150,7 +150,7 @@ Proof.
     bv_simplify_arith_hyp select (¬ (_ < _)).
     naive_solver bv_solve.
 (*PROOF_END*)
-Qed.
+Time Qed.
 
 
 (*SPEC_START*)
@@ -211,7 +211,7 @@ Lemma binary_search stack_size :
 Proof.
 (*PROOF_START*)
   move => ?. iStartProof.
-  Time repeat liAStep; liShow.
+  liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   all: try rewrite ->@bv_add_0_r in * by done; try done.

@@ -89,10 +89,10 @@ Proof.
 (*PROOF_START*)
   move => * /=.
   iStartProof.
-  repeat liAStep; liShow.
+  liARun.
   Unshelve. all: prepare_sidecond.
   all: bv_solve.
 (*PROOF_END*)
-Qed.
+Time Qed.
 
 End proof.

@@ -25,12 +25,12 @@ Lemma compare_int_spec :
 Proof.
 (*PROOF_START*)
   iStartProof.
-  Time repeat liAStep; liShow.
+  liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   - revert select (_ ≠@{bv _} _) => /bv_eq. bv_solve.
 (*PROOF_END*)
-Qed.
+Time Qed.
 
 (*PROOF_START*)
 Definition a40_tst_imm_spec : iProp Σ :=
@@ -54,7 +54,7 @@ Lemma a40_has_tst_imm_spec :
   instr_body 0x0000000010300040 (a40_tst_imm_spec).
 Proof.
   iStartProof.
-  repeat liAStep; liShow.
+  liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   - bv_simplify.
@@ -80,7 +80,7 @@ Proof.
       rewrite Hz.
       apply not_false_is_true in H0'.
       by rewrite H0'.
-Qed.
+Time Qed.
 
 Definition binary_search_loop_spec : iProp Σ :=
   ∃ (x l r comp xs tmp2 sp : bv 64) (data : list (bv 64)),
@@ -169,9 +169,9 @@ Lemma binary_search_loop :
 Proof.
 (*PROOF_START*)
   iStartProof.
-  Time repeat liAStep; liShow.
+  liARun.
   liInst Hevar (Z.to_nat (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2)).
-  Time repeat liAStep; liShow.
+  liARun.
   Unshelve. all: prepare_sidecond.
   all: try (rename select (_ ↔ R _ _) into HR; rewrite bv_or_0_l in HR; [|done];
             match type of HR with | (Is_true ?b) ↔ _ => rename b into bres end).
@@ -260,7 +260,7 @@ Lemma binary_search stack_size :
 Proof.
 (*PROOF_START*)
   move => ?. iStartProof.
-  Time repeat liAStep; liShow.
+  liARun.
   Unshelve. all: prepare_sidecond.
   all: try rewrite ->@bv_or_0_l in * by done.
   all: try bv_solve.

@@ -41,13 +41,13 @@ Lemma memcpy_loop `{!islaG Σ} `{!threadG} :
 Proof.
 (*PROOF_START*)
   iStartProof.
-  Time repeat liAStep; liShow.
+  liARun.
   liInst Hevar i.
-  Time repeat liAStep; liShow.
+  liARun.
   liInst Hevar i.
-  Time repeat liAStep; liShow.
+  liARun.
   liInst Hevar5 (S i).
-  Time repeat liAStep; liShow.
+  liARun.
 
   Unshelve. all: prepare_sidecond.
   all: try bv_simplify_hyp select (bv_add n _ = _).
@@ -67,7 +67,7 @@ Proof.
     rewrite take_insert; [|lia].
     f_equal; [done|]. f_equal. bv_solve.
 (*PROOF_END*)
-Qed.
+Time Qed.
 
 Lemma memcpy `{!islaG Σ} `{!threadG} :
   instr 0x0000000010300000 (Some a0) -∗
@@ -98,9 +98,9 @@ Lemma memcpy `{!islaG Σ} `{!threadG} :
 Proof.
 (*PROOF_START*)
   iStartProof.
-  Time repeat liAStep; liShow.
+  liARun.
   liInst Hevar5 0%nat.
-  Time repeat liAStep; liShow.
+  liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   - by destruct dstdata, srcdata.

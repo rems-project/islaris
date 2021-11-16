@@ -31,11 +31,11 @@ Proof.
   unfold spec_stp.
   unfold instrs_iprop.
   simpl.
-  repeat liAStep; liShow.
+  liARun.
   Unshelve.
   all: try (repeat f_equal; bv_solve).
   all: prepare_sidecond; bv_solve.
-Qed.
+Time Qed.
 
 Definition mrs_regs_32 :=
   (λ r, (KindReg r, BitsShape 32)) <$>
@@ -77,12 +77,12 @@ Proof.
   iStartProof.
   unfold spec_mrs.
   unfold exists_reg.
-  repeat liAStep; liShow.
+  liARun.
   Unshelve.
   (* TODO: Check if bv_solve on the latest branch solves this, otherwise fix it *)
   all: prepare_sidecond.
   bv_solve.
-Qed.
+Time Qed.
 
 Definition spec_lsr `{!islaG Σ} `{!threadG} a (v vold : bv 64) : iProp Σ :=
   "R0" ↦ᵣ RVal_Bits vold ∗
@@ -100,11 +100,11 @@ Lemma lsr_wp `{!islaG Σ} `{!threadG} (v vold : bv 64):
 Proof.
   iStartProof.
   unfold spec_lsr.
-  repeat liAStep; liShow.
+  liARun.
   Unshelve.
   all: prepare_sidecond.
   by bits_simplify.
-Qed.
+Time Qed.
 
 Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (esr : bv 32) : iProp Σ :=
   ∃ v0 v1 v5 v6: bv 64,
@@ -144,12 +144,12 @@ Lemma a742c_spec `{!islaG Σ} `{!threadG} pc (b : bv 16):
   instr_body pc (movk_spec pc "R6" b 1).
 Proof.
   iStartProof.
-  repeat liAStep; liShow.
+  liARun.
   Unshelve.
   all: prepare_sidecond.
   change 18446744069414649855 with (Z.lor (Z.ones 32 ≪ 32) (Z.ones 16)).
   bits_simplify.
-Qed.
+Time Qed.
 
 Definition a742c_spec_inst `{!islaG Σ} `{!threadG} pc b :=
   entails_to_simplify_hyp 0 (a742c_spec pc b).
@@ -160,12 +160,12 @@ Lemma a7430_spec `{!islaG Σ} `{!threadG} pc (b : bv 16):
   instr_body pc (movk_spec pc "R6" b 2).
 Proof.
   iStartProof.
-  repeat liAStep; liShow.
+  liARun.
   Unshelve.
   all: prepare_sidecond.
   change 18446462603027808255 with (Z.lor (Z.ones 16 ≪ 48) (Z.ones 32)).
   bits_simplify.
-Qed.
+Time Qed.
 
 Definition a7430_spec_inst `{!islaG Σ} `{!threadG} pc b :=
   entails_to_simplify_hyp 0 (a7430_spec pc b).
@@ -176,11 +176,11 @@ Lemma a7434_spec `{!islaG Σ} `{!threadG} pc (b : bv 16):
   instr_body pc (movk_spec pc "R6" b 3).
 Proof.
   iStartProof.
-  repeat liAStep; liShow.
+  liARun.
   Unshelve.
   all: prepare_sidecond.
   bits_simplify.
-Qed.
+Time Qed.
 
 Definition a7434_spec_inst `{!islaG Σ} `{!threadG} pc b :=
   entails_to_simplify_hyp 0 (a7434_spec pc b).
@@ -205,11 +205,11 @@ Lemma load_offset_verif `{!islaG Σ} `{!threadG} (offset : bv 64) :
 Proof.
   iStartProof.
   unfold load_offset_spec.
-  repeat liAStep; liShow.
+  liARun.
   Unshelve.
   all: prepare_sidecond.
   bits_simplify.
-Qed.
+Time Qed.
 
 Lemma wp `{!islaG Σ} `{!threadG} sp esr stub_handler_addr (offset : bv 64) :
   instr 29696 (Some a7400) ∗
@@ -233,13 +233,13 @@ Lemma wp `{!islaG Σ} `{!threadG} sp esr stub_handler_addr (offset : bv 64) :
 Proof.
   unfold spec.
   iStartProof.
-  repeat liAStep; liShow.
+  liARun.
   + iDestruct select (_ ∧ _)%I as "[? _]".
-    repeat liAStep; liShow.
+    liARun.
   + iDestruct select (_ ∧ _)%I as "[_ ?]".
-    repeat liAStep; liShow.
+    liARun.
   + unfold load_offset_spec.
-    repeat liAStep; liShow. 
+    liARun.
   Unshelve.
   all: prepare_sidecond.
   all: try bv_solve.
@@ -253,9 +253,9 @@ Proof.
   * rewrite <- H4.
     assert(G: bv_unsigned (bv_concat 64 [BV{32} 0] esr) = bv_unsigned esr); [bv_solve|].
     by rewrite G in H3.
- Qed.
+Time Qed.
 
- Lemma wp' `{!islaG Σ} `{!threadG} sp esr stub_handler_addr (offset : bv 64) :
+Lemma wp' `{!islaG Σ} `{!threadG} sp esr stub_handler_addr (offset : bv 64) :
   instr 29696 (Some a7400) ∗
   instr 29700 (Some a7404) ∗
   instr 29704 (Some a7408) ∗
@@ -278,5 +278,5 @@ Proof.
   iAssert (instr_body 29736 (load_offset_spec offset 29752)) with "[i1 i2 i3 i4]" as "Hoffset".
   + iApply load_offset_verif.
     iFrame.
-  + iApply wp. iFrame. 
+  + iApply wp. iFrame.
 Qed.

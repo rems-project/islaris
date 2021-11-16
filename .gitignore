@@ -22,3 +22,4 @@ _opam*
 /sail-riscv/bbv/
 /sail-riscv/coq/
 *.isla
+/data.json

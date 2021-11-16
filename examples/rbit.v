@@ -86,7 +86,7 @@ Lemma rbit stack_size :
 Proof.
 (*PROOF_START*)
   move => ?. iStartProof.
-  repeat liAStep; liShow.
+  liARun.
   Unshelve. all: prepare_sidecond.
 
   rewrite !simplify_stuff. simpl.
@@ -107,6 +107,6 @@ Proof.
 
   vm_compute. by case_match.
 (*PROOF_END*)
-Qed.
+Time Qed.
 
 End proof.

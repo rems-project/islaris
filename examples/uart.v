@@ -52,9 +52,9 @@ Lemma uart1_putc_loop :
 Proof.
 (*PROOF_START*)
   iStartProof.
-  Time repeat liAStep; liShow.
+  liARun.
   liInst Hevar P.
-  Time repeat liAStep; liShow.
+  liARun.
 
   Unshelve. all: prepare_sidecond.
   - bv_solve.
@@ -109,12 +109,12 @@ Lemma uart1_putc :
 Proof.
 (*PROOF_START*)
   iStartProof.
-  Time repeat liAStep; liShow.
+  liARun.
   - rewrite sif_true; [|li_shelve_sidecond].
-    Time repeat liAStep; liShow.
+    liARun.
   - rewrite sif_false; [|li_shelve_sidecond].
     liInst Hevar (scons (SWriteMem AUX_MU_IO_REG (bv_zero_extend 32 (bv_extract 0 8 c))) P).
-    Time repeat liAStep; liShow.
+    liARun.
   Unshelve. all: prepare_sidecond.
   all: try by bv_solve.
   all: try by bits_simplify.

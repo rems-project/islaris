@@ -1614,3 +1614,6 @@ Ltac liAStep :=
   | liLetBindHint
   | liUnfoldLate
 ]; liSimpl.
+
+Ltac liARun :=
+  time "liARun" repeat liAStep; liShow.
