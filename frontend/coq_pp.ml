@@ -310,8 +310,8 @@ let pp_events : event list Format.pp = fun ff events ->
   in
   List.iter print_event events
 
-let rec pp_forking_trace : trace Format.pp = fun ff tr ->
-  let ForkingTrace(trcs, cont) = tr in
+let rec pp_tree_trace : trace Format.pp = fun ff tr ->
+  let TreeTrace(trcs, cont) = tr in
   let pp fmt = Format.fprintf ff fmt in
   pp "%a" pp_events trcs;
   pp "%a" pp_maybe_fork cont
@@ -319,24 +319,24 @@ let rec pp_forking_trace : trace Format.pp = fun ff tr ->
 and pp_maybe_fork : maybe_fork Format.pp = fun ff mf ->
   let pp fmt = Format.fprintf ff fmt in
   match mf with
-  | Ast.Fork(n, trcs) ->
+  | Ast.Cases(n, trcs) ->
      pp "@;@[<v 2>tfork [";
      let print_trace =
        let first = ref true in
        let print_trace e =
          (if !first then first := false else pp ";");
-         pp "%a" pp_forking_trace e
+         pp "%a" pp_tree_trace e
        in
        print_trace
      in
      List.iter print_trace trcs;
      pp "@]@;]"
-  | Ast.NoFork        -> pp "@;tnil"
+  | Ast.End        -> pp "@;tnil"
 
 let pp_trace_def : string -> trace Format.pp = fun id ff trc ->
   let pp fmt = Format.fprintf ff fmt in
   pp "@[<v 2>Definition %s : isla_trace :=" id;
-  pp "%a" pp_forking_trace trc;
+  pp "%a" pp_tree_trace trc;
   pp "@]@;."
 
 (** [pp_trace_file name] is the entry point of the pretty-printer. A [name] is

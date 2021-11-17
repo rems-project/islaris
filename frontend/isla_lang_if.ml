@@ -1,19 +1,19 @@
 module Ast = Isla_lang.AST
 
 type event = Ast.lrng Ast.event
-type trace = Ast.lrng Ast.forking_trc
+type trace = Ast.lrng Ast.tree_trc
 type maybe_fork = Ast.lrng Ast.maybe_fork
 
 (** [filter_events pred trs] returns a copy of [trs] in which only events that
     satisfy the predicate [pred] have been kept. *)
 let rec filter_events : (int -> event -> bool) -> trace -> trace = fun pred tr ->
-  let Ast.ForkingTrace(es, mf) = tr in
+  let Ast.TreeTrace(es, mf) = tr in
   let mf =
     match mf with
-    | Ast.Fork(n, trs) -> Ast.Fork(n, List.map (filter_events pred) trs)
-    | Ast.NoFork       -> Ast.NoFork
+    | Ast.Cases(n, trs) -> Ast.Cases(n, List.map (filter_events pred) trs)
+    | Ast.End           -> Ast.End
   in
-  Ast.ForkingTrace(List.filteri pred es, mf)
+  Ast.TreeTrace(List.filteri pred es, mf)
 
 module Parser = struct
   exception Parse_error of string
@@ -37,7 +37,7 @@ module Parser = struct
     let ic = try open_in fname with Sys_error(msg) -> fail "%s" msg in
     let lexbuf = Lexing.from_channel ic in
     try
-      let ast = P.forking_trc_start L.token lexbuf in
+      let ast = P.tree_trc_start L.token lexbuf in
       close_in ic;
       ast
     with e ->

@@ -11,7 +11,7 @@ opam switch create . ocaml-base-compiler.4.12.0 --no-install
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
 opam pin add -n -y cerberus "git+https://github.com/rems-project/cerberus.git#7eb94d628845555cb5425f4f4b48890b345efdc5"
-opam pin add -n -y isla-lang "git+https://git@github.com/rems-project/isla-lang.git#2ae174f72c8d3481e93a1d275c97b740415cbb5f"
+opam pin add -n -y isla-lang "git+https://git@github.com/rems-project/isla-lang.git#52085e1dd4b1454fc7c6f834dbd1d9ce854be825"
 make builddep
 ```
 
