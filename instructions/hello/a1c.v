@@ -13,7 +13,7 @@ Definition a1c : isla_trace :=
   Smt (DeclareConst 36%Z (Ty_BitVec 64%N)) Mk_annot :t:
   ReadReg "R0" [] (RegVal_Base (Val_Symbolic 36%Z)) Mk_annot :t:
   Smt (DefineConst 39%Z (Binop (Eq) (Binop (Eq) (Unop (Extract 31%N 0%N) (Val (Val_Symbolic 36%Z) Mk_annot) Mk_annot) (Val (Val_Bits [BV{32%N} 0x0%Z]) Mk_annot) Mk_annot) (Val (Val_Bool false) Mk_annot) Mk_annot)) Mk_annot :t:
-  tfork [
+  tcases [
     Smt (Assert (Val (Val_Symbolic 39%Z) Mk_annot)) Mk_annot :t:
     Smt (DeclareConst 40%Z (Ty_BitVec 64%N)) Mk_annot :t:
     ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 40%Z)) Mk_annot :t:

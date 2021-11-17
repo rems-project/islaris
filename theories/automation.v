@@ -1012,11 +1012,11 @@ Section instances.
       by iApply (instr_pre_wand with "Hinstr").
   Qed.
 
-  Lemma li_wp_fork ts:
+  Lemma li_wp_cases ts:
     (⌜ts ≠ []⌝ ∗ [∧ list] t ∈ ts, WPasm t) -∗
-    WPasm (tfork ts).
+    WPasm (tcases ts).
   Proof.
-    iIntros "[% Hwp]". iApply wp_fork; [done|].
+    iIntros "[% Hwp]". iApply wp_cases; [done|].
     iIntros (t Ht). by iApply (big_andL_elem_of with "Hwp").
   Qed.
 
@@ -1518,7 +1518,7 @@ Ltac liAAsm :=
   | |- envs_entails ?Δ (WPasm ?es) =>
     lazymatch es with
     | tnil => notypeclasses refine (tac_fast_apply (li_wp_next_instr) _)
-    | tfork _ => notypeclasses refine (tac_fast_apply (li_wp_fork _) _)
+    | tcases _ => notypeclasses refine (tac_fast_apply (li_wp_cases _) _)
     | ?e :t: _ =>
       lazymatch e with
       | ReadReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg _ _ _ _) _)

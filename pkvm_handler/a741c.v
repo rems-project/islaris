@@ -13,7 +13,7 @@ Definition a741c : isla_trace :=
   AssumeReg "SCR_EL3" [] (RegVal_Base (Val_Bits [BV{32%N} 0x501%Z])) Mk_annot :t:
   ReadReg "PSTATE" [Field "C"] (RegVal_Struct [("C", RegVal_Base (Val_Symbolic 5%Z))]) Mk_annot :t:
   Smt (DefineConst 37%Z (Binop (Eq) (Val (Val_Symbolic 5%Z) Mk_annot) (Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot)) Mk_annot :t:
-  tfork [
+  tcases [
     Smt (Assert (Val (Val_Symbolic 37%Z) Mk_annot)) Mk_annot :t:
     Smt (DeclareConst 38%Z (Ty_BitVec 64%N)) Mk_annot :t:
     ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 38%Z)) Mk_annot :t:

@@ -4,7 +4,7 @@
 # the repository. Note that the script is self-modifying: it will change the
 # old hash into the new one, and erase the new hash again.
 
-OLD_HASH=2ae174f72c8d3481e93a1d275c97b740415cbb5f
+OLD_HASH=52085e1dd4b1454fc7c6f834dbd1d9ce854be825
 NEW_HASH=
 
 sed -i "s/${OLD_HASH}/${NEW_HASH}/g" README.md .gitlab-ci.yml .github/workflows/ci.yml update_isla_lang.sh

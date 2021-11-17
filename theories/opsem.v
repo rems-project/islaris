@@ -7,7 +7,7 @@ Open Scope Z_scope.
 Inductive isla_trace : Set :=
 | tnil
 | tcons (e : event) (t : isla_trace)
-| tfork (ts : list isla_trace).
+| tcases (ts : list isla_trace).
 Notation "e :t: t" := (tcons e t) (at level 60, right associativity,
  format "'[v' e  :t: '/' t ']'" ) : stdpp_scope.
 Global Instance isla_trace_inhabited : Inhabited isla_trace := populate tnil.
@@ -16,14 +16,14 @@ Fixpoint subst_trace (v : base_val) (x : var_name) (t : isla_trace) :=
   match t with
   | tnil => tnil
   | tcons e t' => tcons (subst_val_event v x e) (subst_trace v x t')
-  | tfork ts => tfork (subst_trace v x <$> ts)
+  | tcases ts => tcases (subst_trace v x <$> ts)
   end.
 
 Fixpoint isla_trace_length (t : isla_trace) : nat :=
   match t with
   | tnil => 0
   | tcons _ t' => S (isla_trace_length t')
-  | tfork ts => S (sum_list (isla_trace_length <$> ts))
+  | tcases ts => S (sum_list (isla_trace_length <$> ts))
   end.
 
 Definition false_trace : isla_trace := Assume (AExp_Val (AVal_Bool false) Mk_annot) Mk_annot:t:tnil.
@@ -317,9 +317,9 @@ Inductive trace_step : isla_trace → reg_map → option trace_label → isla_tr
     trace_step (Branch c desc ann :t: es) regs (Some (LBranch c desc)) es
 | BarrierS v ann es regs :
     trace_step (Barrier v ann :t: es) regs None es
-| ForkES es ts regs:
+| CasesES es ts regs:
     es ∈ ts →
-    trace_step (tfork ts) regs None es
+    trace_step (tcases ts) regs None es
 | DoneES es regs:
     trace_step tnil regs (Some (LDone es)) es
 .

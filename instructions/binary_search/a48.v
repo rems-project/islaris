@@ -10,7 +10,7 @@ Definition a48 : isla_trace :=
   Smt (DefineConst 40%Z (Val (Val_Symbolic 39%Z) Mk_annot)) Mk_annot :t:
   ReadReg "PSTATE" [Field "Z"] (RegVal_Struct [("Z", RegVal_Base (Val_Symbolic 27%Z))]) Mk_annot :t:
   Smt (DefineConst 42%Z (Binop (Eq) (Val (Val_Symbolic 27%Z) Mk_annot) (Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot) Mk_annot)) Mk_annot :t:
-  tfork [
+  tcases [
     Smt (Assert (Val (Val_Symbolic 42%Z) Mk_annot)) Mk_annot :t:
     Smt (DefineConst 43%Z (Val (Val_Symbolic 38%Z) Mk_annot)) Mk_annot :t:
     WriteReg "R23" [] (RegVal_Base (Val_Symbolic 43%Z)) Mk_annot :t:

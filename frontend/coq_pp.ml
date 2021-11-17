@@ -320,7 +320,7 @@ and pp_maybe_fork : maybe_fork Format.pp = fun ff mf ->
   let pp fmt = Format.fprintf ff fmt in
   match mf with
   | Ast.Cases(n, trcs) ->
-     pp "@;@[<v 2>tfork [";
+     pp "@;@[<v 2>tcases [";
      let print_trace =
        let first = ref true in
        let print_trace e =

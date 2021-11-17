@@ -257,10 +257,10 @@ Section lifting.
     iExists _. rewrite bv_wrap_small; [|done]. iFrame. iExists _. by iFrame.
   Qed.
 
-  Lemma wp_fork ts:
+  Lemma wp_cases ts:
     ts ≠ [] →
     (∀ t, ⌜t ∈ ts⌝ -∗ WPasm t) -∗
-    WPasm (tfork ts).
+    WPasm (tcases ts).
   Proof.
     iIntros (?) "Hwp". setoid_rewrite wp_asm_unfold.
     iIntros ([? regs ? ?]) "/= -> -> -> Hθ".

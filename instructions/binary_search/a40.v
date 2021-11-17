@@ -6,7 +6,7 @@ Definition a40 : isla_trace :=
   Smt (DefineConst 55%Z (Manyop (Bvmanyarith Bvand) [Unop (Extract 31%N 0%N) (Val (Val_Symbolic 53%Z) Mk_annot) Mk_annot; Val (Val_Bits [BV{32%N} 0x1%Z]) Mk_annot] Mk_annot)) Mk_annot :t:
   Smt (DefineConst 57%Z (Manyop (Bvmanyarith Bvor) [Val (Val_Bits [BV{1%N} 0x0%Z]) Mk_annot; Unop (Extract 0%N 0%N) (Binop ((Bvarith Bvlshr)) (Val (Val_Symbolic 55%Z) Mk_annot) (Val (Val_Bits [BV{32%N} 0x1f%Z]) Mk_annot) Mk_annot) Mk_annot] Mk_annot)) Mk_annot :t:
   Smt (DefineConst 58%Z (Binop (Eq) (Val (Val_Symbolic 55%Z) Mk_annot) (Val (Val_Bits [BV{32%N} 0x0%Z]) Mk_annot) Mk_annot)) Mk_annot :t:
-  tfork [
+  tcases [
     Smt (Assert (Val (Val_Symbolic 58%Z) Mk_annot)) Mk_annot :t:
     Smt (DefineConst 60%Z (Manyop Concat [Manyop Concat [Val (Val_Symbolic 57%Z) Mk_annot; Val (Val_Bits [BV{1%N} 0x1%Z]) Mk_annot] Mk_annot; Val (Val_Bits [BV{2%N} 0x0%Z]) Mk_annot] Mk_annot)) Mk_annot :t:
     Smt (DefineConst 61%Z (Unop (Extract 3%N 3%N) (Val (Val_Symbolic 60%Z) Mk_annot) Mk_annot)) Mk_annot :t:

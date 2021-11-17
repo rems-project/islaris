@@ -854,10 +854,10 @@ Lemma sim_assert_exp E Σ b K e2 s:
   sim (E:=E) Σ (assert_exp b s) K e2.
 Proof. move => Hb Hsim. unfold assert_exp. destruct b => //. Qed.
 
-Lemma sim_tfork i A E Σ K e1 ts t:
+Lemma sim_tcases i A E Σ K e1 ts t:
   ts !! i = Some t →
   sim (A:=A) (E:=E) Σ e1 K t →
-  sim (A:=A) (E:=E) Σ e1 K (tfork ts).
+  sim (A:=A) (E:=E) Σ e1 K (tcases ts).
 Proof.
   move => ? Hsim ????????.
   apply: raw_sim_step_s. { econstructor. econstructor => //=. 1: by econstructor; eapply elem_of_list_lookup_2. done.  }

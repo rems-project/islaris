@@ -15,9 +15,9 @@ Proof.
   red_sim.
   apply: sim_read_reg_l; [done|]. red_sim. rewrite x12_nextPC.
   destruct (eq_vec (x12 regs) zero_reg) eqn: Hx12; sim_simpl_hyp Hx12; red_sim.
-  - apply: (sim_tfork 0); [done|]. red_sim.
+  - apply: (sim_tcases 0); [done|]. red_sim.
     rewrite bit_to_bool_false; [|shelve]. red_sim.
-  - apply: (sim_tfork 1); [done|]. red_sim.
+  - apply: (sim_tcases 1); [done|]. red_sim.
   Unshelve. all: sim_simpl_goal.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_true in Hx12. by rewrite Hx12.
   + rewrite access_vec_dec_to_bv // bitU_of_bool_B0 //.
@@ -147,9 +147,9 @@ Proof.
   red_sim.
   apply: sim_read_reg_l; [done|]. red_sim. rewrite x12_nextPC.
   destruct (neq_vec (x12 regs) zero_reg) eqn: Hx12; unfold neq_vec in Hx12; sim_simpl_hyp Hx12; red_sim.
-  - apply: (sim_tfork 0); [done|]. red_sim.
+  - apply: (sim_tcases 0); [done|]. red_sim.
     rewrite bit_to_bool_false; [|shelve]. red_sim.
-  - apply: (sim_tfork 1); [done|]. red_sim.
+  - apply: (sim_tcases 1); [done|]. red_sim.
   Unshelve. all: sim_simpl_goal.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_false in Hx12. contradict Hx12. by rewrite Hx12.
   + rewrite access_vec_dec_to_bv // bitU_of_bool_B0 //.

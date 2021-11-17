@@ -9,7 +9,7 @@ Definition a18 : isla_trace :=
   ReadReg "x12" [] (RegVal_Base (Val_Symbolic 13%Z)) Mk_annot :t:
   Smt (DefineConst 14%Z (Unop (Not) (Binop (Eq) (Val (Val_Symbolic 13%Z) Mk_annot) (Val (Val_Bits [BV{64%N} 0x0%Z]) Mk_annot) Mk_annot) Mk_annot)) Mk_annot :t:
   Smt (DefineConst 15%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 0%Z) Mk_annot; Val (Val_Bits [BV{64%N} 0xffffffffffffffec%Z]) Mk_annot] Mk_annot)) Mk_annot :t:
-  tfork [
+  tcases [
     Smt (Assert (Val (Val_Symbolic 14%Z) Mk_annot)) Mk_annot :t:
     Smt (DefineConst 16%Z (Unop (Extract 0%N 0%N) (Binop ((Bvarith Bvlshr)) (Val (Val_Symbolic 15%Z) Mk_annot) (Val (Val_Bits [BV{64%N} 0x1%Z]) Mk_annot) Mk_annot) Mk_annot)) Mk_annot :t:
     BranchAddress (RegVal_Base (Val_Symbolic 15%Z)) Mk_annot :t:

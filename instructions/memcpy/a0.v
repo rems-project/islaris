@@ -13,7 +13,7 @@ Definition a0 : isla_trace :=
   Smt (DeclareConst 36%Z (Ty_BitVec 64%N)) Mk_annot :t:
   ReadReg "R2" [] (RegVal_Base (Val_Symbolic 36%Z)) Mk_annot :t:
   Smt (DefineConst 39%Z (Binop (Eq) (Binop (Eq) (Val (Val_Symbolic 36%Z) Mk_annot) (Val (Val_Bits [BV{64%N} 0x0%Z]) Mk_annot) Mk_annot) (Val (Val_Bool true) Mk_annot) Mk_annot)) Mk_annot :t:
-  tfork [
+  tcases [
     Smt (Assert (Val (Val_Symbolic 39%Z) Mk_annot)) Mk_annot :t:
     Smt (DeclareConst 40%Z (Ty_BitVec 64%N)) Mk_annot :t:
     ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 40%Z)) Mk_annot :t:

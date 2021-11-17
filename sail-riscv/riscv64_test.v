@@ -111,9 +111,9 @@ Proof.
   apply: sim_read_reg_l; [done|]; red_sim.
   rewrite x10_nextPC x11_nextPC.
   destruct (eq_vec (x10 regs) (x11 regs)) eqn: Hb1; sim_simpl_hyp Hb1.
-  - apply: (sim_tfork 0); [done|]. red_sim.
+  - apply: (sim_tcases 0); [done|]. red_sim.
     rewrite bit_to_bool_false; [|shelve]. red_sim.
-  - apply: (sim_tfork 1); [done|]. red_sim.
+  - apply: (sim_tcases 1); [done|]. red_sim.
   Unshelve. all: sim_simpl_goal.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_true in Hb1. by rewrite Hb1.
   + rewrite access_vec_dec_to_bv // bitU_of_bool_B0 //.
