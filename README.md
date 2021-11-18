@@ -119,6 +119,8 @@ PATH=$PWD/bin:$PATH dune exec -- islaris pkvm_handler/pkvm_handler.dump
 - Brian Campbell
 - Jean Pichon-Pharabod
 - Peter Sewell
+- Derek Dreyer
+- Deepak Garg
 
 ## LICENSE
 
