@@ -84,9 +84,9 @@ SRC = $(wildcard frontend/*.ml) \
 			$(wildcard theories/*.v) $(wildcard theories/*/*.v) \
 			$(wildcard examples/*.v) pkvm_handler/wp.v \
 			$(wildcard sail/*.v) $(wildcard sail-riscv/*.v)
-apply_header:
-	headache -c etc/headache_config -h LICENSE ${SRC}
-.PHONY: apply_header
+update_license:
+	ocaml tools/update_license.ml LICENSE ${SRC}
+.PHONY: update_license
 
 builddep-opamfiles: builddep/islaris-builddep.opam
 	@true
