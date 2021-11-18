@@ -88,6 +88,10 @@ update_license:
 	ocaml tools/update_license.ml LICENSE ${SRC}
 .PHONY: update_license
 
+strip_license:
+	ocaml tools/update_license.ml --strip ${SRC}
+.PHONY: strip_license
+
 builddep-opamfiles: builddep/islaris-builddep.opam
 	@true
 .PHONY: builddep-opamfiles

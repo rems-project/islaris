@@ -47,15 +47,24 @@ let strip_header lines =
 let _ =
   let (license, files) =
     match List.tl (Array.to_list Sys.argv) with
-    | license :: files -> (license, files)
-    | _                ->
+    | "--strip" :: files -> (None         , files)
+    | license   :: files -> (Some(license), files)
+    | _                  ->
         let prog = Sys.argv.(0) in
-        Printf.eprintf "Usage: %s LICENSE_FILE FILE1 ... FILEN\n%!" prog;
+        Printf.eprintf "Usage: %s [LICENSE_FILE | --strip] FILE ...\n%!" prog;
         exit 1
   in
-  let header = wrap_in_comment license in
-  let handle_file file =
-    let lines = header @ "" :: strip_header (read_file file) in
-    write_file file lines
-  in
-  List.iter handle_file files
+  match license with
+  | Some(license) ->
+      let header = wrap_in_comment license in
+      let handle_file file =
+        let lines = header @ "" :: strip_header (read_file file) in
+        write_file file lines
+      in
+      List.iter handle_file files
+  | None          ->
+      let handle_file file =
+        let lines = strip_header (read_file file) in
+        write_file file lines
+      in
+      List.iter handle_file files
