@@ -85,11 +85,11 @@ SRC = $(wildcard frontend/*.ml) \
 			$(wildcard examples/*.v) pkvm_handler/wp.v \
 			$(wildcard sail/*.v) $(wildcard sail-riscv/*.v)
 update_license:
-	ocaml tools/update_license.ml LICENSE ${SRC}
+	@ocaml tools/update_license.ml LICENSE ${SRC}
 .PHONY: update_license
 
 strip_license:
-	ocaml tools/update_license.ml --strip ${SRC}
+	@ocaml tools/update_license.ml --strip ${SRC}
 .PHONY: strip_license
 
 builddep-opamfiles: builddep/islaris-builddep.opam
