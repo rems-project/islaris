@@ -80,6 +80,14 @@ uninstall:
 	@dune uninstall
 .PHONY: uninstall
 
+SRC = $(wildcard frontend/*.ml) \
+			$(wildcard theories/*.v) $(wildcard theories/*/*.v) \
+			$(wildcard examples/*.v) pkvm_handler/wp.v \
+			$(wildcard sail/*.v) $(wildcard sail-riscv/*.v)
+apply_header:
+	headache -c etc/headache_config -h LICENSE ${SRC}
+.PHONY: apply_header
+
 builddep-opamfiles: builddep/islaris-builddep.opam
 	@true
 .PHONY: builddep-opamfiles
