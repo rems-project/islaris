@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Root of repo https://github.com/rems-project/isla, defined as:
+# Root of the [isla] repository, defined as:
 # - the value of environment variable ISLA_REPO if defined,
 # - directory named "isla" in the parent directory of current repo.
 ISLA_ROOT=
 
-# Root of repo [https://github.com/rems-project/isla-snapshots], defined as:
+# Root of the [isla-snapshots] repository, defined as:
 # - the value of environment variable ISLA_SNAP_REPO if defined,
 # - directory named "isla-snapshots" in the parent directory of current repo.
 ISLA_SNAP_ROOT=
