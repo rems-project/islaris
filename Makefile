@@ -13,6 +13,7 @@ all_and_tests: tests all
 update_etc:
 	@dune build _build/install/default/etc/islaris/aarch64_isla_coq.toml
 	@dune build _build/install/default/etc/islaris/aarch64_isla_coq_el1.toml
+	@dune build _build/install/default/etc/islaris/aarch64_isla_coq_pkvm.toml
 	@dune build _build/install/default/etc/islaris/riscv64_isla_coq.toml
 .PHONY: update_etc
 
