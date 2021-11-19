@@ -1,4 +1,4 @@
 (install
- (files aarch64_isla_coq.toml aarch64_isla_coq_el1.toml riscv64_isla_coq.toml)
+ (files aarch64_isla_coq.toml aarch64_isla_coq_el1.toml riscv64_isla_coq.toml aarch64_isla_coq_pkvm.toml)
  (section etc)
  (package islaris))

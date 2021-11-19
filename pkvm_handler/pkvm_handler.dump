@@ -1,3 +1,4 @@
+//@isla-config: aarch64_isla_coq.toml
 //@constraint: = (bvand SP_EL2  0xfff0000000000007) 0x0000000000000000
 //@constraint: bvugt SP_EL2 0x0000000000000010
 //@spec: stp_uninit_spec pc "R0" "R1" "SP_EL2" (-16) true
@@ -37,3 +38,53 @@
 //@spec_tactic: all:bv_solve.
     7438:	cb0600a5 	sub	x5, x5, x6
     743c:	d61f00a0 	br	x5
+
+//@spec: cmp_R_imm_spec pc "R0" 0x1
+//@spec_tactic: 1: cmp_spec_tac1. 1: cmp_spec_tac2. 1: cmp_spec_tac3. 1: cmp_spec_tac4.
+   18218:	f100041f 	cmp	x0, #0x1
+   1821c:	54000101 	b.ne	1823c <__kvm_handle_stub_hvc+0x24>  // b.any
+   18220:	d51c4021 	msr	elr_el2, x1
+   18224:	d2807920 	mov	x0, #0x3c9                 	// #969
+   18228:	d51c4000 	msr	spsr_el2, x0
+   1822c:	aa0203e0 	mov	x0, x2
+   18230:	aa0303e1 	mov	x1, x3
+   18234:	aa0403e2 	mov	x2, x4
+   18238:	14000004 	b	18248 <reset>
+//@spec: cmp_R_imm_spec pc "R0" 0x2
+//@spec_tactic: 1: cmp_spec_tac1. 1: cmp_spec_tac2. 1: cmp_spec_tac3. 1: cmp_spec_tac4.
+   1823c:	f100081f 	cmp	x0, #0x2
+   18240:	54000241 	b.ne	18288 <reset+0x40>  // b.any
+   18244:	aa1f03e0 	mov	x0, xzr
+
+//reset
+   18248:	d53c1005 	mrs	x5, sctlr_el2
+   1824c:	d2a00406 	mov	x6, #0x200000              	// #2097152
+   18250:	f28201e6 	movk	x6, #0x100f
+   18254:	8a2600a5 	bic	x5, x5, x6
+   18258:	d5033fdf 	isb
+   1825c:	d51c1005 	msr	sctlr_el2, x5
+//@isla-config: aarch64_isla_coq_pkvm.toml
+   18260:	d5033fdf 	isb
+   18264:	d503201f 	nop
+   18268:	d503201f 	nop
+   1826c:	d503201f 	nop
+   18270:	d503201f 	nop
+   18274:	d503201f 	nop
+   18278:	90000025 	adrp	x5, 1c000 <hyp_memory+0x450>
+   1827c:	911e60a5 	add	x5, x5, #0x798
+   18280:	d51cc005 	msr	vbar_el2, x5
+//@constraint: = ((_ extract 4  4 ) SPSR_EL2) 0b0
+//@constraint: = ((_ extract 3  2 ) SPSR_EL2) 0b10
+//@constraint: = ((_ extract 1  1 ) SPSR_EL2) 0b0
+//@constraint: = ((_ extract 20 20) SPSR_EL2) 0b0
+//@constraint: = ((_ extract 55 55) ELR_EL2) 0b0
+   18284:	d69f03e0 	eret
+//@isla-config: aarch64_isla_coq.toml
+   18288:	d2a175a0 	mov	x0, #0xbad0000             	// #195887104
+   1828c:	f2994220 	movk	x0, #0xca11
+//@constraint: = ((_ extract 4  4 ) SPSR_EL2) 0b0
+//@constraint: = ((_ extract 3  2 ) SPSR_EL2) 0b01
+//@constraint: = ((_ extract 1  1 ) SPSR_EL2) 0b0
+//@constraint: = ((_ extract 20 20) SPSR_EL2) 0b0
+//@constraint: = ((_ extract 55 55) ELR_EL2) 0b0
+   18290:	d69f03e0 	eret
