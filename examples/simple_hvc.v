@@ -82,6 +82,28 @@ Definition initial_pstate : list (reg_kind * valu_shape) := [
   (KindField "PSTATE" "N"    , BitsShape 1)
 ].
 
+Definition final_pstate : list (reg_kind * valu_shape) := [
+  (KindField "PSTATE" "SP"   , ExactShape (RVal_Bits [BV{1} 0]));
+  (KindField "PSTATE" "EL"   , ExactShape (RVal_Bits [BV{2} 1]));
+  (KindField "PSTATE" "nRW"  , ExactShape (RVal_Bits [BV{1} 0]));
+  (KindField "PSTATE" "F"    , BitsShape 1);
+  (KindField "PSTATE" "I"    , BitsShape 1);
+  (KindField "PSTATE" "A"    , BitsShape 1);
+  (KindField "PSTATE" "D"    , ExactShape (RVal_Bits [BV{1} 1]));
+  (KindField "PSTATE" "BTYPE", BitsShape 2);
+  (KindField "PSTATE" "SBSS" , BitsShape 1);
+  (KindField "PSTATE" "IL"   , BitsShape 1);
+  (KindField "PSTATE" "SS"   , BitsShape 1);
+  (KindField "PSTATE" "PAN"  , BitsShape 1);
+  (KindField "PSTATE" "UAO"  , BitsShape 1);
+  (KindField "PSTATE" "DIT"  , BitsShape 1);
+  (KindField "PSTATE" "TCO"  , BitsShape 1);
+  (KindField "PSTATE" "V"    , BitsShape 1);
+  (KindField "PSTATE" "C"    , BitsShape 1);
+  (KindField "PSTATE" "Z"    , BitsShape 1);
+  (KindField "PSTATE" "N"    , BitsShape 1)
+].
+
 Definition simple_hvc_fixed_sys_regs :=
   let regs32 :=
     [ "CPTR_EL2" ; "CPTR_EL3" ; "CPACR_EL1" ; "CNTHCTL_EL2"
@@ -128,8 +150,8 @@ Definition simple_hvc_spec (v0 v1 : bv 64) (v2 : bv 32) : iProp Σ := (
     "VBAR_EL2" ↦ᵣ RVal_Bits [BV{64} 0xa0000] ∗
     "HCR_EL2"  ↦ᵣ RVal_Bits [BV{64} 0x80000000] ∗
     "ELR_EL2"  ↦ᵣ RVal_Bits [BV{64} 0x90008] ∗
-    (* FIXME "SPSR_EL2" ↦ᵣ RVal_Bits [BV{32} 0x3c4] ∗ *)
-    (* FIXME reg_col initial_pstate ∗ *)
+    "SPSR_EL2" ↦ᵣ RVal_Bits [BV{32} 0x3c4] ∗
+    reg_col final_pstate ∗
     reg_col simple_hvc_fixed_sys_regs ∗
     True
   )
