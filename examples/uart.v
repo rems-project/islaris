@@ -115,7 +115,7 @@ Proof.
   - bv_solve.
   - rename select (_ ≠ _) into Hn.
     rewrite sif_true; [done|]. apply not_false_is_true.
-    contradict Hn. bits_simplify. have -> : n1 = 0 by lia. done.
+    contradict Hn. bits_simplify. have -> : n0 = 0 by lia. done.
   - rename select (_ = _) into Hn.
     rewrite sif_false; [done|]. apply not_true_iff_false.
     bitify_hyp Hn. move: (Hn 0 ltac:(done)) => {}Hn.
@@ -177,7 +177,7 @@ Proof.
     bitify_hyp Hn. move: (Hn 0 ltac:(done)) => {}Hn.
     by bits_simplify_hyp Hn.
   + rename select (_ ≠ [BV{1} 1]) into Hn. contradict Hn. bits_simplify.
-    by have -> : n1 = 0 by lia.
+    by have -> : n0 = 0 by lia.
 (*PROOF_END*)
 Time Qed.
 End proof.

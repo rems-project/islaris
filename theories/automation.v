@@ -1113,7 +1113,7 @@ Section instances.
               | StructShape ss => list_find_idx (λ y, y.1 = f) ss
               | _ => None
               end)))%type) regs) (λ i,
-               (* TODO: Add somehing like ⌜valu_has_shape v (regs !!! i).2⌝ -∗ here?  *)
+               ⌜if (regs !!! i).1 is KindField _ _ then valu_has_shape vread (regs !!! i).2 else True⌝ -∗
                (reg_col regs -∗ WPasm es))
       end))) -∗
     WPasm (ReadReg r [Field f] v ann :t: es).
@@ -1122,15 +1122,16 @@ Section instances.
     iDestruct 1 as (???) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg_struct with "Hr").
     - iDestruct "Hwp" as (? [[? s][?[Hor ?]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+      erewrite list_lookup_total_correct; [|done].
       iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [%Hvact Hr]] Hregs]"; [done|] => /=.
       case: Hor => [?|[?[i]]]; simplify_eq.
-      + iApply (wp_read_reg_struct with "Hr"); [done|]. iIntros "% Hr". iApply "Hwp". iApply "Hregs".
-        iExists _. by iFrame.
+      + iApply (wp_read_reg_struct with "Hr"); [done|]. iIntros "% Hr". subst vread.
+        iApply "Hwp"; [done|]. iApply "Hregs". iExists _. by iFrame.
       + destruct s as [[]| | | |] => // Hidx; move: (Hidx) => /list_find_idx_Some[?[Hl [? Hlt]]].
         * rewrite Hvact.
           iApply (wp_read_reg_acc with "Hr"); [| done|].
           { rewrite /read_accessor/=. by simplify_option_eq. }
-          iIntros "% Hr". iApply "Hwp". iApply "Hregs". iExists _. by iFrame.
+          iIntros "% Hr". iApply "Hwp"; [done|]. iApply "Hregs". iExists _. by iFrame.
         * destruct vact as [| | | | | | | rs|] => //.
           move: (Hvact) => /= [Hlen /Forall_fold_right/(Forall_lookup_1 _ _ _ _) Hall].
           have [|[??]?]:= lookup_lt_is_Some_2 rs i.
@@ -1146,7 +1147,7 @@ Section instances.
             efeed pose proof Hall as Hall'. { rewrite ->lookup_zip_with, Hjs. simpl. by simplify_option_eq. }
             destruct Hall'; simplify_eq. by apply: (Hlt _ (_, _)).
           }
-          iIntros "% Hr". iApply "Hwp". iApply "Hregs". iExists _. by iFrame.
+          iIntros "% Hr". iApply "Hwp"; [done|]. iApply "Hregs". iExists _. by iFrame.
   Qed.
 
   Lemma li_wp_assume_reg r v ann es :

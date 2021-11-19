@@ -16,10 +16,19 @@ update_etc:
 	@dune build _build/install/default/etc/islaris/riscv64_isla_coq.toml
 .PHONY: update_etc
 
-generate_aarch64: update_etc
-	@echo "[islaris] examples/memory_instructions.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/memory_instructions.dump -j 8 -o instructions  -n "instr_{instr}" --coqdir=isla.instructions
+generate_memory_instructions: examples/memory_instructions.dump
+	@echo "[islaris] $<"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris $< -j 8 -o instructions  -n "instr_{instr}" --coqdir=isla.instructions
 	@rm instructions/instrs.v
+.PHONY: generate_memory_instructions
+
+generate_unaligned_accesses: examples/unaligned_accesses.dump
+	@echo "[islaris] $<"
+	@PATH=$$PWD/bin:$$PATH dune exec -- islaris $< -j 8 -o instructions  -n "instr_{instr}_unaligned" --coqdir=isla.instructions
+	@rm instructions/instrs.v
+.PHONY: generate_unaligned_accesses
+
+generate_aarch64: update_etc
 	@echo "[islaris] examples/hello.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/hello.dump -j 8 -o instructions/hello --coqdir=isla.instructions.hello
 	@echo "[islaris] examples/example.dump"
@@ -65,7 +74,7 @@ generate_rbit: examples/rbit.dump update_etc
 	@PATH=$$PWD/bin:$$PATH dune exec -- islaris $< -j 8 -o instructions/rbit --coqdir=isla.instructions.rbit
 .PHONY: generate_clz
 
-generate: generate_aarch64 generate_riscv64 generate_el2_to_el1 generate_clz generate_simple_hvc generate_rbit
+generate: generate_memory_instructions generate_unaligned_accesses generate_aarch64 generate_riscv64 generate_el2_to_el1 generate_clz generate_simple_hvc generate_rbit
 .PHONY: generate
 
 clean:
