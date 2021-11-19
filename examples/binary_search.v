@@ -54,7 +54,7 @@
 (****************************************************************************)
 
 Require Import isla.aarch64.aarch64.
-From isla.instructions.binary_search Require Import instrs. Compute (sum_list (isla_trace_length <$> instr_map.*2)).
+From isla.instructions.binary_search Require Import instrs.
 
 Section proof.
 Context `{!islaG Σ} `{!threadG}.

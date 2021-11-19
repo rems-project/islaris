@@ -132,7 +132,6 @@ Proof.
   - rewrite insert_length. bv_solve.
   - bv_solve.
   - bv_simplify.
-    rewrite (bv_wrap_small _ (bv_unsigned i)); [|bv_solve].
     rewrite (bv_wrap_small _ (bv_unsigned i + _)); [|bv_solve].
     have ->: (Z.to_nat (bv_unsigned i + 1)) = S ((Z.to_nat (bv_unsigned i))) by bv_solve.
     erewrite take_S_r. 2: apply list_lookup_insert; bv_solve.

@@ -116,6 +116,279 @@ Create HintDb bv_simplify discriminated.
 #[export] Hint Rewrite @bv_not_bool_to_bv : bv_simplify.
 #[export] Hint Rewrite bool_decide_bool_to_bv_0 bool_decide_bool_to_bv_1 : bv_simplify.
 
+Create HintDb bv_unfold_db discriminated.
+Global Hint Constants Opaque : bv_unfold_db.
+Global Hint Variables Opaque : bv_unfold_db.
+Global Hint Extern 1 (TCFastDone ?P) => (change P; fast_done) : bv_unfold_db.
+Global Hint Transparent bitvector.bv_wf Z.lt Z.compare Pos.compare Pos.compare_cont bv_modulus Z.pow Z.pow_pos Pos.iter Z.mul Pos.mul Z.of_N : bv_unfold_db.
+
+(* Definition bv_suwrap (signed : bool) (n : N) : Z → Z := *)
+  (* if signed then bv_swrap n else bv_wrap n. *)
+(* Arguments bv_suwrap !_ _ /. *)
+Notation bv_suwrap signed := (if signed then bv_swrap else bv_wrap).
+
+Class BvUnfold (n : N) (signed : bool) (wrapped : bool) (b : bv n) (z : Z) := {
+    bv_unfold_proof :
+      ((if signed then bv_signed else bv_unsigned) b) = (if wrapped then bv_suwrap signed n z else z);
+}.
+Global Arguments bv_unfold_proof {_ _ _} _ _ {_}.
+Global Hint Mode BvUnfold + + + + - : bv_unfold_db.
+
+Definition BV_UNFOLD_BLOCK {A} (x : A) : A := x.
+Lemma bv_unfold_end s w n b:
+  BvUnfold n s w b ((if s then BV_UNFOLD_BLOCK bv_signed else BV_UNFOLD_BLOCK bv_unsigned) b).
+Proof. constructor. unfold BV_UNFOLD_BLOCK. destruct w, s; rewrite //=. Admitted.
+Global Hint Resolve bv_unfold_end | 1000 : bv_unfold_db.
+Lemma bv_unfold_BV s w n z Hwf:
+  BvUnfold n s w (BV _ z Hwf) (if w then z else if s then bv_swrap n z else z).
+Proof. constructor. destruct w, s; rewrite /bv_unsigned //= bv_wrap_small //. by apply bv_wf_in_range. Qed.
+Global Hint Resolve bv_unfold_BV | 10 : bv_unfold_db.
+Lemma bv_unfold_Z_to_bv s w n z:
+  BvUnfold n s w (Z_to_bv _ z) (if w then z else bv_suwrap s n z).
+Proof. constructor. destruct w, s; rewrite ?Z_to_bv_signed ?Z_to_bv_unsigned //=. Qed.
+Global Hint Resolve bv_unfold_Z_to_bv | 10 : bv_unfold_db.
+Lemma bv_unfold_succ s w n b z:
+  BvUnfold n s true b z →
+  BvUnfold n s w (bv_succ b) (if w then Z.succ z else bv_suwrap s n (Z.succ z)).
+Proof.
+  move => [Hz]. constructor.
+  destruct w, s; rewrite ?bv_succ_signed ?bv_succ_unsigned ?Hz //=; bv_wrap_simplify_solve.
+Qed.
+Global Hint Resolve bv_unfold_succ | 10 : bv_unfold_db.
+Lemma bv_unfold_pred s w n b z:
+  BvUnfold n s true b z →
+  BvUnfold n s w (bv_pred b) (if w then Z.pred z else bv_suwrap s n (Z.pred z)).
+Proof.
+  move => [Hz]. constructor.
+  destruct w, s; rewrite ?bv_pred_signed ?bv_pred_unsigned ?Hz //=; bv_wrap_simplify_solve.
+Qed.
+Global Hint Resolve bv_unfold_pred | 10 : bv_unfold_db.
+Lemma bv_unfold_add s w n b1 b2 z1 z2:
+  BvUnfold n s true b1 z1 →
+  BvUnfold n s true b2 z2 →
+  BvUnfold n s w (bv_add b1 b2) (if w then z1 + z2 else bv_suwrap s n (z1 + z2)).
+Proof.
+  move => [Hz1] [Hz2]. constructor.
+  destruct w, s; rewrite ?bv_add_signed ?bv_add_unsigned ?Hz1 ?Hz2 //=; bv_wrap_simplify_solve.
+Qed.
+Global Hint Resolve bv_unfold_add | 10 : bv_unfold_db.
+Lemma bv_unfold_sub s w n b1 b2 z1 z2:
+  BvUnfold n s true b1 z1 →
+  BvUnfold n s true b2 z2 →
+  BvUnfold n s w (bv_sub b1 b2) (if w then z1 - z2 else bv_suwrap s n (z1 - z2)).
+Proof.
+  move => [Hz1] [Hz2]. constructor.
+  destruct w, s; rewrite ?bv_sub_signed ?bv_sub_unsigned ?Hz1 ?Hz2 //=; bv_wrap_simplify_solve.
+Qed.
+Global Hint Resolve bv_unfold_sub | 10 : bv_unfold_db.
+Lemma bv_unfold_opp s w n b z:
+  BvUnfold n s true b z →
+  BvUnfold n s w (bv_opp b) (if w then - z else bv_suwrap s n (- z)).
+Proof.
+  move => [Hz]. constructor.
+  destruct w, s; rewrite ?bv_opp_signed ?bv_opp_unsigned ?Hz //=; bv_wrap_simplify_solve.
+Qed.
+Global Hint Resolve bv_unfold_opp | 10 : bv_unfold_db.
+Lemma bv_unfold_mul s w n b1 b2 z1 z2:
+  BvUnfold n s true b1 z1 →
+  BvUnfold n s true b2 z2 →
+  BvUnfold n s w (bv_mul b1 b2) (if w then z1 * z2 else bv_suwrap s n (z1 * z2)).
+Proof.
+  move => [Hz1] [Hz2]. constructor.
+  destruct w, s; rewrite ?bv_mul_signed ?bv_mul_unsigned ?Hz1 ?Hz2 //=; bv_wrap_simplify_solve.
+Qed.
+Global Hint Resolve bv_unfold_mul | 10 : bv_unfold_db.
+Lemma bv_unfold_divu s w n b1 b2 z1 z2:
+  BvUnfold n false false b1 z1 →
+  BvUnfold n false false b2 z2 →
+  BvUnfold n s w (bv_divu b1 b2) (if w then z1 `div` z2 else if s then bv_swrap n (z1 `div` z2) else z1 `div` z2).
+Proof.
+  move => [Hz1] [Hz2]. constructor.
+  destruct w, s; rewrite ?bv_divu_signed ?bv_divu_unsigned ?Hz1 ?Hz2 //=; try bv_wrap_simplify_solve.
+Admitted.
+Global Hint Resolve bv_unfold_divu | 10 : bv_unfold_db.
+Lemma bv_unfold_modu s w n b1 b2 z1 z2:
+  BvUnfold n false false b1 z1 →
+  BvUnfold n false false b2 z2 →
+  BvUnfold n s w (bv_modu b1 b2) (if w then z1 `mod` z2 else if s then bv_swrap n (z1 `mod` z2) else z1 `mod` z2).
+Proof.
+  move => [Hz1] [Hz2]. constructor.
+  destruct w, s; rewrite ?bv_modu_signed ?bv_modu_unsigned ?Hz1 ?Hz2 //=; try bv_wrap_simplify_solve.
+Admitted.
+Global Hint Resolve bv_unfold_modu | 10 : bv_unfold_db.
+
+     (* @bv_divs_unsigned @bv_divs_signed *)
+     (* @bv_quots_unsigned @bv_quots_signed *)
+     (* @bv_mods_unsigned @bv_mods_signed *)
+     (* @bv_rems_unsigned @bv_rems_signed *)
+
+Lemma bv_unfold_shiftl s w n b1 b2 z1 z2:
+  BvUnfold n false false b1 z1 →
+  BvUnfold n false false b2 z2 →
+  BvUnfold n s w (bv_shiftl b1 b2) (if w then z1 ≪ z2 else bv_suwrap s n (z1 ≪ z2)).
+Proof.
+  move => [Hz1] [Hz2]. constructor.
+  destruct w, s; rewrite ?bv_shiftl_signed ?bv_shiftl_unsigned ?Hz1 ?Hz2 //=; try bv_wrap_simplify_solve.
+Qed.
+Global Hint Resolve bv_unfold_shiftl | 10 : bv_unfold_db.
+Lemma bv_unfold_shiftr s w n b1 b2 z1 z2:
+  BvUnfold n false false b1 z1 →
+  BvUnfold n false false b2 z2 →
+  BvUnfold n s w (bv_shiftr b1 b2) (if w then z1 ≫ z2 else if s then bv_swrap n (z1 ≫ z2) else (z1 ≫ z2)).
+Proof.
+  move => [Hz1] [Hz2]. constructor.
+  (* pose (s' := s). *)
+  (* pose (w' := w). *)
+  destruct w, s; rewrite ?bv_shiftr_signed ?bv_shiftr_unsigned ?Hz1 ?Hz2 //=; try bv_wrap_simplify_solve.
+Admitted.
+Global Hint Resolve bv_unfold_shiftr | 10 : bv_unfold_db.
+Lemma bv_unfold_ashiftr s w n b1 b2 z1 z2:
+  BvUnfold n true false b1 z1 →
+  BvUnfold n false false b2 z2 →
+  BvUnfold n s w (bv_ashiftr b1 b2) (if w then z1 ≫ z2 else if s then z1 ≫ z2 else bv_wrap n (z1 ≫ z2)).
+Proof.
+  move => [Hz1] [Hz2]. constructor.
+  (* pose (s' := s). *)
+  (* pose (w' := w). *)
+  destruct w, s; rewrite ?bv_ashiftr_signed ?bv_ashiftr_unsigned ?Hz1 ?Hz2 //=; try bv_wrap_simplify_solve.
+Admitted.
+Global Hint Resolve bv_unfold_ashiftr | 10 : bv_unfold_db.
+Lemma bv_unfold_or s w n b1 b2 z1 z2:
+  BvUnfold n false false b1 z1 →
+  BvUnfold n false false b2 z2 →
+  BvUnfold n s w (bv_or b1 b2) (if w then Z.lor z1 z2 else if s then bv_swrap n (Z.lor z1 z2) else Z.lor z1 z2).
+Proof.
+  move => [Hz1] [Hz2]. constructor.
+  (* pose (s' := s). *)
+  (* pose (w' := w). *)
+  destruct w, s; rewrite ?bv_or_signed ?bv_or_unsigned ?Hz1 ?Hz2 //=; try bv_wrap_simplify_solve.
+Admitted.
+Global Hint Resolve bv_unfold_or | 10 : bv_unfold_db.
+Lemma bv_unfold_and s w n b1 b2 z1 z2:
+  BvUnfold n false false b1 z1 →
+  BvUnfold n false false b2 z2 →
+  BvUnfold n s w (bv_and b1 b2) (if w then Z.land z1 z2 else if s then bv_swrap n (Z.land z1 z2) else Z.land z1 z2).
+Proof.
+  move => [Hz1] [Hz2]. constructor.
+  (* pose (s' := s). *)
+  (* pose (w' := w). *)
+  destruct w, s; rewrite ?bv_and_signed ?bv_and_unsigned ?Hz1 ?Hz2 //=; try bv_wrap_simplify_solve.
+Admitted.
+Global Hint Resolve bv_unfold_and | 10 : bv_unfold_db.
+Lemma bv_unfold_xor s w n b1 b2 z1 z2:
+  BvUnfold n false false b1 z1 →
+  BvUnfold n false false b2 z2 →
+  BvUnfold n s w (bv_xor b1 b2) (if w then Z.lxor z1 z2 else if s then bv_swrap n (Z.lxor z1 z2) else Z.lxor z1 z2).
+Proof.
+  move => [Hz1] [Hz2]. constructor.
+  (* pose (s' := s). *)
+  (* pose (w' := w). *)
+  destruct w, s; rewrite ?bv_xor_signed ?bv_xor_unsigned ?Hz1 ?Hz2 //=; try bv_wrap_simplify_solve.
+Admitted.
+Global Hint Resolve bv_unfold_xor | 10 : bv_unfold_db.
+Lemma bv_unfold_not s w n b z:
+  BvUnfold n false false b z →
+  BvUnfold n s w (bv_not b) (if w then Z.lnot z else bv_suwrap s n (Z.lnot z)).
+Proof.
+  move => [Hz]. constructor.
+  destruct w, s; rewrite ?bv_not_signed ?bv_not_unsigned ?Hz //=; try bv_wrap_simplify_solve.
+Qed.
+Global Hint Resolve bv_unfold_not | 10 : bv_unfold_db.
+Lemma bv_unfold_zero_extend s w n n' b z `{!TCFastDone (n' <=? n = true)%N}:
+  BvUnfold n' false false b z →
+  BvUnfold n s w (bv_zero_extend n b) (if w then z else if s then bv_swrap n z else z).
+Proof.
+  move => [Hz]. constructor. unfold TCFastDone in *. rewrite ->?N.leb_le in *.
+  destruct w, s; rewrite ?bv_zero_extend_signed ?bv_zero_extend_unsigned ?Hz //=; try bv_wrap_simplify_solve.
+  - rewrite -Hz bv_wrap_small //. bv_saturate. pose proof (bv_modulus_le_mono n' n). lia.
+Qed.
+Global Hint Resolve bv_unfold_zero_extend | 10 : bv_unfold_db.
+Lemma bv_unfold_sign_extend s w n n' b z `{!TCFastDone (n' <=? n = true)%N}:
+  BvUnfold n' true false b z →
+  BvUnfold n s w (bv_sign_extend n b) (if w then z else if s then z else bv_wrap n z).
+Proof.
+  move => [Hz]. constructor. unfold TCFastDone in *. rewrite ->?N.leb_le in *.
+  destruct w, s; rewrite ?bv_sign_extend_signed ?bv_sign_extend_unsigned ?Hz //=; try bv_wrap_simplify_solve.
+  - admit.
+Admitted.
+Global Hint Resolve bv_unfold_sign_extend | 10 : bv_unfold_db.
+Lemma bv_unfold_extract s w n n' n1 b z:
+  BvUnfold n' false false b z →
+  BvUnfold n s w (bv_extract n1 n b) (if w then z ≫ Z.of_N n1 else bv_suwrap s n (z ≫ Z.of_N n1)).
+Proof.
+  move => [Hz]. constructor.
+  destruct w, s; rewrite ?bv_extract_signed ?bv_extract_unsigned ?Hz //=; try bv_wrap_simplify_solve.
+Qed.
+Global Hint Resolve bv_unfold_extract | 10 : bv_unfold_db.
+Lemma bv_unfold_concat s w n n1 n2 b1 b2 z1 z2 `{!TCFastDone (n = n1 + n2)%N}:
+  BvUnfold n1 false false b1 z1 →
+  BvUnfold n2 false false b2 z2 →
+  BvUnfold n s w (bv_concat n b1 b2) (if w then Z.lor (z1 ≪ Z.of_N n2) z2 else if s then  bv_swrap n (Z.lor (z1 ≪ Z.of_N n2) z2) else Z.lor (z1 ≪ Z.of_N n2) z2).
+Proof.
+  move => [Hz1] [Hz2]. constructor. unfold TCFastDone in *.
+  destruct w, s; rewrite ?bv_concat_signed ?bv_concat_unsigned ?Hz1 ?Hz2 //=; try bv_wrap_simplify_solve.
+Admitted.
+Global Hint Resolve bv_unfold_concat | 10 : bv_unfold_db.
+Lemma bv_unfold_add_Z s w n b1 z1 z2:
+  BvUnfold n s true b1 z1 →
+  BvUnfold n s w (bv_add_Z b1 z2) (if w then z1 + z2 else bv_suwrap s n (z1 + z2)).
+Proof.
+  move => [Hz1]. constructor.
+  destruct w, s; rewrite ?bv_add_Z_signed ?bv_add_Z_unsigned ?Hz1 ?Hz2 //=; bv_wrap_simplify_solve.
+Qed.
+Global Hint Resolve bv_unfold_add_Z | 10 : bv_unfold_db.
+Lemma bv_unfold_sub_Z s w n b1 z1 z2:
+  BvUnfold n s true b1 z1 →
+  BvUnfold n s w (bv_sub_Z b1 z2) (if w then z1 - z2 else bv_suwrap s n (z1 - z2)).
+Proof.
+  move => [Hz1]. constructor.
+  destruct w, s; rewrite ?bv_sub_Z_signed ?bv_sub_Z_unsigned ?Hz1 ?Hz2 //=; bv_wrap_simplify_solve.
+Qed.
+Global Hint Resolve bv_unfold_sub_Z | 10 : bv_unfold_db.
+Lemma bv_unfold_mul_Z s w n b1 z1 z2:
+  BvUnfold n s true b1 z1 →
+  BvUnfold n s w (bv_mul_Z b1 z2) (if w then z1 * z2 else bv_suwrap s n (z1 * z2)).
+Proof.
+  move => [Hz1]. constructor.
+  destruct w, s; rewrite ?bv_mul_Z_signed ?bv_mul_Z_unsigned ?Hz1 ?Hz2 //=; bv_wrap_simplify_solve.
+Qed.
+
+Ltac bv_unfold_eq :=
+  lazymatch goal with
+  | |- @bv_unsigned ?n ?b = ?z =>
+      simple notypeclasses refine (@bv_unfold_proof n false false b z _)
+  | |- @bv_signed ?n ?b = ?z =>
+      simple notypeclasses refine (@bv_unfold_proof n true false b z _)
+  end;
+  typeclasses eauto with bv_unfold_db.
+Ltac bv_unfold :=
+  repeat (match goal with
+          | |- context [@bv_unsigned ?n ?b] =>
+              pattern (@bv_unsigned n b);
+              simple refine (eq_rec_r _ _ _); [shelve| |bv_unfold_eq]; cbn beta
+          | |- context [@bv_signed ?n ?b] =>
+              pattern (@bv_signed n b);
+              simple refine (eq_rec_r _ _ _); [shelve| |bv_unfold_eq]; cbn beta
+          end); unfold BV_UNFOLD_BLOCK.
+
+(* Goal ∀ b : bv 8,  ∃ z, bv_unsigned (bv_succ (bv_succ (bv_zero_extend 64 (bv_add_Z b 5)))) = z ∧ bv_unsigned (bv_add b b) = z. *)
+(*   move => ?. eexists _. *)
+(*   bv_unfold. *)
+(*   match goal with *)
+(*           | |- context [@bv_unsigned ?n ?b] => *)
+(*               pattern (@bv_unsigned n b) *)
+(*           (* | |- context [@bv_signed ?n ?b] => *) *)
+(*               (* pattern (@bv_signed n b); *) *)
+(*               (* simple refine (eq_rec_r _ _ _ _ _); [shelve| |bv_unfold_eq]; cbn beta *) *)
+(*   end. *)
+
+(*   bv_unfold. *)
+
+  (* split. { *)
+    (* bv_unfold_eq. *)
+  (* } *)
+  (* simple notypeclasses refine () *)
+
 (** The [bv_unfold] database contains rewrite rules that propagate
 bv_unsigned and bv_signed and unfold the bitvector definitions. *)
 Create HintDb bv_unfold discriminated.
@@ -209,9 +482,10 @@ Ltac bv_simplify :=
   finding identical subterms). This sometimes leads to problems
   with length of lists of bytes. *)
   reduce_closed_N;
-  autorewrite with bv_simplify;
+  autorewrite with bv_simplify; simpl;
   try apply/bv_eq_wrap;
-  autorewrite with bv_unfold;
+  bv_unfold;
+  (* autorewrite with bv_unfold; *)
   autorewrite with bv_unfolded_simplify.
 
 Ltac bv_simplify_hyp H :=
@@ -282,7 +556,7 @@ Proof.
   + rewrite (bool_decide_eq_false_2 (0 ≤ m)); [|lia].
     rewrite Z.testbit_neg_r; [|lia].
     by rewrite andb_false_r.
-Qed. 
+Qed.
 
 Ltac onesify n :=
   lazymatch n with
@@ -338,7 +612,8 @@ Ltac neg_bits_zero :=
 
 Ltac bits_simplify :=
   try apply/bv_eq;
-  autorewrite with bv_unfold;
+  bv_unfold;
+  (* autorewrite with bv_unfold; *)
   unfold bv_wrap in *;
   onesify (64%nat);
   repeat match goal with b : bv _ |- _ => match goal with G : bv_unsigned b = _ |- _ => rewrite G; clear G end end;

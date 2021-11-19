@@ -58,6 +58,8 @@ From refinedc.lithium Require Export lithium tactics.
 From isla Require Export lifting bitvector_auto.
 Set Default Proof Using "Type".
 
+Global Hint Transparent addr byte : bv_unfold_db.
+
 (** * Simplification and normalization hints *)
 (* TODO: upstream *)
   Global Instance simpl_existT A (P : A → Type) p (x y : P p) `{!EqDecision A}:
