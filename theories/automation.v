@@ -59,6 +59,12 @@ From isla Require Export lifting bitvector_auto.
 Set Default Proof Using "Type".
 
 Global Hint Transparent addr byte : bv_unfold_db.
+Lemma bv_unfold_ite s w n b1 b2 z1 z2 b:
+  BvUnfold n s w b1 z1 →
+  BvUnfold n s w b2 z2 →
+  BvUnfold n s w (ite b b1 b2) (ite b z1 z2).
+Proof. move => [Hz1] [Hz2]. constructor. destruct w, s, b; naive_solver. Qed.
+Global Hint Resolve bv_unfold_ite | 10 : bv_unfold_db.
 
 (** * Simplification and normalization hints *)
 (* TODO: upstream *)

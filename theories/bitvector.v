@@ -172,6 +172,9 @@ Proof.
   unfold bv_swrap. rewrite bv_wrap_small; lia.
 Qed.
 
+Lemma bv_wrap_idemp n b : bv_wrap n (bv_wrap n b) = bv_wrap n b.
+Proof. unfold bv_wrap. by rewrite Zmod_mod. Qed.
+
 Definition bv_wrap_factor (n : N) (x z : Z) :=
   x = - z `div` bv_modulus n.
 
@@ -266,9 +269,6 @@ Proof.
   rewrite <-Z.pow_add_r by lia. f_equal. lia.
 Qed.
 
-Lemma bv_wrap_idemp n b : bv_wrap n (bv_wrap n b) = bv_wrap n b.
-Proof. unfold bv_wrap. by rewrite Zmod_mod. Qed.
-
 Lemma bv_wf_bitwise_op {n} op bop n1 n2 :
   (∀ k, Z.testbit (op n1 n2) k = bop (Z.testbit n1 k) (Z.testbit n2 k)) →
   (0 ≤ n1 → 0 ≤ n2 → 0 ≤ op n1 n2) →
@@ -346,13 +346,25 @@ Lemma Z_to_bv_small n z:
   bv_unsigned (Z_to_bv n z) = z.
 Proof. rewrite Z_to_bv_unsigned. apply bv_wrap_small. Qed.
 
+Lemma bv_unsigned_BV n z Hwf:
+  bv_unsigned (BV n z Hwf) = z.
+Proof. done. Qed.
+
+Lemma bv_signed_BV n z Hwf:
+  bv_signed (BV n z Hwf) = bv_swrap n z.
+Proof. done. Qed.
+
 Lemma bv_unsigned_in_range n (b : bv n):
   0 ≤ bv_unsigned b < bv_modulus n.
 Proof. apply bv_wf_in_range. apply bv_is_wf. Qed.
 
+Lemma bv_wrap_bv_unsigned n (b : bv n):
+  bv_wrap n (bv_unsigned b) = bv_unsigned b.
+Proof. rewrite bv_wrap_small; [done|apply bv_unsigned_in_range]. Qed.
+
 Lemma Z_to_bv_bv_unsigned n (b : bv n):
   Z_to_bv n (bv_unsigned b) = b.
-Proof. apply bv_eq. rewrite Z_to_bv_unsigned, bv_wrap_small; [done|apply bv_unsigned_in_range]. Qed.
+Proof. apply bv_eq. by rewrite Z_to_bv_unsigned, bv_wrap_bv_unsigned. Qed.
 
 Lemma bv_eq_wrap n (b1 b2 : bv n) :
   b1 = b2 ↔ bv_wrap n b1.(bv_unsigned) = bv_wrap n b2.(bv_unsigned).
@@ -396,6 +408,15 @@ Qed.
 Lemma bv_signed_N_0 (b : bv 0):
   bv_signed b = 0.
 Proof. unfold bv_signed. by rewrite bv_unsigned_N_0, bv_swrap_0. Qed.
+
+Lemma bv_swrap_bv_signed n (b : bv n):
+  bv_swrap n (bv_signed b) = bv_signed b.
+Proof.
+  destruct (decide (n = 0%N)); subst.
+  { by rewrite bv_signed_N_0, bv_swrap_0. }
+  apply bv_swrap_small. by apply bv_signed_in_range.
+Qed.
+
 Lemma Z_to_bv_checked_bv_unsigned n (b : bv n):
   Z_to_bv_checked n (bv_unsigned b) = Some b.
 Proof.
