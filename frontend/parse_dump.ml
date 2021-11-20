@@ -89,7 +89,7 @@ type instr_line = {
   instr_comment   : string option;
 }
 
-(** Representation of an isla-coq annotation. *)
+(** Representation of an islaris annotation. *)
 type annot = {
   annot_tag     : string;
   annot_payload : string option;
