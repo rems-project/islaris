@@ -20,9 +20,7 @@ You might need to run `eval $(opam env)` afterwards to update the environment of
 ## Generating Coq traces from a partial decompilation
 
 Currently, one needs to manually instrument the outout of `objdump` so that it
-contains only the relevant code, add colons separating the columns, and insert
-a third column which contains an isla expression describing any pointers that
-isla should assume are well behaved.
+contains only the relevant code.
 
 For example, we can start from the following segment of `objdump` output taken
 from an exception handler in pkvm:
@@ -44,7 +42,7 @@ from an exception handler in pkvm:
     7438:	cb0600a5 	sub	x5, x5, x6
     743c:	d61f00a0 	br	x5
 ```
-We then manually transform it into the following:
+We then manually annotate it with constraints as in the following:
 ```
 //@constraint: = (bvand (bvadd SP_EL2 0x0000000000000008) 0xfff0000000000007) 0x0000000000000000
 //@constraint: = (bvand (bvsub SP_EL2 0x0000000000000010) 0xfff0000000000007) 0x0000000000000000
@@ -95,6 +93,7 @@ using the following command instead.
 # This assumes you are at the root of the repo.
 PATH=$PWD/bin:$PATH dune exec -- islaris pkvm_handler/pkvm_handler.dump
 ```
+
 ## People
 
 - Michael Sammler
