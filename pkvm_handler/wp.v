@@ -167,8 +167,7 @@ Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ⌜bv_extract 55 1 elr = [BV{1} 0]⌝ ∗
   instr_body (bv_unsigned elr) (
     (* sctlr is updated by this code, but we claim to know enough about its value that the update is trivial.
-       This should probably be relaxed
-    *)
+       This should probably be relaxed *)
     reg_col pkvm_sys_regs_updated ∗
     reg_col mrs_regs ∗
     reg_col CNVZ_regs ∗
@@ -193,15 +192,14 @@ Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
     reg_col [(KindReg "EventRegister", BitsShape 1)] ∗
     "R0" ↦ᵣ RVal_Bits b ∗
     "R1" ↦ᵣ RVal_Bits el2_cont ∗
-    reg_col
-      [
+    reg_col [
         (KindReg "R2", BitsShape 64);
         (KindReg "R3", BitsShape 64);
         (KindReg "R4", BitsShape 64);
         (KindReg "R5", BitsShape 64);
         (KindReg "R6", BitsShape 64);
         (KindReg "VBAR_EL2", BitsShape 64)
-      ] ∗
+     ] ∗
     "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
     "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
     ⌜bv_extract 0  1 spsr = [BV{1} 1]⌝ ∗
@@ -436,7 +434,7 @@ Proof.
     iFrame.
   + iApply wp. iFrame.
 (*PROOF_END*)
-Qed.
+Time Qed.
 
 Lemma reset_wp `{!islaG Σ} `{!threadG} :
   instr 98888 (Some a18248) ∗
@@ -476,7 +474,7 @@ Proof.
     f_equal.
     lia.
 (*PROOF_END*)
-Qed.
+Time Qed.
 
 
 
@@ -523,4 +521,4 @@ Proof.
     f_equal.
     lia.
 (*PROOF_END*)
-Qed.
+Time Qed.
