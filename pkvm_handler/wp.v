@@ -460,7 +460,6 @@ Proof.
 (*PROOF_START*)
   unfold reset_spec.
   iStartProof.
-  do 500 liAStep; liShow.
   liARun.
   Unshelve.
   all: prepare_sidecond.
