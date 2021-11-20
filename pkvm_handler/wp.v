@@ -89,8 +89,8 @@ Definition pkvm_sys_regs' : list (reg_kind * valu_shape) := [
   (KindReg "__trickbox_enabled", ExactShape (RVal_Bool false))
 ].
 
-Definition pkvm_sys_regs := 
-  (KindReg "SCTLR_EL2", ExactShape (RVal_Bits [BV{64} 0x4000002])) :: 
+Definition pkvm_sys_regs :=
+  (KindReg "SCTLR_EL2", ExactShape (RVal_Bits [BV{64} 0x4000002])) ::
   (KindField "PSTATE" "EL" , ExactShape (RVal_Bits [BV{2} 2] )) ::
   pkvm_sys_regs'.
 Definition pkvm_sys_regs_updated :=
@@ -98,7 +98,7 @@ Definition pkvm_sys_regs_updated :=
   (KindField "PSTATE" "EL" , ExactShape (RVal_Bits [BV{2} 2] )) ::
   pkvm_sys_regs'.
 Definition pkvm_eret_sys_regs :=
-  (KindReg "SCTLR_EL2", ExactShape (RVal_Bits [BV{64} 0x4000002])) :: 
+  (KindReg "SCTLR_EL2", ExactShape (RVal_Bits [BV{64} 0x4000002])) ::
   (KindField "PSTATE" "EL" , ExactShape (RVal_Bits [BV{2} 1] )) ::
   pkvm_sys_regs'.
 (*SPEC_END*)
@@ -162,7 +162,7 @@ Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ⌜bv_extract 2  2 spsr = [BV{2} 2]⌝ ∗
   ⌜bv_extract 4  1 spsr = [BV{1} 0]⌝ ∗
   ⌜bv_extract 9  1 spsr = [BV{1} 1]⌝ ∗
-  ⌜bv_extract 20 1 spsr = [BV{1} 0]⌝ ∗ 
+  ⌜bv_extract 20 1 spsr = [BV{1} 0]⌝ ∗
   "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
   ⌜bv_extract 55 1 elr = [BV{1} 0]⌝ ∗
   instr_body (bv_unsigned elr) (
@@ -193,7 +193,7 @@ Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
     reg_col [(KindReg "EventRegister", BitsShape 1)] ∗
     "R0" ↦ᵣ RVal_Bits b ∗
     "R1" ↦ᵣ RVal_Bits el2_cont ∗
-    reg_col 
+    reg_col
       [
         (KindReg "R2", BitsShape 64);
         (KindReg "R3", BitsShape 64);
@@ -209,7 +209,7 @@ Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
     ⌜bv_extract 2  2 spsr = [BV{2} 1]⌝ ∗
     ⌜bv_extract 4  1 spsr = [BV{1} 0]⌝ ∗
     ⌜bv_extract 9  1 spsr = [BV{1} 1]⌝ ∗
-    ⌜bv_extract 20 1 spsr = [BV{1} 0]⌝ ∗ 
+    ⌜bv_extract 20 1 spsr = [BV{1} 0]⌝ ∗
     ⌜bv_extract 55 1 elr = [BV{1} 0]⌝ ∗
     ⌜bv_extract 55 1 el2_cont = [BV{1} 0]⌝ ∗
     (* We handle only two of the 3 hypercalls this handler supports for now*)
@@ -271,14 +271,7 @@ Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (e
   (instr_pre 0x6800 (⌜Z.shiftr (bv_unsigned esr) 26 ≠ 22⌝ ∗ ∃ (v : bv 64), "R0" ↦ᵣ RVal_Bits v ∗ ⌜bv_unsigned v ≠ 22⌝ ∗ True) ∧
   instr_pre 0x6800 (⌜Z.shiftr (bv_unsigned esr) 26 = 22⌝ ∗ ⌜Z.ge (bv_unsigned param) 3⌝ ∗ True)) ∗
   (* Possibly should handle that this address gets shifted (even if it's by zero in this code) *)
-  instr_pre (bv_unsigned (bv_sub stub_handler_addr offset)) (
-    stub_handler_spec
-    (*⌜Z.shiftr (bv_unsigned esr) 26 = 22⌝ ∗
-    ⌜Z.lt (bv_unsigned v0) 3⌝ ∗
-    "SP_EL2" ↦ᵣ RVal_Bits sp ∗
-    "R5" ↦ᵣ RVal_Bits (bv_sub stub_handler_addr offset)∗
-    "R6" ↦ᵣ RVal_Bits offset ∗
-    True*)) ∗
+  instr_pre (bv_unsigned (bv_sub stub_handler_addr offset)) stub_handler_spec ∗
   instr_body (bv_unsigned el2_cont) (
     ⌜bv_unsigned param = 1⌝ ∗ reg_col pkvm_sys_regs_updated ∗
     reg_col CNVZ_regs ∗
@@ -372,7 +365,7 @@ Time Qed.
 
 Lemma wp `{!islaG Σ} `{!threadG} sp esr stub_handler_addr (offset : bv 64) :
   instr 29696 (Some a7400) ∗
-  instr 29700 (Some a7404) ∗ 
+  instr 29700 (Some a7404) ∗
   instr 29704 (Some a7408) ∗
   instr 29708 (Some a740c) ∗
   instr 29712 (Some a7410) ∗
