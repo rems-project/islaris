@@ -40,8 +40,6 @@ generate_aarch64: update_etc
 	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/binary_search.dump -j 8 -o instructions/binary_search --coqdir=isla.instructions.binary_search
 	@echo "[islaris] examples/uart.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/uart.dump -j 8 -o instructions/uart --coqdir=isla.instructions.uart
-	@echo "[islaris] examples/partial.dump"
-	@PATH=$$PWD/bin:$$PATH dune exec -- islaris examples/partial.dump -j 8 -o instructions/partial --coqdir=isla.instructions.partial
 	@echo "[islaris] pkvm_handler/pkvm_handler.dump"
 	@PATH=$$PWD/bin:$$PATH dune exec -- islaris -j 8 pkvm_handler/pkvm_handler.dump
 .PHONY: generate_aarch64
