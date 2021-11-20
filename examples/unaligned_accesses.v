@@ -56,6 +56,9 @@
 Require Import isla.aarch64.aarch64.
 From isla.instructions Require Import instr_str_unaligned.
 
+(* This is necessary for gathering data, please leave it here. *)
+Compute (isla_trace_length instr_str_unaligned).
+
 Lemma bv_1_Z_of_bool (v : bv 1): ∃ b : bool, bv_unsigned v = Z_of_bool b.
 Proof.
   move: v => [z Hz]. rewrite bv_unsigned_BV.
@@ -142,6 +145,7 @@ Layout of SPSR_EL2:
                                       0 saved PSTATE.SP
 *)
 
+(*SPEC_START*)
 Definition spsr_of_pstate (s : pstate_record) : bv 32 :=
   let fields :=
     [ bv_shiftl (bv_zero_extend 32 s.(PSTATE_N    )) [BV{32} 31];
@@ -200,8 +204,10 @@ Definition bunch_of_sys_regs :=
     ; ("TCR_EL2", RVal_Bits [BV{64} 0]) ]
   in
   (λ '(r, v), (KindReg r, ExactShape v)) <$> with_value.
+(*SPEC_END*)
 
 Lemma str_unaligned pstate (esr spsr elr far hpfar : bv 64) v0 v1 :
+(*SPEC_START*)
   pstate.(PSTATE_EL) = [BV{2} 2] →
   pstate.(PSTATE_SP) = [BV{1} 1] →
   pstate.(PSTATE_nRW) = [BV{1} 0] →
@@ -211,8 +217,10 @@ Lemma str_unaligned pstate (esr spsr elr far hpfar : bv 64) v0 v1 :
   pstate.(PSTATE_DIT) = [BV{1} 0] →
   pstate.(PSTATE_TCO) = [BV{1} 0] →
   bv_and v1 [BV{64} 0xfff0000000000007] = [BV{64} 0x0000000000000001] →
+(*SPEC_END*)
   instr 0x0 (Some instr_str_unaligned) -∗
   instr_body 0x0 (
+(*SPEC_START*)
     "VBAR_EL2" ↦ᵣ RVal_Bits [BV{64} 0x0] ∗
     "ESR_EL2" ↦ᵣ RVal_Bits esr ∗
     "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
@@ -237,15 +245,17 @@ Lemma str_unaligned pstate (esr spsr elr far hpfar : bv 64) v0 v1 :
       "R1" ↦ᵣ RVal_Bits v1 ∗
       reg_col (pstate_to_reg_col (exception_pstate pstate)) ∗
       True
+(*SPEC_END*)
     )
   ).
 Proof.
+(*PROOF_START*)
   destruct pstate. move => /= -> -> -> -> -> -> -> ->.
   rewrite /pstate_to_reg_col /spsr_of_pstate /=. move => *.
   iStartProof.
-  repeat liAStep; liShow.
-  - liInst Hevar false. repeat liAStep; liShow.
-  - liInst Hevar true.  repeat liAStep; liShow.
+  liARun.
+  - liInst Hevar false. liARun.
+  - liInst Hevar true.  liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   (* FIXME cleanup this extremely dirty proof. *)
@@ -358,6 +368,7 @@ Proof.
     f_equal; last by destruct (bv_1_Z_of_bool PSTATE_C0) as [[] ->].
     f_equal; last by destruct (bv_1_Z_of_bool PSTATE_Z0) as [[] ->].
     f_equal; last by destruct (bv_1_Z_of_bool PSTATE_N0) as [[] ->].
-Qed.
+(*PROOF_END*)
+Time Qed.
 
 End proof.

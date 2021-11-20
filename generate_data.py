@@ -23,6 +23,7 @@ examples = [
     { "file": "examples/rbit", "asm": 2, "isla": 3},
     { "file": "examples/simple_hvc", "asm": 13, "isla": 10},
     { "file": "examples/uart", "asm": 14, "isla": 10},
+    { "file": "examples/unaligned_accesses", "asm": 1, "isla": 2, "add_compute": False},
 ]
 env = {
     **os.environ,
@@ -37,9 +38,10 @@ for e in examples:
 
     print("Running", coq_file)
 
-    subprocess.run(
-        ["sed", "-i", 's/instrs.$/instrs. Compute (sum_list (isla_trace_length <$> instr_map.*2))./', coq_file],
-        check = True)
+    if "add_compute" not in e or e["add_compute"]:
+        subprocess.run(
+            ["sed", "-i", 's/instrs.$/instrs. Compute (sum_list (isla_trace_length <$> instr_map.*2))./', coq_file],
+            check = True)
     if os.path.isfile(compiled_coq_file):
         os.remove(compiled_coq_file)
     output = subprocess.run(
