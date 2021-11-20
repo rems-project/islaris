@@ -387,7 +387,7 @@ let cmd =
     Term.exit_info ~doc:"on fatal errors." 1 ::
     Term.default_exits
   in
-  (Term.(pure run $ opts_config), Term.info "isla-coq" ~doc ~exits ~version)
+  (Term.(pure run $ opts_config), Term.info "islaris" ~doc ~exits ~version)
 
 let _ =
   Term.(exit @@ eval cmd)

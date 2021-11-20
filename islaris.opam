@@ -3,9 +3,9 @@ name: "islaris"
 maintainer: "Michael Sammler <sammler@mpi-sws.org>"
 authors: "The Islaris Team"
 license: "BSD-3-Clause"
-homepage: "https://github.com/rems-project/isla-coq"
-bug-reports: "https://github.com/rems-project/isla-coq/issues"
-dev-repo: "git+https://github.com/rems-project/isla-coq.git"
+homepage: "https://github.com/rems-project/islaris"
+bug-reports: "https://github.com/rems-project/islaris/issues"
+dev-repo: "git+https://github.com/rems-project/islaris.git"
 
 synopsis: "Islaris assembly verification tool"
 

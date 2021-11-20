@@ -264,7 +264,7 @@ Proof. now rewrite (regstate_eta regs). Qed.
 (* This breaks the `with` notations so we have to import it later. *)
 Require Import isla.base.
 
-(* This file should not depend on anything in isla-coq since it is quite slow to compile. *)
+(* This file should not depend on anything in islaris since it is quite slow to compile. *)
 
 Lemma get_word_word_binop {n} f (b1 b2 : mword n):
   get_word (word_binop f b1 b2) = f _ (get_word b1) (get_word b2).

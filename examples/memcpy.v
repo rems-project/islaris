@@ -77,7 +77,7 @@ ASM:
   1c:	d65f03c0 	ret
 
 The code can be generated with
-$ PATH=$PWD/bin:$PATH dune exec -- isla-coq examples/memcpy.dump -d -o instructions  -n "a{op}" --coqdir=isla.instructions
+$ PATH=$PWD/bin:$PATH dune exec -- islaris examples/memcpy.dump -d -o instructions  -n "a{op}" --coqdir=isla.instructions
 
 *)
 

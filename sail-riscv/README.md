@@ -1,6 +1,6 @@
-# Linking isla-coq proofs to the Sail generated Coq model
+# Linking Islaris proofs to the Sail generated Coq model
 
-This directory contains some infrastructure to connect isla-coq to the
+This directory contains some infrastructure to connect Islaris to the
 Coq model generated from the RISC-V Sail model.
 
 ## Installation

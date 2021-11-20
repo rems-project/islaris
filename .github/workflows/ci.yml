@@ -42,7 +42,7 @@ jobs:
         with:
           path: |
             _opam
-          key: coq-${{ hashFiles('**/coq-isla.opam') }}
+          key: coq-${{ hashFiles('**/islaris.opam') }}
 
       - name: Run CI
         run: |
