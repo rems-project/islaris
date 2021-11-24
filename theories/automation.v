@@ -474,15 +474,17 @@ Inductive mem_mapsto_kind : Type :=
 | MKArray (n : N) (a : Z) (l : list (bv n))
 | MKUninit (a : Z) (n : Z)
 | MKMMIO (a : Z) (l : Z).
-Definition FindMemMapsTo {Σ} `{!islaG Σ} `{!threadG} (a : Z) := {|
-  fic_A := mem_mapsto_kind;
-  fic_Prop mk :=
+Definition mem_mapsto_kind_prop `{!islaG Σ} (a : Z) (mk : mem_mapsto_kind) : iProp Σ :=
   match mk with
   | MKMapsTo _ v => (a ↦ₘ v)%I
   | MKArray _ a' l => (a' ↦ₘ∗ l)%I
   | MKUninit a' n => (a' ↦ₘ? n)%I
   | MKMMIO a' l => mmio_range a' l
-  end
+  end.
+Typeclasses Opaque mem_mapsto_kind_prop.
+Definition FindMemMapsTo {Σ} `{!islaG Σ} (a : Z) := {|
+  fic_A := mem_mapsto_kind;
+  fic_Prop := mem_mapsto_kind_prop a
 |}.
 
 Section instances.
@@ -548,39 +550,19 @@ Section instances.
   Lemma find_in_context_mem_mapsto_id a T:
     (∃ n (v : bv n), a ↦ₘ v ∗ T (MKMapsTo n v)) -∗
     find_in_context (FindMemMapsTo a) T.
-  Proof. iDestruct 1 as (? v) "[Hl HT]". iExists _ => /=. iFrame. Qed.
+  Proof. iDestruct 1 as (? v) "[Hl HT]". iExists _ => /=. by iFrame. Qed.
   Global Instance find_in_context_mapsto_id_inst a :
     FindInContext (FindMemMapsTo a) FICSyntactic | 1 :=
     λ T, i2p (find_in_context_mem_mapsto_id a T).
 
   Inductive FICMemMapstoSemantic (a : Z) : Set :=.
+  Lemma find_in_context_mem_mapsto_semantic a T:
+    (∃ mk, mem_mapsto_kind_prop a mk ∗ T mk) -∗
+    find_in_context (FindMemMapsTo a) T.
+  Proof. iDestruct 1 as (?) "[Hl HT]". iExists _ => /=. iFrame. Qed.
   Global Instance find_in_context_mem_mapsto_semantic_inst a :
     FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 10 :=
-    λ T, i2p (find_in_context_mem_mapsto_id a T).
-
-  Lemma find_in_context_mem_mapsto_array a T:
-    (∃ n a' l, a' ↦ₘ∗ l ∗ T (MKArray n a' l)) -∗
-    find_in_context (FindMemMapsTo a) T.
-  Proof. iDestruct 1 as (n a' l) "[Hl HT]". iExists _ => /=. by iFrame. Qed.
-  Global Instance find_in_context_mapsto_array_inst a :
-    FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 20 :=
-    λ T, i2p (find_in_context_mem_mapsto_array a T).
-
-  Lemma find_in_context_mem_mapsto_uninit a T:
-    (∃ a' n', a' ↦ₘ? n' ∗ T (MKUninit a' n')) -∗
-    find_in_context (FindMemMapsTo a) T.
-  Proof. iDestruct 1 as (a' n') "[Hl HT]". iExists _ => /=. by iFrame. Qed.
-  Global Instance find_in_context_mapsto_uninit_inst a :
-    FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 30 :=
-    λ T, i2p (find_in_context_mem_mapsto_uninit a T).
-
-  Lemma find_in_context_mem_mapsto_mmio a T:
-    (∃ a' l, mmio_range a' l ∗ T (MKMMIO a' l)) -∗
-    find_in_context (FindMemMapsTo a) T.
-  Proof. iDestruct 1 as (a' l) "[Hl HT]". iExists _ => /=. iFrame. Qed.
-  Global Instance find_in_context_mem_mapsto_mmio_semantic_inst a :
-  FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 40 :=
-  λ T, i2p (find_in_context_mem_mapsto_mmio a T).
+    λ T, i2p (find_in_context_mem_mapsto_semantic a T).
 
   Global Instance reg_related r v : RelatedTo (r ↦ᵣ v) := {|
     rt_fic := FindRegMapsTo r;
@@ -1441,33 +1423,33 @@ Section instances.
 End instances.
 
 
-Lemma tac_mem_mapsto_eq `{islaG Σ} l1 l' n (v1 v2 : bv n) l2:
+Lemma tac_mem_mapsto_eq `{islaG Σ} l1 l' n (v1 : bv n) l2:
   l1 = l2 →
-  FindHypEqual (FICMemMapstoSemantic l') (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
+  FindHypEqual (FICMemMapstoSemantic l') (l1 ↦ₘ v1) (mem_mapsto_kind_prop l2 (MKMapsTo _ v1)) (l1 ↦ₘ v1).
 Proof. by move => ->. Qed.
-#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ _) (_ ↦ₘ _) _) =>
+#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ _) (mem_mapsto_kind_prop _ _) _) =>
   ( apply tac_mem_mapsto_eq; bv_solve) : typeclass_instances.
 
-Lemma tac_mem_mapsto_array_eq `{islaG Σ} a n a1 a2 (l1 l2 : list (bv n)):
+Lemma tac_mem_mapsto_array_eq `{islaG Σ} a n a1 a2 (l1 : list (bv n)):
   a1 ≤ a < a1 + length l1 * Z.of_N (n `div` 8)%N
   ∨ a1 = a →
-  FindHypEqual (FICMemMapstoSemantic a) (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) (a2 ↦ₘ∗ l2).
+  FindHypEqual (FICMemMapstoSemantic a) (a1 ↦ₘ∗ l1) (mem_mapsto_kind_prop a2 (MKArray _ a1 l1)) (a1 ↦ₘ∗ l1).
 Proof. done. Qed.
-#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ∗ _) (_ ↦ₘ∗ _) _) =>
+#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ∗ _) (mem_mapsto_kind_prop _ _) _) =>
   ( apply tac_mem_mapsto_array_eq; bv_solve) : typeclass_instances.
 
-Lemma tac_mem_mapsto_uninit_eq `{islaG Σ} a a1 a2 n1 n2:
+Lemma tac_mem_mapsto_uninit_eq `{islaG Σ} a a1 a2 n1:
   a1 ≤ a < a1 + n1 ∨ a1 = a →
-  FindHypEqual (FICMemMapstoSemantic a) (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) (a2 ↦ₘ? n2).
+  FindHypEqual (FICMemMapstoSemantic a) (a1 ↦ₘ? n1) (mem_mapsto_kind_prop a2 (MKUninit a1 n1)) (a1 ↦ₘ? n1).
 Proof. done. Qed.
-#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ? _) (_ ↦ₘ? _) _) =>
+#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ? _) (mem_mapsto_kind_prop _ _) _) =>
   ( apply tac_mem_mapsto_uninit_eq; bv_solve) : typeclass_instances.
 
-Lemma tac_mem_mapsto_mmio `{islaG Σ} a a1 a2 l1 l2:
+Lemma tac_mem_mapsto_mmio `{islaG Σ} a a1 a2 l1:
   a1 ≤ a ≤ a1 + l1 →
-  FindHypEqual (FICMemMapstoSemantic a) (mmio_range a1 l1) (mmio_range a2 l2) (mmio_range a2 l2).
+  FindHypEqual (FICMemMapstoSemantic a) (mmio_range a1 l1) (mem_mapsto_kind_prop a2 (MKMMIO a1 l1)) (mmio_range a1 l1).
 Proof. done. Qed.
-#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (mmio_range _ _) (mmio_range _ _) _) =>
+#[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (mmio_range _ _) (mem_mapsto_kind_prop _ _) _) =>
   ( apply tac_mem_mapsto_mmio; bv_solve) : typeclass_instances.
 
 Lemma tac_reg_mapsto_reg_col `{islaG Σ} `{threadG} r regs1 regs2:
