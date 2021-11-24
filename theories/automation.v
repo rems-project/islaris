@@ -529,19 +529,9 @@ Section instances.
     FindInContext (FindInstrKind a true) FICInstrSemantic | 100 :=
     λ T, i2p (find_in_context_instr_kind_pre_true a T).
 
-  Lemma tac_instr_pre_eq l1 l2 a1 a2 P1 P2:
-    a1 = a2 →
-    FindHypEqual FICInstrSemantic (instr_pre' l1 a1 P1) (instr_pre' l2 a2 P2) (instr_pre' l2 a1 P2).
-  Proof. by move => ->. Qed.
-
   Global Instance find_in_context_instr_semantic_inst a l:
     FindInContext (FindInstrKind a l) FICInstrSemantic | 110 :=
     λ T, i2p (find_in_context_instr_kind_instr a T l).
-
-  Lemma tac_instr_eq a1 a2 ins1 ins2:
-    a1 = a2 →
-    FindHypEqual FICInstrSemantic (instr a1 ins1) (instr a2 ins2) (instr a1 ins2).
-  Proof. by move => ->. Qed.
 
   Global Instance mem_related a n (v : bv n) : RelatedTo (a ↦ₘ v) := {|
     rt_fic := FindMemMapsTo a;
@@ -568,11 +558,6 @@ Section instances.
     FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 10 :=
     λ T, i2p (find_in_context_mem_mapsto_id a T).
 
-  Lemma tac_mem_mapsto_eq l1 l' n (v1 v2 : bv n) l2:
-    l1 = l2 →
-    FindHypEqual (FICMemMapstoSemantic l') (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
-  Proof. by move => ->. Qed.
-
   Lemma find_in_context_mem_mapsto_array a T:
     (∃ n a' l, a' ↦ₘ∗ l ∗ T (MKArray n a' l)) -∗
     find_in_context (FindMemMapsTo a) T.
@@ -580,12 +565,6 @@ Section instances.
   Global Instance find_in_context_mapsto_array_inst a :
     FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 20 :=
     λ T, i2p (find_in_context_mem_mapsto_array a T).
-
-  Lemma tac_mem_mapsto_array_eq a n a1 a2 (l1 l2 : list (bv n)):
-    a1 ≤ a < a1 + length l1 * Z.of_N (n `div` 8)%N
-      ∨ a1 = a →
-    FindHypEqual (FICMemMapstoSemantic a) (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) (a2 ↦ₘ∗ l2).
-  Proof. done. Qed.
 
   Lemma find_in_context_mem_mapsto_uninit a T:
     (∃ a' n', a' ↦ₘ? n' ∗ T (MKUninit a' n')) -∗
@@ -595,11 +574,6 @@ Section instances.
     FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 30 :=
     λ T, i2p (find_in_context_mem_mapsto_uninit a T).
 
-  Lemma tac_mem_mapsto_uninit_eq a a1 a2 n1 n2:
-    a1 ≤ a < a1 + n1 ∨ a1 = a →
-    FindHypEqual (FICMemMapstoSemantic a) (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) (a2 ↦ₘ? n2).
-  Proof. done. Qed.
-
   Lemma find_in_context_mem_mapsto_mmio a T:
     (∃ a' l, mmio_range a' l ∗ T (MKMMIO a' l)) -∗
     find_in_context (FindMemMapsTo a) T.
@@ -607,11 +581,6 @@ Section instances.
   Global Instance find_in_context_mem_mapsto_mmio_semantic_inst a :
   FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 40 :=
   λ T, i2p (find_in_context_mem_mapsto_mmio a T).
-
-  Lemma tac_mem_mapsto_mmio a a1 a2 l1 l2:
-    a1 ≤ a ≤ a1 + l1 →
-    FindHypEqual (FICMemMapstoSemantic a) (mmio_range a1 l1) (mmio_range a2 l2) (mmio_range a2 l2).
-  Proof. done. Qed.
 
   Global Instance reg_related r v : RelatedTo (r ↦ᵣ v) := {|
     rt_fic := FindRegMapsTo r;
@@ -645,11 +614,6 @@ Section instances.
     FindInContext (FindRegMapsTo r) (FICRegMapstoSemantic r) | 10 :=
     λ T, i2p (find_in_context_reg_mapsto_col r T).
 
-  Lemma tac_reg_mapsto_reg_col r regs1 regs2:
-    is_Some (list_find_idx (λ x, x.1 = KindReg r) regs1) →
-    FindHypEqual (FICRegMapstoSemantic r) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
-  Proof. done. Qed.
-
   Lemma find_in_context_struct_reg_mapsto r f T:
     (∃ v, r # f ↦ᵣ v ∗ T (RKMapsTo v)) -∗
     find_in_context (FindStructRegMapsTo r f) T.
@@ -666,11 +630,6 @@ Section instances.
   Global Instance find_in_context_struct_reg_mapsto_col_inst r f:
     FindInContext (FindStructRegMapsTo r f) (FICStructRegMapstoSemantic r f) | 10 :=
     λ T, i2p (find_in_context_struct_reg_mapsto_col r f T).
-
-  Lemma tac_struct_reg_mapsto_reg_col r f regs1 regs2:
-    is_Some (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r) regs1) →
-    FindHypEqual (FICStructRegMapstoSemantic r f) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
-  Proof. done. Qed.
 
   Global Instance instr_related a i : RelatedTo (instr a i) := {|
     rt_fic := FindDirect (λ i, instr a i)%I;
@@ -1481,20 +1440,61 @@ Section instances.
   Proof. apply wpae_ite. Qed.
 End instances.
 
+
+Lemma tac_mem_mapsto_eq `{islaG Σ} l1 l' n (v1 v2 : bv n) l2:
+  l1 = l2 →
+  FindHypEqual (FICMemMapstoSemantic l') (l1 ↦ₘ v1) (l2 ↦ₘ v2) (l1 ↦ₘ v2).
+Proof. by move => ->. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ _) (_ ↦ₘ _) _) =>
   ( apply tac_mem_mapsto_eq; bv_solve) : typeclass_instances.
+
+Lemma tac_mem_mapsto_array_eq `{islaG Σ} a n a1 a2 (l1 l2 : list (bv n)):
+  a1 ≤ a < a1 + length l1 * Z.of_N (n `div` 8)%N
+  ∨ a1 = a →
+  FindHypEqual (FICMemMapstoSemantic a) (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) (a2 ↦ₘ∗ l2).
+Proof. done. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ∗ _) (_ ↦ₘ∗ _) _) =>
   ( apply tac_mem_mapsto_array_eq; bv_solve) : typeclass_instances.
+
+Lemma tac_mem_mapsto_uninit_eq `{islaG Σ} a a1 a2 n1 n2:
+  a1 ≤ a < a1 + n1 ∨ a1 = a →
+  FindHypEqual (FICMemMapstoSemantic a) (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) (a2 ↦ₘ? n2).
+Proof. done. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (_ ↦ₘ? _) (_ ↦ₘ? _) _) =>
   ( apply tac_mem_mapsto_uninit_eq; bv_solve) : typeclass_instances.
+
+Lemma tac_mem_mapsto_mmio `{islaG Σ} a a1 a2 l1 l2:
+  a1 ≤ a ≤ a1 + l1 →
+  FindHypEqual (FICMemMapstoSemantic a) (mmio_range a1 l1) (mmio_range a2 l2) (mmio_range a2 l2).
+Proof. done. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual (FICMemMapstoSemantic _) (mmio_range _ _) (mmio_range _ _) _) =>
   ( apply tac_mem_mapsto_mmio; bv_solve) : typeclass_instances.
+
+Lemma tac_reg_mapsto_reg_col `{islaG Σ} `{threadG} r regs1 regs2:
+  is_Some (list_find_idx (λ x, x.1 = KindReg r) regs1) →
+  FindHypEqual (FICRegMapstoSemantic r) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
+Proof. done. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual (FICRegMapstoSemantic _) (reg_col _) (reg_col _) _) =>
 ( apply tac_reg_mapsto_reg_col; vm_compute; eexists _; done) : typeclass_instances.
+
+Lemma tac_struct_reg_mapsto_reg_col `{islaG Σ} `{threadG} r f regs1 regs2:
+  is_Some (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r) regs1) →
+  FindHypEqual (FICStructRegMapstoSemantic r f) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
+Proof. done. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual (FICStructRegMapstoSemantic _ _) (reg_col _) (reg_col _) _) =>
 ( apply tac_struct_reg_mapsto_reg_col; vm_compute; eexists _; done) : typeclass_instances.
+
+Lemma tac_instr_pre_eq `{!Arch} `{islaG Σ} `{threadG} l1 l2 a1 a2 P1 P2:
+  a1 = a2 →
+  FindHypEqual FICInstrSemantic (instr_pre' l1 a1 P1) (instr_pre' l2 a2 P2) (instr_pre' l2 a1 P2).
+Proof. by move => ->. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual FICInstrSemantic (instr_pre' _ _ _) (instr_pre' _ _ _) _) =>
   ( apply tac_instr_pre_eq; bv_solve) : typeclass_instances.
+
+Lemma tac_instr_eq `{islaG Σ} a1 a2 ins1 ins2:
+  a1 = a2 →
+  FindHypEqual FICInstrSemantic (instr a1 ins1) (instr a2 ins2) (instr a1 ins2).
+Proof. by move => ->. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual FICInstrSemantic (instr _ _) (instr _ _) _) =>
   ( apply tac_instr_eq; bv_solve) : typeclass_instances.
 
