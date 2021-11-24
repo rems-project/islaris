@@ -1529,32 +1529,18 @@ Ltac liAIntroduceLetInGoal :=
   | |- envs_entails ?Δ ?P =>
     lazymatch P with
     | wp_exp ?e ?Φ =>
-      let H := fresh "GOAL" in
-      pose H := (LET_ID Φ);
-      change_no_check (envs_entails Δ (wp_exp e H))
+      li_let_bind Φ (fun H => constr:(envs_entails Δ (wp_exp e H)))
     | wp_a_exp ?e ?Φ =>
-      let H := fresh "GOAL" in
-      pose H := (LET_ID Φ);
-      change_no_check (envs_entails Δ (wp_a_exp e H))
+      li_let_bind Φ (fun H => constr:(envs_entails Δ (wp_a_exp e H)))
     | WPasm (?e:t:?es) =>
       let H := fresh "TRACE" in
       assert_fails (is_var es);
       pose H := (TRACE_LET es);
       change_no_check (envs_entails Δ (WPasm (e:t:H)))
-    | WPasm (TRACE_LET (?e:t:?es)) =>
-      let H := fresh "TRACE" in
-      pose H := (TRACE_LET es);
-      change_no_check (envs_entails Δ (WPasm (e:t:H)))
-    | WPasm (TRACE_LET tnil) =>
-      change_no_check (envs_entails Δ (WPasm tnil))
     | (?r ↦ᵣ: ?P)%I =>
-      let H := fresh "GOAL" in
-      pose H := (LET_ID P);
-      change_no_check (envs_entails Δ (r ↦ᵣ: H))
+      li_let_bind P (fun H => constr:(envs_entails Δ (r ↦ᵣ: H)))
     | (?r # ?f ↦ᵣ: ?P)%I =>
-      let H := fresh "GOAL" in
-      pose H := (LET_ID P);
-      change_no_check (envs_entails Δ (r # f ↦ᵣ: H))
+      li_let_bind P (fun H => constr:(envs_entails Δ (r # f ↦ᵣ: H)))
     end
   end
 .
@@ -1587,7 +1573,7 @@ Ltac liAAsm :=
       end
     | partial_trace _ _ => iEval (unfold partial_trace)
     | ?def => first [
-                 iEval (unfold def); try clear def
+                 try unfold TRACE_LET in def; iEval (unfold def); try clear def
                | fail "liAAsm: unknown asm" es
                ]
     end
