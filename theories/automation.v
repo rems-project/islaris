@@ -400,9 +400,8 @@ Qed.
 
 Ltac solve_compute_wp_exp :=
   let H := fresh in move => ? H;
-  lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv bv_to_bvn decide decide_rel N_eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
+  lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv decide decide_rel N_eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
   lazymatch goal with | |- Some _ = _ => idtac | |- ?G => idtac "solve_copmute_wp_exp failed:" G; fail end;
-  try lazymatch goal with | |- Some (Val_Bits (BVN _ ?b)) = ?e => change (Some (Val_Bits (bv_to_bvn b)) = e) end;
   autorewrite with isla_coq_rewrite;
   apply H.
 
@@ -1255,7 +1254,7 @@ Section instances.
         (spec_trace Pκs' -∗ WPasm es)
       end
     )) -∗
-    WPasm (WriteMem (RVal_Bool success) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :t: es).
+    WPasm (WriteMem (RVal_Bool success) kind (RVal_Bits (@bv_to_bvn 64 a)) (RVal_Bits (@bv_to_bvn n vnew)) len tag ann :t: es).
   Proof.
     iDestruct 1 as (?? mk) "[HP Hcont]" => /=. case_match.
     - iDestruct "Hcont" as (->) "Hcont". iApply (wp_write_mem with "HP Hcont"); [done | lia].
@@ -1293,7 +1292,7 @@ Section instances.
         ∃ Pκs Pκs', spec_trace Pκs ∗ ⌜scons (SReadMem a vread) Pκs' ⊆ Pκs⌝ ∗
         (spec_trace Pκs' -∗ WPasm es)
       end)) -∗
-    WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :t: es).
+    WPasm (ReadMem (RVal_Bits (@bv_to_bvn n vread)) kind (RVal_Bits (@bv_to_bvn 64 a)) len tag ann :t: es).
   Proof.
     iDestruct 1 as (?? mk) "[Hmem Hcont]" => /=. case_match.
     - iDestruct "Hcont" as (?) "Hcont". subst => /=. iApply (wp_read_mem with "Hmem Hcont"); [done|lia].

@@ -511,7 +511,7 @@ Section lifting.
     0 < Z.of_N len →
     bv_unsigned a ↦ₘ{q} vmem -∗
     (⌜vread = vmem⌝ -∗ bv_unsigned a ↦ₘ{q} vmem -∗ WPasm es) -∗
-    WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :t: es).
+    WPasm (ReadMem (RVal_Bits (@bv_to_bvn n vread)) kind (RVal_Bits (@bv_to_bvn 64 a)) len tag ann :t: es).
   Proof.
     iIntros (??) "Hm Hcont". setoid_rewrite wp_asm_unfold. subst.
     iIntros ([????]) "/= -> -> -> Hθ".
@@ -541,7 +541,7 @@ Section lifting.
     a' = bv_unsigned a - (i * Z.of_N len) →
     a' ↦ₘ{q}∗ l -∗
     (⌜vread = vmem⌝ -∗ a' ↦ₘ{q}∗ l -∗ WPasm es) -∗
-    WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :t: es).
+    WPasm (ReadMem (RVal_Bits (@bv_to_bvn n vread)) kind (RVal_Bits (@bv_to_bvn 64 a)) len tag ann :t: es).
   Proof.
     iIntros (??? ->) "Hm Hcont".
     iDestruct (mem_mapsto_array_lookup_acc with "Hm") as "[Hv Hm]"; [done..|].
@@ -556,7 +556,7 @@ Section lifting.
     mmio_range (bv_unsigned a) (Z.of_N len) -∗
     spec_trace Pκs -∗
     (spec_trace (λ κs, Pκs (SReadMem a vread::κs)) -∗ WPasm es) -∗
-    WPasm (ReadMem (RVal_Bits (BVN n vread)) kind (RVal_Bits (BVN 64 a)) len tag ann :t: es).
+    WPasm (ReadMem (RVal_Bits (@bv_to_bvn n vread)) kind (RVal_Bits (@bv_to_bvn 64 a)) len tag ann :t: es).
   Proof.
     iIntros (???) "Hm Hspec Hcont". subst. setoid_rewrite wp_asm_unfold.
     iIntros ([????]) "/= -> -> -> Hθ".
@@ -584,7 +584,7 @@ Section lifting.
     0 < Z.of_N len →
     bv_unsigned a ↦ₘ vold -∗
     (bv_unsigned a ↦ₘ vnew -∗ WPasm es) -∗
-    WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :t: es).
+    WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (@bv_to_bvn 64 a)) (RVal_Bits (@bv_to_bvn n vnew)) len tag ann :t: es).
   Proof.
     iIntros (??) "Hm Hcont". subst. setoid_rewrite wp_asm_unfold.
     iIntros ([????]) "/= -> -> -> Hθ".
@@ -613,7 +613,7 @@ Section lifting.
     a' = bv_unsigned a - (i * Z.of_N len) →
     a' ↦ₘ∗ l -∗
     (a' ↦ₘ∗ <[i := vnew]> l -∗ WPasm es) -∗
-    WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :t: es).
+    WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (@bv_to_bvn 64 a)) (RVal_Bits (@bv_to_bvn n vnew)) len tag ann :t: es).
   Proof.
     iIntros (??[??]%lookup_lt_is_Some_2 ->) "Hm Hcont".
     iDestruct (mem_mapsto_array_insert_acc with "Hm") as "[Hv Hm]"; [done..|].
@@ -628,7 +628,7 @@ Section lifting.
     mmio_range (bv_unsigned a) (Z.of_N len) -∗
     spec_trace Pκs -∗
     (spec_trace (λ κs, Pκs (SWriteMem a vnew::κs)) -∗ WPasm es) -∗
-    WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (BVN 64 a)) (RVal_Bits (BVN n vnew)) len tag ann :t: es).
+    WPasm (WriteMem (RVal_Bool res) kind (RVal_Bits (@bv_to_bvn 64 a)) (RVal_Bits (@bv_to_bvn n vnew)) len tag ann :t: es).
   Proof.
     iIntros (???) "Hm Hspec Hcont". subst. setoid_rewrite wp_asm_unfold.
     iIntros ([????]) "/= -> -> -> Hθ".

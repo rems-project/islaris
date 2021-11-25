@@ -1282,10 +1282,12 @@ End bv_bool.
 
 
 (** * [bvn] *)
-Record bvn := BVN {
+Record bvn := bv_to_bvn {
   bvn_n : N;
   bvn_val : bv bvn_n;
 }.
+Global Arguments bv_to_bvn {_} _.
+Add Printing Constructor bvn.
 
 Definition bvn_unsigned (b : bvn) := bv_unsigned (b.(bvn_val)).
 
@@ -1293,7 +1295,7 @@ Lemma bvn_eq (b1 b2 : bvn) :
   b1 = b2 ↔ b1.(bvn_n) = b2.(bvn_n) ∧ bvn_unsigned b1 = bvn_unsigned b2.
 Proof. split; [ naive_solver|]. destruct b1, b2; simpl; intros [??]. subst. f_equal. by apply bv_eq. Qed.
 
-Global Program Instance bvn_eq_dec : EqDecision bvn := λ '(BVN n1 b1) '(BVN n2 b2),
+Global Program Instance bvn_eq_dec : EqDecision bvn := λ '(@bv_to_bvn n1 b1) '(@bv_to_bvn n2 b2),
    match decide (n1 = n2) with
    | left eqv => match decide (bv_unsigned b1 = bv_unsigned b2) with
                 | left eqb => left _
@@ -1313,8 +1315,7 @@ Definition bvn_to_bv (n : N) (b : bvn) : option (bv n) :=
   end.
 Global Arguments bvn_to_bv !_ !_ /.
 
-Definition bv_to_bvn {n} (b : bv n) : bvn := BVN _ b.
-Coercion bv_to_bvn : bv >-> bvn.
+Global Coercion bv_to_bvn : bv >-> bvn.
 
 (** * tests *)
 Section test.

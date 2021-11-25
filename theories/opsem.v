@@ -415,7 +415,7 @@ Definition read_mem_list (mem : mem_map) (a : Z) (len : N) : option (list byte) 
   mapM (M := option) (λ x, Z_to_bv_checked 64 x ≫= (mem !!.)) (seqZ a (Z.of_N len)).
 
 Definition read_mem (mem : mem_map) (a : Z) (len : N) : option bvn :=
-  (λ bs, BVN _ (Z_to_bv (8 * len) (little_endian_to_bv 8 bs))) <$> read_mem_list mem a len.
+  (λ bs, bv_to_bvn (Z_to_bv (8 * len) (little_endian_to_bv 8 bs))) <$> read_mem_list mem a len.
 
 Fixpoint write_mem_list (mem : mem_map) (a : addr) (v : list byte) : mem_map :=
   match v with
@@ -458,12 +458,12 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
     | Some (LReadMem data kind addr len tag) =>
       (* Ignoring tags and kinds for the time being *)
       ∃ addr' data' data'',
-      addr = RVal_Bits (BVN 64 addr') ∧
-      data = RVal_Bits (BVN (8 * len) data') ∧
+      addr = RVal_Bits (@bv_to_bvn 64 addr') ∧
+      data = RVal_Bits (@bv_to_bvn (8 * len) data') ∧
       0 < Z.of_N len ∧
       (* If there is memory, we read from that memory. *)
       if read_mem σ.(seq_mem) (bv_unsigned addr') len is Some _ then
-        read_mem σ.(seq_mem) (bv_unsigned addr') len = Some (BVN (8 * len) data'') ∧
+        read_mem σ.(seq_mem) (bv_unsigned addr') len = Some (@bv_to_bvn (8 * len) data'') ∧
         κ' = None ∧
         σ' = σ ∧
          ((θ' = θ <| seq_trace := t' |> ∧ data' = data'')
@@ -478,8 +478,8 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
     | Some (LWriteMem res kind addr data len tag) =>
       (* Ignoring tags and kinds. *)
       (∃ mem' addr' data',
-      addr = RVal_Bits (BVN 64 addr') ∧
-      data = RVal_Bits (BVN (8 * len) data') ∧
+      addr = RVal_Bits (@bv_to_bvn 64 addr') ∧
+      data = RVal_Bits (@bv_to_bvn (8 * len) data') ∧
       0 < Z.of_N len ∧
       (* If there is memory, we write to that memory. *)
       if read_mem σ.(seq_mem) (bv_unsigned addr') len is Some _ then

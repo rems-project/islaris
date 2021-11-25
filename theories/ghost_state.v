@@ -614,7 +614,7 @@ Section mem.
 
   Lemma mem_mapsto_lookup n mem a q (w : bv n) :
     mem_ctx mem -∗ a ↦ₘ{q} w -∗
-      ⌜∃ len, n = (8 * len)%N ∧ read_mem mem a len = Some (BVN _ w)⌝.
+      ⌜∃ len, n = (8 * len)%N ∧ read_mem mem a len = Some (bv_to_bvn w)⌝.
   Proof.
     iIntros "Hmem Ha". rewrite /read_mem.
     iDestruct (mem_mapsto_lookup_list with "Hmem Ha") as %[len [-> Hl]].
