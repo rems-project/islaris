@@ -421,19 +421,22 @@ Program Definition regcol_compute_hint_hint {Σ A B} (f : A → option B) x a :
 |}.
 Next Obligation. move => ????????. iIntros "HT". iExists _. iFrame. iPureIntro. naive_solver. Qed.
 
+Ltac is_var_no_let v :=
+  is_var v;
+  assert_fails (clearbody v).
 (** [is_fully_reduced_valu v] determines if the valu v is already
 fully reduced. If this is the case, one does not need to protect it
 from vm_compute. *)
 Ltac is_fully_reduced_valu v :=
-  first [ is_var v |
+  first [ is_var_no_let v |
     lazymatch v with
-    | RegVal_Base ?b => first [ is_var b |
+    | RegVal_Base ?b => first [ is_var_no_let b |
       lazymatch b with
-      | Val_Bits ?b' => first [ is_var b' |
+      | Val_Bits ?b' => first [ is_var_no_let b' |
         lazymatch b' with
-        | @bv_to_bvn ?n ?b'' => first [ is_var b'' |
+        | @bv_to_bvn ?n ?b'' => first [ is_var_no_let b'' |
           lazymatch b'' with
-          | BV _ ?z _  => first [ is_var z |
+          | BV _ ?z _  => first [ is_var_no_let z |
                         lazymatch isZcst z with
                         | true => idtac
                         end
@@ -442,7 +445,7 @@ Ltac is_fully_reduced_valu v :=
           ]
         end
       ]
-      | Val_Bool ?b' => first [ is_var b' |
+      | Val_Bool ?b' => first [ is_var_no_let b' |
         lazymatch b' with
         | true => idtac
         | false => idtac
@@ -454,8 +457,9 @@ Ltac is_fully_reduced_valu v :=
   ].
 
 (** Testing [is_fully_reduced_valu] *)
-Goal ∀ (v : valu) (b : base_val) (b1 : bool) (b2 : bv 64) (z : Z) Heq, BV 64 z Heq = BV 64 z Heq.
-  move => v b b1 b2 z Heq.
+Goal ∀ (v : valu) (b : base_val) (b1 : bool) (b2 : bv 64) (z : Z) Heq,
+    let x := bv_add b2 b2 in BV 64 z Heq = BV 64 z Heq.
+  move => v b b1 b2 z Heq x.
   is_fully_reduced_valu v.
   is_fully_reduced_valu (RegVal_Base b).
   is_fully_reduced_valu (RVal_Bool b1).
@@ -466,6 +470,7 @@ Goal ∀ (v : valu) (b : base_val) (b1 : bool) (b2 : bv 64) (z : Z) Heq, BV 64 z
   assert_fails (is_fully_reduced_valu (RVal_Bits (bv_zero_extend 128 b2))).
   is_fully_reduced_valu (RVal_Bits (BV 64 z Heq)).
   is_fully_reduced_valu (RVal_Bits [BV{64} 100]).
+  assert_fails (is_fully_reduced_valu (RVal_Bits x)).
 Abort.
 
 Ltac remember_regcol :=
@@ -478,13 +483,17 @@ Ltac remember_regcol :=
      remember_mark v
    end.
 
+Create HintDb regcol_compute_unfold discriminated.
+
 Global Hint Extern 10 (TacticHint (regcol_compute_hint _ _)) =>
   eapply regcol_compute_hint_hint;
   let H := fresh in intros ? H;
+  autounfold with regcol_compute_unfold;
   remember_regcol;
   vm_compute;
   subst_remembered;
   apply H : typeclass_instances.
+
 
 (** * functions to compute on a regcol *)
 Fixpoint regcol_lookup (r : reg_kind) (regs : list (reg_kind * valu_shape)) : option (valu_shape) :=

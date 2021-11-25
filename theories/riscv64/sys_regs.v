@@ -81,6 +81,7 @@ Definition sys_regs : list (reg_kind * valu_shape) := [
            ∃ b : bv 64, v = RVal_Bits b ∧ bv_extract 17 1 b = [BV{1} 0]))]);
   (KindReg "satp" , BitsShape 64)
 ].
+Global Hint Unfold sys_regs : regcol_compute_unfold.
 
 Definition sys_regs_map (mstatus_bits satp : bv 64) : reg_map :=
   <[ "rv_enable_pmp" := RVal_Bool false ]> $
