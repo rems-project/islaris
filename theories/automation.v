@@ -421,10 +421,57 @@ Program Definition regcol_compute_hint_hint {Σ A B} (f : A → option B) x a :
 |}.
 Next Obligation. move => ????????. iIntros "HT". iExists _. iFrame. iPureIntro. naive_solver. Qed.
 
+(** [is_fully_reduced_valu v] determines if the valu v is already
+fully reduced. If this is the case, one does not need to protect it
+from vm_compute. *)
+Ltac is_fully_reduced_valu v :=
+  first [ is_var v |
+    lazymatch v with
+    | RegVal_Base ?b => first [ is_var b |
+      lazymatch b with
+      | Val_Bits ?b' => first [ is_var b' |
+        lazymatch b' with
+        | @bv_to_bvn ?n ?b'' => first [ is_var b'' |
+          lazymatch b'' with
+          | BV _ ?z _  => first [ is_var z |
+                        lazymatch isZcst z with
+                        | true => idtac
+                        end
+            ]
+          end
+          ]
+        end
+      ]
+      | Val_Bool ?b' => first [ is_var b' |
+        lazymatch b' with
+        | true => idtac
+        | false => idtac
+        end
+      ]
+      end
+    ]
+    end
+  ].
+
+(** Testing [is_fully_reduced_valu] *)
+Goal ∀ (v : valu) (b : base_val) (b1 : bool) (b2 : bv 64) (z : Z) Heq, BV 64 z Heq = BV 64 z Heq.
+  move => v b b1 b2 z Heq.
+  is_fully_reduced_valu v.
+  is_fully_reduced_valu (RegVal_Base b).
+  is_fully_reduced_valu (RVal_Bool b1).
+  is_fully_reduced_valu (RVal_Bool true).
+  is_fully_reduced_valu (RVal_Bool false).
+  assert_fails (is_fully_reduced_valu (RVal_Bool (negb true))).
+  is_fully_reduced_valu (RVal_Bits b2).
+  assert_fails (is_fully_reduced_valu (RVal_Bits (bv_zero_extend 128 b2))).
+  is_fully_reduced_valu (RVal_Bits (BV 64 z Heq)).
+  is_fully_reduced_valu (RVal_Bits [BV{64} 100]).
+Abort.
+
 Ltac remember_regcol :=
   repeat match goal with
    | |- context [ExactShape ?v] =>
-     assert_fails (is_var v);
+     assert_fails (is_fully_reduced_valu v);
      remember_mark v
    | |- context [PropShape ?v] =>
      assert_fails (is_var v);
