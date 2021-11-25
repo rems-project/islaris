@@ -1453,14 +1453,14 @@ Proof. done. Qed.
   ( apply tac_mem_mapsto_mmio; bv_solve) : typeclass_instances.
 
 Lemma tac_reg_mapsto_reg_col `{islaG Σ} `{threadG} r regs1 regs2:
-  is_Some (list_find_idx (λ x, x.1 = KindReg r) regs1) →
+  is_Some (list_find_idx_bool (λ x, reg_kind_eqb x.1 (KindReg r)) regs1) →
   FindHypEqual (FICRegMapstoSemantic r) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
 Proof. done. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual (FICRegMapstoSemantic _) (reg_col _) (reg_col _) _) =>
 ( apply tac_reg_mapsto_reg_col; vm_compute; eexists _; done) : typeclass_instances.
 
 Lemma tac_struct_reg_mapsto_reg_col `{islaG Σ} `{threadG} r f regs1 regs2:
-  is_Some (list_find_idx (λ x, x.1 = KindField r f ∨ x.1 = KindReg r) regs1) →
+  is_Some (list_find_idx_bool (λ x, reg_kind_eqb x.1 (KindField r f) || reg_kind_eqb x.1 (KindReg r)) regs1) →
   FindHypEqual (FICStructRegMapstoSemantic r f) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
 Proof. done. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual (FICStructRegMapstoSemantic _ _) (reg_col _) (reg_col _) _) =>

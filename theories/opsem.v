@@ -120,6 +120,15 @@ Inductive reg_kind :=
 Global Instance reg_kind_eq_decision : EqDecision reg_kind.
 Proof. solve_decision. Defined.
 Global Instance reg_kind_inhabited : Inhabited (reg_kind) := populate (KindReg "").
+Definition reg_kind_eqb (rk1 rk2 : reg_kind) : bool :=
+  match rk1, rk2 with
+  | KindReg r1, KindReg r2 => (r1 =? r2)%string
+  | KindField r1 f1, KindField r2 f2 => ((r1 =? r2) && (f1 =? f2))%string
+  | _, _ => false
+  end.
+Lemma reg_kind_eqb_eq rk1 rk2:
+  reg_kind_eqb rk1 rk2 = bool_decide (rk1 = rk2).
+Proof. destruct rk1, rk2 => //=; rewrite !String_eqb_eq; repeat case_bool_decide; by simplify_eq. Qed.
 
 Inductive valu_shape :=
 | ExactShape (v : valu) | StructShape (ss : list (string * valu_shape)) | BitsShape (n : N) | PropShape (P : valu → Prop) | UnknownShape.

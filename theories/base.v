@@ -132,15 +132,18 @@ Proof.
   - move => [??]. by rewrite reverse_lookup.
 Qed.
 
+(* TODO: replace with upsteamed version *)
 Lemma sum_list_fmap {A} n (l : list A) f:
   (∀ x, x ∈ l → f x = n) →
   sum_list (f <$> l) = (length l * n)%nat.
 Proof. move => Hf. elim: l Hf => //; csimpl=> ?? IH Hf. rewrite IH. 2: set_solver. rewrite Hf //. set_solver. Qed.
 
+(* TODO: replace with upsteamed version *)
 Lemma sum_list_fmap' {A} (l : list A) n :
   sum_list ((λ _, n) <$> l) = (length l * n)%nat.
 Proof. by apply sum_list_fmap. Qed.
 
+(* TODO: replace with upsteamed version *)
 Lemma join_lookup_Some {A} (ls : list (list A)) i x:
   mjoin ls !! i = Some x ↔ ∃ j l i', ls !! j = Some l ∧ l !! i' = Some x
                              ∧ i = (sum_list (length <$> take j ls) + i')%nat.
@@ -156,6 +159,7 @@ Proof.
     + right. split; [lia|]. eexists _, _, _. split_and! => //. lia.
 Qed.
 
+(* TODO: replace with upsteamed version *)
 Lemma join_lookup_Some' {A} n (ls : list (list A)) i x:
   (∀ x, x ∈ ls → length x = n) →
   mjoin ls !! i = Some x ↔ ∃ j l i', ls !! j = Some l ∧ l !! i' = Some x
@@ -172,6 +176,7 @@ Proof.
     move => ? /take_elem_of[?[??]]. apply: Hl. by eapply elem_of_list_lookup_2.
 Qed.
 
+(* TODO: replace with upsteamed version *)
 Lemma join_lookup_Some_mul {A} n (ls : list (list A)) j i x:
   (∀ x, x ∈ ls → length x = n) →
   (i < n)%nat →
@@ -299,6 +304,10 @@ Lemma Z_of_bool_spec_high b z:
   Z.testbit (Z_of_bool b) z = false.
 Proof. move => ?. destruct b => /=; by rewrite ?Z.bits_0 // Z_bits_1_above. Qed.
 
+Lemma String_eqb_eq s1 s2:
+  (s1 =? s2)%string = bool_decide (s1 = s2).
+Proof. case_bool_decide; subst; by rewrite ?String.eqb_eq ?eqb_neq. Qed.
+
 (* This has as better performance characteristic wrt. simpl compared
 to list_find since list_find_idx does not contain prod_map. *)
 Definition list_find_idx {A} P `{∀ x, Decision (P x)} : list A → option nat :=
@@ -355,6 +364,45 @@ Section list_find_idx.
     split_and! => //. move => ?? /list_lookup_insert_Some. naive_solver.
   Qed.
 End list_find_idx.
+
+Definition list_find_idx_bool {A} (f : A → bool) : list A → option nat :=
+  fix go l :=
+  match l with
+  | [] => None
+  | x :: l => if f x then Some 0%nat else S <$> go l
+  end.
+Global Instance: Params (@list_find_idx_bool) 3 := {}.
+
+Section list_find_idx_bool.
+  Context {A} (f : A → bool).
+
+  Lemma list_find_idx_bool_list_find_idx l:
+    list_find_idx_bool f l = list_find_idx f l.
+  Proof. elim: l => //= ?? ->. case_decide => //=; by case_match. Qed.
+
+  Lemma list_find_idx_bool_Some l i:
+    list_find_idx_bool f l = Some i ↔
+    ∃ x, l !! i = Some x ∧ f x ∧ ∀ j y, l !! j = Some y → (j < i)%nat → ¬f y.
+  Proof. by rewrite list_find_idx_bool_list_find_idx list_find_idx_Some. Qed.
+
+  Lemma list_find_idx_bool_lt l i:
+    list_find_idx_bool f l = Some i → (i < length l)%nat.
+  Proof. move => /list_find_idx_bool_Some[?[??]]. by apply: lookup_lt_Some. Qed.
+
+  Lemma list_find_idx_bool_insert_eq l i x:
+    list_find_idx_bool f l = Some i →
+    f x →
+    list_find_idx_bool f (<[i:=x]> l) = Some i.
+  Proof. rewrite !list_find_idx_bool_list_find_idx. apply: list_find_idx_insert_eq. Qed.
+
+  Lemma list_find_idx_bool_insert_neq l i j x y:
+    list_find_idx_bool f l = Some i →
+    ¬ f x →
+    l !! j = Some y →
+    ¬ f y →
+    list_find_idx_bool f (<[j:=x]> l) = Some i.
+  Proof. rewrite !list_find_idx_bool_list_find_idx. apply: list_find_idx_insert_neq. Qed.
+End list_find_idx_bool.
 
 Section map_Forall.
   Context `{FinMap K M}.
