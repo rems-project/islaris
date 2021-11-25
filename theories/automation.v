@@ -737,32 +737,28 @@ Section instances.
     λ G, i2p (subsume_struct_reg r f v1 v2 G).
 
   Lemma subsume_regcol_reg regs r v G:
-    (tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
-      ∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ ∀ v', ⌜valu_has_shape v' vr.2⌝ -∗ ⌜v = v'⌝ ∗ G)) -∗
+    (tactic_hint (regcol_compute_hint (regcol_extract (KindReg r)) regs) (λ '(s, regs'),
+      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ ⌜v = v'⌝ ∗ G)) -∗
     subsume (reg_col regs) (r ↦ᵣ v) G.
   Proof.
-    unfold tactic_hint, vm_compute_hint.
-    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
-    rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
-    iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
-    iDestruct ("HG" with "[//] Hregs") as "HG"; simplify_eq/=.
-    by iDestruct ("HG" with "[//]") as "[-> $]".
+    unfold tactic_hint, regcol_compute_hint.
+    iDestruct 1 as ([??] ?) "HG"; simplify_eq/=. iIntros "Hr".
+    iDestruct (regcol_extract_Some with "Hr") as (??) "[? Hregs]"; [done|] => /=.
+    iDestruct ("HG" with "[//] Hregs") as "[% HG]"; simplify_eq/=. by iFrame.
   Qed.
   Global Instance subsume_regcol_reg_inst regs r v:
     Subsume (reg_col regs) (r ↦ᵣ v) :=
     λ G, i2p (subsume_regcol_reg regs r v G).
 
   Lemma subsume_struct_regcol_reg regs r f v G:
-    (tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs) (λ i,
-      (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ ∀ v', ⌜valu_has_shape v' vr.2⌝ -∗ ⌜v = v'⌝ ∗ G))) -∗
+    (tactic_hint (regcol_compute_hint (regcol_extract (KindField r f)) regs) (λ '(s, regs'),
+      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ ⌜v = v'⌝ ∗ G)) -∗
     subsume (reg_col regs) (r # f ↦ᵣ v) G.
   Proof.
-    unfold tactic_hint, vm_compute_hint.
-    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
-    rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
-    iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
-    iDestruct ("HG" with "[//] Hregs") as "HG"; simplify_eq/=.
-    by iDestruct ("HG" with "[//]") as "[-> $]".
+    unfold tactic_hint, regcol_compute_hint.
+    iDestruct 1 as ([??] ?) "HG"; simplify_eq/=. iIntros "Hr".
+    iDestruct (regcol_extract_Some with "Hr") as (??) "[? Hregs]"; [done|] => /=.
+    iDestruct ("HG" with "[//] Hregs") as "[% HG]"; simplify_eq/=. by iFrame.
   Qed.
   Global Instance subsume_struct_regcol_reg_inst regs r f v:
     Subsume (reg_col regs) (r # f ↦ᵣ v) :=
@@ -818,34 +814,30 @@ Section instances.
     λ G, i2p (subsume_struct_reg_reg_pred r f v P G).
 
   Lemma subsume_regcol_reg_pred regs r P G:
-    (tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
-      (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
-         reg_col (delete i regs) -∗ P v' ∗ G))) -∗
+    (tactic_hint (regcol_compute_hint (regcol_extract (KindReg r)) regs) (λ '(s, regs'),
+      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ P v' ∗ G)) -∗
     subsume (reg_col regs) (r ↦ᵣ: P) G.
   Proof.
-    unfold tactic_hint, vm_compute_hint.
-    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
-    rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
-    iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
-    iDestruct ("HG" with "[//] [//] Hregs") as "[? $]".
-    rewrite reg_mapsto_pred_eq. iExists _. iFrame.
+    unfold tactic_hint, regcol_compute_hint.
+    iDestruct 1 as ([??] ?) "HG"; simplify_eq/=. iIntros "Hr".
+    iDestruct (regcol_extract_Some with "Hr") as (??) "[? Hregs]"; [done|] => /=.
+    iDestruct ("HG" with "[//] Hregs") as "[? HG]"; simplify_eq/=. iFrame.
+    rewrite reg_mapsto_pred_eq. iExists _. by iFrame.
   Qed.
   Global Instance subsume_regcol_reg_pred_inst regs r P:
     Subsume (reg_col regs) (r ↦ᵣ: P) :=
     λ G, i2p (subsume_regcol_reg_pred regs r P G).
 
   Lemma subsume_struct_regcol_reg_pred regs r f P G:
-    (tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs) (λ i,
-      (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
-         reg_col (delete i regs) -∗ P v' ∗ G))) -∗
+    (tactic_hint (regcol_compute_hint (regcol_extract (KindField r f)) regs) (λ '(s, regs'),
+      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ P v' ∗ G)) -∗
     subsume (reg_col regs) (r # f ↦ᵣ: P) G.
   Proof.
-    unfold tactic_hint, vm_compute_hint.
-    iDestruct 1 as (i [[??][?[??]]]%list_find_idx_Some) "HG"; simplify_eq/=. iIntros "Hr".
-    rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
-    iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
-    iDestruct ("HG" with "[//] [//] Hregs") as "[? $]".
-    rewrite struct_reg_mapsto_pred_eq. iExists _. iFrame.
+    unfold tactic_hint, regcol_compute_hint.
+    iDestruct 1 as ([??] ?) "HG"; simplify_eq/=. iIntros "Hr".
+    iDestruct (regcol_extract_Some with "Hr") as (??) "[? Hregs]"; [done|] => /=.
+    iDestruct ("HG" with "[//] Hregs") as "[? HG]"; simplify_eq/=. iFrame.
+    rewrite struct_reg_mapsto_pred_eq. iExists _. by iFrame.
   Qed.
   Global Instance subsume_struct_regcol_reg_pred_inst regs r f P:
     Subsume (reg_col regs) (r # f ↦ᵣ: P) :=
@@ -855,40 +847,38 @@ Section instances.
     find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v => P v
-      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
-           (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
-             reg_col (delete i regs) -∗ P v'))
+      | RKCol regs =>
+          (tactic_hint (regcol_compute_hint (regcol_extract (KindReg r)) regs) (λ '(s, regs'),
+            ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ P v'))
       end) -∗
     r ↦ᵣ: P.
   Proof.
-    unfold tactic_hint, vm_compute_hint.
+    unfold tactic_hint, regcol_compute_hint.
     rewrite reg_mapsto_pred_eq /reg_mapsto_pred_def.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - eauto with iFrame.
-    - iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
-      rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
-      iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
-      iExists _. iFrame. iApply ("Hwp" with "[//] [//] Hregs").
+    - iDestruct "Hwp" as ([??] ?) "HG"; simplify_eq/=.
+      iDestruct (regcol_extract_Some with "Hr") as (??) "[? Hregs]"; [done|] => /=.
+      iDestruct ("HG" with "[//] Hregs") as "HG"; simplify_eq/=. iExists _. by iFrame.
   Qed.
 
   Lemma struct_reg_mapsto_pred_intro r f P :
     find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v => P v
-      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs) (λ i,
-           (∀ vr v', ⌜regs !! i = Some vr⌝ -∗ ⌜valu_has_shape v' vr.2⌝ -∗
-             reg_col (delete i regs) -∗ P v'))
+      | RKCol regs =>
+          (tactic_hint (regcol_compute_hint (regcol_extract (KindField r f)) regs) (λ '(s, regs'),
+            ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ P v'))
       end) -∗
     r # f ↦ᵣ: P.
   Proof.
-    unfold tactic_hint, vm_compute_hint.
+    unfold tactic_hint, regcol_compute_hint.
     rewrite struct_reg_mapsto_pred_eq /struct_reg_mapsto_pred_def.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - eauto with iFrame.
-    - iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
-      rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
-      iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
-      iExists _. iFrame. iApply ("Hwp" with "[//] [//] Hregs").
+    - iDestruct "Hwp" as ([??] ?) "HG"; simplify_eq/=.
+      iDestruct (regcol_extract_Some with "Hr") as (??) "[? Hregs]"; [done|] => /=.
+      iDestruct ("HG" with "[//] Hregs") as "HG"; simplify_eq/=. iExists _. by iFrame.
   Qed.
 
   Lemma simpl_hyp_reg_pred r P G:
