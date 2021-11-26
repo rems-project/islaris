@@ -500,6 +500,14 @@ Create HintDb regcol_compute_unfold discriminated.
 Ltac solve_regcol_compute_hint :=
   let H := fresh in intros ? H;
   autounfold with regcol_compute_unfold;
+  (* TODO: If it turns out that remember_regcol is too slow, it might
+  be worth investigating using let bindings instead of equalities.
+  I.e. one can create let-bindings for everything that should be
+  opaque, then doing etrans, then clearing the body of the letbindings
+  in the first goal and calling vm_compute, and in the second goal
+  from etrans one still has the bodies of the letbindings which can
+  then be unfolded. As an additional optimization, one can reuse
+  existing letbindings (e.g. as created by let_bind_hint). *)
   remember_regcol;
   vm_compute;
   subst_remembered;
