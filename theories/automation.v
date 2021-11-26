@@ -511,10 +511,6 @@ Global Hint Extern 10 (TacticHint (regcol_compute_hint _ _)) =>
 
 
 (** * functions to compute on a regcol *)
-Definition regcol_delete (i : nat) (regs : list (reg_kind * valu_shape)) : list (reg_kind * valu_shape) :=
-  delete i regs.
-Arguments regcol_delete !_ !_ /.
-
 Fixpoint regcol_lookup (r : reg_kind) (regs : list (reg_kind * valu_shape)) : option (nat * valu_shape) :=
   match regs with
   | (r', s)::regs' =>
@@ -1353,7 +1349,7 @@ Section instances.
       | RKMapsTo v' => (r ↦ᵣ v -∗ WPasm es)
       | RKCol regs =>
           (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(i, s),
-             r ↦ᵣ v -∗ reg_col (regcol_delete i regs) -∗ WPasm es))
+             r ↦ᵣ v -∗ reg_col (delete i regs) -∗ WPasm es))
       end)) -∗
     WPasm (WriteReg r [] v ann :t: es).
   Proof. Admitted.
@@ -1374,7 +1370,7 @@ Section instances.
       | RKMapsTo v' => (r # f ↦ᵣ vnew -∗ WPasm es)
       | RKCol regs =>
           (tactic_hint (regcol_compute_hint (regcol_lookup (KindField r f)) regs) (λ '(i, s),
-             r # f ↦ᵣ vnew -∗ reg_col (regcol_delete i regs) -∗ WPasm es))
+             r # f ↦ᵣ vnew -∗ reg_col (delete i regs) -∗ WPasm es))
       end))) -∗
     WPasm (WriteReg r [Field f] v ann :t: es).
   Proof. Admitted.
