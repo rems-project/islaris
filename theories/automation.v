@@ -499,7 +499,6 @@ Create HintDb regcol_compute_unfold discriminated.
 
 Ltac solve_regcol_compute_hint :=
   let H := fresh in intros ? H;
-  repeat match goal with | H : list (reg_kind * valu_shape) |- _=> unfold H; clear H end;
   autounfold with regcol_compute_unfold;
   remember_regcol;
   vm_compute;
@@ -1349,8 +1348,8 @@ Section instances.
       match rk with
       | RKMapsTo v' => (r ↦ᵣ v -∗ WPasm es)
       | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_extract (KindReg r)) regs) (λ '(_, regs'),
-             let_bind_hint regs' (λ regs', r ↦ᵣ v -∗ reg_col regs' -∗ WPasm es)))
+          (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(i, s),
+             r ↦ᵣ v -∗ reg_col (delete i regs) -∗ WPasm es))
       end)) -∗
     WPasm (WriteReg r [] v ann :t: es).
   Proof. Admitted.
@@ -1370,8 +1369,8 @@ Section instances.
       match rk with
       | RKMapsTo v' => (r # f ↦ᵣ vnew -∗ WPasm es)
       | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_extract (KindField r f)) regs) (λ '(_, regs'),
-             let_bind_hint regs' (λ regs', r # f ↦ᵣ vnew -∗ reg_col regs' -∗ WPasm es)))
+          (tactic_hint (regcol_compute_hint (regcol_lookup (KindField r f)) regs) (λ '(i, s),
+             r # f ↦ᵣ vnew -∗ reg_col (delete i regs) -∗ WPasm es))
       end))) -∗
     WPasm (WriteReg r [Field f] v ann :t: es).
   Proof. Admitted.
@@ -1712,11 +1711,6 @@ Ltac liLetBindHint :=
       | _ => (* No application, probably just another let binding. Don't create a new one.  *)
         change (envs_entails Δ (f x)); cbn beta
       end
-    | _ :: _ =>
-        pose (H := x);
-        change (envs_entails Δ (f H)); cbn beta
-    | [] =>
-        change (envs_entails Δ (f [])); cbn beta
     end
   end.
 
