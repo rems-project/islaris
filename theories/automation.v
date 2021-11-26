@@ -522,16 +522,11 @@ Fixpoint regcol_lookup (r : reg_kind) (regs : list (reg_kind * valu_shape)) : op
   end.
 Lemma regcol_lookup_Some `{!islaG Σ} `{!threadG} r regs s:
   regcol_lookup r regs = Some s →
-  reg_col regs -∗ ∃ v, ⌜valu_has_shape v s.2⌝ ∗ r ↦ᵣₖ v ∗ (r ↦ᵣₖ v -∗ reg_col regs).
+  regs !! s.1 = Some (r, s.2).
 Proof.
-  iIntros (Hr) "Hregs". iInduction regs as [|[r' s'] regs'] "IH" forall (s Hr) => //.
-  rewrite ->reg_col_cons. iDestruct "Hregs" as "[[%v [% Hv]] Hregs]".
-  simpl in *. rewrite reg_kind_eqb_eq in Hr. case_bool_decide; simplify_eq/=.
-  { iExists _. rewrite ->reg_col_cons => /=. iFrame. eauto with iFrame. }
+  elim: regs s => //= -[??] ? IH [??]. rewrite reg_kind_eqb_eq => Hr. case_bool_decide; simplify_eq/= => //.
   move: Hr => /fmap_Some[[??][??]]. simplify_eq/=.
-  iDestruct ("IH" with "[//] Hregs") as (v' ?) "[? Hregs]" => /=.
-  iExists _. rewrite reg_col_cons. iFrame. iSplit; [done|]. iIntros "?".
-  iDestruct ("Hregs" with "[$]") as "$". iExists _. by iFrame.
+  by apply (IH (_, _)).
 Qed.
 
 Fixpoint regcol_extract (r : reg_kind) (regs : list (reg_kind * valu_shape)) : option (valu_shape * list (reg_kind * valu_shape)) :=
@@ -1233,10 +1228,10 @@ Section instances.
     unfold tactic_hint, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg with "Hr").
-    - iDestruct "Hwp" as ([??] ?) "Hwp"; simplify_eq/=.
-      iDestruct (regcol_lookup_Some with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
+    - iDestruct "Hwp" as ([??] ?%regcol_lookup_Some) "Hwp"; simplify_eq/=.
+      iDestruct (reg_col_lookup with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
       iApply (wp_read_reg with "Hr"). iIntros (?) "Hr". subst.
-      iApply ("Hwp" with "[-] [//]"). by iApply "Hregs".
+      iApply ("Hwp" with "[-] [//]"). iApply reg_col_lookup; [done|]. iExists _. by iFrame.
   Qed.
 
   Lemma li_wp_read_reg_struct r f v ann es :
@@ -1300,10 +1295,11 @@ Section instances.
     unfold tactic_hint, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - iDestruct "Hwp" as (->) "?". by iApply (wp_assume_reg with "Hr").
-    - iDestruct "Hwp" as ([??]? Hr) "Hwp"; simplify_eq/=.
-      iDestruct (regcol_lookup_Some with "Hr") as (vact ?) "[Hr Hregs]"; [done|] => /=.
+    - iDestruct "Hwp" as ([??]?%regcol_lookup_Some Hr) "Hwp"; simplify_eq/=.
+      iDestruct (reg_col_lookup with "Hr") as (vact ?) "[Hr Hregs]"; [done|] => /=.
       have ?: vact = v by naive_solver. subst.
-      iApply (wp_assume_reg with "Hr"). iIntros "Hr". iApply "Hwp". by iApply "Hregs".
+      iApply (wp_assume_reg with "Hr"). iIntros "Hr". iApply "Hwp".
+      iApply reg_col_lookup; [done|]. iExists _. by iFrame.
   Qed.
 
   Lemma li_wp_assume_reg_struct r f v ann es :
@@ -1355,16 +1351,14 @@ Section instances.
              r ↦ᵣ v -∗ reg_col (delete i regs) -∗ WPasm es))
       end)) -∗
     WPasm (WriteReg r [] v ann :t: es).
-  Proof. Admitted.
-  (*
+  Proof.
     unfold tactic_hint, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_write_reg with "Hr").
-    - iDestruct "Hwp" as ([??] ?) "Hwp"; simplify_eq/=.
-      iDestruct (regcol_extract_Some with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
+    - iDestruct "Hwp" as ([??] ?%regcol_lookup_Some) "Hwp"; simplify_eq/=.
+      iDestruct (reg_col_lookup with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
       iApply (wp_write_reg with "Hr"). iIntros "Hr". iApply ("Hwp" with "[$] [$]").
   Qed.
-*)
 
   Lemma li_wp_write_reg_struct r f v ann es:
     (∃ vnew, ⌜read_accessor [Field f] v = Some vnew⌝ ∗
@@ -1379,16 +1373,15 @@ Section instances.
              r # f ↦ᵣ vnew -∗ reg_col (delete i regs) -∗ WPasm es))
       end))) -∗
     WPasm (WriteReg r [Field f] v ann :t: es).
-  Proof. Admitted.
-  (*
+  Proof.
     unfold tactic_hint, regcol_compute_hint.
     iDestruct 1 as (vnew ? rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_write_reg_struct with "Hr").
-    - iDestruct "Hwp" as ([??] ?) "Hwp"; simplify_eq/=.
-      iDestruct (regcol_extract_Some with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
+    - iDestruct "Hwp" as ([??] ?%regcol_lookup_Some) "Hwp"; simplify_eq/=.
+      iDestruct (reg_col_lookup with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
       iApply (wp_write_reg_struct with "Hr"); [done|]. iIntros "Hr". iApply ("Hwp" with "[$] [$]").
   Qed.
-*)
+
   Lemma li_wp_branch_address v ann es:
     WPasm es -∗
     WPasm (BranchAddress v ann :t: es).
@@ -1530,10 +1523,11 @@ Section instances.
     unfold tactic_hint, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - case_match => //; subst. by iApply (wpae_var_reg with "Hr").
-    - iDestruct "Hwp" as ([??] ?) "Hwp"; simplify_eq/=.
-      iDestruct (regcol_lookup_Some with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
+    - iDestruct "Hwp" as ([??] ?%regcol_lookup_Some) "Hwp"; simplify_eq/=.
+      iDestruct (reg_col_lookup with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
       iDestruct ("Hwp" with "[//]") as (? ->) "Hwp".
-      iApply (wpae_var_reg with "Hr"). iIntros "Hr". iApply "Hwp". by iApply "Hregs".
+      iApply (wpae_var_reg with "Hr"). iIntros "Hr". iApply "Hwp".
+      iApply reg_col_lookup; [done|]. iExists _. by iFrame.
   Qed.
 
   Lemma li_wpae_var_struct r f Φ ann :

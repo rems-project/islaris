@@ -436,6 +436,16 @@ Section reg.
   Lemma reg_col_cons r s col :
     reg_col ((r, s)::col) ⊣⊢ (∃ v, ⌜valu_has_shape v s⌝ ∗ r ↦ᵣₖ v) ∗ reg_col col.
   Proof. done. Qed.
+
+  Lemma reg_col_lookup regs i s:
+    regs !! i = Some s →
+    reg_col regs ⊣⊢ ∃ v, ⌜valu_has_shape v s.2⌝ ∗ s.1 ↦ᵣₖ v ∗ reg_col (delete i regs).
+  Proof.
+    iIntros (?). rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
+    iSplit.
+    - iDestruct 1 as "[[%vact [??] ]?]". iExists _. iFrame.
+    - iDestruct 1 as (v ?) "[??]". iFrame. iExists _. by iFrame.
+  Qed.
 End reg.
 
 Section mem.
