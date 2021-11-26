@@ -131,7 +131,12 @@ Lemma reg_kind_eqb_eq rk1 rk2:
 Proof. destruct rk1, rk2 => //=; rewrite !String_eqb_eq; repeat case_bool_decide; by simplify_eq. Qed.
 
 Inductive valu_shape :=
-| ExactShape (v : valu) | StructShape (ss : list (string * valu_shape)) | BitsShape (n : N) | PropShape (P : valu → Prop) | UnknownShape.
+| ExactShape (v : valu)
+| StructShape (ss : list (string * valu_shape))
+| MaskShape (n : N) (mask : Z) (v : Z)
+| BitsShape (n : N)
+| PropShape (P : valu → Prop)
+| UnknownShape.
 Global Instance valu_shape_inhabited : Inhabited (valu_shape) := populate UnknownShape.
 Fixpoint valu_has_shape (v : valu) (s : valu_shape) : Prop :=
   match s with
@@ -141,12 +146,16 @@ Fixpoint valu_has_shape (v : valu) (s : valu_shape) : Prop :=
         length ss = length rs ∧ foldr and True
           (zip_with (λ s r, s.1 = r.1 ∧ valu_has_shape r.2 s.2) ss rs)
       else False
+  | MaskShape n m v' => if v is RVal_Bits b then b.(bvn_n) = n ∧ Z.land (bvn_unsigned b) m = v' else False
   | BitsShape n => if v is RVal_Bits b then b.(bvn_n) = n else False
   | PropShape P => P v
   | UnknownShape => True
   end.
 Arguments valu_has_shape : simpl nomatch.
 
+Lemma valu_has_mask_shape v n m z:
+  valu_has_shape v (MaskShape n m z) → ∃ b : bv n, v = RVal_Bits b ∧ Z.land (bv_unsigned b) m = z.
+Proof. destruct v as [[| |[]|]| | | | | | | |] => //= -[<- ?]. naive_solver. Qed.
 Lemma valu_has_bits_shape v n:
   valu_has_shape v (BitsShape n) → ∃ b : bv n, v = RVal_Bits b.
 Proof. destruct v as [[| |[]|]| | | | | | | |] => //= <-. naive_solver. Qed.
@@ -155,6 +164,8 @@ Definition valu_shape_implies (s1 s2 : valu_shape) : Prop :=
   (* TODO: add missing cases*)
   match s1, s2 with
   | ExactShape v1, _ => valu_has_shape v1 s2
+  | MaskShape n1 m1 v1, MaskShape n2 m2 v2 => n1 = n2 ∧ m1 = m2 ∧ v1 = v2
+  | MaskShape n1 m1 v1, BitsShape n2 => n1 = n2
   | BitsShape n1, BitsShape n2 => n1 = n2
   | _, UnknownShape => True
   | _, _ => False
@@ -162,10 +173,15 @@ Definition valu_shape_implies (s1 s2 : valu_shape) : Prop :=
 Arguments valu_shape_implies _ _ : simpl nomatch.
 Lemma valu_shape_implies_sound s1 s2 v:
   valu_shape_implies s1 s2 → valu_has_shape v s1 → valu_has_shape v s2.
-Proof. destruct s1, s2 => //=; naive_solver. Qed.
+Proof.
+  destruct s1, s2 => //=; try naive_solver.
+  - move => ->. destruct v as [[]| | | | | | | |] => //=. naive_solver.
+Qed.
 
 Definition valu_shape_implies_trivial (s1 s2 : valu_shape) : bool :=
   match s1, s2 with
+  | MaskShape n1 m1 v1, MaskShape n2 m2 v2 => (n1 =? n2)%N && (m1 =? m2) && (v1 =? v2)
+  | MaskShape n1 m1 v1, BitsShape n2 => (n1 =? n2)%N
   | BitsShape b1, BitsShape b2 => (b1 =? b2)%N
   | _, UnknownShape => true
   | _, _ => false
@@ -173,7 +189,10 @@ Definition valu_shape_implies_trivial (s1 s2 : valu_shape) : bool :=
 Lemma valu_shape_implies_trivial_sound s1 s2:
   valu_shape_implies_trivial s1 s2 = true →
   valu_shape_implies s1 s2.
-Proof. destruct s1, s2 => //= /N.eqb_eq. done. Qed.
+Proof.
+  destruct s1, s2 => //=.
+  all: rewrite ?andb_true_iff ?N.eqb_eq ?Z.eqb_eq; naive_solver.
+Qed.
 
 (*** operational sematics *)
 

@@ -110,7 +110,7 @@ Local Arguments zip_with : simpl never.
 Local Arguments list_to_map : simpl never.
 
 Lemma riscv_test_adequate mstatus_bits satp x2 x10 x11 κs n t2 σ2:
-  bv_extract 17 1 mstatus_bits = [BV{1} 0] →
+  Z.land (bv_unsigned mstatus_bits) 0x20000 = 0 →
   bv_unsigned x2 `mod` 8 = 0 →
   bv_unsigned x2 + 16 < 2 ^ 64 →
   0x0000000080000000 ≤ bv_unsigned x2 + 8 < 0x0000000080000000 + 0x0000000004000000 →

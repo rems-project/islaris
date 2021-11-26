@@ -2,7 +2,7 @@
    0:	00000513          	li	a0,0
    4:	00150513          	addi	a0,a0,1
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000008) rv_ram_base
@@ -11,7 +11,7 @@
 //@spec_tactic: all: bv_solve.
    8:	00b13423          	sd	a1,8(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000008) rv_ram_base

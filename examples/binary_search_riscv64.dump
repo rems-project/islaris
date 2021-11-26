@@ -1,7 +1,7 @@
 0000000000000000 <binary_search>:
    0:	fc010113          	addi	sp,sp,-64
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000038) rv_ram_base
@@ -10,7 +10,7 @@
 //@spec_tactic: all: bv_solve.
    4:	02113c23          	sd	ra,56(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000030) rv_ram_base
@@ -19,7 +19,7 @@
 //@spec_tactic: all: bv_solve.
    8:	02813823          	sd	s0,48(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000028) rv_ram_base
@@ -28,7 +28,7 @@
 //@spec_tactic: all: bv_solve.
    c:	02913423          	sd	s1,40(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000020) rv_ram_base
@@ -37,7 +37,7 @@
 //@spec_tactic: all: bv_solve.
   10:	03213023          	sd	s2,32(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000018) rv_ram_base
@@ -46,7 +46,7 @@
 //@spec_tactic: all: bv_solve.
   14:	01313c23          	sd	s3,24(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000010) rv_ram_base
@@ -55,7 +55,7 @@
 //@spec_tactic: all: bv_solve.
   18:	01413823          	sd	s4,16(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000008) rv_ram_base
@@ -85,7 +85,7 @@
   50:	00341513          	slli	a0,s0,0x3
   54:	01350533          	add	a0,a0,s3
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x10) 0b000
 //@constraint: bvuge x10 rv_ram_base
@@ -108,7 +108,7 @@
 0000000000000078 <.LBB0_6>:
   78:	00048513          	mv	a0,s1
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000008) rv_ram_base
@@ -117,7 +117,7 @@
 //@spec_tactic: all: bv_solve.
   7c:	00813a83          	ld	s5,8(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000010) rv_ram_base
@@ -126,7 +126,7 @@
 //@spec_tactic: all: bv_solve.
   80:	01013a03          	ld	s4,16(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000018) rv_ram_base
@@ -135,7 +135,7 @@
 //@spec_tactic: all: bv_solve.
   84:	01813983          	ld	s3,24(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000020) rv_ram_base
@@ -144,7 +144,7 @@
 //@spec_tactic: all: bv_solve.
   88:	02013903          	ld	s2,32(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000028) rv_ram_base
@@ -153,7 +153,7 @@
 //@spec_tactic: all: bv_solve.
   8c:	02813483          	ld	s1,40(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000030) rv_ram_base
@@ -162,7 +162,7 @@
 //@spec_tactic: all: bv_solve.
   90:	03013403          	ld	s0,48(sp)
 //@constraint: = ((_ extract 2 2) misa.bits) 0b1
-//@constraint: = ((_ extract 17 17) mstatus.bits) 0b0
+//@constraint: = (bvand mstatus.bits 0x0000000000020000) 0x0000000000000000
 //@constraint: = cur_privilege Machine
 //@constraint: = ((_ extract 2 0) x2) 0b000
 //@constraint: bvuge (bvadd x2 0x0000000000000038) rv_ram_base

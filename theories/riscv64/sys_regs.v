@@ -76,12 +76,10 @@ Definition sys_regs : list (reg_kind * valu_shape) := [
   (* TODO: remove this *)
   (KindReg "Machine" , ExactShape (RVal_Enum (Mk_enum_id 3, Mk_enum_ctor 2)));
   (KindReg "misa" , ExactShape (RegVal_Struct [("bits", RVal_Bits misa_bits)]));
-  (KindReg "mstatus" , StructShape [("bits",  PropShape (λ v,
-           (* MPRV disabled *)
-           ∃ b : bv 64, v = RVal_Bits b ∧ bv_extract 17 1 b = [BV{1} 0]))]);
+  (* MPRV disabled *)
+  (KindReg "mstatus" , StructShape [("bits", MaskShape 64 0x20000 0)]);
   (KindReg "satp" , BitsShape 64)
 ].
-Global Hint Unfold sys_regs : regcol_compute_unfold.
 
 Definition sys_regs_map (mstatus_bits satp : bv 64) : reg_map :=
   <[ "rv_enable_pmp" := RVal_Bool false ]> $
@@ -104,7 +102,7 @@ Section sys_regs.
   Context `{!islaG Σ} `{!threadG}.
 
   Lemma sys_regs_init mstatus_bits satp regs:
-    bv_extract 17 1 mstatus_bits = [BV{1} 0] →
+    Z.land (bv_unsigned mstatus_bits) 0x20000 = 0 →
     regs_ctx regs -∗
     ([∗ map] k↦y ∈ sys_regs_map mstatus_bits satp, k ↦ᵣ y) ==∗
     regs_ctx regs ∗
@@ -115,7 +113,5 @@ Section sys_regs.
     iIntros "Hctx H".
     simpl. iModIntro. rewrite -(right_id True%I _ (reg_col sys_regs)).
     iRevert "H". repeat liAStep; liShow.
-    Unshelve. all: prepare_sidecond.
-    naive_solver.
   Qed.
 End sys_regs.

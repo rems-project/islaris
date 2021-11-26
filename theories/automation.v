@@ -177,6 +177,10 @@ Global Instance simpl_SInstrTrap a1 a2:
   SimplBoth (SInstrTrap a1 = SInstrTrap a2) (a1 = a2).
 Proof. split; naive_solver. Qed.
 
+Global Instance simpl_impl_valu_has_shape_mask v n m z:
+  SimplImpl true (valu_has_shape v (MaskShape n m z))
+        (λ T, ∀ b : bv n, v = RVal_Bits b → Z.land (bv_unsigned b) m = z → T).
+Proof. move => ?. split; [| naive_solver]. move => Hb /valu_has_mask_shape. naive_solver. Qed.
 Global Instance simpl_impl_valu_has_shape_bits v n:
   SimplImpl true (valu_has_shape v (BitsShape n)) (λ T, ∀ b : bv n, v = RVal_Bits b → T).
 Proof. move => ?. split; [| naive_solver]. move => Hb /valu_has_bits_shape. naive_solver. Qed.
@@ -451,6 +455,13 @@ Ltac is_fully_reduced_valu v :=
         | false => idtac
         end
       ]
+      | Val_Enum ?e => first [ is_var_no_let e |
+        lazymatch e with
+        | (Mk_enum_id ?e1, Mk_enum_ctor ?e2) =>
+            first [ is_var_no_let e1 | lazymatch isnatcst e1 with | true => idtac end ];
+            first [ is_var_no_let e2 | lazymatch isnatcst e2 with | true => idtac end ]
+        end
+      ]
       end
     ]
     end
@@ -471,6 +482,7 @@ Goal ∀ (v : valu) (b : base_val) (b1 : bool) (b2 : bv 64) (z : Z) Heq,
   is_fully_reduced_valu (RVal_Bits (BV 64 z Heq)).
   is_fully_reduced_valu (RVal_Bits [BV{64} 100]).
   assert_fails (is_fully_reduced_valu (RVal_Bits x)).
+  is_fully_reduced_valu (RVal_Enum (Mk_enum_id 1, Mk_enum_ctor 4)).
 Abort.
 
 Ltac remember_regcol :=
@@ -485,14 +497,17 @@ Ltac remember_regcol :=
 
 Create HintDb regcol_compute_unfold discriminated.
 
-Global Hint Extern 10 (TacticHint (regcol_compute_hint _ _)) =>
-  eapply regcol_compute_hint_hint;
+Ltac solve_regcol_compute_hint :=
   let H := fresh in intros ? H;
   autounfold with regcol_compute_unfold;
   remember_regcol;
   vm_compute;
   subst_remembered;
-  apply H : typeclass_instances.
+  apply H.
+
+Global Hint Extern 10 (TacticHint (regcol_compute_hint _ _)) =>
+  eapply regcol_compute_hint_hint;
+  solve_regcol_compute_hint : typeclass_instances.
 
 
 (** * functions to compute on a regcol *)
@@ -1248,7 +1263,7 @@ Section instances.
       case: Hor => [?|[?[i]]]; simplify_eq.
       + iApply (wp_read_reg_struct with "Hr"); [done|]. iIntros "% Hr". subst vread.
         iApply "Hwp"; [done|]. iApply "Hregs". iExists _. by iFrame.
-      + destruct s as [[]| | | |] => // Hidx; move: (Hidx) => /list_find_idx_Some[?[Hl [? Hlt]]].
+      + destruct s as [[]| | | | |] => // Hidx; move: (Hidx) => /list_find_idx_Some[?[Hl [? Hlt]]].
         * rewrite Hvact.
           iApply (wp_read_reg_acc with "Hr"); [| done|].
           { rewrite /read_accessor/=. by simplify_option_eq. }
