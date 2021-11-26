@@ -440,14 +440,11 @@ Ltac is_fully_reduced_valu v :=
         lazymatch b' with
         | @bv_to_bvn ?n ?b'' => first [ is_var_no_let b'' |
           lazymatch b'' with
-          | BV _ ?z _  =>
-              (* assume that this is closed*)
-              idtac
-              (* first [ is_var_no_let z | *)
-                        (* lazymatch isZcst z with *)
-                        (* | true => idtac *)
-                        (* end *)
-            (* ] *)
+          | BV _ ?z _  => first [ is_var_no_let z |
+                        lazymatch isZcst z with
+                        | true => idtac
+                        end
+            ]
           end
           ]
         end
