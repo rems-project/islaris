@@ -1348,6 +1348,9 @@ Section instances.
       match rk with
       | RKMapsTo v' => (r ↦ᵣ v -∗ WPasm es)
       | RKCol regs =>
+          (* We don't use regcol_extract here because it unfolds
+          regs', which slows down the pKVM handler example quite a bit.
+           TODO: find a more principled solution. *)
           (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(i, s),
              r ↦ᵣ v -∗ reg_col (delete i regs) -∗ WPasm es))
       end)) -∗
@@ -1369,6 +1372,9 @@ Section instances.
       match rk with
       | RKMapsTo v' => (r # f ↦ᵣ vnew -∗ WPasm es)
       | RKCol regs =>
+          (* We don't use regcol_extract here because it unfolds
+          regs', which slows down the pKVM handler example quite a bit.
+           TODO: find a more principled solution. *)
           (tactic_hint (regcol_compute_hint (regcol_lookup (KindField r f)) regs) (λ '(i, s),
              r # f ↦ᵣ vnew -∗ reg_col (delete i regs) -∗ WPasm es))
       end))) -∗
