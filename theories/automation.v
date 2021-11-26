@@ -1346,18 +1346,18 @@ Section instances.
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v' => (r ↦ᵣ v -∗ WPasm es)
-      | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_extract (KindReg r)) regs) (λ '(s, regs'),
-             r ↦ᵣ v -∗ reg_col regs' -∗ WPasm es))
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindReg r)) regs) (λ i,
+          (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r ↦ᵣ v -∗ WPasm es))
       end)) -∗
     WPasm (WriteReg r [] v ann :t: es).
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_write_reg with "Hr").
-    - iDestruct "Hwp" as ([??] ?) "Hwp"; simplify_eq/=.
-      iDestruct (regcol_extract_Some with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
-      iApply (wp_write_reg with "Hr"). iIntros "Hr". iApply ("Hwp" with "[$] [$]").
+    - iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+      rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
+      iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
+      iApply (wp_write_reg with "Hr"). iIntros "Hr". iApply ("Hwp" with "[] Hregs [$]"). done.
   Qed.
 
   Lemma li_wp_write_reg_struct r f v ann es:
@@ -1365,18 +1365,19 @@ Section instances.
     (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (r # f ↦ᵣ vnew -∗ WPasm es)
-      | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_extract (KindField r f)) regs) (λ '(s, regs'),
-             r # f ↦ᵣ vnew -∗ reg_col regs' -∗ WPasm es))
+      | RKCol regs => tactic_hint (vm_compute_hint (list_find_idx (λ x, x.1 = KindField r f)) regs) (λ i,
+          (∀ vr, ⌜regs !! i = Some vr⌝ -∗ reg_col (delete i regs) -∗ r # f ↦ᵣ vnew -∗ WPasm es))
       end))) -∗
     WPasm (WriteReg r [Field f] v ann :t: es).
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold tactic_hint, vm_compute_hint.
     iDestruct 1 as (vnew ? rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_write_reg_struct with "Hr").
-    - iDestruct "Hwp" as ([??] ?) "Hwp"; simplify_eq/=.
-      iDestruct (regcol_extract_Some with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
-      iApply (wp_write_reg_struct with "Hr"); [done|]. iIntros "Hr". iApply ("Hwp" with "[$] [$]").
+    - iDestruct "Hwp" as (i [[??][?[??]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
+      rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
+      iDestruct "Hr" as "[[%vact [% Hr]] Hregs]".
+      iApply (wp_write_reg_struct with "Hr"); [done|]. iIntros "Hr".
+      iApply ("Hwp" with "[] Hregs [$]"). done.
   Qed.
 
   Lemma li_wp_branch_address v ann es:
