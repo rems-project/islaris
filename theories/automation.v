@@ -511,23 +511,24 @@ Global Hint Extern 10 (TacticHint (regcol_compute_hint _ _)) =>
 
 
 (** * functions to compute on a regcol *)
-Fixpoint regcol_lookup (r : reg_kind) (regs : list (reg_kind * valu_shape)) : option (valu_shape) :=
+Fixpoint regcol_lookup (r : reg_kind) (regs : list (reg_kind * valu_shape)) : option (nat * valu_shape) :=
   match regs with
   | (r', s)::regs' =>
       if reg_kind_eqb r r' then
-        Some s
+        Some (0%nat, s)
       else
-        regcol_lookup r regs'
+        prod_map S id <$> regcol_lookup r regs'
   | [] => None
   end.
 Lemma regcol_lookup_Some `{!islaG Σ} `{!threadG} r regs s:
   regcol_lookup r regs = Some s →
-  reg_col regs -∗ ∃ v, ⌜valu_has_shape v s⌝ ∗ r ↦ᵣₖ v ∗ (r ↦ᵣₖ v -∗ reg_col regs).
+  reg_col regs -∗ ∃ v, ⌜valu_has_shape v s.2⌝ ∗ r ↦ᵣₖ v ∗ (r ↦ᵣₖ v -∗ reg_col regs).
 Proof.
   iIntros (Hr) "Hregs". iInduction regs as [|[r' s'] regs'] "IH" forall (s Hr) => //.
   rewrite ->reg_col_cons. iDestruct "Hregs" as "[[%v [% Hv]] Hregs]".
   simpl in *. rewrite reg_kind_eqb_eq in Hr. case_bool_decide; simplify_eq/=.
   { iExists _. rewrite ->reg_col_cons => /=. iFrame. eauto with iFrame. }
+  move: Hr => /fmap_Some[[??][??]]. simplify_eq/=.
   iDestruct ("IH" with "[//] Hregs") as (v' ?) "[? Hregs]" => /=.
   iExists _. rewrite reg_col_cons. iFrame. iSplit; [done|]. iIntros "?".
   iDestruct ("Hregs" with "[$]") as "$". iExists _. by iFrame.
@@ -1224,7 +1225,7 @@ Section instances.
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)
       | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ s,
+          (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
              reg_col regs -∗ ⌜valu_has_shape v s⌝ -∗ WPasm es))
       end)) -∗
     WPasm (ReadReg r [] v ann :t: es).
@@ -1232,7 +1233,7 @@ Section instances.
     unfold tactic_hint, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg with "Hr").
-    - iDestruct "Hwp" as (? ?) "Hwp"; simplify_eq/=.
+    - iDestruct "Hwp" as ([??] ?) "Hwp"; simplify_eq/=.
       iDestruct (regcol_lookup_Some with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
       iApply (wp_read_reg with "Hr"). iIntros (?) "Hr". subst.
       iApply ("Hwp" with "[-] [//]"). by iApply "Hregs".
@@ -1291,7 +1292,7 @@ Section instances.
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ ∗ (r ↦ᵣ v' -∗ WPasm es))
       | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ s,
+          (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
              ⌜∀ v', valu_has_shape v' s → v' = v⌝ ∗ (reg_col regs -∗ WPasm es)))
       end)) -∗
     WPasm (AssumeReg r [] v ann :t: es).
@@ -1299,7 +1300,7 @@ Section instances.
     unfold tactic_hint, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - iDestruct "Hwp" as (->) "?". by iApply (wp_assume_reg with "Hr").
-    - iDestruct "Hwp" as (?? Hr) "Hwp"; simplify_eq/=.
+    - iDestruct "Hwp" as ([??]? Hr) "Hwp"; simplify_eq/=.
       iDestruct (regcol_lookup_Some with "Hr") as (vact ?) "[Hr Hregs]"; [done|] => /=.
       have ?: vact = v by naive_solver. subst.
       iApply (wp_assume_reg with "Hr"). iIntros "Hr". iApply "Hwp". by iApply "Hregs".
@@ -1511,7 +1512,7 @@ Section instances.
       match rk with
       | RKMapsTo v => (if v is RegVal_Base v' then r ↦ᵣ v -∗ Φ v' else False)
       | RKCol regs =>
-          tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ s,
+          tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
            ∀ v, ⌜valu_has_shape v s⌝ -∗ ∃ v', ⌜v = RegVal_Base v'⌝ ∗ (reg_col regs -∗ Φ v')
              )
       end)) -∗
@@ -1520,7 +1521,7 @@ Section instances.
     unfold tactic_hint, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - case_match => //; subst. by iApply (wpae_var_reg with "Hr").
-    - iDestruct "Hwp" as (? ?) "Hwp"; simplify_eq/=.
+    - iDestruct "Hwp" as ([??] ?) "Hwp"; simplify_eq/=.
       iDestruct (regcol_lookup_Some with "Hr") as (??) "[Hr Hregs]"; [done|] => /=.
       iDestruct ("Hwp" with "[//]") as (? ->) "Hwp".
       iApply (wpae_var_reg with "Hr"). iIntros "Hr". iApply "Hwp". by iApply "Hregs".
