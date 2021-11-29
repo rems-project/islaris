@@ -329,6 +329,10 @@ Lemma String_eqb_eq s1 s2:
   (s1 =? s2)%string = bool_decide (s1 = s2).
 Proof. case_bool_decide; subst; by rewrite ?String.eqb_eq ?eqb_neq. Qed.
 
+Lemma andb_bool_decide P1 P2 `{!Decision P1} `{!Decision P2} :
+  bool_decide P1 && bool_decide P2 = bool_decide (P1 ∧ P2).
+Proof. repeat case_bool_decide => //; naive_solver. Qed.
+
 (* This has as better performance characteristic wrt. simpl compared
 to list_find since list_find_idx does not contain prod_map. *)
 Definition list_find_idx {A} P `{∀ x, Decision (P x)} : list A → option nat :=

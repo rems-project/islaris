@@ -552,6 +552,50 @@ Fixpoint regcol_lookup_field (r f : string) (regs : list (reg_kind * valu_shape)
       else regcol_lookup_field r f regs'
   | [] => None
   end.
+Lemma regcol_lookup_field_Some `{!islaG Σ} `{!threadG} r f regs s:
+  regcol_lookup_field r f regs = Some s →
+  reg_col regs -∗ ∃ v v',
+      let P := (if s.1 then r # f ↦ᵣ v else r ↦ᵣ v' ∗ ⌜read_accessor [Field f] v' = Some v⌝)%I in
+      ⌜valu_has_shape v s.2⌝ ∗ P ∗ (P -∗ reg_col regs).
+Proof.
+  iIntros (Hr) "Hregs". iInduction regs as [|[r' s'] regs'] "IH" forall (s Hr) => //.
+  rewrite ->reg_col_cons. iDestruct "Hregs" as "[[%v [%Hs Hv]] Hregs]".
+  simpl in *. destruct r' as [r'|r' f'].
+  - rewrite String_eqb_eq in Hr. case_bool_decide; simplify_eq/=.
+    + destruct s' as [[]| | | | |] => //; move: Hr => /fmap_Some[[i[??]][Hr ?]]; simplify_eq/=.
+      all: rewrite list_find_bool_list_find in Hr; move: Hr => /list_find_Some[?[Hb Hnot]].
+      all: rewrite String_eqb_eq bool_decide_spec in Hb; simplify_eq/=.
+      all: setoid_rewrite String_eqb_eq in Hnot; setoid_rewrite bool_decide_spec in Hnot.
+      * iExists _, _. rewrite ->reg_col_cons. iSplit; [done|]. iFrame. iSplit. {
+          iPureIntro. rewrite /read_accessor => /=. apply bind_Some. eexists _. split.
+          { apply list_find_idx_Some. by eexists (_, _). }
+          apply bind_Some. by eexists _.
+        }
+        iIntros "[? %]". iExists _. by iFrame.
+      * destruct v as [| | | | | | |rs|] => //; simplify_eq/=.
+        move: Hs => [Hlen Hall'']. move: (Hall'') => /Forall_fold_right/(Forall_lookup_1 _ _ _ _)Hall.
+        have [|[??]?]:= lookup_lt_is_Some_2 rs i.
+        { rewrite -Hlen. apply: lookup_lt_is_Some_1. naive_solver. }
+        efeed pose proof Hall as Hall'. { by rewrite ->lookup_zip_with; simplify_option_eq. }
+        destruct Hall' as [??]; simplify_eq.
+        iExists _, _. rewrite ->reg_col_cons. iSplit; [done|]. iFrame. iSplit. {
+          iPureIntro. rewrite /read_accessor => /=. apply bind_Some. eexists _. split.
+          2: { apply bind_Some. by eexists _. }
+          apply list_find_idx_Some. eexists (_, _). split_and! => //. move => j[??]?/=.
+          have [|[??]?]:= lookup_lt_is_Some_2 ss j.
+          { rewrite Hlen. apply: lookup_lt_is_Some_1. naive_solver. }
+          efeed pose proof Hall as Hall'. { by rewrite ->lookup_zip_with; simplify_option_eq. }
+          eapply (Hnot _ (_, _)). naive_solver.
+        }
+        iIntros "[? %]". iExists _. by iFrame.
+    + iDestruct ("IH" with "[//] Hregs") as (???) "[? Hregs]". iExists _, _. iSplit;[done|]. iFrame.
+      iIntros "Hr". rewrite ->reg_col_cons. iDestruct ("Hregs" with "Hr") as "$". eauto with iFrame.
+  - rewrite !String_eqb_eq andb_bool_decide in Hr. case_bool_decide; destruct_and?; simplify_eq/=.
+    + iExists _, _. rewrite ->reg_col_cons. iSplit; [done|]. iFrame. iIntros "?". iExists _. by iFrame.
+    + iDestruct ("IH" with "[//] Hregs") as (???) "[? Hregs]". iExists _, _. iSplit;[done|]. iFrame.
+      iIntros "Hr". rewrite ->reg_col_cons. iDestruct ("Hregs" with "Hr") as "$". eauto with iFrame.
+      Unshelve. all: by apply inhabitant.
+Qed.
 
 Fixpoint regcol_extract (r : reg_kind) (regs : list (reg_kind * valu_shape)) : option (valu_shape * list (reg_kind * valu_shape)) :=
   match regs with
@@ -1264,43 +1308,22 @@ Section instances.
       match rk with
       | RKMapsTo v' => (⌜vread = v'⌝ -∗ r # f ↦ᵣ v' -∗ WPasm es)
       | RKCol regs => tactic_hint (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(b, s),
-             ⌜if b then valu_has_shape vread s else True⌝ -∗ reg_col regs -∗ WPasm es)
+             ⌜valu_has_shape vread s⌝ -∗ reg_col regs -∗ WPasm es)
       end))) -∗
     WPasm (ReadReg r [Field f] v ann :t: es).
-  Proof. Admitted.
-  (*
-    unfold tactic_hint, vm_compute_hint.
+  Proof.
+    unfold tactic_hint, regcol_compute_hint.
     iDestruct 1 as (???) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_read_reg_struct with "Hr").
-    - iDestruct "Hwp" as (? [[? s][?[Hor ?]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
-      erewrite list_lookup_total_correct; [|done].
-      iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [%Hvact Hr]] Hregs]"; [done|] => /=.
-      case: Hor => [?|[?[i]]]; simplify_eq.
-      + iApply (wp_read_reg_struct with "Hr"); [done|]. iIntros "% Hr". subst vread.
-        iApply "Hwp"; [done|]. iApply "Hregs". iExists _. by iFrame.
-      + destruct s as [[]| | | | |] => // Hidx; move: (Hidx) => /list_find_idx_Some[?[Hl [? Hlt]]].
-        * rewrite Hvact.
-          iApply (wp_read_reg_acc with "Hr"); [| done|].
-          { rewrite /read_accessor/=. by simplify_option_eq. }
-          iIntros "% Hr". iApply "Hwp"; [done|]. iApply "Hregs". iExists _. by iFrame.
-        * destruct vact as [| | | | | | | rs|] => //.
-          move: (Hvact) => /= [Hlen /Forall_fold_right/(Forall_lookup_1 _ _ _ _) Hall].
-          have [|[??]?]:= lookup_lt_is_Some_2 rs i.
-          { rewrite -Hlen. apply: lookup_lt_is_Some_1. naive_solver. }
-          efeed pose proof Hall as Hall'. { rewrite ->lookup_zip_with, Hl. simpl. by simplify_option_eq. }
-          destruct Hall'; simplify_eq.
-          iApply (wp_read_reg_acc with "Hr"); [| done|]. {
-            rewrite /read_accessor/=. apply/bind_Some.
-            eexists i. simplify_option_eq. split; [|done].
-            apply/list_find_idx_Some. eexists _. split_and! => // j [??]/=??.
-            have [|[??] Hjs]:= lookup_lt_is_Some_2 ss j.
-            { rewrite Hlen. apply: lookup_lt_is_Some_1. naive_solver. }
-            efeed pose proof Hall as Hall'. { rewrite ->lookup_zip_with, Hjs. simpl. by simplify_option_eq. }
-            destruct Hall'; simplify_eq. by apply: (Hlt _ (_, _)).
-          }
-          iIntros "% Hr". iApply "Hwp"; [done|]. iApply "Hregs". iExists _. by iFrame.
+    - iDestruct "Hwp" as ([b s] Hs) "Hwp"; simplify_eq/=.
+      iDestruct (regcol_lookup_field_Some with "Hr") as (???) "[Hr Hregs]"; [done|] => /=.
+      destruct b.
+      + iApply (wp_read_reg_struct with "Hr"); [done|].
+        iIntros (?) "Hr"; subst. iApply ("Hwp" with "[//]"). by iApply "Hregs".
+      + iDestruct "Hr" as "[Hr %]". iApply (wp_read_reg_acc with "Hr"); [done..|].
+        iIntros (?) "Hr"; subst. iApply ("Hwp" with "[//]"). iApply "Hregs". by iFrame.
   Qed.
-*)
+
   Lemma li_wp_assume_reg r v ann es :
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
@@ -1330,30 +1353,17 @@ Section instances.
       end))) -∗
     WPasm (AssumeReg r [Field f] v ann :t: es).
   Proof.
-    unfold tactic_hint, vm_compute_hint.
+    unfold tactic_hint, regcol_compute_hint.
     iDestruct 1 as (?) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - iDestruct "Hwp" as (->) "?". by iApply (wp_assume_reg_struct with "Hr").
-    -
-  Admitted.
-  (*
-      iDestruct "Hwp" as (i [[??][?[Hor ?]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
-      erewrite list_lookup_total_correct; [|done].
-      iDestruct "Hwp" as (e ->) "Hwp"; simplify_eq/=. destruct Hor; simplify_eq.
-      + iDestruct "Hwp" as (->) "Hwp".
-        iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
-        iApply (wp_assume_reg_struct with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs".
-        iExists _. by iFrame.
-      + do 2 case_match => //.
-        iDestruct "Hwp" as (? Hi ?) "Hwp"; simplify_eq/=.
-        move: (Hi) => /list_find_idx_Some [[??][?[? ?]]]; simplify_eq/=.
-        erewrite list_lookup_total_correct; [|done]; simplify_eq/=.
-        iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
-        iApply (wp_assume_reg_acc with "Hr").
-        { rewrite /read_accessor /=. by simplify_option_eq. }
-        iIntros "Hr". iApply "Hwp". iApply "Hregs".
-        iExists _. by iFrame.
+    - iDestruct "Hwp" as ([b []] Hs) "Hwp"; simplify_eq/= => //. iDestruct "Hwp" as (?) "Hwp". subst.
+      iDestruct (regcol_lookup_field_Some with "Hr") as (???) "[Hr Hregs]"; [done|]; simplify_eq/=.
+      destruct b.
+      + iApply (wp_assume_reg_struct with "Hr"). iIntros "Hr". iApply "Hwp". by iApply "Hregs".
+      + iDestruct "Hr" as "[Hr %]". iApply (wp_assume_reg_acc with "Hr"); [done|].
+        iIntros "Hr". iApply "Hwp". iApply "Hregs". by iFrame.
   Qed.
-*)
+
   Lemma li_wp_write_reg r v ann es:
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
@@ -1554,28 +1564,18 @@ Section instances.
       end)) -∗
     WPaexp (AExp_Val (AVal_Var r [Field f]) ann) {{ Φ }}.
   Proof.
-    unfold tactic_hint, vm_compute_hint.
+    unfold tactic_hint, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - case_match => //; subst. by iApply (wpae_var_struct with "Hr").
-    -
-  Admitted.
-  (*
-      iDestruct "Hwp" as (? [[??][?[Hor ?]]]%list_find_idx_Some) "Hwp"; simplify_eq/=.
-      erewrite list_lookup_total_correct; [|done].
-      iDestruct "Hwp" as (e ->) "Hwp"; simplify_eq/=. destruct Hor; simplify_eq.
-      + iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
-        iDestruct ("Hwp" with "[//]") as (? ->) "Hwp".
-        iApply (wpae_var_struct with "Hr"). iIntros "Hr". iApply "Hwp". iApply "Hregs".
-        iExists _. by iFrame.
-      + iDestruct (big_sepL_lookup_acc with "Hr") as "[[%vact [% Hr]] Hregs]"; [done|]; simplify_eq/=.
-        iDestruct ("Hwp" with "[//]") as (? ->) "Hwp". iDestruct "Hwp" as (? Hi) "Hwp".
-        move: (Hi) => /list_find_idx_Some [[??][?[? ?]]]; simplify_eq/=.
-        erewrite list_lookup_total_correct; [|done]; simplify_eq/=. case_match => //.
-        iApply (wpae_var_reg_acc with "Hr").
-        { rewrite /read_accessor /=. by simplify_option_eq. }
-        iIntros "Hr". iApply "Hwp". iApply "Hregs". iExists _. by iFrame.
+    - iDestruct "Hwp" as ([b s] Hs) "Hwp"; simplify_eq/=.
+      iDestruct (regcol_lookup_field_Some with "Hr") as (???) "[Hr Hregs]"; [done|]; simplify_eq/=.
+      iDestruct ("Hwp" with "[//]") as "Hwp". destruct v => //.
+      destruct b.
+      + iApply (wpae_var_struct with "Hr"). iIntros "Hr". iApply "Hwp". by iApply "Hregs".
+      + iDestruct "Hr" as "[Hr %]". iApply (wpae_var_reg_acc with "Hr"); [done|].
+        iIntros "Hr". iApply "Hwp". iApply "Hregs". by iFrame.
   Qed.
-*)
+
   Lemma li_wpae_bits b Φ ann:
     Φ (Val_Bits b) -∗
     WPaexp (AExp_Val (AVal_Bits b) ann) {{ Φ }}.
