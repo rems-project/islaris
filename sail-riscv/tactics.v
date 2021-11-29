@@ -347,8 +347,20 @@ Proof.
   apply: sim_haveDExt => -[]; by red_sim.
 Qed.
 
+Lemma bv_extract_17_1_and (b : bv 64):
+  bv_and b [BV{64} 0x20000] = [BV{64} 0] →
+  bv_extract 17 1 b = [BV{1} 0].
+Proof.
+  move => Hb.
+  bits_simplify.
+  bitify_hyp Hb. specialize (Hb (n + 17) ltac:(done)).
+  bits_simplify_hyp Hb.
+  change (131072) with (1 ≪ 17) in Hb.
+  by bits_simplify_hyp Hb.
+Qed.
+
 Lemma sim_effectivePrivilege Σ K t m priv e2:
-  bv_extract 17 1 (mword_to_bv (n2:=64) (Mstatus_Mstatus_chunk_0 m)) = [BV{1} 0] →
+  bv_and (mword_to_bv (n2:=64) (Mstatus_Mstatus_chunk_0 m)) [BV{64} 0x20000] = [BV{64} 0] →
   sim Σ (Done priv) K e2 →
   sim Σ (effectivePrivilege t m priv) K e2.
 Proof.
@@ -356,5 +368,5 @@ Proof.
   unfold effectivePrivilege.
   destruct t as [[]|[]|[[] []]|[]]; red_sim => //; rewrite if_false //.
   all: unfold _get_Mstatus_MPRV; rewrite (eq_vec_to_bv 1); [|done].
-  all: by rewrite (mword_to_bv_subrange_vec_dec 17 17 64) // Hm.
+  all: by rewrite (mword_to_bv_subrange_vec_dec 17 17 64) // bv_extract_17_1_and.
 Qed.

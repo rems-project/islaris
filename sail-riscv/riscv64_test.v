@@ -206,7 +206,7 @@ Lemma riscv_test_safe regs (satpv x10v x2v mstatus_bits x11v : bv 64):
   mword_to_bv (plat_clint_base ()) = [BV{64} 0x0000000002000000] →
   mword_to_bv (plat_clint_size ()) = [BV{64} 0x00000000000c0000] →
   mword_to_bv (plat_htif_tohost ()) = [BV{64} 0x0000000040001000] →
-  bv_extract 17 1 mstatus_bits = [BV{1} 0] →
+  Z.land (bv_unsigned mstatus_bits) 0x20000 = 0 →
   bv_unsigned x2v `mod` 8 = 0 →
   bv_unsigned x2v + 16 < 2 ^ 64 →
   0x0000000080000000 ≤ bv_unsigned x2v + 8 < 0x0000000080000000 + 0x0000000004000000 →
