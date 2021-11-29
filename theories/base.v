@@ -425,6 +425,22 @@ Section list_find_idx_bool.
   Proof. rewrite !list_find_idx_bool_list_find_idx. apply: list_find_idx_insert_neq. Qed.
 End list_find_idx_bool.
 
+Definition list_find_bool {A} (f : A → bool) : list A → option (nat * A) :=
+  fix go l :=
+  match l with
+  | [] => None
+  | x :: l => if f x then Some (0%nat, x) else prod_map S id <$> go l
+  end.
+Global Instance: Params (@list_find_bool) 3 := {}.
+
+Section list_find_bool.
+  Context {A} (f : A → bool).
+
+  Lemma list_find_bool_list_find l:
+    list_find_bool f l = list_find f l.
+  Proof. elim: l => //= ?? ->. case_decide => //=; by case_match. Qed.
+End list_find_bool.
+
 Section map_Forall.
   Context `{FinMap K M}.
   Context {A} (P : K → A → Prop).
