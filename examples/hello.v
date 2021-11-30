@@ -133,7 +133,7 @@ Proof.
     }
     subst. rewrite drop_ge //. normalize_and_simpl_goal => //. bv_solve.
   - rename select (bv_concat _ _ _ ≠ _) into Hneq.
-    bv_simplify_hyp Hneq.
+    bv_simplify Hneq.
     revert select (_ !! i = Some vmem). move: Hneq. clear => ??.
     by repeat (destruct i; simplify_eq/=).
   - erewrite list_lookup_total_correct; [|done]. bv_solve.

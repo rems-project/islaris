@@ -127,8 +127,8 @@ Proof.
 
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
-  all: try bv_simplify_arith_hyp select (bv_extract _ _ _ ≠ _).
-  all: try bv_simplify_arith_hyp select (bv_extract _ _ _ = _).
+  all: try bv_simplify_arith select (bv_extract _ _ _ ≠ _).
+  all: try bv_simplify_arith select (bv_extract _ _ _ = _).
   - rewrite insert_length. bv_solve.
   - bv_solve.
   - bv_simplify.
@@ -184,6 +184,6 @@ Proof.
   liARun.
   Unshelve. all: prepare_sidecond.
   - by destruct dstdata, srcdata.
-  - bv_simplify_hyp select (n ≠ _). bv_solve.
+  - bv_simplify select (n ≠ _). bv_solve.
 (*PROOF_END*)
 Time Qed.

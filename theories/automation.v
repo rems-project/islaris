@@ -204,7 +204,7 @@ Proof.
   split; move => [Hb ?]; split => //.
   - bv_simplify. bitblast. eapply Z_bounded_iff_bits_nonneg; [| |done|]; bv_solve.
   - eapply Z_bounded_iff_bits_nonneg; [lia | bv_solve|] => l ?. bitblast.
-    bv_simplify_hyp Hb. by bitblast Hb with l.
+    bv_simplify Hb. by bitblast Hb with l.
 Qed.
 
 Global Instance simpl_and_bv_and_0xfff0000000000007 b :
@@ -215,7 +215,7 @@ Proof.
     bv_simplify. bitblast as i.
     + by bitblast Hmod with i.
     + eapply Z_bounded_iff_bits_nonneg; [| |done|]; bv_solve.
-  - move => [Hb ?]. bv_simplify_hyp Hb. split_and!; [..|done].
+  - move => [Hb ?]. bv_simplify Hb. split_and!; [..|done].
     + eapply Z_bounded_iff_bits_nonneg; [lia|bv_solve|] => l ?. bitblast.
       by bitblast Hb with l.
     + bitblast as i. by bitblast Hb with i.
@@ -246,7 +246,7 @@ Lemma normalize_instr_addr_riscv64_ret_tac a r:
   bv_wrap 64 (bv_unsigned (bv_or (bv_and (bv_add a [BV{64} 0]) [BV{64} 0xfffffffffffffffe])  [BV{64} 0])) = r.
 Proof.
   move => Ha <-. have -> : (bv_add a [BV{64} 0]) = a by bv_solve.
-  f_equal. bv_simplify. bv_simplify_hyp Ha. bitblast as i. by bitblast Ha with i.
+  f_equal. bv_simplify. bv_simplify Ha. bitblast as i. by bitblast Ha with i.
 Qed.
 
 Ltac solve_normalize_instr_addr :=

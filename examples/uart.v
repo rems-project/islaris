@@ -118,7 +118,7 @@ Proof.
     contradict Hn. bv_simplify. bitblast as i. by have -> : i = 0 by lia.
   - rename select (_ = _) into Hn.
     rewrite sif_false; [done|]. apply not_true_iff_false.
-    bv_simplify_hyp Hn. by bitblast Hn with 0.
+    bv_simplify Hn. by bitblast Hn with 0.
 (*PROOF_END*)
 Time Qed.
 
@@ -173,7 +173,7 @@ Proof.
   all: try by bv_solve.
   all: try by bv_simplify; bitblast.
   + rename select (_ = [BV{1} 1]) into Hn.
-    bv_simplify_hyp Hn. by bitblast Hn with 0.
+    bv_simplify Hn. by bitblast Hn with 0.
   + rename select (_ ≠ [BV{1} 1]) into Hn. contradict Hn. bv_simplify. bitblast as i.
     by have -> : i = 0 by lia.
 (*PROOF_END*)

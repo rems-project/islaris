@@ -190,19 +190,19 @@ Proof.
   all: try bv_solve.
   all: try (rename select (_ ↔ R _ _) into HR).
   all: try (rewrite bv_sign_extend_idemp bv_add_0_r in HR; [|done]).
-  - bv_simplify_arith_hyp select (_ >= _).
+  - bv_simplify_arith select (_ >= _).
     apply: binary_search_cond_2; [solve_goal..| bv_solve].
-  - bv_simplify_arith_hyp select (¬ (_ >= _)). bv_solve.
-  - bv_simplify_arith_hyp select (¬ (_ >= _)).
-    bv_simplify_arith_hyp select (_ ≤ _).
+  - bv_simplify_arith select (¬ (_ >= _)). bv_solve.
+  - bv_simplify_arith select (¬ (_ >= _)).
+    bv_simplify_arith select (_ ≤ _).
     apply: binary_search_cond_2; [solve_goal..| bv_solve].
-  - bv_simplify_arith_hyp select (_ < _). bv_solve.
-  - bv_simplify_arith_hyp select (_ < _).
+  - bv_simplify_arith select (_ < _). bv_solve.
+  - bv_simplify_arith select (_ < _).
     apply: binary_search_cond_1; [solve_goal..| bv_solve].
-  - bv_simplify_arith_hyp select (_ < _).
+  - bv_simplify_arith select (_ < _).
     apply: binary_search_cond_1; [solve_goal..| bv_solve].
-  - bv_simplify_arith_hyp select (_ ≤ _).
-    bv_simplify_arith_hyp select (¬ (_ < _)).
+  - bv_simplify_arith select (_ ≤ _).
+    bv_simplify_arith select (¬ (_ < _)).
     naive_solver bv_solve.
 (*PROOF_END*)
 Time Qed.
@@ -271,7 +271,7 @@ Proof.
   all: try bv_solve.
   all: try rewrite ->@bv_add_0_r in * by done; try done.
   all: try bv_solve.
-  - bv_simplify_hyp select (_ ≠ [BV{64} 0]). bv_solve.
+  - bv_simplify select (_ ≠ [BV{64} 0]). bv_solve.
   - eauto.
   - eauto.
 (*PROOF_END*)

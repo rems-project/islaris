@@ -93,21 +93,6 @@ Lemma bitblast_Z_of_bool b n:
 Proof. rewrite -bool_to_Z_Z_of_bool. apply bitblast_bool_to_Z. Qed.
 Global Hint Resolve bitblast_Z_of_bool | 10 : bitblast.
 
-Lemma bitblast_add_0 z1 z2 b1 b2:
-  Bitblast z1 0 b1 →
-  Bitblast z2 0 b2 →
-  Bitblast (z1 + z2) 0 (xorb b1 b2).
-Proof. move => [<-] [<-]. constructor. apply Z.add_bit0. Qed.
-Global Hint Resolve bitblast_add_0 | 5 : bitblast.
-Lemma bitblast_add_1 z1 z2 b10 b11 b20 b21:
-  Bitblast z1 0 b10 →
-  Bitblast z2 0 b20 →
-  Bitblast z1 1 b11 →
-  Bitblast z2 1 b21 →
-  Bitblast (z1 + z2) 1 (xorb (xorb b11 b21) (b10 && b20)).
-Proof. move => [<-] [<-] [<-] [<-]. constructor. apply Z.add_bit1. Qed.
-Global Hint Resolve bitblast_add_1 | 5 : bitblast.
-
 Lemma bitblast_bounded_bv_unsigned n (b : bv n):
   BitblastBounded (bv_unsigned b) (Z.of_N n).
 Proof. constructor. apply bv_unsigned_in_range. Qed.
@@ -512,8 +497,7 @@ Ltac reduce_closed_bv_simplify :=
   | H : context [Z.lxor ?a ?b] |- _ => progress reduce_closed (Z.lxor a b)
   end.
 
-
-Ltac bv_simplify :=
+Tactic Notation "bv_simplify" :=
   unLET;
   (* We need to reduce operations on N in indices of bv because
   otherwise lia can get confused (it does not perform unification when
@@ -526,25 +510,25 @@ Ltac bv_simplify :=
   (* autorewrite with bv_unfold; *)
   autorewrite with bv_unfolded_simplify.
 
-Ltac bv_simplify_hyp H :=
+Tactic Notation "bv_simplify" ident(H) :=
   unLET;
   autorewrite with bv_simplify in H;
   first [ move/bv_eq in H | idtac ];
   tactic bv_unfold in H;
   autorewrite with bv_unfolded_simplify in H.
-Tactic Notation "bv_simplify_hyp" "select" open_constr(pat) :=
-  select pat (fun H => bv_simplify_hyp H).
+Tactic Notation "bv_simplify" "select" open_constr(pat) :=
+  select pat (fun H => bv_simplify H).
 
-Ltac bv_simplify_arith :=
+Tactic Notation "bv_simplify_arith" :=
   bv_simplify;
   autorewrite with bv_unfolded_to_arith;
   reduce_closed_bv_simplify.
-Ltac bv_simplify_arith_hyp H :=
-  bv_simplify_hyp H;
+Tactic Notation "bv_simplify_arith" ident(H) :=
+  bv_simplify H;
   autorewrite with bv_unfolded_to_arith in H;
   reduce_closed_bv_simplify.
-Tactic Notation "bv_simplify_arith_hyp" "select" open_constr(pat) :=
-  select pat (fun H => bv_simplify_arith_hyp H).
+Tactic Notation "bv_simplify_arith" "select" open_constr(pat) :=
+  select pat (fun H => bv_simplify_arith H).
 
 Ltac bv_solve_unfold_tac := idtac.
 

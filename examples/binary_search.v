@@ -114,7 +114,7 @@ Proof.
   all: try bv_solve.
   - bv_simplify. bitblast.
   - bv_simplify. bitblast as i. destruct (Z.testbit (bv_unsigned v) i) eqn:? => //.
-    bv_simplify_hyp H0. bitblast H0 with i. congruence.
+    bv_simplify H0. bitblast H0 with i. congruence.
   - bv_simplify. bitblast.
   - bv_simplify. bitblast as i. have ? : i = 0 by lia. subst.
     destruct (Z.testbit (bv_unsigned v) 0) eqn:? => //.
@@ -218,31 +218,31 @@ Proof.
   - bv_solve.
   - bv_solve.
   - bv_solve.
-  - bv_simplify_arith_hyp select (ite _ _ _ ≠ ite _ _ _).
+  - bv_simplify_arith select (ite _ _ _ ≠ ite _ _ _).
     destruct bres; simpl in *; bv_solve.
-  - bv_simplify_arith_hyp select (i < _).
+  - bv_simplify_arith select (i < _).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
     bv_solve.
-  - bv_simplify_arith_hyp select (_ ≤ i).
+  - bv_simplify_arith select (_ ≤ i).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_2; [solve_goal..|].
     bv_solve.
-  - bv_simplify_arith_hyp select (i < _).
+  - bv_simplify_arith select (i < _).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
     bv_solve.
-  - bv_simplify_arith_hyp select (ite _ _ _ = ite _ _ _).
-    bv_simplify_arith_hyp select (_ ≤ i).
+  - bv_simplify_arith select (ite _ _ _ = ite _ _ _).
+    bv_simplify_arith select (_ ≤ i).
     destruct bres; simpl in *; [solve_goal|].
     apply: binary_search_cond_2; [solve_goal..|].
     bv_solve.
-  - bv_simplify_arith_hyp select (i < _).
+  - bv_simplify_arith select (i < _).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
     bv_solve.
-  - bv_simplify_arith_hyp select (¬ _ ≤ _).
-    bv_simplify_arith_hyp select (_ ≤ i).
+  - bv_simplify_arith select (¬ _ ≤ _).
+    bv_simplify_arith select (_ ≤ i).
     destruct bres; simpl in *; bv_solve.
 (*PROOF_END*)
 Time Qed.

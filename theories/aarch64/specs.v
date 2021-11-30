@@ -116,7 +116,7 @@ Ltac cmp_spec_tac4 :=
   apply bv_eq;
   case_bool_decide as Hbv; case_bool_decide as Heq => //; exfalso; contradict Hbv;
     apply/bv_eq_signed; bv_simplify_arith;
-    bv_simplify_arith_hyp Heq;
+    bv_simplify_arith Heq;
     bv_solve.
 
 Definition cmp_R_imm_spec `{!islaG Σ} `{!threadG} (pc : Z) (R : string) (imm : Z) : iProp Σ :=
@@ -266,9 +266,9 @@ Definition movk_spec `{!islaG Σ} `{!threadG} (pc : Z) (R : string) (v' : bv 16)
   R ↦ᵣ RVal_Bits v ∗
   instr_pre (pc + 4) (
     reg_col sys_regs ∗
-    R ↦ᵣ 
-      RVal_Bits 
-        (bv_concat 64 
+    R ↦ᵣ
+      RVal_Bits
+        (bv_concat 64
           (bv_extract (16 * (ind + 1)) (16 * (3 - ind)) v)
           (bv_concat (16 * (ind + 1)) v' (bv_extract 0 (16 * ind) v))) ∗
     True
