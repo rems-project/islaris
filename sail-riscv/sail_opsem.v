@@ -68,9 +68,8 @@ Proof. move => [] []; done. Qed.
 
 Global Instance byte_to_memory_byte_inj : Inj eq eq byte_to_memory_byte.
 Proof.
-  move => x y. rewrite /byte_to_memory_byte/= => ?. simplify_list_eq.
-  apply bv_eq_wrap. apply Z.bits_inj_iff' => n ?. rewrite !bv_wrap_spec //.
-  case_bool_decide => //=.
+  move => x y. rewrite /byte_to_memory_byte/= => ?. simplify_list_eq. unfold byte in *.
+  apply bv_eq. bitblast as n.
   destruct (decide (n = 0)); subst => //.
   destruct (decide (n = 1)); subst => //.
   destruct (decide (n = 2)); subst => //.
@@ -183,9 +182,7 @@ Proof.
   rewrite !Z_nat_N !Z2N.id ?N2Z.inj_div ?N2Z.inj_mod ?N2Z.inj_pow ?Z2N.id; [|lia..].
   have -> : Z.of_N (N.of_nat (Z.to_nat z1 + 1)) = z1 + 1 by lia.
   rewrite -Z.shiftr_div_pow2 -?Z.land_ones; [|lia..].
-  apply Z.bits_inj_iff' => n Hn.
-  rewrite ?bv_wrap_spec ?Z.shiftr_spec ?Z.shiftl_spec ?Z.land_spec ?Z_ones_spec; [|lia..].
-  repeat case_bool_decide => //; try lia. by rewrite andb_true_r.
+  bitblast.
 Qed.
 
 Lemma getBit_get_word_testbit n z (w : mword n):
@@ -255,7 +252,7 @@ Proof.
 Qed.
 Arguments EXTS : simpl never.
 
-#[local] Hint Rewrite wordToN_spec_high Z_of_bool_spec_high using lia : rewrite_bits_db.
+(* #[local] Hint Rewrite wordToN_spec_high Z_of_bool_spec_high using lia : rewrite_bits_db. *)
 Lemma mword_to_bv_update_vec_dec n1 n2 (b : mword n1) b1 z b2:
   bool_of_bitU b1 = Some b2 →
   n1 = Z.of_N n2 →
@@ -887,7 +884,7 @@ Proof.
     apply: raw_sim_weaken; [by apply Hsim|lia].
   - move => [?[??]]. simplify_eq. eexists _. split. {
       apply: steps_l'.
-      { econstructor. econstructor; [done| by econstructor|] => /=. done. } 2: done.
+      { econstructor. econstructor; [done| apply: DeclareConstBitVecS'; shelve|] => /=. done. } 2: done.
       apply: (steps_l' _ _ _ _ (Some _)); [ |by apply: steps_refl| by rewrite right_id_L ].
       econstructor. econstructor; [done| by econstructor|]; csimpl.
       eexists _, _, _. split_and! => //. { by rewrite /eq_var_name Z.eqb_refl. }

@@ -173,13 +173,8 @@ Proof.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_true in Hb1. by rewrite Hb1.
   + rewrite access_vec_dec_to_bv // bitU_of_bool_B0 //.
     rewrite mword_to_bv_add_vec //=. reduce_closed_mword_to_bv.
-    rewrite bv_add_unsigned bv_wrap_spec_low // Z.add_bit1 /=.
-    have -> : (Z.testbit (bv_unsigned (mword_to_bv (n2:=64) (PC regs))) 1) = false. {
-      rename select (bv_extract 1 1 _ = _) into He.
-      bitify_hyp He. move: (He 0 ltac:(done)) => {}He.
-      by bits_simplify_hyp He.
-    }
-    by rewrite andb_false_r.
+    bv_simplify. rename select (bv_extract 1 1 _ = _) into He. bv_simplify_hyp He.
+    bitblast. by bitblast He with 0.
   + rewrite mword_to_bv_add_vec //.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_false in Hb1. done.
   + rewrite mword_to_bv_add_vec //.

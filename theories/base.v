@@ -323,7 +323,7 @@ Proof. by destruct b. Qed.
 Lemma Z_of_bool_spec_high b z:
   0 < z →
   Z.testbit (Z_of_bool b) z = false.
-Proof. move => ?. destruct b => /=; by rewrite ?Z.bits_0 // Z_bits_1_above. Qed.
+Proof. move => ?. destruct b => /=; rewrite /Z.of_nat/=; bitblast. Qed.
 
 Lemma String_eqb_eq s1 s2:
   (s1 =? s2)%string = bool_decide (s1 = s2).

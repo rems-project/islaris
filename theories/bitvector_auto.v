@@ -81,7 +81,46 @@ Lemma bool_to_Z_Z_of_bool:
   bool_to_Z = Z_of_bool.
 Proof. done. Qed.
 
-#[export] Hint Rewrite bv_unsigned_spec_high using lia : rewrite_bits_db.
+Lemma bitblast_bool_to_Z b n:
+  Bitblast (bool_to_Z b) n (bool_decide (n = 0) && b).
+Proof.
+  constructor. destruct b => /=; repeat case_bool_decide;
+     subst => //=; rewrite ?Z.bits_0 //; by destruct n.
+Qed.
+Global Hint Resolve bitblast_bool_to_Z | 10 : bitblast.
+Lemma bitblast_Z_of_bool b n:
+  Bitblast (Z_of_bool b) n (bool_decide (n = 0) && b).
+Proof. rewrite -bool_to_Z_Z_of_bool. apply bitblast_bool_to_Z. Qed.
+Global Hint Resolve bitblast_Z_of_bool | 10 : bitblast.
+
+Lemma bitblast_add_0 z1 z2 b1 b2:
+  Bitblast z1 0 b1 →
+  Bitblast z2 0 b2 →
+  Bitblast (z1 + z2) 0 (xorb b1 b2).
+Proof. move => [<-] [<-]. constructor. apply Z.add_bit0. Qed.
+Global Hint Resolve bitblast_add_0 | 5 : bitblast.
+Lemma bitblast_add_1 z1 z2 b10 b11 b20 b21:
+  Bitblast z1 0 b10 →
+  Bitblast z2 0 b20 →
+  Bitblast z1 1 b11 →
+  Bitblast z2 1 b21 →
+  Bitblast (z1 + z2) 1 (xorb (xorb b11 b21) (b10 && b20)).
+Proof. move => [<-] [<-] [<-] [<-]. constructor. apply Z.add_bit1. Qed.
+Global Hint Resolve bitblast_add_1 | 5 : bitblast.
+
+Lemma bitblast_bounded_bv_unsigned n (b : bv n):
+  BitblastBounded (bv_unsigned b) (Z.of_N n).
+Proof. constructor. apply bv_unsigned_in_range. Qed.
+Global Hint Resolve bitblast_bounded_bv_unsigned | 15 : bitblast.
+
+Lemma bitblast_bv_wrap z1 n n1 b1:
+  Bitblast z1 n b1 →
+  Bitblast (bv_wrap n1 z1) n (bool_decide (n < Z.of_N n1) && b1).
+Proof.
+  move => [<-]. constructor.
+  destruct (decide (0 ≤ n)); [by rewrite bv_wrap_spec| rewrite !Z.testbit_neg_r; [|lia..]; btauto].
+Qed.
+Global Hint Resolve bitblast_bv_wrap | 10 : bitblast.
 
 Lemma bv_extract_concat_later m n1 n2 s l (b1 : bv n1) (b2 : bv n2):
   (n2 ≤ s)%N → (m = n1 + n2)%N →
@@ -89,7 +128,7 @@ Lemma bv_extract_concat_later m n1 n2 s l (b1 : bv n1) (b2 : bv n2):
 Proof.
   move => ? ->. apply bv_eq.
   rewrite !bv_extract_unsigned bv_concat_unsigned // !bv_wrap_land.
-  bitblast.
+  bitblast. f_equal. lia.
 Qed.
 Lemma bv_extract_concat_here m n1 n2 s (b1 : bv n1) (b2 : bv n2):
   s = 0%N → (m = n1 + n2)%N →
@@ -97,7 +136,7 @@ Lemma bv_extract_concat_here m n1 n2 s (b1 : bv n1) (b2 : bv n2):
 Proof.
   move => -> ->. apply bv_eq.
   rewrite !bv_extract_unsigned bv_concat_unsigned // !bv_wrap_land.
-  bitblast.
+  bitblast. f_equal. lia.
 Qed.
 
 Lemma bool_decide_bool_to_bv_0 b:
@@ -122,9 +161,6 @@ Global Hint Variables Opaque : bv_unfold_db.
 Global Hint Extern 1 (TCFastDone ?P) => (change P; fast_done) : bv_unfold_db.
 Global Hint Transparent bitvector.bv_wf Z.lt Z.compare Pos.compare Pos.compare_cont bv_modulus Z.pow Z.pow_pos Pos.iter Z.mul Pos.mul Z.of_N : bv_unfold_db.
 
-(* Definition bv_suwrap (signed : bool) (n : N) : Z → Z := *)
-  (* if signed then bv_swrap n else bv_wrap n. *)
-(* Arguments bv_suwrap !_ _ /. *)
 Notation bv_suwrap signed := (if signed then bv_swrap else bv_wrap).
 
 Class BvUnfold (n : N) (signed : bool) (wrapped : bool) (b : bv n) (z : Z) := {
@@ -407,7 +443,7 @@ Ltac bv_unfold :=
               pattern (@bv_signed n b);
               simple refine (eq_rec_r _ _ _); [shelve| |bv_unfold_eq]; cbn beta
           end); unfold BV_UNFOLD_BLOCK.
-
+(*
 Ltac bv_unfold_hyp H :=
   repeat (match type of H with
   | context [ @bv_unsigned ?n ?b ] =>
@@ -431,7 +467,7 @@ Ltac bv_unfold_hyp H :=
           clear H; rename Hx into H; cbn beta in H
       end
   end); unfold BV_UNFOLD_BLOCK in H.
-
+*)
 (* Goal ∀ b : bv 8, ∀ z, *)
 (*     bv_signed (bv_succ (bv_succ (bv_zero_extend 64 (bv_add_Z b 5)))) = bv_signed (bv_add b b) *)
 (*     → *)
@@ -494,7 +530,7 @@ Ltac bv_simplify_hyp H :=
   unLET;
   autorewrite with bv_simplify in H;
   first [ move/bv_eq in H | idtac ];
-  bv_unfold_hyp H;
+  tactic bv_unfold in H;
   autorewrite with bv_unfolded_simplify in H.
 Tactic Notation "bv_simplify_hyp" "select" open_constr(pat) :=
   select pat (fun H => bv_simplify_hyp H).
@@ -636,7 +672,7 @@ Ltac bitify_hyp H :=
   rewrite <- Z.bits_inj_iff' in H.
 
 Ltac bits_simplify_hyp H :=
-  bv_unfold_hyp H;
+  tactic bv_unfold in H;
   unfold bv_wrap in H;
   onesify_hyp (64%nat) H;
   repeat match goal with B : bv ?n |- _ => rewrite !(bv_and_ones B) in H end;

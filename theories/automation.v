@@ -202,19 +202,9 @@ Global Instance simpl_and_bv_and_0xfff0000000000000 b :
   SimplAnd (bv_and b [BV{64} 0xfff0000000000000] = [BV{64} 0]) (λ T, bv_unsigned b < 2 ^ 52 ∧ T).
 Proof.
   split; move => [Hb ?]; split => //.
-  - bv_simplify.
-    rewrite !bv_wrap_land.
-    have -> : 0xfff0000000000000 = Z.ones 12 ≪ 52 by done.
-    bitblast. bv_saturate.
-    eapply Z_bounded_iff_bits_nonneg; [| |done|]; lia.
-  - rewrite -(bv_wrap_small 64 (bv_unsigned b)) ?bv_wrap_land; [|bv_solve].
-    eapply Z_bounded_iff_bits_nonneg; [lia | bv_solve|].
-    move => i Hi. bv_simplify_hyp Hb. move: Hb.
-    have -> : 0xfff0000000000000 = Z.ones 12 ≪ 52 by done.
-    move => /Z.bits_inj_iff' Hb.
-    move: (Hb i ltac:(lia)).
-    rewrite !Z.land_spec Z.shiftl_spec ?Z.bits_0 ?Z_ones_spec; [|lia..].
-    repeat case_bool_decide => //; lia.
+  - bv_simplify. bitblast. eapply Z_bounded_iff_bits_nonneg; [| |done|]; bv_solve.
+  - eapply Z_bounded_iff_bits_nonneg; [lia | bv_solve|] => l ?. bitblast.
+    bv_simplify_hyp Hb. by bitblast Hb with l.
 Qed.
 
 Global Instance simpl_and_bv_and_0xfff0000000000007 b :
@@ -222,33 +212,16 @@ Global Instance simpl_and_bv_and_0xfff0000000000007 b :
 Proof.
   split.
   - move => [Hb [Hmod ?]]; split => //.
-    bv_simplify.
-    rewrite !bv_wrap_land.
-    have -> : 0xfff0000000000007 = Z.lor (Z.ones 12 ≪ 52) (Z.ones 3) by done.
-    bitblast.
-    + move: Hmod. rewrite -(Z.land_ones _ 3) //. move => /Z.bits_inj_iff' Hmod.
-      move: (Hmod i ltac:(lia)).
-      rewrite !Z.land_spec Z.ones_spec_low ?Z.bits_0; [|lia].
-      by simplify_bool_eq.
-    + bv_saturate.
-      eapply Z_bounded_iff_bits_nonneg; [| |done|]; lia.
-  - move => [Hb ?]. rewrite -{1}(bv_wrap_small 64 (bv_unsigned b)) ?bv_wrap_land; [|bv_solve].
-    bv_simplify_hyp Hb. move: Hb.
-    have -> : 0xfff0000000000007 = Z.lor (Z.ones 12 ≪ 52) (Z.ones 3) by done.
-    move => /Z.bits_inj_iff' Hb.
-    split_and! => //.
-    + eapply Z_bounded_iff_bits_nonneg; [lia | bv_solve|].
-      move => i Hi. move: (Hb i ltac:(lia)).
-      rewrite !Z.land_spec Z.lor_spec Z.shiftl_spec ?Z.bits_0 ?Z_ones_spec; [|lia..].
-      repeat case_bool_decide => //; lia.
-    + rewrite -(Z.land_ones _ 3) //. bitblast.
-      move: (Hb i ltac:(lia)).
-      rewrite !Z.land_spec Z.lor_spec Z.shiftl_spec ?Z.bits_0 ?(Z.ones_spec_low 3); [|lia..].
-      by simplify_bool_eq.
+    bv_simplify. bitblast as i.
+    + by bitblast Hmod with i.
+    + eapply Z_bounded_iff_bits_nonneg; [| |done|]; bv_solve.
+  - move => [Hb ?]. bv_simplify_hyp Hb. split_and!; [..|done].
+    + eapply Z_bounded_iff_bits_nonneg; [lia|bv_solve|] => l ?. bitblast.
+      by bitblast Hb with l.
+    + bitblast as i. by bitblast Hb with i.
 Qed.
 
 (** * [normalize_instr_addr] *)
-
 Definition normalize_instr_addr {Σ} (a1 : Z) (T : Z → iProp Σ) : iProp Σ :=
   ∃ a2, ⌜bv_wrap 64 a1 = bv_wrap 64 a2⌝ ∗ T a2.
 Arguments normalize_instr_addr : simpl never.
@@ -273,19 +246,7 @@ Lemma normalize_instr_addr_riscv64_ret_tac a r:
   bv_wrap 64 (bv_unsigned (bv_or (bv_and (bv_add a [BV{64} 0]) [BV{64} 0xfffffffffffffffe])  [BV{64} 0])) = r.
 Proof.
   move => Ha <-. have -> : (bv_add a [BV{64} 0]) = a by bv_solve.
-  f_equal. apply/bv_eq.
-  bits_simplify.
-  have -> : 18446744073709551614 = Z.ones 63 ≪ 1 by done.
-  rewrite Z.shiftl_spec //.
-  destruct (decide (n = 0)).
-  - rewrite (Z.testbit_neg_r _ (n - 1)); [|lia].
-    rewrite andb_false_r.
-    bitify_hyp Ha.
-    have {}Ha := (Ha n ltac:(done)).
-    bits_simplify_hyp Ha. rewrite -Ha.
-    f_equal. lia.
-  - rewrite Z.ones_spec_low; [|lia].
-    by rewrite andb_true_r.
+  f_equal. bv_simplify. bv_simplify_hyp Ha. bitblast as i. by bitblast Ha with i.
 Qed.
 
 Ltac solve_normalize_instr_addr :=

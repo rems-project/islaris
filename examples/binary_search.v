@@ -112,29 +112,13 @@ Proof.
   liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
-  - bv_simplify.
-    rewrite Z.shiftr_eq_0 // ?Z.land_nonneg; [lia|].
-    apply: Z.le_lt_trans; [apply Z.log2_land; bv_solve| bv_solve].
-  - bits_simplify.
-    bitify_hyp H0.
-    specialize (H0 n ltac:(lia)).
-    bits_simplify_hyp H0.
-    by rewrite H0.
-  - bv_simplify.
-    rewrite Z.shiftr_eq_0 // ?Z.land_nonneg; [lia|].
-    apply: Z.le_lt_trans; [apply Z.log2_land; bv_solve| bv_solve].
-  - bits_simplify.
-    assert(H0' : Z.testbit (bv_unsigned (bv_and (bv_extract 0 32 v) [BV{32} 1])) 0 ≠ Z.testbit (bv_unsigned [BV{32} 0]) 0).
-    + contradict H0.
-      bits_simplify.
-      bits_simplify_hyp H0.
-      assert (Hz : n0 = 0); [lia|].
-      by rewrite Hz.
-    + bits_simplify_hyp H0'.
-      assert(Hz : n = 0); [lia|].
-      rewrite Hz.
-      apply not_false_is_true in H0'.
-      by rewrite H0'.
+  - bv_simplify. bitblast.
+  - bv_simplify. bitblast as i. destruct (Z.testbit (bv_unsigned v) i) eqn:? => //.
+    bv_simplify_hyp H0. bitblast H0 with i. congruence.
+  - bv_simplify. bitblast.
+  - bv_simplify. bitblast as i. have ? : i = 0 by lia. subst.
+    destruct (Z.testbit (bv_unsigned v) 0) eqn:? => //.
+    contradict H0. bv_simplify. bitblast as i. have ? : i = 0 by lia. by subst.
 Time Qed.
 
 Definition binary_search_loop_spec : iProp Σ :=

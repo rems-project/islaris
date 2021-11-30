@@ -263,6 +263,7 @@ Proof. now rewrite (regstate_eta regs). Qed.
 
 (* This breaks the `with` notations so we have to import it later. *)
 Require Import isla.base.
+Require Import isla.bitvector_auto.
 
 (* This file should not depend on anything in islaris since it is quite slow to compile. *)
 
@@ -333,9 +334,9 @@ Lemma wordToN_WS n b (w : Word.word n):
   (Z.of_N (Word.wordToN (Word.WS b w))) = Z.lor (Z_of_bool b) (Z.of_N (Word.wordToN w) ≪ 1).
 Proof.
   simpl. destruct b.
-  - rewrite N2Z.inj_succ. rewrite -Z_add_nocarry_lor /=.
+  - rewrite N2Z.inj_succ. rewrite -Z_add_nocarry_lor /= /Z.of_nat/=.
     + rewrite Z.shiftl_mul_pow2; lia.
-    + bitblast. rewrite Z_bits_1_above //. lia.
+    + bitblast.
   - rewrite Z.lor_0_l Z.shiftl_mul_pow2 //. lia.
 Qed.
 
@@ -351,7 +352,14 @@ Proof.
   apply Z.pow_le_mono_r; lia.
 Qed.
 
-#[local] Hint Rewrite wordToN_spec_high Z_of_bool_spec_high using lia : rewrite_bits_db.
+Lemma bitblast_bounded_WordToN n (b : Word.word n):
+  BitblastBounded (Z.of_N (Word.wordToN b)) (Z.of_nat n).
+Proof.
+  constructor. split; [lia|]. have := Word.wordToN_bound b.
+  have {2}->: n = Z.to_nat (Z.of_nat n) by lia.
+  move => /lt_Npow2. lia.
+Qed.
+Global Hint Resolve bitblast_bounded_WordToN | 15 : bitblast.
 
 Lemma bitwp_spec f n (w1 w2 : Word.word n) z:
   f false false = false →
@@ -365,20 +373,16 @@ Proof.
     by rewrite /= Z.bits_0.
   - move => n IH w1 w2 z ?.
     have [b1 [? ->]] := Word.shatter_word_S w1. have [b2 [? ->]] := Word.shatter_word_S w2.
-    cbn [Word.bitwp].
-    rewrite !wordToN_WS /= !Z.lor_spec !Z.shiftl_spec //.
-    destruct (decide (z = 0)); subst.
-    + by rewrite !(Z.testbit_neg_r _ (-1)) // !orb_false_r !Z_of_bool_spec_low.
-    + rewrite !Z_of_bool_spec_high /=; [|lia..]. rewrite IH //. lia.
+    cbn [Word.bitwp]. rewrite !wordToN_WS /=. bitblast. apply IH. lia.
 Qed.
 
 Lemma wordToN_wor n (w1 w2 : Word.word n):
   Z.of_N (Word.wordToN (Word.wor w1 w2)) = Z.lor (Z.of_N (Word.wordToN w1)) (Z.of_N (Word.wordToN w2)).
-Proof. rewrite /Word.wor. apply Z.bits_inj_iff' => ??. by rewrite bitwp_spec // Z.lor_spec. Qed.
+Proof. rewrite /Word.wor. bitblast. by rewrite bitwp_spec. Qed.
 
 Lemma wordToN_wand n (w1 w2 : Word.word n):
   Z.of_N (Word.wordToN (Word.wand w1 w2)) = Z.land (Z.of_N (Word.wordToN w1)) (Z.of_N (Word.wordToN w2)).
-Proof. rewrite /Word.wand. apply Z.bits_inj_iff' => ??. by rewrite bitwp_spec // Z.land_spec. Qed.
+Proof. rewrite /Word.wand. bitblast. by rewrite bitwp_spec. Qed.
 
 Lemma wordToN_wnot n (w : Word.word n):
   Z.of_N (Word.wordToN (Word.wnot w)) = Z.land (Z.lnot (Z.of_N (Word.wordToN w))) (Z.ones n).
@@ -386,8 +390,6 @@ Proof.
   elim: w => //. move => b ?? IH.
   cbn [Word.wnot]. rewrite !wordToN_WS /= IH.
   bitblast.
-  all: try have -> : i = 0 by lia.
-  all: rewrite ?Z_of_bool_spec_low//; lia.
 Qed.
 
 Lemma wordToN_wlshiftl n (w : Word.word n) (m : nat):
@@ -403,7 +405,6 @@ Proof.
   rewrite N2Z.inj_mul N2Z.inj_mod !N2Z.inj_pow !N2Z.inj_sub; [|lia].
   rewrite Z.mod_small; lia.
 Qed.
-
 
 Lemma wordToN_setBit n (z : nat) (w : Word.word n) b:
   0 ≤ z →

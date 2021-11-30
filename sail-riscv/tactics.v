@@ -249,10 +249,8 @@ Proof.
   move => He. rewrite /check_misaligned.
   destruct (plat_enable_misaligned_access ()) => //.
   rewrite !access_vec_dec_to_bv //.
-  case_match => //; rewrite !bitU_of_bool_B0 //.
-  all: bitify_hyp He.
-  all: lazymatch goal with | |- Z.testbit _ ?n = _ => specialize (He n ltac:(done)) end.
-  all: by bits_simplify_hyp He.
+  bv_simplify_hyp He. case_match => //; rewrite !bitU_of_bool_B0 //.
+  all: by lazymatch goal with | |- Z.testbit _ ?n = _ => bitblast He with n end.
 Qed.
 
 Lemma within_mmio_writable_false b w H z:
@@ -350,14 +348,7 @@ Qed.
 Lemma bv_extract_17_1_and (b : bv 64):
   bv_and b [BV{64} 0x20000] = [BV{64} 0] →
   bv_extract 17 1 b = [BV{1} 0].
-Proof.
-  move => Hb.
-  bits_simplify.
-  bitify_hyp Hb. specialize (Hb (n + 17) ltac:(done)).
-  bits_simplify_hyp Hb.
-  change (131072) with (1 ≪ 17) in Hb.
-  by bits_simplify_hyp Hb.
-Qed.
+Proof. move => Hb. bv_simplify. bitblast as n. bv_simplify_hyp Hb. by bitblast Hb with (n + 17). Qed.
 
 Lemma sim_effectivePrivilege Σ K t m priv e2:
   bv_and (mword_to_bv (n2:=64) (Mstatus_Mstatus_chunk_0 m)) [BV{64} 0x20000] = [BV{64} 0] →

@@ -115,11 +115,10 @@ Proof.
   - bv_solve.
   - rename select (_ ≠ _) into Hn.
     rewrite sif_true; [done|]. apply not_false_is_true.
-    contradict Hn. bits_simplify. have -> : n0 = 0 by lia. done.
+    contradict Hn. bv_simplify. bitblast as i. by have -> : i = 0 by lia.
   - rename select (_ = _) into Hn.
     rewrite sif_false; [done|]. apply not_true_iff_false.
-    bitify_hyp Hn. move: (Hn 0 ltac:(done)) => {}Hn.
-    by bits_simplify_hyp Hn.
+    bv_simplify_hyp Hn. by bitblast Hn with 0.
 (*PROOF_END*)
 Time Qed.
 
@@ -172,12 +171,11 @@ Proof.
     liARun.
   Unshelve. all: prepare_sidecond.
   all: try by bv_solve.
-  all: try by bits_simplify.
+  all: try by bv_simplify; bitblast.
   + rename select (_ = [BV{1} 1]) into Hn.
-    bitify_hyp Hn. move: (Hn 0 ltac:(done)) => {}Hn.
-    by bits_simplify_hyp Hn.
-  + rename select (_ ≠ [BV{1} 1]) into Hn. contradict Hn. bits_simplify.
-    by have -> : n0 = 0 by lia.
+    bv_simplify_hyp Hn. by bitblast Hn with 0.
+  + rename select (_ ≠ [BV{1} 1]) into Hn. contradict Hn. bv_simplify. bitblast as i.
+    by have -> : i = 0 by lia.
 (*PROOF_END*)
 Time Qed.
 End proof.
