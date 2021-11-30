@@ -83,7 +83,7 @@ Fixpoint isla_trace_length (t : isla_trace) : nat :=
 
 Definition false_trace : isla_trace := Assume (AExp_Val (AVal_Bool false) Mk_annot) Mk_annot:t:tnil.
 
-Definition partial_trace (v : base_val) (t : isla_trace) : isla_trace :=
+Definition parametric_trace (v : base_val) (t : isla_trace) : isla_trace :=
   match t with
   | Smt (DeclareConst x (Ty_BitVec n)) _ :t: t' =>
       match v with
@@ -95,7 +95,7 @@ Definition partial_trace (v : base_val) (t : isla_trace) : isla_trace :=
       if v is Val_Bool _ then subst_trace v x t' else false_trace
   | _ => false_trace
   end.
-Arguments partial_trace : simpl never.
+Arguments parametric_trace : simpl never.
 
 Global Instance valu_inhabited : Inhabited valu := populate (RVal_Bool true).
 Global Instance enum_id_eq_decision : EqDecision enum_id.

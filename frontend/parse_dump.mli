@@ -14,33 +14,33 @@ type spec = {
 
 (** Representation of an annotated, decompiled instruction. *)
 type decomp_line = {
-  dl_from_file : Filename.filepath;
+  dl_from_file  : Filename.filepath;
   (** Path to the file from which the instruction comes from. *)
-  dl_from_line : int;
+  dl_from_line  : int;
   (** Line number for the instruction in the file. *)
-  dl_line_orig : string;
+  dl_line_orig  : string;
   (** Full (original) instruction line from the file. *)
-  dl_addr      : string;
+  dl_addr       : string;
   (** Address of the instruction. *)
-  dl_real_addr : string;
+  dl_real_addr  : string;
   (** Real address of the instruction (using provided base address). *)
-  dl_opcode    : string;
+  dl_opcode     : string;
   (** Instruction opcode. *)
-  dl_revopcode : string;
+  dl_revopcode  : string;
   (** Reversed instruction opcode (other endianness). *)
-  dl_constrs   : (int * string * string) list;
+  dl_constrs    : (int * string * string) list;
   (** Annotated constraints (line number, original line, the constraint). *)
-  dl_instr     : string;
+  dl_instr      : string;
   (** Instruction. *)
-  dl_comment   : string option;
+  dl_comment    : string option;
   (** Possible comment. *)
-  dl_spec      : spec option;
+  dl_spec       : spec option;
   (** Possible specification. *)
-  dl_linearize : string list;
+  dl_linearize  : string list;
   (** Functions Isla shoud linearize. *)
-  dl_isla_cfg  : string option;
+  dl_isla_cfg   : string option;
   (** Potential non-default Isla configuration file name to use. *)
-  dl_partial   : string option;
+  dl_parametric : string option;
   (** --partial flag to pass to isla. *)
 }
 

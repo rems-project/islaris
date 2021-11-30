@@ -1738,7 +1738,7 @@ Ltac liAAsm :=
       | Assume _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume _ _ _) _)
       | Barrier _ _ => notypeclasses refine (tac_fast_apply (li_wp_barrier _ _ _) _)
       end
-    | partial_trace _ _ => iEval (unfold partial_trace)
+    | parametric_trace _ _ => iEval (unfold parametric_trace)
     | ?def => first [
                  try unfold TRACE_LET in def; iEval (unfold def); try clear def
                | fail "liAAsm: unknown asm" es

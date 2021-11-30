@@ -157,7 +157,7 @@ let build_task : Arch.t -> Template.t -> string -> decomp_line -> task =
     | Some(f) -> Filename.concat Config.etc f
   in
   let (partial_flag, opcode) =
-    match d.dl_partial with
+    match d.dl_parametric with
     | None    -> ("", d.dl_revopcode)
     | Some(f) -> ("--partial", "'" ^ f ^ "'")
   in

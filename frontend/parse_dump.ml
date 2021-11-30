@@ -254,20 +254,20 @@ type spec = {
 
 (** Representation of an annotated, decompiled instruction. *)
 type decomp_line = {
-  dl_from_file : Filename.filepath;
-  dl_from_line : int;
-  dl_line_orig : string;
-  dl_addr      : string;
-  dl_real_addr : string; (* Take into account the base address. *)
-  dl_opcode    : string; (* The opcode from objdump. *)
-  dl_revopcode : string; (* Reversed version (other endianness). *)
-  dl_constrs   : (int * string * string) list; (* Holds: (line, orig, c). *)
-  dl_instr     : string;
-  dl_comment   : string option;
-  dl_spec      : spec option;
-  dl_linearize : string list; (* Functions Isla should linearize. *)
-  dl_isla_cfg  : string option;
-  dl_partial   : string option;
+  dl_from_file  : Filename.filepath;
+  dl_from_line  : int;
+  dl_line_orig  : string;
+  dl_addr       : string;
+  dl_real_addr  : string; (* Take into account the base address. *)
+  dl_opcode     : string; (* The opcode from objdump. *)
+  dl_revopcode  : string; (* Reversed version (other endianness). *)
+  dl_constrs    : (int * string * string) list; (* Holds: (line, orig, c). *)
+  dl_instr      : string;
+  dl_comment    : string option;
+  dl_spec       : spec option;
+  dl_linearize  : string list; (* Functions Isla should linearize. *)
+  dl_isla_cfg   : string option;
+  dl_parametric : string option;
 }
 
 (** [parse input_file] parses file [input_file] to obtain a list of annotated,
@@ -292,7 +292,7 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
     let imports = ref [] in
     let admitted = ref false in
     let linearize = ref [] in
-    let partial = ref None in
+    let parametric = ref None in
     let handle_annot annot =
       let no_parse fmt = no_parse annot fmt in
       let tag = annot.line_data.annot_tag in
@@ -337,11 +337,11 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
       | ("isla-config" , Some(s)     ) ->
           (* TODO check not several given. *)
           isla_cfg := Some(s)
-      | ("partial"     , Some(s)     ) ->
+      | ("parametric"  , Some(s)     ) ->
           (* TODO check not several given. *)
-          partial := Some(s)
+          parametric := Some(s)
       | ("isla-config" , None        )
-      | ("partial"     , None        )
+      | ("parametric"  , None        )
       | ("linearize"   , None        )
       | ("constraint"  , None        )
       | ("base_address", None        )
@@ -372,20 +372,20 @@ let parse : Filename.filepath -> decomp_line list = fun input_file ->
       })
     in
     {
-      dl_from_file = line.line_file;
-      dl_from_line = line.line_num;
-      dl_line_orig = line.line_orig;
-      dl_addr      = uint64_to_hex_string line.line_data.instr_addr;
-      dl_real_addr = uint64_to_hex_string real_addr;
-      dl_opcode    = line.line_data.instr_opcode;
-      dl_revopcode = line.line_data.instr_revopcode;
-      dl_constrs   = constrs;
-      dl_instr     = line.line_data.instr_instr;
-      dl_comment   = line.line_data.instr_comment;
-      dl_spec      = spec;
-      dl_linearize = !linearize;
-      dl_isla_cfg  = !isla_cfg;
-      dl_partial   = !partial;
+      dl_from_file  = line.line_file;
+      dl_from_line  = line.line_num;
+      dl_line_orig  = line.line_orig;
+      dl_addr       = uint64_to_hex_string line.line_data.instr_addr;
+      dl_real_addr  = uint64_to_hex_string real_addr;
+      dl_opcode     = line.line_data.instr_opcode;
+      dl_revopcode  = line.line_data.instr_revopcode;
+      dl_constrs    = constrs;
+      dl_instr      = line.line_data.instr_instr;
+      dl_comment    = line.line_data.instr_comment;
+      dl_spec       = spec;
+      dl_linearize  = !linearize;
+      dl_isla_cfg   = !isla_cfg;
+      dl_parametric = !parametric;
     }
   in
   let rec build annots acc lines =
