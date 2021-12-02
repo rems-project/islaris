@@ -59,6 +59,56 @@ From stdpp Require Import options.
 
 Local Open Scope Z_scope.
 
+Lemma list_fmap_inj1 {A B} (f1 f2 : A → B) (l : list A) x:
+  f1 <$> l = f2 <$> l → x ∈ l → f1 x = f2 x.
+Proof.
+  induction l; csimpl.
+  - intros ? ?%elem_of_nil. done.
+  - intros [=] [?|?]%elem_of_cons; naive_solver.
+Qed.
+
+Lemma Z_to_little_endian_lookup_Some m n z (i : nat) x:
+  0 ≤ m →
+  0 ≤ n →
+  Z_to_little_endian m n z !! i = Some x ↔
+    Z.of_nat i < m ∧ x = Z.land (z ≫ (Z.of_nat i * n)) (Z.ones n).
+Proof.
+  revert z m. induction i as [|i IH]; intros z m Hm Hn; rewrite <-(Z.succ_pred m) at 1.
+  all: destruct (decide (m = 0)); subst; simpl; [ naive_solver lia|].
+  all: rewrite Z_to_little_endian_succ; simpl; [|lia].
+  { rewrite Z.shiftr_0_r. naive_solver lia. }
+  rewrite IH, ?Z.shiftr_shiftr; [|nia..].
+  assert ((n + Z.of_nat i * n) = (Z.of_nat (S i) * n)) as -> by lia.
+  naive_solver lia.
+Qed.
+
+Lemma little_endian_to_Z_spec n bs i b:
+  0 ≤ i → 0 < n →
+  Forall (λ b, 0 ≤ b < 2 ^ n) bs →
+  bs !! Z.to_nat (i `div` n) = Some b →
+  Z.testbit (little_endian_to_Z n bs) i = Z.testbit b (i `mod` n).
+Proof.
+  intros Hi Hn. rewrite Z2Nat_inj_div; [|lia..].
+  assert (Z.to_nat n ≠ 0%nat). { intros ?%(Z2Nat.inj _ 0); lia. }
+  revert i Hi.
+  induction bs as [|b' bs IH]; intros i ?; [done|]; simpl.
+  intros [[? Hb]?]%Forall_cons. intros [[Hx ?]|[? Hbs]]%lookup_cons_Some; subst.
+  - apply Nat.div_small_iff in Hx; [|lia]. apply Z2Nat.inj_lt in Hx; [|lia..].
+    rewrite Z.lor_spec, Z.shiftl_spec, Z.mod_small, (Z.testbit_neg_r _ (i - n)); [|lia..].
+    by rewrite orb_false_r.
+  - rewrite Z.lor_spec, Z.shiftl_spec by lia.
+    assert (Z.to_nat n <= Z.to_nat i)%nat as Hle. { apply Nat.div_str_pos_iff; lia. }
+    assert (n ≤ i). { apply Z2Nat.inj_le; lia. }
+    revert Hbs.
+    assert (Z.to_nat i `div` Z.to_nat n - 1 = Z.to_nat (i - n) `div` Z.to_nat n)%nat as ->. {
+      apply Nat2Z.inj. rewrite !Z2Nat.inj_sub, !Nat2Z_inj_div, !Nat2Z.inj_sub, !Nat2Z_inj_div; [|lia..].
+      rewrite <-(Z.add_opp_r (Z.of_nat _)), Z.opp_eq_mul_m1, Z.mul_comm, Z.div_add; [|lia]. lia.
+    }
+    intros ->%IH; [|lia|done]. rewrite <-Zminus_mod_idemp_r, Z_mod_same_full, Z.sub_0_r.
+    assert (Z.testbit b' i = false) as ->; [|done].
+    eapply Z_bounded_iff_bits_nonneg; [| |done|]; lia.
+Qed.
+
 (** * Preliminary definitions *)
 Definition bv_modulus (n : N) : Z := 2 ^ (Z.of_N n).
 Definition bv_half_modulus (n : N) : Z := bv_modulus n `div` 2.
@@ -798,6 +848,9 @@ Definition bv_seq {n} (x : bv n) (len : Z) : list (bv n) :=
 Definition bool_to_bv (n : N) (b : bool) : bv n :=
   Z_to_bv n (bool_to_Z b).
 
+Definition bv_to_bits {n} (b : bv n) : list bool :=
+  (λ i, Z.testbit (bv_unsigned b) i) <$> seqZ 0 (Z.of_N n).
+
 (** * Lemmas about [bv n] operations *)
 
 (** ** Unfolding lemmas for the operations. *)
@@ -1218,12 +1271,37 @@ Section little.
     - pose proof bv_unsigned_in_range _ b as Hr. unfold bv_modulus in Hr.
       by rewrite N2Z.inj_mul, Z2N.id in Hr.
   Qed.
+
+  Lemma bv_to_little_endian_lookup_Some m n z (i : nat) x:
+    0 ≤ m → bv_to_little_endian m n z !! i = Some x ↔ Z.of_nat i < m ∧ x = Z_to_bv n (z ≫ (Z.of_nat i * Z.of_N n)).
+  Proof.
+    unfold bv_to_little_endian. intros Hm. rewrite list_lookup_fmap, fmap_Some.
+    split.
+    - intros [?[[??]%Z_to_little_endian_lookup_Some ?]]; [|lia..]; subst. split; [done|].
+      rewrite <-bv_wrap_land. apply bv_eq. by rewrite !Z_to_bv_unsigned, bv_wrap_bv_wrap.
+    - intros [?->]. eexists _. split; [apply Z_to_little_endian_lookup_Some; try done; lia| ].
+      rewrite <-bv_wrap_land. apply bv_eq. by rewrite !Z_to_bv_unsigned, bv_wrap_bv_wrap.
+  Qed.
+
+  Lemma little_endian_to_bv_spec n bs i b:
+    0 ≤ i → n ≠ 0%N →
+    bs !! Z.to_nat (i `div` Z.of_N n) = Some b →
+    Z.testbit (little_endian_to_bv n bs) i = Z.testbit (bv_unsigned b) (i `mod` Z.of_N n).
+  Proof.
+    intros ???. unfold little_endian_to_bv. apply little_endian_to_Z_spec; [lia|lia| |].
+    { apply Forall_fmap. apply Forall_true. intros ?; simpl. apply bv_unsigned_in_range. }
+    rewrite list_lookup_fmap. apply fmap_Some. naive_solver.
+  Qed.
 End little.
 
 (** ** Lemmas about [bv_seq] *)
 Section bv_seq.
   Context {n : N}.
   Implicit Types (b : bv n).
+
+  Lemma bv_seq_length b len:
+    length (bv_seq b len) = Z.to_nat len.
+  Proof. unfold bv_seq. by rewrite fmap_length, seqZ_length. Qed.
 
   Lemma bv_seq_succ b m:
     0 ≤ m →
@@ -1272,6 +1350,31 @@ Section bv_bool.
     bv_not (bool_to_bv 1 b) = bool_to_bv 1 (negb b).
   Proof. apply bv_eq. by destruct b. Qed.
 End bv_bool.
+
+Section bv_bits.
+  Context {n : N}.
+  Implicit Types (b : bv n).
+
+  Lemma bv_to_bits_length b : length (bv_to_bits b) = N.to_nat n.
+  Proof. unfold bv_to_bits. rewrite fmap_length, seqZ_length, <-Z_N_nat, N2Z.id. done. Qed.
+
+  Lemma bv_to_bits_lookup_Some b i x:
+    bv_to_bits b !! i = Some x ↔ (i < N.to_nat n)%nat ∧ x = Z.testbit (bv_unsigned b) (Z.of_nat i).
+  Proof.
+    unfold bv_to_bits. rewrite list_lookup_fmap, fmap_Some.
+    split.
+    - intros [?[?%lookup_seqZ?]]. naive_solver lia.
+    - intros [??]. eexists _. split; [|done]. apply lookup_seqZ. lia.
+  Qed.
+
+  Global Instance bv_to_bits_inj : Inj eq eq (@bv_to_bits n).
+  Proof.
+    unfold bv_to_bits. intros x y Hf.
+    apply bv_eq_wrap. apply Z.bits_inj_iff'. intros i Hi.
+    rewrite !bv_wrap_spec; [|lia..]. case_bool_decide; simpl; [|done].
+    eapply list_fmap_inj1 in Hf; [done|]. apply elem_of_seqZ. lia.
+  Qed.
+End bv_bits.
 
 
 (** * [bvn] *)

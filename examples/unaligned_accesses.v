@@ -262,44 +262,6 @@ Proof.
   + rewrite !Z.lor_assoc !Z.land_lor_distr_l -!Z.land_assoc.
     repeat match goal with |- context [Z.land ?a ?b] => reduce_closed (Z.land a b) end.
 
-Ltac simplify_bool_eq ::=
-  repeat match goal with
-         | |- context C [true && ?b] => cbn [andb orb]
-         | |- context C [false && ?b] => cbn [andb orb]
-         | |- context C [true || ?b] => cbn [andb orb]
-         | |- context C [false || ?b] => cbn [andb orb]
-         | |- context C [?b && true] => rewrite (Bool.andb_true_r b)
-         | |- context C [?b && false] => rewrite (Bool.andb_false_r b)
-         | |- context C [?b || true] => rewrite (Bool.orb_true_r b)
-         | |- context C [?b || false] => rewrite (Bool.orb_false_r b)
-         | |- context C [xorb ?b true] => rewrite (Bool.xorb_true_r b)
-         | |- context C [xorb ?b false] => rewrite (Bool.xorb_false_r b)
-         | |- context C [xorb true ?b] => rewrite (Bool.orb_true_l b)
-         | |- context C [xorb false ?b] => rewrite (Bool.orb_false_l b)
-         end.
-
-Ltac bitblast_bool_decide_simplify ::=
-  repeat lazymatch goal with
-         | |- context [@bool_decide ?P ?Dec] =>
-             pattern (@bool_decide P Dec);
-             lazymatch goal with
-             | |- ?G _ =>
-                 first [
-                     refine (@tac_bitblast_bool_decide_true G P Dec _ _); [lia|];
-                     cbn [andb orb]
-                   |
-                     refine (@tac_bitblast_bool_decide_false G P Dec _ _); [lia|];
-                     cbn [andb orb]
-                   |
-                     change_no_check (G (@BITBLAST_BOOL_DECIDE P Dec))
-               ]
-             end;
-             cbv beta
-         end; simplify_bool_eq;
-  lazymatch goal with
-  | |- ?G => let x := eval unfold BITBLAST_BOOL_DECIDE in G in change_no_check x
-  end.
-
     apply Z.bits_inj_iff'; intros i => ?.
     bitblast_unfold.
     bitblast_bool_decide_simplify.
