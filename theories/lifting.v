@@ -701,7 +701,7 @@ Section lifting.
     iIntros (σ1 ??? ?) "(?&Hictx&?)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
     iSplit. {
-      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
+      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by apply DeclareConstBitVecS'|]; simpl.
       done.
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
@@ -709,8 +709,7 @@ Section lifting.
     iFrame; iSplitL; [|done].
     iApply ("Hcont"); [done..|].
     iFrame.
-    Unshelve. 1: exact 0.
-    split; [done|]. apply: Z.pow_pos_nonneg; lia.
+    Unshelve. apply: inhabitant.
   Qed.
 
   Lemma wp_declare_const_bool v es ann:

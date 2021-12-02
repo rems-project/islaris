@@ -118,13 +118,13 @@ Definition pstate_of_spsr (v : bv 32) : list (reg_kind * valu_shape) := [
 ].
 
 Definition initial_pstate : list (reg_kind * valu_shape) := [
-  (KindField "PSTATE" "SP"   , ExactShape (RVal_Bits [BV{1} 1]));
-  (KindField "PSTATE" "EL"   , ExactShape (RVal_Bits [BV{2} 2]));
-  (KindField "PSTATE" "nRW"  , ExactShape (RVal_Bits [BV{1} 0]));
+  (KindField "PSTATE" "SP"   , ExactShape (RVal_Bits (BV 1 1)));
+  (KindField "PSTATE" "EL"   , ExactShape (RVal_Bits (BV 2 2)));
+  (KindField "PSTATE" "nRW"  , ExactShape (RVal_Bits (BV 1 0)));
   (KindField "PSTATE" "F"    , BitsShape 1);
   (KindField "PSTATE" "I"    , BitsShape 1);
   (KindField "PSTATE" "A"    , BitsShape 1);
-  (KindField "PSTATE" "D"    , ExactShape (RVal_Bits [BV{1} 1]));
+  (KindField "PSTATE" "D"    , ExactShape (RVal_Bits (BV 1 1)));
   (KindField "PSTATE" "BTYPE", BitsShape 2);
   (KindField "PSTATE" "SBSS" , BitsShape 1);
   (KindField "PSTATE" "IL"   , BitsShape 1);
@@ -181,20 +181,20 @@ Definition el2_to_el1_sys_regs :=
     [ "MPAM2_EL2" ; "MPAMIDR_EL1" ; "MPAM3_EL3" ; "MPIDR_EL1" ]
   in
   let with_value :=
-    [ ("CFG_ID_AA64PFR0_EL1_EL0", RVal_Bits [BV{4} 1])
-    ; ("CFG_ID_AA64PFR0_EL1_EL1", RVal_Bits [BV{4} 1])
-    ; ("CFG_ID_AA64PFR0_EL1_EL2", RVal_Bits [BV{4} 1])
-    ; ("CFG_ID_AA64PFR0_EL1_EL3", RVal_Bits [BV{4} 1])
-    ; ("OSLSR_EL1", RVal_Bits [BV{32} 0])
-    ; ("EDSCR"    , RVal_Bits [BV{32} 0])
-    ; ("MDSCR_EL1", RVal_Bits [BV{32} 0])
-    ; ("MDCR_EL2" , RVal_Bits [BV{32} 0])
-    ; ("MDCR_EL3" , RVal_Bits [BV{32} 0])
-    ; ("HCR_EL2"  , RVal_Bits [BV{64} 0x0000000080000000])
-    ; ("SCR_EL3"  , RVal_Bits [BV{32} 0x00000501])
-    ; ("SCTLR_EL1", RVal_Bits [BV{64} 0x0000000004000002])
-    ; ("SCTLR_EL2", RVal_Bits [BV{64} 0x0000000004000002])
-    ; ("TCR_EL1", RVal_Bits [BV{64} 0]) ]
+    [ ("CFG_ID_AA64PFR0_EL1_EL0", RVal_Bits (BV 4 1))
+    ; ("CFG_ID_AA64PFR0_EL1_EL1", RVal_Bits (BV 4 1))
+    ; ("CFG_ID_AA64PFR0_EL1_EL2", RVal_Bits (BV 4 1))
+    ; ("CFG_ID_AA64PFR0_EL1_EL3", RVal_Bits (BV 4 1))
+    ; ("OSLSR_EL1", RVal_Bits (BV 32 0))
+    ; ("EDSCR"    , RVal_Bits (BV 32 0))
+    ; ("MDSCR_EL1", RVal_Bits (BV 32 0))
+    ; ("MDCR_EL2" , RVal_Bits (BV 32 0))
+    ; ("MDCR_EL3" , RVal_Bits (BV 32 0))
+    ; ("HCR_EL2"  , RVal_Bits (BV 64 0x0000000080000000))
+    ; ("SCR_EL3"  , RVal_Bits (BV 32 0x00000501))
+    ; ("SCTLR_EL1", RVal_Bits (BV 64 0x0000000004000002))
+    ; ("SCTLR_EL2", RVal_Bits (BV 64 0x0000000004000002))
+    ; ("TCR_EL1", RVal_Bits (BV 64 0)) ]
   in
   ((λ r, (KindReg r, BitsShape 32)) <$> regs32) ++
   ((λ r, (KindReg r, BitsShape 64)) <$> regs64) ++
@@ -208,8 +208,8 @@ Definition el2_to_el1_spec (v0 v1 : bv 64) (spsr : bv 32) : iProp Σ := (
   reg_col initial_pstate ∗
   reg_col el2_to_el1_sys_regs ∗
   instr_pre 0x100000 (
-    "R0" ↦ᵣ RVal_Bits [BV{64} 0x100000] ∗
-    "ELR_EL2" ↦ᵣ RVal_Bits [BV{64} 0x100000] ∗
+    "R0" ↦ᵣ RVal_Bits (BV 64 0x100000) ∗
+    "ELR_EL2" ↦ᵣ RVal_Bits (BV 64 0x100000) ∗
     "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
     reg_col (pstate_of_spsr spsr) ∗
     reg_col el2_to_el1_sys_regs ∗
@@ -219,11 +219,11 @@ Definition el2_to_el1_spec (v0 v1 : bv 64) (spsr : bv 32) : iProp Σ := (
 Global Instance : LithiumUnfold (el2_to_el1_spec) := I.
 
 Lemma el2_to_el1 v0 v1 spsr :
-  bv_extract 1  1 spsr = [BV{1} 0] → (* SPSR_EL2.M[1] is reserved: must be 0. *)
-  bv_extract 2  2 spsr = [BV{2} 1] → (* SPSR_EL2.M[3:2] contains 1 (for EL1). *)
-  bv_extract 4  1 spsr = [BV{1} 0] → (* SPSR_EL2.M[4] fixed to AArch64. *)
-  bv_extract 20 1 spsr = [BV{1} 0] → (* SPSR_EL2.IL *)
-  bv_extract 21 1 spsr = [BV{1} 0] → (* SPSR_EL2.SS *)
+  bv_extract 1  1 spsr = (BV 1 0) → (* SPSR_EL2.M[1] is reserved: must be 0. *)
+  bv_extract 2  2 spsr = (BV 2 1) → (* SPSR_EL2.M[3:2] contains 1 (for EL1). *)
+  bv_extract 4  1 spsr = (BV 1 0) → (* SPSR_EL2.M[4] fixed to AArch64. *)
+  bv_extract 20 1 spsr = (BV 1 0) → (* SPSR_EL2.IL *)
+  bv_extract 21 1 spsr = (BV 1 0) → (* SPSR_EL2.SS *)
   instr 0x0000000000080000 (Some a80000) -∗
   instr 0x0000000000080004 (Some a80004) -∗
   instr 0x0000000000080008 (Some a80008) -∗

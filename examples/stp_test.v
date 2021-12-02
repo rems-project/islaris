@@ -69,7 +69,7 @@ Definition spec `{!islaG Σ} `{!threadG} a sp (v1 v2 : bv 64) : iProp Σ :=
   instr_pre a (
     "R0" ↦ᵣ RVal_Bits v1 ∗
     "R1" ↦ᵣ RVal_Bits v2 ∗
-    "SP_EL2" ↦ᵣ RVal_Bits (bv_sub sp [BV{64} 16])∗
+    "SP_EL2" ↦ᵣ RVal_Bits (bv_sub sp (BV 64 16)) ∗
     reg_col sys_regs ∗
     (bv_unsigned sp - 16) ↦ₘ v1 ∗
     (bv_unsigned sp - 8) ↦ₘ v2 ∗

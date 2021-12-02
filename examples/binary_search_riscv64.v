@@ -110,7 +110,7 @@ Definition binary_search_loop_spec : iProp Σ :=
   "x2" ↦ᵣ RVal_Bits sp ∗
   bv_unsigned xs ↦ₘ∗ data ∗
   □ instr_pre (bv_unsigned comp) (comp_spec stack_size R P) ∗
-  ⌜bv_extract 0 1 comp = [BV{1} 0]⌝ ∗ ⌜bv_extract 1 1 comp = [BV{1} 0]⌝ ∗
+  ⌜bv_extract 0 1 comp = (BV 1 0)⌝ ∗ ⌜bv_extract 1 1 comp = (BV 1 0)⌝ ∗
   ⌜bv_unsigned l < bv_unsigned r ≤ length data⌝ ∗
   ⌜bv_unsigned xs `mod` 8 = 0⌝ ∗
   (bv_unsigned sp - stack_size) ↦ₘ? stack_size ∗
@@ -217,7 +217,7 @@ Definition binary_search_spec (stack_size : Z) : iProp Σ :=
     P ∗
     ⌜bv_unsigned (args !!! 2%nat) = length data⌝ ∗
     ⌜bv_unsigned (args !!! 1%nat) `mod` 8 = 0⌝ ∗
-    ⌜bv_extract 0 1 (args !!! 0%nat) = [BV{1} 0]⌝ ∗ ⌜bv_extract 1 1 (args !!! 0%nat) = [BV{1} 0]⌝ ∗
+    ⌜bv_extract 0 1 (args !!! 0%nat) = (BV 1 0)⌝ ∗ ⌜bv_extract 1 1 (args !!! 0%nat) = (BV 1 0)⌝ ∗
     ⌜0x0000000080000000 ≤ bv_unsigned (args !!! 1%nat) ∧ bv_unsigned (args !!! 1%nat) + (length data) * 8 < 0x0000000080000000 + 0x0000000004000000⌝ ∗
     ⌜StronglySorted R data⌝ ∗ ⌜Transitive R⌝ ∗
     RET (λ rets,
@@ -271,7 +271,7 @@ Proof.
   all: try bv_solve.
   all: try rewrite ->@bv_add_0_r in * by done; try done.
   all: try bv_solve.
-  - bv_simplify select (_ ≠ [BV{64} 0]). bv_solve.
+  - bv_simplify select (_ ≠ (BV 64 0)). bv_solve.
   - eauto.
   - eauto.
 (*PROOF_END*)

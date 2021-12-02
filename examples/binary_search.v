@@ -96,10 +96,10 @@ Definition a40_tst_imm_spec : iProp Σ :=
   instr_pre 0x0000000010300044 (
     reg_col sys_regs ∗
     "R0" ↦ᵣ RVal_Bits v ∗
-    "PSTATE" # "N" ↦ᵣ RVal_Bits [BV{1} 0] ∗
+    "PSTATE" # "N" ↦ᵣ RVal_Bits (BV 1 0) ∗
     "PSTATE" # "Z" ↦ᵣ RVal_Bits (bv_not (bv_extract 0 1 v)) ∗
-    "PSTATE" # "C" ↦ᵣ RVal_Bits [BV{1} 0] ∗
-    "PSTATE" # "V" ↦ᵣ RVal_Bits [BV{1} 0] ∗
+    "PSTATE" # "C" ↦ᵣ RVal_Bits (BV 1 0) ∗
+    "PSTATE" # "V" ↦ᵣ RVal_Bits (BV 1 0) ∗
     True
   ).
 Global Instance : LithiumUnfold (a40_tst_imm_spec) := I.
@@ -303,7 +303,7 @@ Proof.
   Unshelve. all: prepare_sidecond.
   all: try rewrite ->@bv_or_0_l in * by done.
   all: try bv_solve.
-  - revert select (_ ≠ [BV{64} 0]) => /bv_eq. bv_solve.
+  - revert select (_ ≠ (BV 64 0)) => /bv_eq. bv_solve.
   - eauto.
   - eauto.
 (*PROOF_END*)

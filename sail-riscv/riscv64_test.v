@@ -64,7 +64,7 @@ From isla.instructions.riscv64_test Require Import instrs.
 Require Import isla.examples.riscv64_test.
 
 Lemma sim_instr_a0:
-  sim_instr (Uncompressed [BV{32} 0x00000513]) a0.
+  sim_instr (Uncompressed (BV 32 0x00000513)) a0.
 Proof.
   move => regs. unfold step_cpu, a0.
   red_sim. unfold execute. red_sim.
@@ -74,7 +74,7 @@ Proof.
 Qed.
 
 Lemma sim_instr_a4:
-  sim_instr (Uncompressed [BV{32} 0x00150513]) a4.
+  sim_instr (Uncompressed (BV 32 0x00150513)) a4.
 Proof.
   move => regs. unfold step_cpu, a4. red_sim. unfold execute. red_sim.
   unfold execute_ITYPE. red_sim.
@@ -83,7 +83,7 @@ Proof.
 Qed.
 
 Lemma sim_instr_a8:
-  sim_instr (Uncompressed [BV{32} 0x00b13423]) a8.
+  sim_instr (Uncompressed (BV 32 0x00b13423)) a8.
 Proof.
   move => regs. unfold step_cpu, a8. red_sim. unfold execute. red_sim.
   unfold execute_STORE. red_sim. rewrite x2_nextPC.
@@ -121,7 +121,7 @@ Proof.
 Qed.
 
 Lemma sim_instr_ac:
-  sim_instr (Uncompressed [BV{32} 0x00813583]) ac.
+  sim_instr (Uncompressed (BV 32 0x00813583)) ac.
 Proof.
   move => regs. unfold step_cpu, ac. red_sim. unfold execute. red_sim.
   unfold execute_LOAD. red_sim.
@@ -159,7 +159,7 @@ Proof.
 Qed.
 
 Lemma sim_instr_a10:
-  sim_instr (Uncompressed [BV{32} 0x00b50463]) a10.
+  sim_instr (Uncompressed (BV 32 0x00b50463)) a10.
 Proof.
   move => regs. unfold step_cpu, a10. red_sim. unfold execute; red_sim.
   unfold execute_BTYPE; red_sim.
@@ -181,11 +181,11 @@ Proof.
 Qed.
 
 Definition riscv_test_sail_instrs : gmap addr encoded_instruction :=
-  <[ [BV{64} 0x0000000010300000] := Uncompressed [BV{32} 0x00000513]]> $
-  <[ [BV{64} 0x0000000010300004] := Uncompressed [BV{32} 0x00150513]]> $
-  <[ [BV{64} 0x0000000010300008] := Uncompressed [BV{32} 0x00b13423]]> $
-  <[ [BV{64} 0x000000001030000c] := Uncompressed [BV{32} 0x00813583]]> $
-  <[ [BV{64} 0x0000000010300010] := Uncompressed [BV{32} 0x00b50463]]> $
+  <[ (BV 64 0x0000000010300000) := Uncompressed (BV 32 0x00000513)]> $
+  <[ (BV 64 0x0000000010300004) := Uncompressed (BV 32 0x00150513)]> $
+  <[ (BV 64 0x0000000010300008) := Uncompressed (BV 32 0x00b13423)]> $
+  <[ (BV 64 0x000000001030000c) := Uncompressed (BV 32 0x00813583)]> $
+  <[ (BV 64 0x0000000010300010) := Uncompressed (BV 32 0x00b50463)]> $
   ∅.
 
 Definition riscv_test_initial_sail_state (x2v : bv 64) (regs : regstate) : sail_state :=
@@ -194,18 +194,18 @@ Definition riscv_test_initial_sail_state (x2v : bv 64) (regs : regstate) : sail_
 Lemma riscv_test_safe regs (satpv x10v x2v mstatus_bits x11v : bv 64):
   plat_enable_pmp () = false →
   plat_enable_misaligned_access () = false →
-  mword_to_bv (plat_ram_base ()) = [BV{64} 0x0000000080000000] →
-  mword_to_bv (plat_ram_size ()) = [BV{64} 0x0000000004000000] →
-  mword_to_bv (plat_rom_base ()) = [BV{64} 0x0000000000001000] →
-  mword_to_bv (plat_rom_size ()) = [BV{64} 0x0000000000000100] →
-  mword_to_bv (plat_clint_base ()) = [BV{64} 0x0000000002000000] →
-  mword_to_bv (plat_clint_size ()) = [BV{64} 0x00000000000c0000] →
-  mword_to_bv (plat_htif_tohost ()) = [BV{64} 0x0000000040001000] →
+  mword_to_bv (plat_ram_base ()) = (BV 64 0x0000000080000000) →
+  mword_to_bv (plat_ram_size ()) = (BV 64 0x0000000004000000) →
+  mword_to_bv (plat_rom_base ()) = (BV 64 0x0000000000001000) →
+  mword_to_bv (plat_rom_size ()) = (BV 64 0x0000000000000100) →
+  mword_to_bv (plat_clint_base ()) = (BV 64 0x0000000002000000) →
+  mword_to_bv (plat_clint_size ()) = (BV 64 0x00000000000c0000) →
+  mword_to_bv (plat_htif_tohost ()) = (BV 64 0x0000000040001000) →
   Z.land (bv_unsigned mstatus_bits) 0x20000 = 0 →
   bv_unsigned x2v `mod` 8 = 0 →
   bv_unsigned x2v + 16 < 2 ^ 64 →
   0x0000000080000000 ≤ bv_unsigned x2v + 8 < 0x0000000080000000 + 0x0000000004000000 →
-  PC regs = bv_to_mword [BV{64} 0x0000000010300000] →
+  PC regs = bv_to_mword (BV 64 0x0000000010300000) →
   x2 regs = bv_to_mword x2v →
   x10 regs = bv_to_mword x10v →
   x11 regs = bv_to_mword x11v →

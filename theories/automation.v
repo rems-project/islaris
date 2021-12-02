@@ -121,28 +121,28 @@ Proof.
 Qed.
 
 Global Instance ite_1_0_eq_1_simpl b :
-  SimplBoth (ite b [BV{1} 1] [BV{1} 0] = [BV{1} 1]) (b = true).
+  SimplBoth (ite b (BV 1 1) (BV 1 0) = (BV 1 1)) (b = true).
 Proof. by destruct b. Qed.
 Global Instance ite_1_0_neq_1_simpl b :
-  SimplBoth (ite b [BV{1} 1] [BV{1} 0] ≠ [BV{1} 1]) (b = false).
+  SimplBoth (ite b (BV 1 1) (BV 1 0) ≠ (BV 1 1)) (b = false).
 Proof. by destruct b. Qed.
 Global Instance ite_1_0_eq_0_simpl b :
-  SimplBoth (ite b [BV{1} 1] [BV{1} 0] = [BV{1} 0]) (b = false).
+  SimplBoth (ite b (BV 1 1) (BV 1 0) = (BV 1 0)) (b = false).
 Proof. by destruct b. Qed.
 Global Instance ite_1_0_neq_0_simpl b :
-  SimplBoth (ite b [BV{1} 1] [BV{1} 0] ≠ [BV{1} 0]) (b = true).
+  SimplBoth (ite b (BV 1 1) (BV 1 0) ≠ (BV 1 0)) (b = true).
 Proof. by destruct b. Qed.
 Global Instance ite_0_1_eq_1_simpl b :
-  SimplBoth (ite b [BV{1} 0] [BV{1} 1] = [BV{1} 1]) (b = false).
+  SimplBoth (ite b (BV 1 0) (BV 1 1) = (BV 1 1)) (b = false).
 Proof. by destruct b. Qed.
 Global Instance ite_0_1_neq_1_simpl b :
-  SimplBoth (ite b [BV{1} 0] [BV{1} 1] ≠ [BV{1} 1]) (b = true).
+  SimplBoth (ite b (BV 1 0) (BV 1 1) ≠ (BV 1 1)) (b = true).
 Proof. by destruct b. Qed.
 Global Instance ite_0_1_eq_0_simpl b :
-  SimplBoth (ite b [BV{1} 0] [BV{1} 1] = [BV{1} 0]) (b = true).
+  SimplBoth (ite b (BV 1 0) (BV 1 1) = (BV 1 0)) (b = true).
 Proof. by destruct b. Qed.
 Global Instance ite_0_1_neq_0_simpl b :
-  SimplBoth (ite b [BV{1} 0] [BV{1} 1] ≠ [BV{1} 0]) (b = false).
+  SimplBoth (ite b (BV 1 0) (BV 1 1) ≠ (BV 1 0)) (b = false).
 Proof. by destruct b. Qed.
 
 Global Instance simpl_bool_to_bv_1 n b1 b2 `{!TCDone (n ≠ 0%N ∧ bv_unsigned b2 = 1)}:
@@ -198,7 +198,7 @@ Proof.
 Qed.
 
 Global Instance simpl_and_bv_and_0xfff0000000000000 b :
-  SimplAnd (bv_and b [BV{64} 0xfff0000000000000] = [BV{64} 0]) (λ T, bv_unsigned b < 2 ^ 52 ∧ T).
+  SimplAnd (bv_and b (BV 64 0xfff0000000000000) = (BV 64 0)) (λ T, bv_unsigned b < 2 ^ 52 ∧ T).
 Proof.
   split; move => [Hb ?]; split => //.
   - bv_simplify. bitblast. eapply Z_bounded_iff_bits_nonneg; [| |done|]; bv_solve.
@@ -207,7 +207,7 @@ Proof.
 Qed.
 
 Global Instance simpl_and_bv_and_0xfff0000000000007 b :
-  SimplAnd (bv_and b [BV{64} 0xfff0000000000007] = [BV{64} 0]) (λ T, bv_unsigned b < 2 ^ 52 ∧ bv_unsigned b `mod` 8 = 0 ∧ T).
+  SimplAnd (bv_and b (BV 64 0xfff0000000000007) = (BV 64 0)) (λ T, bv_unsigned b < 2 ^ 52 ∧ bv_unsigned b `mod` 8 = 0 ∧ T).
 Proof.
   split.
   - move => [Hb [Hmod ?]]; split => //.
@@ -240,11 +240,11 @@ Proof. move => <-. by rewrite bv_add_unsigned Z_to_bv_unsigned bv_wrap_bv_wrap /
 
 (* This kind of addresses appear for ret on riscv64 *)
 Lemma normalize_instr_addr_riscv64_ret_tac a r:
-  bv_extract 0 1 a = [BV{1} 0] →
+  bv_extract 0 1 a = (BV 1 0) →
   bv_wrap 64 (bv_unsigned a) = r →
-  bv_wrap 64 (bv_unsigned (bv_or (bv_and (bv_add a [BV{64} 0]) [BV{64} 0xfffffffffffffffe])  [BV{64} 0])) = r.
+  bv_wrap 64 (bv_unsigned (bv_or (bv_and (bv_add a (BV 64 0)) (BV 64 0xfffffffffffffffe))  (BV 64 0))) = r.
 Proof.
-  move => Ha <-. have -> : (bv_add a [BV{64} 0]) = a by bv_solve.
+  move => Ha <-. have -> : (bv_add a (BV 64 0)) = a by bv_solve.
   f_equal. bv_simplify. bv_simplify Ha. bitblast as i. by bitblast Ha with i.
 Qed.
 
@@ -400,7 +400,7 @@ Ltac is_fully_reduced_valu v :=
         lazymatch b' with
         | @bv_to_bvn ?n ?b'' => first [ is_var_no_let b'' |
           lazymatch b'' with
-          | BV _ ?z _  => first [ is_var_no_let z |
+          | @BV _ ?z _  => first [ is_var_no_let z |
                         lazymatch isZcst z with
                         | true => idtac
                         end
@@ -429,7 +429,7 @@ Ltac is_fully_reduced_valu v :=
 
 (** Testing [is_fully_reduced_valu] *)
 Goal ∀ (v : valu) (b : base_val) (b1 : bool) (b2 : bv 64) (z : Z) Heq,
-    let x := bv_add b2 b2 in BV 64 z Heq = BV 64 z Heq.
+    let x := bv_add b2 b2 in @BV 64 z Heq = @BV 64 z Heq.
   move => v b b1 b2 z Heq x.
   is_fully_reduced_valu v.
   is_fully_reduced_valu (RegVal_Base b).
@@ -439,8 +439,8 @@ Goal ∀ (v : valu) (b : base_val) (b1 : bool) (b2 : bv 64) (z : Z) Heq,
   assert_fails (is_fully_reduced_valu (RVal_Bool (negb true))).
   is_fully_reduced_valu (RVal_Bits b2).
   assert_fails (is_fully_reduced_valu (RVal_Bits (bv_zero_extend 128 b2))).
-  is_fully_reduced_valu (RVal_Bits (BV 64 z Heq)).
-  is_fully_reduced_valu (RVal_Bits [BV{64} 100]).
+  is_fully_reduced_valu (RVal_Bits (@BV 64 z Heq)).
+  is_fully_reduced_valu (RVal_Bits (BV 64 100)).
   assert_fails (is_fully_reduced_valu (RVal_Bits x)).
   is_fully_reduced_valu (RVal_Enum (Mk_enum_id 1, Mk_enum_ctor 4)).
 Abort.

@@ -74,7 +74,7 @@ Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
     ∃ (tmp : bv 64),
       reg_col sys_regs ∗
       "x10" ↦ᵣ RVal_Bits (bv_add dst n) ∗
-      "x11" ↦ᵣ RVal_Bits (bv_add src n) ∗ "x12" ↦ᵣ RVal_Bits [BV{64} 0] ∗
+      "x11" ↦ᵣ RVal_Bits (bv_add src n) ∗ "x12" ↦ᵣ RVal_Bits (BV 64 0) ∗
       "x13" ↦ᵣ RVal_Bits tmp ∗
       (bv_unsigned src - i) ↦ₘ∗ srcdata ∗ (bv_unsigned dst - i) ↦ₘ∗ srcdata ∗
       True
@@ -139,11 +139,11 @@ Lemma memcpy `{!islaG Σ} `{!threadG} :
     ⌜bv_unsigned n = length srcdata⌝ ∗ ⌜bv_unsigned n = length dstdata⌝ ∗
     ⌜0x0000000080000000 ≤ bv_unsigned dst ∧ bv_unsigned dst + bv_unsigned n < 0x0000000080000000 + 0x0000000004000000⌝ ∗
     ⌜0x0000000080000000 ≤ bv_unsigned src ∧ bv_unsigned src + bv_unsigned n < 0x0000000080000000 + 0x0000000004000000⌝ ∗
-    ⌜bv_extract 0 1 ret = [BV{1} 0]⌝ ∗ ⌜bv_extract 1 1 ret = [BV{1} 0]⌝ ∗
+    ⌜bv_extract 0 1 ret = (BV 1 0)⌝ ∗ ⌜bv_extract 1 1 ret = (BV 1 0)⌝ ∗
     instr_pre (bv_unsigned ret) (
     ∃ (tmp : bv 64),
       reg_col sys_regs ∗
-      "x10" ↦ᵣ RVal_Bits (bv_add dst n) ∗ "x11" ↦ᵣ RVal_Bits (bv_add src n) ∗ "x12" ↦ᵣ RVal_Bits [BV{64} 0] ∗
+      "x10" ↦ᵣ RVal_Bits (bv_add dst n) ∗ "x11" ↦ᵣ RVal_Bits (bv_add src n) ∗ "x12" ↦ᵣ RVal_Bits (BV 64 0) ∗
       "x13" ↦ᵣ RVal_Bits tmp ∗
       "x1" ↦ᵣ RVal_Bits ret ∗
       bv_unsigned src ↦ₘ∗ srcdata ∗ bv_unsigned dst ↦ₘ∗ srcdata ∗

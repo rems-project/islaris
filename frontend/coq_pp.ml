@@ -122,7 +122,7 @@ let pp_bv ff s =
     with Invalid_argument(msg) | Failure(msg) ->
       panic "Error while converting bitvector %S: %s." s msg
   in
-  pp "[BV{%a} 0x%s%%Z]" pp_N nb_bits (remove_zeroes hex_digits)
+  pp "(BV %a 0x%s%%Z)" pp_N nb_bits (remove_zeroes hex_digits)
 
 let pp_accessor ff a =
   let pp fmt = Format.fprintf ff fmt in

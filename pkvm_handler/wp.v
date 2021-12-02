@@ -58,29 +58,29 @@ Require Import isla.examples.pkvm_handler.instrs.
 
 (*SPEC_START*)
 Definition pkvm_sys_regs' : list (reg_kind * valu_shape) := [
-  (KindReg "SCTLR_EL1" , ExactShape (RVal_Bits [BV{64} 0x0000000004000002] ));
-  (KindReg "SCR_EL3" , ExactShape (RVal_Bits [BV{32} 0x00000501] ));
-  (KindReg "TCR_EL1" , ExactShape (RVal_Bits [BV{64} 0] ));
-  (KindReg "TCR_EL2" , ExactShape (RVal_Bits [BV{64} 0] ));
-  (KindReg "HCR_EL2" , ExactShape (RVal_Bits [BV{64} 0x0000000080000000] ));
-  (KindReg "CFG_ID_AA64PFR0_EL1_EL0" , ExactShape (RVal_Bits [BV{4} 1] ));
-  (KindReg "CFG_ID_AA64PFR0_EL1_EL1" , ExactShape (RVal_Bits [BV{4} 1] ));
-  (KindReg "CFG_ID_AA64PFR0_EL1_EL2" , ExactShape (RVal_Bits [BV{4} 1] ));
-  (KindReg "CFG_ID_AA64PFR0_EL1_EL3" , ExactShape (RVal_Bits [BV{4} 1] ));
-  (KindReg "OSLSR_EL1" , ExactShape (RVal_Bits [BV{32} 0] ));
-  (KindReg "OSDLR_EL1" , ExactShape (RVal_Bits [BV{32} 0] ));
-  (KindReg "EDSCR" , ExactShape (RVal_Bits [BV{32} 0] ));
-  (KindReg "MPIDR_EL1" , ExactShape (RVal_Bits [BV{64} 0] ));
-  (KindReg "MDSCR_EL1" , ExactShape (RVal_Bits [BV{32} 0] ));
-  (KindReg "MDCR_EL2" , ExactShape (RVal_Bits [BV{32} 0] ));
-  (KindReg "MDCR_EL3" , ExactShape (RVal_Bits [BV{32} 0] ));
-  (KindField "PSTATE" "SP" , ExactShape (RVal_Bits [BV{1} 1] ));
-  (KindField "PSTATE" "nRW" , ExactShape (RVal_Bits [BV{1} 0] ));
-  (KindField "PSTATE" "D" , ExactShape (RVal_Bits [BV{1} 1]));
+  (KindReg "SCTLR_EL1" , ExactShape (RVal_Bits (BV 64 0x0000000004000002) ));
+  (KindReg "SCR_EL3" , ExactShape (RVal_Bits (BV 32 0x00000501) ));
+  (KindReg "TCR_EL1" , ExactShape (RVal_Bits (BV 64 0) ));
+  (KindReg "TCR_EL2" , ExactShape (RVal_Bits (BV 64 0) ));
+  (KindReg "HCR_EL2" , ExactShape (RVal_Bits (BV 64 0x0000000080000000) ));
+  (KindReg "CFG_ID_AA64PFR0_EL1_EL0" , ExactShape (RVal_Bits (BV 4 1) ));
+  (KindReg "CFG_ID_AA64PFR0_EL1_EL1" , ExactShape (RVal_Bits (BV 4 1) ));
+  (KindReg "CFG_ID_AA64PFR0_EL1_EL2" , ExactShape (RVal_Bits (BV 4 1) ));
+  (KindReg "CFG_ID_AA64PFR0_EL1_EL3" , ExactShape (RVal_Bits (BV 4 1) ));
+  (KindReg "OSLSR_EL1" , ExactShape (RVal_Bits (BV 32 0) ));
+  (KindReg "OSDLR_EL1" , ExactShape (RVal_Bits (BV 32 0) ));
+  (KindReg "EDSCR" , ExactShape (RVal_Bits (BV 32 0) ));
+  (KindReg "MPIDR_EL1" , ExactShape (RVal_Bits (BV 64 0) ));
+  (KindReg "MDSCR_EL1" , ExactShape (RVal_Bits (BV 32 0) ));
+  (KindReg "MDCR_EL2" , ExactShape (RVal_Bits (BV 32 0) ));
+  (KindReg "MDCR_EL3" , ExactShape (RVal_Bits (BV 32 0) ));
+  (KindField "PSTATE" "SP" , ExactShape (RVal_Bits (BV 1 1) ));
+  (KindField "PSTATE" "nRW" , ExactShape (RVal_Bits (BV 1 0) ));
+  (KindField "PSTATE" "D" , ExactShape (RVal_Bits (BV 1 1)));
   (KindReg "__isla_monomorphize_writes", ExactShape (RVal_Bool false));
   (KindReg "__isla_monomorphize_reads", ExactShape (RVal_Bool false));
   (KindReg "__highest_el_aarch32", ExactShape (RVal_Bool false));
-  (KindReg "__CNTControlBase", ExactShape (RVal_Bits [BV{52} 0]));
+  (KindReg "__CNTControlBase", ExactShape (RVal_Bits (BV 52 0)));
   (KindReg "__v85_implemented", ExactShape (RVal_Bool false));
   (KindReg "__v84_implemented", ExactShape (RVal_Bool false));
   (KindReg "__v83_implemented", ExactShape (RVal_Bool false));
@@ -90,16 +90,16 @@ Definition pkvm_sys_regs' : list (reg_kind * valu_shape) := [
 ].
 
 Definition pkvm_sys_regs :=
-  (KindReg "SCTLR_EL2", ExactShape (RVal_Bits [BV{64} 0x4000002])) ::
-  (KindField "PSTATE" "EL" , ExactShape (RVal_Bits [BV{2} 2] )) ::
+  (KindReg "SCTLR_EL2", ExactShape (RVal_Bits (BV 64 0x4000002))) ::
+  (KindField "PSTATE" "EL" , ExactShape (RVal_Bits (BV 2 2) )) ::
   pkvm_sys_regs'.
 Definition pkvm_sys_regs_updated :=
-  (KindReg "SCTLR_EL2", ExactShape (RVal_Bits [BV{64} 0x4000000])) ::
-  (KindField "PSTATE" "EL" , ExactShape (RVal_Bits [BV{2} 2] )) ::
+  (KindReg "SCTLR_EL2", ExactShape (RVal_Bits (BV 64 0x4000000))) ::
+  (KindField "PSTATE" "EL" , ExactShape (RVal_Bits (BV 2 2) )) ::
   pkvm_sys_regs'.
 Definition pkvm_eret_sys_regs :=
-  (KindReg "SCTLR_EL2", ExactShape (RVal_Bits [BV{64} 0x4000002])) ::
-  (KindField "PSTATE" "EL" , ExactShape (RVal_Bits [BV{2} 1] )) ::
+  (KindReg "SCTLR_EL2", ExactShape (RVal_Bits (BV 64 0x4000002))) ::
+  (KindField "PSTATE" "EL" , ExactShape (RVal_Bits (BV 2 1) )) ::
   pkvm_sys_regs'.
 (*SPEC_END*)
 
@@ -131,7 +131,7 @@ Definition rest_of_pstate : list (reg_kind * valu_shape) := [
   (KindField "PSTATE" "F"    , BitsShape 1);
   (KindField "PSTATE" "I"    , BitsShape 1);
   (KindField "PSTATE" "A"    , BitsShape 1);
-  (KindField "PSTATE" "D"    , ExactShape (RVal_Bits [BV{1} 1]));
+  (KindField "PSTATE" "D"    , ExactShape (RVal_Bits (BV 1 1)));
   (KindField "PSTATE" "BTYPE", BitsShape 2);
   (KindField "PSTATE" "SBSS" , BitsShape 1);
   (KindField "PSTATE" "IL"   , BitsShape 1);
@@ -157,14 +157,14 @@ Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
     (KindReg "EventRegister", BitsShape 1)
   ] ∗
   "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
-  ⌜bv_extract 0  1 spsr = [BV{1} 1]⌝ ∗
-  ⌜bv_extract 1  1 spsr = [BV{1} 0]⌝ ∗
-  ⌜bv_extract 2  2 spsr = [BV{2} 2]⌝ ∗
-  ⌜bv_extract 4  1 spsr = [BV{1} 0]⌝ ∗
-  ⌜bv_extract 9  1 spsr = [BV{1} 1]⌝ ∗
-  ⌜bv_extract 20 1 spsr = [BV{1} 0]⌝ ∗
+  ⌜bv_extract 0  1 spsr = (BV 1 1)⌝ ∗
+  ⌜bv_extract 1  1 spsr = (BV 1 0)⌝ ∗
+  ⌜bv_extract 2  2 spsr = (BV 2 2)⌝ ∗
+  ⌜bv_extract 4  1 spsr = (BV 1 0)⌝ ∗
+  ⌜bv_extract 9  1 spsr = (BV 1 1)⌝ ∗
+  ⌜bv_extract 20 1 spsr = (BV 1 0)⌝ ∗
   "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
-  ⌜bv_extract 55 1 elr = [BV{1} 0]⌝ ∗
+  ⌜bv_extract 55 1 elr = (BV 1 0)⌝ ∗
   instr_body (bv_unsigned elr) (
     (* sctlr is updated by this code, but we claim to know enough about its value that the update is trivial.
        This should probably be relaxed *)
@@ -179,7 +179,7 @@ Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
       (KindReg "ELR_EL2", BitsShape 64);
       (KindReg "EventRegister", BitsShape 1)
     ] ∗
-    "VBAR_EL2" ↦ᵣ RVal_Bits [BV{64} 116632] ∗
+    "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
     True
   ).
 
@@ -202,14 +202,14 @@ Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
      ] ∗
     "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
     "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
-    ⌜bv_extract 0  1 spsr = [BV{1} 1]⌝ ∗
-    ⌜bv_extract 1  1 spsr = [BV{1} 0]⌝ ∗
-    ⌜bv_extract 2  2 spsr = [BV{2} 1]⌝ ∗
-    ⌜bv_extract 4  1 spsr = [BV{1} 0]⌝ ∗
-    ⌜bv_extract 9  1 spsr = [BV{1} 1]⌝ ∗
-    ⌜bv_extract 20 1 spsr = [BV{1} 0]⌝ ∗
-    ⌜bv_extract 55 1 elr = [BV{1} 0]⌝ ∗
-    ⌜bv_extract 55 1 el2_cont = [BV{1} 0]⌝ ∗
+    ⌜bv_extract 0  1 spsr = (BV 1 1)⌝ ∗
+    ⌜bv_extract 1  1 spsr = (BV 1 0)⌝ ∗
+    ⌜bv_extract 2  2 spsr = (BV 2 1)⌝ ∗
+    ⌜bv_extract 4  1 spsr = (BV 1 0)⌝ ∗
+    ⌜bv_extract 9  1 spsr = (BV 1 1)⌝ ∗
+    ⌜bv_extract 20 1 spsr = (BV 1 0)⌝ ∗
+    ⌜bv_extract 55 1 elr = (BV 1 0)⌝ ∗
+    ⌜bv_extract 55 1 el2_cont = (BV 1 0)⌝ ∗
     (* We handle only two of the 3 hypercalls this handler supports for now*)
     ⌜bv_unsigned b < 2⌝ ∗
     instr_body (bv_unsigned el2_cont) (
@@ -217,11 +217,11 @@ Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
       ⌜bv_unsigned b = 1 ⌝ ∗
       reg_col pkvm_sys_regs_updated ∗
       reg_col CNVZ_regs ∗
-      "VBAR_EL2" ↦ᵣ RVal_Bits [BV{64} 116632] ∗
+      "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
       True
     ) ∗
     instr_body (bv_unsigned elr) (
-      "R0" ↦ᵣ RVal_Bits [BV{64} 0xbadca11] ∗
+      "R0" ↦ᵣ RVal_Bits (BV 64 0xbadca11) ∗
       reg_col pkvm_eret_sys_regs ∗
       reg_col CNVZ_regs ∗
       True
@@ -252,14 +252,14 @@ Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (e
   "SP_EL2" ↦ᵣ RVal_Bits sp ∗
   "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
   "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
-  ⌜bv_extract 0 1 spsr = [BV{1} 1]⌝ ∗
-  ⌜bv_extract 1 1 spsr = [BV{1} 0]⌝ ∗
-  ⌜bv_extract 2 2 spsr = [BV{2} 1]⌝ ∗
-  ⌜bv_extract 4 1 spsr = [BV{1} 0]⌝ ∗
-  ⌜bv_extract 9 1 spsr = [BV{1} 1]⌝ ∗
-  ⌜bv_extract 20 1 spsr = [BV{1} 0]⌝ ∗
-  ⌜bv_extract 55 1 elr = [BV{1} 0]⌝ ∗
-  ⌜bv_extract 55 1 el2_cont = [BV{1} 0]⌝ ∗
+  ⌜bv_extract 0 1 spsr = (BV 1 1)⌝ ∗
+  ⌜bv_extract 1 1 spsr = (BV 1 0)⌝ ∗
+  ⌜bv_extract 2 2 spsr = (BV 2 1)⌝ ∗
+  ⌜bv_extract 4 1 spsr = (BV 1 0)⌝ ∗
+  ⌜bv_extract 9 1 spsr = (BV 1 1)⌝ ∗
+  ⌜bv_extract 20 1 spsr = (BV 1 0)⌝ ∗
+  ⌜bv_extract 55 1 elr = (BV 1 0)⌝ ∗
+  ⌜bv_extract 55 1 el2_cont = (BV 1 0)⌝ ∗
   (* Don't handle this hypercall for now *)
   ⌜bv_unsigned param ≠ 2⌝ ∗
   (bv_unsigned sp - 16) ↦ₘ? 8 ∗
@@ -275,11 +275,11 @@ Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (e
   instr_body (bv_unsigned el2_cont) (
     ⌜bv_unsigned param = 1⌝ ∗ reg_col pkvm_sys_regs_updated ∗
     reg_col CNVZ_regs ∗
-    "VBAR_EL2" ↦ᵣ RVal_Bits [BV{64} 116632] ∗
+    "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
     True
   ) ∗
   instr_body (bv_unsigned elr) (
-    "R0" ↦ᵣ RVal_Bits [BV{64} 0xbadca11] ∗
+    "R0" ↦ᵣ RVal_Bits (BV 64 0xbadca11) ∗
     reg_col pkvm_eret_sys_regs ∗
     reg_col CNVZ_regs ∗
     True
@@ -400,9 +400,9 @@ Proof.
   all: try bv_solve.
   * contradict H13.
     rewrite H12.
-    assert(G: bv_unsigned (bv_concat 64 [BV{32} 0] esr) = bv_unsigned esr); [bv_solve|].
+    assert(G: bv_unsigned (bv_concat 64 (BV 32 0) esr) = bv_unsigned esr); [bv_solve|].
     by rewrite G.
-  * assert(G: bv_unsigned (bv_concat 64 [BV{32} 0] esr) = bv_unsigned esr); [bv_solve|].
+  * assert(G: bv_unsigned (bv_concat 64 (BV 32 0) esr) = bv_unsigned esr); [bv_solve|].
     rewrite G in H12.
     by rewrite <- H12.
 (*PROOF_END*)
@@ -462,7 +462,7 @@ Proof.
   Unshelve.
   all: prepare_sidecond.
   all: try bv_solve.
-  + assert (Hshift: bv_shiftr spsr [BV{32} 0] = spsr); [by bits_simplify|].
+  + assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bits_simplify|].
     rewrite Hshift.
     rewrite H0.
     by bits_simplify.
@@ -509,7 +509,7 @@ Proof.
   Unshelve.
   all: prepare_sidecond.
   all: try bv_solve.
-  * assert (Hshift: bv_shiftr spsr [BV{32} 0] = spsr); [by bits_simplify|].
+  * assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bits_simplify|].
     rewrite Hshift.
     rewrite H0.
     by bits_simplify.

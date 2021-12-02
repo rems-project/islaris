@@ -394,7 +394,7 @@ Inductive trace_label : Set :=
 
 Inductive trace_step : isla_trace → reg_map → option trace_label → isla_trace → Prop :=
 | DeclareConstBitVecS x n ann es b Heq regs:
-    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :t: es) regs None (subst_trace (Val_Bits (BV b n Heq)) x es)
+    trace_step (Smt (DeclareConst x (Ty_BitVec b)) ann :t: es) regs None (subst_trace (Val_Bits (@BV b n Heq)) x es)
 | DeclareConstBoolS x ann es b regs:
     trace_step (Smt (DeclareConst x Ty_Bool) ann :t: es) regs None (subst_trace (Val_Bool b) x es)
 | DeclareConstEnumS x ann es regs i c:

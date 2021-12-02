@@ -58,8 +58,8 @@ From isla.instructions.riscv64_test Require Import instrs.
 
 Definition riscv_test_spec (x11 : bv 64) : spec :=
   (sif (bv_unsigned x11 = 1)
-               (scons (SInstrTrap [BV{64} 0x0000000010300018]) snil)
-               (scons (SInstrTrap [BV{64} 0x0000000010300014]) snil)).
+               (scons (SInstrTrap (BV 64 0x0000000010300018)) snil)
+               (scons (SInstrTrap (BV 64 0x0000000010300014)) snil)).
 
 Lemma riscv_test `{!islaG Σ} `{!threadG} (x2 x11 : bv 64):
   instr 0x0000000010300000 (Some a0) -∗
@@ -90,7 +90,7 @@ Proof.
 Qed.
 
 Definition riscv_test_regs (mstatus_bits satp x2 x10 x11 : bv 64) : reg_map :=
-    <[ "PC" := RVal_Bits [BV{64} 0x0000000010300000] ]> $
+    <[ "PC" := RVal_Bits (BV 64 0x0000000010300000) ]> $
     <[ "x2" := RVal_Bits x2 ]> $
     <[ "x10" := RVal_Bits x10 ]> $
     <[ "x11" := RVal_Bits x11 ]> $
@@ -98,11 +98,11 @@ Definition riscv_test_regs (mstatus_bits satp x2 x10 x11 : bv 64) : reg_map :=
 
 Definition riscv_test_state_global (x2 : bv 64) := {|
     seq_instrs :=
-    <[ [BV{64} 0x0000000010300000] := a0]> $
-    <[ [BV{64} 0x0000000010300004] := a4]> $
-    <[ [BV{64} 0x0000000010300008] := a8]> $
-    <[ [BV{64} 0x000000001030000c] := ac]> $
-    <[ [BV{64} 0x0000000010300010] := a10]> $
+    <[ (BV 64 0x0000000010300000) := a0]> $
+    <[ (BV 64 0x0000000010300004) := a4]> $
+    <[ (BV 64 0x0000000010300008) := a8]> $
+    <[ (BV 64 0x000000001030000c) := ac]> $
+    <[ (BV 64 0x0000000010300010) := a10]> $
     ∅;
     seq_mem := list_to_map (zip (bv_seq (bv_add_Z x2 8) 8) (replicate 8 (bv_0 8)))
 |}.

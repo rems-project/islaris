@@ -301,7 +301,7 @@ Section instr.
 
   Lemma instr_intro ins a i :
     ∀ Hwf,
-    ins !! (BV _ a Hwf) = i →
+    ins !! (@BV _ a Hwf) = i →
     instr_table ins -∗ instr a i.
   Proof.
     rewrite instr_eq. iIntros (??) "?". iExists _, _. iFrame.
@@ -525,7 +525,7 @@ Section mem.
     rewrite /read_mem/read_mem_list Z2N.id; [|lia].
     apply fmap_None. apply mapM_None_2.
     rewrite seqZ_cons; [|lia]. left. apply bind_None. right.
-    unshelve eexists (BV 64 a _). { apply bv_wf_in_range. unfold bv_modulus. lia. }
+    unshelve eexists (@BV 64 a _). { apply bv_wf_in_range. unfold bv_modulus. lia. }
     split; [ by apply Z_to_bv_checked_Some|].
     apply eq_None_ne_Some => ? Hl.
     move: Hall. erewrite <-(insert_id mem); [|done].

@@ -346,12 +346,12 @@ Proof.
 Qed.
 
 Lemma bv_extract_17_1_and (b : bv 64):
-  bv_and b [BV{64} 0x20000] = [BV{64} 0] →
-  bv_extract 17 1 b = [BV{1} 0].
+  bv_and b (BV 64 0x20000) = (BV 64 0) →
+  bv_extract 17 1 b = (BV 1 0).
 Proof. move => Hb. bv_simplify. bitblast as n. bv_simplify Hb. by bitblast Hb with (n + 17). Qed.
 
 Lemma sim_effectivePrivilege Σ K t m priv e2:
-  bv_and (mword_to_bv (n2:=64) (Mstatus_Mstatus_chunk_0 m)) [BV{64} 0x20000] = [BV{64} 0] →
+  bv_and (mword_to_bv (n2:=64) (Mstatus_Mstatus_chunk_0 m)) (BV 64 0x20000) = (BV 64 0) →
   sim Σ (Done priv) K e2 →
   sim Σ (effectivePrivilege t m priv) K e2.
 Proof.

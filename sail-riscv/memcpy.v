@@ -63,7 +63,7 @@ Require Import isla.riscv64.riscv64.
 From isla.instructions.memcpy_riscv64 Require Import instrs.
 
 Lemma sim_instr_a0:
-  sim_instr (Uncompressed [BV{32} 0x00060e63]) a0.
+  sim_instr (Uncompressed (BV 32 0x00060e63)) a0.
 Proof.
   move => regs. unfold step_cpu, a0.
   red_sim. unfold execute. red_sim. unfold execute_BTYPE.
@@ -85,7 +85,7 @@ Proof.
 Qed.
 
 Lemma sim_instr_a4:
-  sim_instr (Uncompressed [BV{32} 0x00058683]) a4.
+  sim_instr (Uncompressed (BV 32 0x00058683)) a4.
 Proof.
   move => regs. unfold step_cpu, a4.
   red_sim. unfold execute. red_sim. unfold execute_LOAD. red_sim.
@@ -122,7 +122,7 @@ Proof.
 Qed.
 
 Lemma sim_instr_a8:
-  sim_instr (Uncompressed [BV{32} 0x00d50023]) a8.
+  sim_instr (Uncompressed (BV 32 0x00d50023)) a8.
 Proof.
   move => regs. unfold step_cpu, a8.
   red_sim. unfold execute. red_sim. unfold execute_STORE.  red_sim.
@@ -159,7 +159,7 @@ Proof.
 Qed.
 
 Lemma sim_instr_ac:
-  sim_instr (Uncompressed [BV{32} 0xfff60613]) ac.
+  sim_instr (Uncompressed (BV 32 0xfff60613)) ac.
 Proof.
   move => regs. unfold step_cpu, ac.
   red_sim. unfold execute. red_sim. unfold execute_ITYPE.
@@ -170,7 +170,7 @@ Proof.
 Qed.
 
 Lemma sim_instr_a10:
-  sim_instr (Uncompressed [BV{32} 0x00150513]) a10.
+  sim_instr (Uncompressed (BV 32 0x00150513)) a10.
 Proof.
   move => regs. unfold step_cpu, a10.
   red_sim. unfold execute. red_sim. unfold execute_ITYPE.
@@ -180,7 +180,7 @@ Proof.
 Qed.
 
 Lemma sim_instr_a14:
-  sim_instr (Uncompressed [BV{32} 0x00158593]) a14.
+  sim_instr (Uncompressed (BV 32 0x00158593)) a14.
 Proof.
   move => regs. unfold step_cpu, a14.
   red_sim. unfold execute. red_sim. unfold execute_ITYPE.
@@ -190,7 +190,7 @@ Proof.
 Qed.
 
 Lemma sim_instr_a18:
-  sim_instr (Uncompressed [BV{32} 0xfe0616e3]) a18.
+  sim_instr (Uncompressed (BV 32 0xfe0616e3)) a18.
 Proof.
   move => regs. unfold step_cpu, a18.
   red_sim. unfold execute. red_sim. unfold execute_BTYPE.
@@ -212,7 +212,7 @@ Proof.
 Qed.
 
 Lemma sim_instr_a1c:
-  sim_instr (Uncompressed [BV{32} 0x00008067]) a1c.
+  sim_instr (Uncompressed (BV 32 0x00008067)) a1c.
 Proof.
   move => regs. unfold step_cpu, a1c.
   red_sim. unfold execute. red_sim. unfold execute_RISCV_JALR.

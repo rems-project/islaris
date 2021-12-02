@@ -101,7 +101,7 @@ Definition c_call `{!islaG Σ} `{!threadG} (stack_size : Z) (P : list (bv 64) �
   "x1" ↦ᵣ RVal_Bits ret ∗
   "x2" ↦ᵣ RVal_Bits sp ∗
   ⌜bv_unsigned sp `mod` 16 = 0⌝ ∗
-  ⌜bv_extract 0 1 ret = [BV{1} 0]⌝ ∗ ⌜bv_extract 1 1 ret = [BV{1} 0]⌝ ∗
+  ⌜bv_extract 0 1 ret = (BV 1 0)⌝ ∗ ⌜bv_extract 1 1 ret = (BV 1 0)⌝ ∗
   ⌜0x0000000080000000 ≤ bv_unsigned sp - stack_size ∧ bv_unsigned sp < 0x0000000080000000 + 0x0000000004000000⌝ ∗
   (bv_unsigned sp - stack_size) ↦ₘ? stack_size ∗
   P [b10; b11; b12; b13; b14; b15; b16; b17] sp (λ Q,

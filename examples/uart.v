@@ -61,8 +61,8 @@ Context `{!islaG Σ} `{!threadG}.
 
 (*SPEC_START*)
 Notation bus_to_reg32 b := (b - 0x3f000000) (only parsing).
-Definition AUX_MU_LSR_REG : addr := [BV{64} bus_to_reg32 0x7e215054].
-Definition AUX_MU_IO_REG : addr := [BV{64} bus_to_reg32 0x7e215040].
+Definition AUX_MU_LSR_REG : addr := (BV 64 (bus_to_reg32 0x7e215054)).
+Definition AUX_MU_IO_REG : addr := (BV 64 (bus_to_reg32 0x7e215040)).
 
 Definition spec_uart_wait_write_body (P R : spec) : spec :=
   sexists (λ b : bv 32, scons (SReadMem AUX_MU_LSR_REG b)
@@ -172,9 +172,9 @@ Proof.
   Unshelve. all: prepare_sidecond.
   all: try by bv_solve.
   all: try by bv_simplify; bitblast.
-  + rename select (_ = [BV{1} 1]) into Hn.
+  + rename select (_ = (BV 1 1)) into Hn.
     bv_simplify Hn. by bitblast Hn with 0.
-  + rename select (_ ≠ [BV{1} 1]) into Hn. contradict Hn. bv_simplify. bitblast as i.
+  + rename select (_ ≠ (BV 1 1)) into Hn. contradict Hn. bv_simplify. bitblast as i.
     by have -> : i = 0 by lia.
 (*PROOF_END*)
 Time Qed.

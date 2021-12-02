@@ -80,14 +80,14 @@ main:
 *)
 
 Definition hello_world_string : list byte :=
-  [ [BV{8} 0x48]; [BV{8} 0x65]; [BV{8} 0x6c]; [BV{8} 0x6c];  [BV{8} 0x6f]; [BV{8} 0x2c]; [BV{8} 0x20]; [BV{8} 0x57];  [BV{8} 0x6f]; [BV{8} 0x72]; [BV{8} 0x6c]; [BV{8} 0x64]; [BV{8} 0x21]; [BV{8} 0x0a]; [BV{8} 0x00]].
+  [ (BV 8 0x48); (BV 8 0x65); (BV 8 0x6c); (BV 8 0x6c);  (BV 8 0x6f); (BV 8 0x2c); (BV 8 0x20); (BV 8 0x57);  (BV 8 0x6f); (BV 8 0x72); (BV 8 0x6c); (BV 8 0x64); (BV 8 0x21); (BV 8 0x0a); (BV 8 0x00)].
 
 Definition hello_world_string_printed : list byte :=
   take (length hello_world_string - 1) hello_world_string.
 
 Definition hello_spec_trace : list seq_label → Prop :=
-  sapp ((λ b : byte, SWriteMem [BV{64} 0x101f1000] b) <$> hello_world_string_printed) $
-  scons (SInstrTrap [BV{64} 0x0000000010300020]) $
+  sapp ((λ b : byte, SWriteMem (BV 64 0x101f1000) b) <$> hello_world_string_printed) $
+  scons (SInstrTrap (BV 64 0x0000000010300020)) $
   snil.
 
 Definition hello_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
@@ -95,10 +95,10 @@ Definition hello_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ⌜i + 1 < length hello_world_string⌝ ∗
   reg_col sys_regs ∗
   0x0000000010300690 ↦ₘ∗ hello_world_string ∗
-  "R2" ↦ᵣ RVal_Bits [BV{64} 0x101f1000] ∗
-  "R1" ↦ᵣ RVal_Bits (bv_add_Z [BV{64} 0x0000000010300690] i) ∗
+  "R2" ↦ᵣ RVal_Bits (BV 64 0x101f1000) ∗
+  "R1" ↦ᵣ RVal_Bits (bv_add_Z (BV 64 0x0000000010300690) i) ∗
   "R0" ↦ᵣ RVal_Bits (bv_zero_extend 64 (hello_world_string !!! i)) ∗
-  spec_trace (sapp ((λ b : byte, SWriteMem [BV{64} 0x101f1000] b) <$> (drop i hello_world_string_printed)) $ scons (SInstrTrap [BV{64} 0x0000000010300020]) snil) ∗
+  spec_trace (sapp ((λ b : byte, SWriteMem (BV 64 0x101f1000) b) <$> (drop i hello_world_string_printed)) $ scons (SInstrTrap (BV 64 0x0000000010300020)) snil) ∗
   True
 .
 
@@ -150,7 +150,7 @@ Lemma hello `{!islaG Σ} `{!threadG} :
   instr_body 0x0000000010300000 (
     reg_col sys_regs ∗
     0x0000000010300690 ↦ₘ∗ hello_world_string ∗
-    "_PC" ↦ᵣ RVal_Bits [BV{64} 0x0000000010300000 - 0x4] ∗
+    "_PC" ↦ᵣ RVal_Bits (BV 64 (0x0000000010300000 - 0x4)) ∗
     "__PC_changed" ↦ᵣ RVal_Bool false ∗
     "R0" ↦ᵣ RegVal_Poison ∗
     "R1" ↦ᵣ RegVal_Poison ∗

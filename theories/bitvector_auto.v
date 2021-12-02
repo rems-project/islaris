@@ -136,7 +136,7 @@ Create HintDb bv_unfold_db discriminated.
 Global Hint Constants Opaque : bv_unfold_db.
 Global Hint Variables Opaque : bv_unfold_db.
 Global Hint Extern 1 (TCFastDone ?P) => (change P; fast_done) : bv_unfold_db.
-Global Hint Transparent bitvector.bv_wf Z.lt Z.compare Pos.compare Pos.compare_cont bv_modulus Z.pow Z.pow_pos Pos.iter Z.mul Pos.mul Z.of_N : bv_unfold_db.
+Global Hint Transparent BvWf andb Is_true Z.ltb Z.leb Z.compare Pos.compare Pos.compare_cont bv_modulus Z.pow Z.pow_pos Pos.iter Z.mul Pos.mul Z.of_N : bv_unfold_db.
 
 Notation bv_suwrap signed := (if signed then bv_swrap else bv_wrap).
 
@@ -154,7 +154,7 @@ Lemma bv_unfold_end s w n b:
 Proof. constructor. unfold BV_UNFOLD_BLOCK. destruct w, s; by rewrite ?bv_wrap_bv_unsigned ?bv_swrap_bv_signed. Qed.
 Global Hint Resolve bv_unfold_end | 1000 : bv_unfold_db.
 Lemma bv_unfold_BV s w n z Hwf:
-  BvUnfold n s w (BV _ z Hwf) (if w then z else if s then bv_swrap n z else z).
+  BvUnfold n s w (@BV _ z Hwf) (if w then z else if s then bv_swrap n z else z).
 Proof. constructor. destruct w, s; rewrite /bv_unsigned //= bv_wrap_small //. by apply bv_wf_in_range. Qed.
 Global Hint Resolve bv_unfold_BV | 10 : bv_unfold_db.
 Lemma bv_unfold_Z_to_bv s w n z:
@@ -549,16 +549,7 @@ Global Hint Extern 1 (BvSolve ?P) => (change P; bv_solve) : typeclass_instances.
 Definition bv_unsigned_land {n} (v : bv n) := Z.land (bv_unsigned v) (Z.ones (Z.of_N n)).
 
 Lemma bv_and_ones {n} (v : bv n) : bv_unsigned v = bv_unsigned_land v.
-Proof.
-  unfold bv_unsigned_land.
-  rewrite Z.land_ones; [|lia].
-  symmetry.
-  apply Z.mod_small.
-  destruct v as [x wf].
-  unfold bitvector.bv_wf, bv_modulus in wf.
-  unfold bv_unsigned.
-  lia.
-Qed.
+Proof. unfold bv_unsigned_land. bitblast. Qed.
 
 Lemma Z_ones_spec' m n : 0 ≤ n → Z.testbit (Z.ones n) m = bool_decide (m < n) && bool_decide (0 ≤ m)%Z.
 Proof.

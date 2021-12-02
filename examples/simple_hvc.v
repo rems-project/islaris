@@ -61,13 +61,13 @@ Context `{!islaG Σ} `{!threadG}.
 
 (*SPEC_START*)
 Definition initial_pstate : list (reg_kind * valu_shape) := [
-  (KindField "PSTATE" "SP"   , ExactShape (RVal_Bits [BV{1} 1]));
-  (KindField "PSTATE" "EL"   , ExactShape (RVal_Bits [BV{2} 2]));
-  (KindField "PSTATE" "nRW"  , ExactShape (RVal_Bits [BV{1} 0]));
+  (KindField "PSTATE" "SP"   , ExactShape (RVal_Bits (BV 1 1)));
+  (KindField "PSTATE" "EL"   , ExactShape (RVal_Bits (BV 2 2)));
+  (KindField "PSTATE" "nRW"  , ExactShape (RVal_Bits (BV 1 0)));
   (KindField "PSTATE" "F"    , BitsShape 1);
   (KindField "PSTATE" "I"    , BitsShape 1);
   (KindField "PSTATE" "A"    , BitsShape 1);
-  (KindField "PSTATE" "D"    , ExactShape (RVal_Bits [BV{1} 1]));
+  (KindField "PSTATE" "D"    , ExactShape (RVal_Bits (BV 1 1)));
   (KindField "PSTATE" "BTYPE", BitsShape 2);
   (KindField "PSTATE" "SBSS" , BitsShape 1);
   (KindField "PSTATE" "IL"   , BitsShape 1);
@@ -83,13 +83,13 @@ Definition initial_pstate : list (reg_kind * valu_shape) := [
 ].
 
 Definition final_pstate : list (reg_kind * valu_shape) := [
-  (KindField "PSTATE" "SP"   , ExactShape (RVal_Bits [BV{1} 0]));
-  (KindField "PSTATE" "EL"   , ExactShape (RVal_Bits [BV{2} 1]));
-  (KindField "PSTATE" "nRW"  , ExactShape (RVal_Bits [BV{1} 0]));
+  (KindField "PSTATE" "SP"   , ExactShape (RVal_Bits (BV 1 0)));
+  (KindField "PSTATE" "EL"   , ExactShape (RVal_Bits (BV 2 1)));
+  (KindField "PSTATE" "nRW"  , ExactShape (RVal_Bits (BV 1 0)));
   (KindField "PSTATE" "F"    , BitsShape 1);
   (KindField "PSTATE" "I"    , BitsShape 1);
   (KindField "PSTATE" "A"    , BitsShape 1);
-  (KindField "PSTATE" "D"    , ExactShape (RVal_Bits [BV{1} 1]));
+  (KindField "PSTATE" "D"    , ExactShape (RVal_Bits (BV 1 1)));
   (KindField "PSTATE" "BTYPE", BitsShape 2);
   (KindField "PSTATE" "SBSS" , BitsShape 1);
   (KindField "PSTATE" "IL"   , BitsShape 1);
@@ -117,20 +117,20 @@ Definition simple_hvc_fixed_sys_regs :=
     ; "SPSR_EL1" ; "ELR_EL1" ]
   in
   let with_value :=
-    [ ("CFG_ID_AA64PFR0_EL1_EL0", RVal_Bits [BV{4} 1])
-    ; ("CFG_ID_AA64PFR0_EL1_EL1", RVal_Bits [BV{4} 1])
-    ; ("CFG_ID_AA64PFR0_EL1_EL2", RVal_Bits [BV{4} 1])
-    ; ("CFG_ID_AA64PFR0_EL1_EL3", RVal_Bits [BV{4} 1])
-    ; ("OSLSR_EL1", RVal_Bits [BV{32} 0])
-    ; ("EDSCR"    , RVal_Bits [BV{32} 0])
-    ; ("MDSCR_EL1", RVal_Bits [BV{32} 0])
-    ; ("MDCR_EL2" , RVal_Bits [BV{32} 0])
-    ; ("MDCR_EL3" , RVal_Bits [BV{32} 0])
-    ; ("SCR_EL3"  , RVal_Bits [BV{32} 0x00000501])
-    ; ("SCTLR_EL1", RVal_Bits [BV{64} 0x0000000004000002])
-    ; ("SCTLR_EL2", RVal_Bits [BV{64} 0x0000000004000002])
-    ; ("TCR_EL1", RVal_Bits [BV{64} 0])
-    ; ("TCR_EL2", RVal_Bits [BV{64} 0]) ]
+    [ ("CFG_ID_AA64PFR0_EL1_EL0", RVal_Bits (BV 4 1))
+    ; ("CFG_ID_AA64PFR0_EL1_EL1", RVal_Bits (BV 4 1))
+    ; ("CFG_ID_AA64PFR0_EL1_EL2", RVal_Bits (BV 4 1))
+    ; ("CFG_ID_AA64PFR0_EL1_EL3", RVal_Bits (BV 4 1))
+    ; ("OSLSR_EL1", RVal_Bits (BV 32 0))
+    ; ("EDSCR"    , RVal_Bits (BV 32 0))
+    ; ("MDSCR_EL1", RVal_Bits (BV 32 0))
+    ; ("MDCR_EL2" , RVal_Bits (BV 32 0))
+    ; ("MDCR_EL3" , RVal_Bits (BV 32 0))
+    ; ("SCR_EL3"  , RVal_Bits (BV 32 0x00000501))
+    ; ("SCTLR_EL1", RVal_Bits (BV 64 0x0000000004000002))
+    ; ("SCTLR_EL2", RVal_Bits (BV 64 0x0000000004000002))
+    ; ("TCR_EL1", RVal_Bits (BV 64 0))
+    ; ("TCR_EL2", RVal_Bits (BV 64 0)) ]
   in
   ((λ r, (KindReg r, BitsShape 32)) <$> regs32) ++
   ((λ r, (KindReg r, BitsShape 64)) <$> regs64) ++
@@ -139,18 +139,18 @@ Definition simple_hvc_fixed_sys_regs :=
 
 Definition simple_hvc_spec (v0 v1 : bv 64) (v2 : bv 32) : iProp Σ := (
   "R0"       ↦ᵣ RVal_Bits v0 ∗
-  "VBAR_EL2" ↦ᵣ RVal_Bits [BV{64} 0x0] ∗
-  "HCR_EL2"  ↦ᵣ RVal_Bits [BV{64} 0x80000000] ∗
+  "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 0x0) ∗
+  "HCR_EL2"  ↦ᵣ RVal_Bits (BV 64 0x80000000) ∗
   "ELR_EL2"  ↦ᵣ RVal_Bits v1 ∗
   "SPSR_EL2" ↦ᵣ RVal_Bits v2 ∗
   reg_col initial_pstate ∗
   reg_col simple_hvc_fixed_sys_regs ∗
   instr_pre 0x90008 (
-    "R0" ↦ᵣ RVal_Bits [BV{64} 42] ∗
-    "VBAR_EL2" ↦ᵣ RVal_Bits [BV{64} 0xa0000] ∗
-    "HCR_EL2"  ↦ᵣ RVal_Bits [BV{64} 0x80000000] ∗
-    "ELR_EL2"  ↦ᵣ RVal_Bits [BV{64} 0x90008] ∗
-    "SPSR_EL2" ↦ᵣ RVal_Bits [BV{32} 0x3c4] ∗
+    "R0" ↦ᵣ RVal_Bits (BV 64 42) ∗
+    "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 0xa0000) ∗
+    "HCR_EL2"  ↦ᵣ RVal_Bits (BV 64 0x80000000) ∗
+    "ELR_EL2"  ↦ᵣ RVal_Bits (BV 64 0x90008) ∗
+    "SPSR_EL2" ↦ᵣ RVal_Bits (BV 32 0x3c4) ∗
     reg_col final_pstate ∗
     reg_col simple_hvc_fixed_sys_regs ∗
     True
