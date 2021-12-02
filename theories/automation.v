@@ -79,7 +79,6 @@ Proof. by destruct b. Qed.
 #[export] Hint Rewrite ite_bits : isla_coq_rewrite.
 #[export] Hint Rewrite Z_to_bv_checked_bv_unsigned : isla_coq_rewrite.
 
-#[export] Hint Rewrite bool_to_Z_Z_of_bool : isla_coq_rewrite.
 #[export] Hint Rewrite @bv_extract_concat_later @bv_extract_concat_here using lia : isla_coq_rewrite.
 
 Global Instance simpl_both_prefix_nil {A} (κs : list A):

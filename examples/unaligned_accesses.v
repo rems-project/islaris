@@ -59,7 +59,7 @@ From isla.instructions Require Import instr_str_unaligned.
 (* This is necessary for gathering data, please leave it here. *)
 Compute (isla_trace_length instr_str_unaligned).
 
-Lemma bv_1_Z_of_bool (v : bv 1): ∃ b : bool, bv_unsigned v = Z_of_bool b.
+Lemma bv_1_bool_to_Z (v : bv 1): ∃ b : bool, bv_unsigned v = bool_to_Z b.
 Proof.
   move: v => [z Hz]. rewrite bv_unsigned_BV.
   rewrite /bitvector.bv_wf /bv_modulus /= in Hz.
@@ -258,116 +258,29 @@ Proof.
   - liInst Hevar true.  liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
-  (* FIXME cleanup this extremely dirty proof. *)
   all: bv_simplify; f_equal.
   + rewrite !Z.lor_assoc !Z.land_lor_distr_l -!Z.land_assoc.
-    change (Z.land 4290772991 (Z.land 4292870143 (Z.land 4293918719
-           (Z.land 4294966335 (Z.land 4294967279 (Z.land 4294967283 4294967294))))))
-           with 4287626274.
-    change (Z.land 4292870143 (Z.land 4293918719 (Z.land 4294966335
-           (Z.land 4294967279 (Z.land 4294967283 4294967294)))))
-           with 4291820578.
-    change (Z.land 4293918719 (Z.land 4294966335 (Z.land 4294967279 (Z.land 4294967283 4294967294))))
-           with 4293917730.
-    change (Z.land 4294966335 (Z.land 4294967279 (Z.land 4294967283 4294967294)))
-           with 4294966306.
-    change (Z.land 4294967279 (Z.land 4294967283 4294967294)) with 4294967266.
-    change (Z.land 8 4294967294) with 8.
-    assert (Z.land (bv_wrap 32 (Z.lor (Z.lor (Z.lor (bv_unsigned PSTATE_N0 ≪ Z.of_N 3)
-              (bv_unsigned PSTATE_Z0 ≪ Z.of_N 2)) (bv_unsigned PSTATE_C0 ≪ Z.of_N 1))
-              (bv_unsigned PSTATE_V0) ≪ 28)) 4287626274 =
-            Z.land (Z.lor (Z.lor (Z.lor (bv_unsigned PSTATE_N0 ≪ Z.of_N 3)
-              (bv_unsigned PSTATE_Z0 ≪ Z.of_N 2)) (bv_unsigned PSTATE_C0 ≪ Z.of_N 1))
-              (bv_unsigned PSTATE_V0) ≪ 28) 4287626274) as ->.
-    { rewrite /bv_wrap /bv_modulus /=. f_equal.
-      destruct (bv_1_Z_of_bool PSTATE_N0) as [b1 ->].
-      destruct (bv_1_Z_of_bool PSTATE_Z0) as [b2 ->].
-      destruct (bv_1_Z_of_bool PSTATE_C0) as [b3 ->].
-      destruct (bv_1_Z_of_bool PSTATE_V0) as [b4 ->].
-      destruct b1, b2, b3, b4; by vm_compute. }
-    rewrite !Z.shiftl_lor !Z.land_lor_distr_l.
-    rewrite !Z.shiftl_shiftl => //.
-    assert (Z.land (bv_wrap 32 (Z.lor (Z.lor (Z.lor (bv_unsigned PSTATE_D0 ≪ (Z.of_N 3 + 6))
-              (bv_unsigned PSTATE_A0 ≪ (Z.of_N 2 + 6))) (bv_unsigned PSTATE_I0 ≪ (Z.of_N 1 + 6)))
-              (bv_unsigned PSTATE_F0 ≪ 6))) 4294967266 =
-            Z.land (Z.lor (Z.lor (Z.lor (bv_unsigned PSTATE_D0 ≪ (Z.of_N 3 + 6))
-              (bv_unsigned PSTATE_A0 ≪ (Z.of_N 2 + 6))) (bv_unsigned PSTATE_I0 ≪ (Z.of_N 1 + 6)))
-              (bv_unsigned PSTATE_F0 ≪ 6)) 4294967266) as ->.
-    { rewrite /bv_wrap /bv_modulus /=. f_equal.
-      destruct (bv_1_Z_of_bool PSTATE_D0) as [b1 ->].
-      destruct (bv_1_Z_of_bool PSTATE_A0) as [b2 ->].
-      destruct (bv_1_Z_of_bool PSTATE_I0) as [b3 ->].
-      destruct (bv_1_Z_of_bool PSTATE_F0) as [b4 ->].
-      destruct b1, b2, b3, b4; by vm_compute. }
-    rewrite !Z.land_lor_distr_l.
-    rewrite !Z.lor_assoc.
-    f_equal.
-    f_equal.
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_F0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_I0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_A0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_D0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_IL0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_SS0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_PAN0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_V0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_C0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_Z0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_N0) as [[] ->].
+    repeat match goal with |- context [Z.land ?a ?b] => reduce_closed (Z.land a b) end.
+
+    apply Z.bits_inj_iff'; intros i => ?.
+    bitblast_unfold.
+    bitblast_bool_decide_simplify.
+    destruct (decide ((i < 22))); bitblast_bool_decide_simplify.
+    * destruct (decide ((i < 9))); bitblast_bool_decide_simplify.
+      all: bitblast; f_equal; lia.
+    * destruct (decide ((i < 29))); bitblast_bool_decide_simplify.
+      all: bitblast; f_equal; lia.
   + rewrite !Z.lor_assoc !Z.land_lor_distr_l -!Z.land_assoc.
-    change (Z.land 4290772991 (Z.land 4292870143 (Z.land 4293918719
-           (Z.land 4294966335 (Z.land 4294967279 (Z.land 4294967283 4294967294))))))
-           with 4287626274.
-    change (Z.land 4292870143 (Z.land 4293918719 (Z.land 4294966335
-           (Z.land 4294967279 (Z.land 4294967283 4294967294)))))
-           with 4291820578.
-    change (Z.land 4293918719 (Z.land 4294966335 (Z.land 4294967279 (Z.land 4294967283 4294967294))))
-           with 4293917730.
-    change (Z.land 4294966335 (Z.land 4294967279 (Z.land 4294967283 4294967294)))
-           with 4294966306.
-    change (Z.land 4294967279 (Z.land 4294967283 4294967294)) with 4294967266.
-    change (Z.land 8 4294967294) with 8.
-    assert (Z.land (bv_wrap 32 (Z.lor (Z.lor (Z.lor (bv_unsigned PSTATE_N0 ≪ Z.of_N 3)
-              (bv_unsigned PSTATE_Z0 ≪ Z.of_N 2)) (bv_unsigned PSTATE_C0 ≪ Z.of_N 1))
-              (bv_unsigned PSTATE_V0) ≪ 28)) 4287626274 =
-            Z.land (Z.lor (Z.lor (Z.lor (bv_unsigned PSTATE_N0 ≪ Z.of_N 3)
-              (bv_unsigned PSTATE_Z0 ≪ Z.of_N 2)) (bv_unsigned PSTATE_C0 ≪ Z.of_N 1))
-              (bv_unsigned PSTATE_V0) ≪ 28) 4287626274) as ->.
-    { rewrite /bv_wrap /bv_modulus /=. f_equal.
-      destruct (bv_1_Z_of_bool PSTATE_N0) as [b1 ->].
-      destruct (bv_1_Z_of_bool PSTATE_Z0) as [b2 ->].
-      destruct (bv_1_Z_of_bool PSTATE_C0) as [b3 ->].
-      destruct (bv_1_Z_of_bool PSTATE_V0) as [b4 ->].
-      destruct b1, b2, b3, b4; by vm_compute. }
-    rewrite !Z.shiftl_lor !Z.land_lor_distr_l.
-    rewrite !Z.shiftl_shiftl => //.
-    assert (Z.land (bv_wrap 32 (Z.lor (Z.lor (Z.lor (bv_unsigned PSTATE_D0 ≪ (Z.of_N 3 + 6))
-              (bv_unsigned PSTATE_A0 ≪ (Z.of_N 2 + 6))) (bv_unsigned PSTATE_I0 ≪ (Z.of_N 1 + 6)))
-              (bv_unsigned PSTATE_F0 ≪ 6))) 4294967266 =
-            Z.land (Z.lor (Z.lor (Z.lor (bv_unsigned PSTATE_D0 ≪ (Z.of_N 3 + 6))
-              (bv_unsigned PSTATE_A0 ≪ (Z.of_N 2 + 6))) (bv_unsigned PSTATE_I0 ≪ (Z.of_N 1 + 6)))
-              (bv_unsigned PSTATE_F0 ≪ 6)) 4294967266) as ->.
-    { rewrite /bv_wrap /bv_modulus /=. f_equal.
-      destruct (bv_1_Z_of_bool PSTATE_D0) as [b1 ->].
-      destruct (bv_1_Z_of_bool PSTATE_A0) as [b2 ->].
-      destruct (bv_1_Z_of_bool PSTATE_I0) as [b3 ->].
-      destruct (bv_1_Z_of_bool PSTATE_F0) as [b4 ->].
-      destruct b1, b2, b3, b4; by vm_compute. }
-    rewrite !Z.land_lor_distr_l.
-    rewrite !Z.lor_assoc.
-    f_equal.
-    f_equal.
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_F0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_I0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_A0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_D0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_IL0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_SS0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_PAN0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_V0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_C0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_Z0) as [[] ->].
-    f_equal; last by destruct (bv_1_Z_of_bool PSTATE_N0) as [[] ->].
+    repeat match goal with |- context [Z.land ?a ?b] => reduce_closed (Z.land a b) end.
+
+    apply Z.bits_inj_iff'; intros i => ?.
+    bitblast_unfold.
+    bitblast_bool_decide_simplify.
+    destruct (decide ((i < 22))); bitblast_bool_decide_simplify.
+    * destruct (decide ((i < 9))); bitblast_bool_decide_simplify.
+      all: bitblast; f_equal; lia.
+    * destruct (decide ((i < 29))); bitblast_bool_decide_simplify.
+      all: bitblast; f_equal; lia.
 (*PROOF_END*)
 Time Qed.
 

@@ -77,10 +77,6 @@ Global Opaque Z_to_bv
        bv_add_Z bv_sub_Z bv_mul_Z
        bool_to_bv.
 
-Lemma bool_to_Z_Z_of_bool:
-  bool_to_Z = Z_of_bool.
-Proof. done. Qed.
-
 Lemma bitblast_bool_to_Z b n:
   Bitblast (bool_to_Z b) n (bool_decide (n = 0) && b).
 Proof.
@@ -88,10 +84,6 @@ Proof.
      subst => //=; rewrite ?Z.bits_0 //; by destruct n.
 Qed.
 Global Hint Resolve bitblast_bool_to_Z | 10 : bitblast.
-Lemma bitblast_Z_of_bool b n:
-  Bitblast (Z_of_bool b) n (bool_decide (n = 0) && b).
-Proof. rewrite -bool_to_Z_Z_of_bool. apply bitblast_bool_to_Z. Qed.
-Global Hint Resolve bitblast_Z_of_bool | 10 : bitblast.
 
 Lemma bitblast_bounded_bv_unsigned n (b : bv n):
   BitblastBounded (bv_unsigned b) (Z.of_N n).
@@ -471,7 +463,7 @@ Create HintDb bv_unfolded_simplify discriminated.
 (** The [bv_unfolded_to_arith] database collects rewrite rules that
 convert bitwise operations to arithmetic operations in preparation for lia. *)
 Create HintDb bv_unfolded_to_arith discriminated.
-#[export] Hint Rewrite Z_lnot_opp : bv_unfolded_to_arith.
+#[export] Hint Rewrite <-Z_opp_lnot : bv_unfolded_to_arith.
 #[export] Hint Rewrite Z.shiftl_mul_pow2 Z.shiftr_div_pow2 using lia : bv_unfolded_to_arith.
 
 Ltac reduce_closed_N_tac := idtac.

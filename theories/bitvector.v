@@ -59,13 +59,6 @@ From stdpp Require Import options.
 
 Local Open Scope Z_scope.
 
-(* TODO: move *)
-Lemma Z_lnot_opp a: Z.lnot a = - a - 1.
-Proof. pose proof (Z.add_lnot_diag a). lia. Qed.
-
-Definition bool_to_Z (b : bool) : Z :=
-  if b then 1 else 0.
-
 (** * Preliminary definitions *)
 Definition bv_modulus (n : N) : Z := 2 ^ (Z.of_N n).
 Definition bv_half_modulus (n : N) : Z := bv_modulus n `div` 2.
@@ -1107,11 +1100,11 @@ Section properties.
     by rewrite <-bv_wrap_add_inj, !bv_wrap_small in Heq.
   Qed.
 
-  Lemma bv_not_opp b:
-    bv_not b = bv_sub_Z (bv_opp b) 1.
+  Lemma bv_opp_not b:
+    bv_sub_Z (bv_opp b) 1 = bv_not b.
   Proof.
     apply bv_eq.
-    rewrite bv_not_unsigned, bv_sub_Z_unsigned, bv_opp_unsigned, Z_lnot_opp.
+    rewrite bv_not_unsigned, bv_sub_Z_unsigned, bv_opp_unsigned, <-Z_opp_lnot.
     bv_wrap_simplify_solve.
   Qed.
 

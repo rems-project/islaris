@@ -527,7 +527,7 @@ Section mem.
     rewrite seqZ_cons; [|lia]. left. apply bind_None. right.
     unshelve eexists (BV 64 a _). { apply bv_wf_in_range. unfold bv_modulus. lia. }
     split; [ by apply Z_to_bv_checked_Some|].
-    apply ne_Some_eq_None => ? Hl.
+    apply eq_None_ne_Some => ? Hl.
     move: Hall. erewrite <-(insert_id mem); [|done].
     rewrite dom_insert_L => /(set_Forall_union_inv_1 _ _ _)/set_Forall_singleton.
     rewrite /bv_unsigned. lia.

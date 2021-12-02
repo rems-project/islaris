@@ -109,106 +109,6 @@ Ltac subst_remembered :=
              subst x
          end.
 
-(* TODO: replace with upsteamed version, https://gitlab.mpi-sws.org/iris/stdpp/-/merge_requests/337 *)
-Lemma ne_Some_eq_None {A} (mx : option A): (∀ x, mx ≠ Some x) → mx = None.
-Proof. destruct mx; congruence. Qed.
-
-(* TODO: replace with upsteamed version, https://gitlab.mpi-sws.org/iris/stdpp/-/merge_requests/337 *)
-Lemma Is_true_eq_false (b : bool) : ¬ b ↔ b = false.
-Proof. destruct b; naive_solver. Qed.
-
-(* TODO: replace with upsteamed version, https://gitlab.mpi-sws.org/iris/stdpp/-/merge_requests/337 *)
-Lemma Z_add_nocarry_lor a b:
-  Z.land a b = 0 →
-  a + b = Z.lor a b.
-Proof. intros ?. rewrite <-Z.lxor_lor by done. by rewrite Z.add_nocarry_lxor. Qed.
-
-(* TODO: replace with upsteamed version *)
-Lemma sublist_lookup_Some' {A} i n (l : list A) x:
-  sublist_lookup i n l = Some x ↔ x = take n (drop i l) ∧ (i + n <= length l)%nat.
-Proof. rewrite /sublist_lookup. case_option_guard; naive_solver lia. Qed.
-
-(* TODO: replace with upsteamed version *)
-Lemma reverse_lookup {A} (l : list A) i:
-  (i < length l)%nat →
-  reverse l !! i = l !! (length l - 1 - i)%nat.
-Proof.
-  elim: l i => //= x l IH i ?.
-  rewrite reverse_cons.
-  destruct (decide (i = length l)); subst.
-  + rewrite list_lookup_middle ?reverse_length //.
-    by have ->: (length l - 0 - length l = 0)%nat by lia.
-  + rewrite lookup_app_l ?reverse_length; [|lia].
-    rewrite IH; [|lia].
-    by have ->: (length l - 0 - i = S (length l - 1 - i))%nat by lia.
-Qed.
-
-(* TODO: replace with upsteamed version *)
-Lemma reverse_lookup_Some {A} (l : list A) i x:
-  reverse l !! i = Some x ↔ l !! (length l - 1 - i)%nat = Some x ∧ (i < length l)%nat.
-Proof.
-  split.
-  - destruct (decide (i < length l)%nat). 1: by rewrite reverse_lookup.
-    rewrite lookup_ge_None_2 // reverse_length. lia.
-  - move => [??]. by rewrite reverse_lookup.
-Qed.
-
-(* TODO: replace with upsteamed version *)
-Lemma sum_list_fmap {A} n (l : list A) f:
-  (∀ x, x ∈ l → f x = n) →
-  sum_list (f <$> l) = (length l * n)%nat.
-Proof. move => Hf. elim: l Hf => //; csimpl=> ?? IH Hf. rewrite IH. 2: set_solver. rewrite Hf //. set_solver. Qed.
-
-(* TODO: replace with upsteamed version *)
-Lemma sum_list_fmap' {A} (l : list A) n :
-  sum_list ((λ _, n) <$> l) = (length l * n)%nat.
-Proof. by apply sum_list_fmap. Qed.
-
-(* TODO: replace with upsteamed version *)
-Lemma join_lookup_Some {A} (ls : list (list A)) i x:
-  mjoin ls !! i = Some x ↔ ∃ j l i', ls !! j = Some l ∧ l !! i' = Some x
-                             ∧ i = (sum_list (length <$> take j ls) + i')%nat.
-Proof.
-  elim: ls i; csimpl. 1: set_solver.
-  move => ?? IH i. rewrite lookup_app_Some IH.
-  split.
-  - case.
-    + move => ?. by eexists 0%nat, _, _.
-    + move => [? [?[?[?[?[??]]]]]]. eexists (S _), _, _. split_and! => //; csimpl. lia.
-  - move => [j [?[?[?[? ->]]]]]. destruct j as [|j]; csimpl in *.
-    + left. naive_solver.
-    + right. split; [lia|]. eexists _, _, _. split_and! => //. lia.
-Qed.
-
-(* TODO: replace with upsteamed version *)
-Lemma join_lookup_Some' {A} n (ls : list (list A)) i x:
-  (∀ x, x ∈ ls → length x = n) →
-  mjoin ls !! i = Some x ↔ ∃ j l i', ls !! j = Some l ∧ l !! i' = Some x
-                             ∧ i = (j * n + i')%nat.
-Proof.
-  move => Hl. rewrite join_lookup_Some. split.
-  - move => [?[?[?[Hls [??]]]]]. eexists _, _, _. split_and! => //. subst.
-    move: (Hls) => /(lookup_lt_Some _ _ _)?.
-    rewrite (sum_list_fmap n) ?take_length_le //; [lia|].
-    move => ? /take_elem_of[?[??]]. apply: Hl. by eapply elem_of_list_lookup_2.
-  - move => [?[?[?[Hls [??]]]]]. eexists _, _, _. split_and! => //. subst.
-    move: (Hls) => /(lookup_lt_Some _ _ _)?.
-    rewrite (sum_list_fmap n) ?take_length_le //; [lia|].
-    move => ? /take_elem_of[?[??]]. apply: Hl. by eapply elem_of_list_lookup_2.
-Qed.
-
-(* TODO: replace with upsteamed version *)
-Lemma join_lookup_Some_mul {A} n (ls : list (list A)) j i x:
-  (∀ x, x ∈ ls → length x = n) →
-  (i < n)%nat →
-  mjoin ls !! (j * n + i)%nat = Some x ↔ ∃ l, ls !! j = Some l ∧ l !! i = Some x.
-Proof.
-  move => Hf ?. rewrite join_lookup_Some' //. split; [| naive_solver].
-  move => [j'[l'[i'[?[??]]]]].
-  have ? : (i' < n)%nat. { erewrite <-Hf; [| by eapply elem_of_list_lookup_2]. by eapply lookup_lt_Some. }
-  have ?: j = j' by nia. subst. have : i = i' by lia. naive_solver.
-Qed.
-
 Definition bv_to_bits {n} (b : bv n) : list bool :=
   (λ i, Z.testbit (bv_unsigned b) i) <$> seqZ 0 (Z.of_N n).
 
@@ -315,15 +215,6 @@ Proof.
   destruct (z1 <=? z2) eqn: Hle => //. move: Hle => /Zle_is_le_bool.
   done.
 Qed.
-
-Lemma Z_of_bool_spec_low b :
-  Z.testbit (Z_of_bool b) 0 = b.
-Proof. by destruct b. Qed.
-
-Lemma Z_of_bool_spec_high b z:
-  0 < z →
-  Z.testbit (Z_of_bool b) z = false.
-Proof. move => ?. destruct b => /=; rewrite /Z.of_nat/=; bitblast. Qed.
 
 Lemma String_eqb_eq s1 s2:
   (s1 =? s2)%string = bool_decide (s1 = s2).
