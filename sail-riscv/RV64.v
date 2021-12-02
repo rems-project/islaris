@@ -320,7 +320,7 @@ Proof.
 Qed.
 
 Lemma bitlistFromWord_lookup_Some n (w : Word.word n) (i : nat) x:
-  bitlistFromWord w !! i = Some x ↔ x = Z.testbit (Z.of_N (Word.wordToN w)) (n - 1 - i)%nat ∧ (i < n)%nat.
+  bitlistFromWord w !! i = Some x ↔ x = Z.testbit (Z.of_N (Word.wordToN w)) (n - S i)%nat ∧ (i < n)%nat.
 Proof.
   unfold bitlistFromWord. rewrite rev_reverse reverse_lookup_Some bitlistFromWord_rev_lookup_Some ?length_bitlistFromWord_rev.
   naive_solver lia.
@@ -331,10 +331,10 @@ Lemma wordToN_cast_word n m (b : Word.word n) (Heq : n = m):
 Proof. destruct Heq. by rewrite cast_word_refl. Qed.
 
 Lemma wordToN_WS n b (w : Word.word n):
-  (Z.of_N (Word.wordToN (Word.WS b w))) = Z.lor (Z_of_bool b) (Z.of_N (Word.wordToN w) ≪ 1).
+  (Z.of_N (Word.wordToN (Word.WS b w))) = Z.lor (bool_to_Z b) (Z.of_N (Word.wordToN w) ≪ 1).
 Proof.
   simpl. destruct b.
-  - rewrite N2Z.inj_succ. rewrite -Z_add_nocarry_lor /= /Z.of_nat/=.
+  - rewrite N2Z.inj_succ. rewrite -Z_add_nocarry_lor /=.
     + rewrite Z.shiftl_mul_pow2; lia.
     + bitblast.
   - rewrite Z.lor_0_l Z.shiftl_mul_pow2 //. lia.
@@ -410,7 +410,7 @@ Lemma wordToN_setBit n (z : nat) (w : Word.word n) b:
   0 ≤ z →
   (z < n)%nat →
   Z.of_N (Word.wordToN (setBit w z b)) =
-    Z.lor (Z.land (Z.lnot (1 ≪ z)) (Z.of_N (Word.wordToN w))) (Z_of_bool b ≪ z).
+    Z.lor (Z.land (Z.lnot (1 ≪ z)) (Z.of_N (Word.wordToN w))) (bool_to_Z b ≪ z).
 Proof.
   unfold setBit => ??. destruct n; [lia|].
   have H1 : Z.of_N (Word.wordToN (Word.natToWord (S n) 1)) = 1. {
@@ -539,7 +539,8 @@ Lemma length_bits_of_bytes l:
 Proof.
   move => Hf.
   rewrite /bits_of_bytes concat_join map_fmap join_length -list_fmap_compose /compose.
-  rewrite (sum_list_fmap 8) // => ?. rewrite /bits_of/= map_fmap fmap_length. apply: Hf.
+  rewrite (sum_list_fmap_same 8) //.
+  apply list.Forall_forall => ?. rewrite /bits_of/= map_fmap fmap_length. apply: Hf.
 Qed.
 
 Lemma length_bits_of_mem_bytes l:

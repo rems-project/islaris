@@ -260,7 +260,7 @@ Lemma mword_to_bv_update_vec_dec n1 n2 (b : mword n1) b1 z b2:
   0 ≤ z →
   mword_to_bv (n2:=n2) (update_vec_dec b z b1) = bv_or
     (bv_and (bv_not (Z_to_bv n2 (1 ≪ z))) (mword_to_bv b))
-    (Z_to_bv n2 (Z_of_bool b2 ≪ z)).
+    (Z_to_bv n2 (bool_to_Z b2 ≪ z)).
 Proof.
   move => Hb ???.
   apply bv_eq. rewrite mword_to_bv_unsigned //.
@@ -303,19 +303,19 @@ Lemma just_list_bits_of_mem_bytes bs:
     Some (mjoin (((λ x, reverse (bv_to_bits x)) <$> reverse bs))).
 Proof.
   rewrite just_list_mapM. apply mapM_Some_2. apply Forall2_same_length_lookup_2. {
-    rewrite fmap_length join_length -list_fmap_compose /compose /= sum_list_fmap'.
+    rewrite fmap_length join_length -list_fmap_compose /compose /= sum_list_fmap_const.
     rewrite length_bits_of_mem_bytes ?fmap_length ?reverse_length //.
     move => ? /elem_of_list_fmap[?[??]]. subst. by rewrite byte_to_memory_byte_length.
   }
   move => i x y. rewrite list_lookup_fmap /bits_of_mem_bytes/bits_of_bytes concat_join map_fmap.
-  move => /fmap_Some[?[/(join_lookup_Some' 8)[|?[?[?[Hm [Hl ?]]]]]]].
-  { rewrite rev_reverse. move => ? /elem_of_list_fmap[?[? /elem_of_reverse /elem_of_list_fmap[?[??]]]]; subst. done. }
+  move => /fmap_Some[?[/(join_lookup_Some_same_length 8)[|?[?[?[Hm [Hl ?]]]]]]].
+  { apply list.Forall_forall => ?. rewrite rev_reverse. move => /elem_of_list_fmap[?[? /elem_of_reverse /elem_of_list_fmap[?[??]]]]; subst. done. }
   move => ?. subst. move: Hm. rewrite list_lookup_fmap rev_reverse. move => /fmap_Some [?[Hrev ?]]. subst.
   move: Hl. rewrite /bits_of /= map_fmap list_lookup_fmap => /fmap_Some [?[Hl ?]]. subst.
   move: Hrev => /reverse_lookup_Some. rewrite list_lookup_fmap => -[/fmap_Some[?[Hbs ?]] ?]. subst.
   move: Hl => /byte_to_memory_byte_lookup_Some[??].
-  move => /join_lookup_Some_mul[| |].
-  { move => ? /elem_of_list_fmap[?[??]]. subst. by rewrite reverse_length bv_to_bits_length. }
+  move => /join_lookup_Some_same_length'[| |].
+  { apply list.Forall_forall => ? /elem_of_list_fmap[?[??]]. subst. by rewrite reverse_length bv_to_bits_length. }
   { done. }
   move => ?. rewrite list_lookup_fmap => -[/fmap_Some[?[/reverse_lookup_Some[??] ?]] Hl].
   unfold byte in *; rewrite fmap_length in Hbs; simplify_eq.
@@ -331,11 +331,13 @@ Lemma read_mem_bytes_eq (len' : N) n H H2 bs:
      (bv_to_mword (H:=H2) (Z_to_bv (8 * len') (little_endian_to_bv 8 bs))).
 Proof.
   rewrite just_list_bits_of_mem_bytes /= => ??. f_equal.
-  apply get_word_inj. rewrite !get_word_to_word fit_bbv_word_id.
-  { rewrite join_length -list_fmap_compose /compose /= sum_list_fmap' ?reverse_length. lia. }
+  apply get_word_inj. rewrite !get_word_to_word fit_bbv_word_id. {
+    rewrite join_length -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?reverse_length; [lia|].
+    by apply Forall_true.
+  }
   move => Hhyp. destruct Hhyp => /=. apply Word.wordToN_inj.
   rewrite Word.wordToN_NToWord_2. 2: {
-    rewrite -Npow2_pow Z_to_bv_unsigned join_length -list_fmap_compose /compose /= sum_list_fmap' reverse_length.
+    rewrite -Npow2_pow Z_to_bv_unsigned join_length -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?reverse_length; [|by apply Forall_true].
     have ? := bv_wrap_in_range (8 * len') (little_endian_to_bv 8 bs).
     unfold bv_modulus in *.
     apply N2Z.inj_lt.
@@ -349,14 +351,16 @@ Proof.
   have {1}->: i = Z.of_nat (Z.to_nat i) by lia.
   rewrite wordFromBitlist_spec rev_reverse.
   rewrite bv_wrap_spec //. case_bool_decide => /=.
-  2: { rewrite lookup_ge_None_2 // reverse_length join_length -list_fmap_compose /compose /= sum_list_fmap' ?reverse_length. lia. }
+  2: { rewrite lookup_ge_None_2 // reverse_length join_length -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?reverse_length; [lia|]. by apply Forall_true. }
   rewrite /default. case_match as Hc.
-  2: { rewrite lookup_ge_None reverse_length join_length -list_fmap_compose /compose /= sum_list_fmap' ?reverse_length in Hc. lia. }
-  move: Hc => /reverse_lookup_Some [/(join_lookup_Some' 8)[|j1 [?[j2[Hl[Hl2 Hi]]]]] ?]. {
-    move => /elem_of_list_fmap[?[??]]. subst.
+  2: { rewrite lookup_ge_None reverse_length join_length -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?reverse_length in Hc; [lia|]. by apply Forall_true. }
+  move: Hc => /reverse_lookup_Some [/(join_lookup_Some_same_length 8)[|j1 [?[j2[Hl[Hl2 Hi]]]] ?]]. {
+    apply Forall_forall => ? /elem_of_list_fmap[?[??]]. subst.
     by rewrite reverse_length bv_to_bits_length.
   }
-  move: Hi => /Nat2Z.inj_iff. rewrite join_length -list_fmap_compose /compose /= sum_list_fmap' reverse_length => Hi.
+  move: Hi => /Nat2Z.inj_iff. rewrite join_length -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?reverse_length.
+  2: { by apply Forall_forall. }
+  move => Hi.
   have {Hi} ?: i = (length bs * 8 - 1 - (j1 * 8 + j2))%nat by lia. simplify_eq.
   move: Hl. rewrite list_lookup_fmap => /fmap_Some[?[/reverse_lookup_Some[Hbs ?] ?]]. simplify_eq.
   move: Hl2  => /reverse_lookup_Some[/bv_to_bits_lookup_Some[??]?]. simplify_eq/=.
