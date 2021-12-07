@@ -56,8 +56,6 @@
 Require Import isla.riscv64.riscv64.
 From isla.instructions.memcpy_riscv64 Require Import instrs.
 
-(* #[export] Hint Rewrite @insert_length : bv_simplify. *)
-
 (*PROOF_START*)
 Definition memcpy_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
   ∃ (tmp src dst n : bv 64) (srcdata dstdata : list byte) (i : nat),

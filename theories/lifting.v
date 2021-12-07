@@ -97,6 +97,29 @@ Definition wp_asm_eq `{!Arch} `{!islaG Σ} `{!threadG} : wp_asm = @wp_asm_def _ 
 
 Notation WPasm := wp_asm.
 
+Definition wpreadreg_def `{!islaG Σ} `{!threadG}
+     (r : register_name) (al : accessor_list) (G : valu → iProp Σ) : iProp Σ :=
+  ∀ regs, regs_ctx regs -∗
+    ∃ v v', ⌜regs !! r = Some v⌝ ∗ ⌜read_accessor al v = Some v'⌝ ∗ regs_ctx regs ∗ G v'.
+Definition wpreadreg_aux `{!islaG Σ} `{!threadG} : seal (@wpreadreg_def _ _ _). by eexists. Qed.
+Definition wpreadreg `{!islaG Σ} `{!threadG} : register_name → accessor_list → (valu → iProp Σ) → iProp Σ := (wpreadreg_aux).(unseal).
+Definition wpreadreg_eq `{!islaG Σ} `{!threadG} : wpreadreg = @wpreadreg_def _ _ _ := (wpreadreg_aux).(seal_eq).
+Notation "'WPreadreg' r '@' al {{ G } }" := (wpreadreg r al G%I)
+  (at level 20, r, al, G at level 200, only parsing) : bi_scope.
+Notation "'WPreadreg' r '@' al {{ v , G } }" := (wpreadreg r al (λ v, G%I))
+  (at level 20, r, al, G at level 200,
+   format "'[' 'WPreadreg'  r  '@'  al  '/' '[   ' {{  v ,  G  } } ']' ']'") : bi_scope.
+
+Definition wp_event_def `{!Arch} `{!islaG Σ} `{!threadG} (e : event) (Φ : iProp Σ) : iProp Σ :=
+  ∀ t, (Φ -∗ WPasm t) -∗ WPasm (e:t:t).
+Definition wp_event_aux `{!Arch} `{!islaG Σ} `{!threadG} : seal (@wp_event_def _ _ _ _). by eexists. Qed.
+Definition wp_event `{!Arch} `{!islaG Σ} `{!threadG} : event → iProp Σ → iProp Σ := (wp_event_aux).(unseal).
+Definition wp_event_eq `{!Arch} `{!islaG Σ} `{!threadG} : wp_event = @wp_event_def _ _ _ _ := (wp_event_aux).(seal_eq).
+
+Notation "'WPevent' e {{ Φ } }" := (wp_event e Φ)
+  (at level 20, e, Φ at level 200,
+   format "'[' 'WPevent'  e  '/' '[   ' {{  Φ  } } ']' ']'") : bi_scope.
+
 Definition instr_pre'_def `{!Arch} `{!islaG Σ} `{!threadG} (is_later : bool) (a : Z) (P : iProp Σ) : iProp Σ :=
   ▷?is_later (
   P -∗
@@ -155,9 +178,16 @@ Ltac inv_seq_step :=
 Section lifting.
   Context `{!Arch} `{!islaG Σ} `{!threadG}.
 
+  (** * Unfolding *)
   Lemma wp_asm_unfold e :
     WPasm e ⊣⊢ wp_asm_def e.
   Proof. by rewrite wp_asm_eq. Qed.
+  Lemma wpreadreg_unfold r al Φ:
+    WPreadreg r @ al {{ Φ }} ⊣⊢ wpreadreg_def r al Φ.
+  Proof. by rewrite wpreadreg_eq. Qed.
+  Lemma wp_event_unfold e Φ:
+    WPevent e {{ Φ }} ⊣⊢ wp_event_def e Φ.
+  Proof. by rewrite wp_event_eq. Qed.
   Lemma wp_exp_unfold e Φ:
     WPexp e {{ Φ }} ⊣⊢ wp_exp_def e Φ.
   Proof. by rewrite wp_exp_eq. Qed.
@@ -165,6 +195,7 @@ Section lifting.
     WPaexp e {{ Φ }} ⊣⊢ wp_a_exp_def e Φ.
   Proof. by rewrite wp_a_exp_eq. Qed.
 
+  (** * Proof mode instances *)
   Global Instance elim_modal_bupd_wp_asm p P es :
     ElimModal True p false (|==> P) P (WPasm es) (WPasm es).
   Proof.
@@ -189,6 +220,7 @@ Section lifting.
     by iMod "Hwp" as "$".
   Qed.
 
+  (** * General lemmas *)
   Lemma wp_asm_thread_ctx es :
     (∀ regs, thread_ctx regs ={⊤}=∗ thread_ctx regs ∗ WPasm es) -∗
     WPasm es.
@@ -198,6 +230,27 @@ Section lifting.
     by iApply "HWP".
   Qed.
 
+  Lemma wp_event_intro e Φ:
+    (∀ t, (Φ -∗ WPasm t) -∗ WPasm (e:t:t)) -∗
+    WPevent e {{ Φ }}.
+  Proof. rewrite wp_event_eq. done. Qed.
+
+  Lemma wp_event_elim e t Φ:
+    WPevent e {{ Φ }} -∗
+    (Φ -∗ WPasm t) -∗
+    WPasm (e:t:t).
+  Proof. rewrite wp_event_eq. iIntros "Hwp HΦ". by iApply "Hwp". Qed.
+
+  Lemma wp_event_mono e Φ Φ':
+    WPevent e {{ Φ }} -∗
+    (Φ -∗ Φ') -∗
+    WPevent e {{ Φ' }}.
+  Proof.
+    rewrite wp_event_eq. iIntros "Hwp HΦ" (t) "HΦ'".
+    iApply "Hwp". iIntros "?". iApply "HΦ'". by iApply "HΦ".
+  Qed.
+
+  (** * Next instruction & instr_pre'  *)
   Lemma wp_next_instr (PC : bv 64) ins :
     arch_pc_reg ↦ᵣ RVal_Bits PC -∗
     instr (bv_unsigned PC) (Some ins) -∗
@@ -312,6 +365,7 @@ Section lifting.
     iExists _. rewrite bv_wrap_small; [|done]. iFrame. iExists _. by iFrame.
   Qed.
 
+  (** * Case distinction  *)
   Lemma wp_cases ts:
     ts ≠ [] →
     (∀ t, ⌜t ∈ ts⌝ -∗ WPasm t) -∗
@@ -332,19 +386,45 @@ Section lifting.
     by iApply "Hwp".
   Qed.
 
-  Lemma wp_read_reg_acc r v v' v'' vread ann es q al:
-    read_accessor al v' = Some v'' →
+  (** * Registers  *)
+  Lemma read_reg_acc r al Φ q v v':
+    read_accessor al v = Some v' →
+    r ↦ᵣ{q} v -∗
+    (r ↦ᵣ{q} v -∗ Φ v') -∗
+    WPreadreg r @ al {{ Φ }}.
+  Proof.
+    rewrite wpreadreg_eq. iIntros (?) "Hr HΦ". iIntros (regs) "Hθ".
+    iDestruct (reg_mapsto_lookup with "Hθ Hr") as %Hr.
+    iSpecialize ("HΦ" with "Hr"). iExists _, _. by iFrame.
+  Qed.
+  Lemma read_reg_nil r Φ q v:
+    r ↦ᵣ{q} v -∗
+    (r ↦ᵣ{q} v -∗ Φ v) -∗
+    WPreadreg r @ [] {{ Φ }}.
+  Proof. by apply read_reg_acc. Qed.
+
+  Lemma read_reg_struct r f Φ q v:
+    r # f ↦ᵣ{q} v -∗
+    (r # f ↦ᵣ{q} v -∗ Φ v) -∗
+    WPreadreg r @ [Field f] {{ Φ }}.
+  Proof.
+    rewrite wpreadreg_eq. iIntros "Hr HΦ". iIntros (regs) "Hθ".
+    iDestruct (struct_reg_mapsto_lookup with "Hθ Hr") as %(?&?&?&?&?).
+    iSpecialize ("HΦ" with "Hr"). iExists _, _. iFrame. iPureIntro.
+    split; [done|]. rewrite /read_accessor/=. by simplify_option_eq.
+  Qed.
+
+  Lemma wp_read_reg r v vread ann es al:
     read_accessor al v = Some vread →
-    r ↦ᵣ{q} v' -∗
-    (⌜vread = v''⌝ -∗ r ↦ᵣ{q} v' -∗ WPasm es) -∗
+    WPreadreg r @ al {{ v', ⌜vread = v'⌝ -∗ WPasm es }} -∗
     WPasm (ReadReg r al v ann :t: es).
   Proof.
-    iIntros (??) "Hr Hcont". setoid_rewrite wp_asm_unfold.
+    rewrite wp_asm_eq wpreadreg_eq. iIntros (?) "Hr".
     iIntros ([????]) "/= -> -> -> Hθ".
     iApply wp_lift_step; [done|].
     iIntros (σ1 ??? ?) "(?&Hictx&?)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
-    iDestruct (reg_mapsto_lookup with "Hθ Hr") as %Hr.
+    iDestruct ("Hr" with "Hθ") as (v' v'' ??) "[? Hcont]".
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
       eexists _, _, _. split_and! => //. by right.
@@ -353,98 +433,31 @@ Section lifting.
     inv_seq_step. revert select (∃ x, _) => -[?[?[?[?[?[?[?[?[[??]|?]]]]]]]]]; simplify_eq/=. 2: {
       iFrame. iSplitL; [|done]. by iApply wp_value.
     }
-    unfold register_name in *. simplify_eq/=.
     iFrame; iSplitL; [|done].
-    iApply ("Hcont" with "[//] Hr"); [done..|].
+    iApply ("Hcont" with "[//]"); [done..|].
     iFrame.
   Qed.
 
-  Lemma wp_read_reg_struct r v v' vread ann es q f:
-    read_accessor [Field f] v = Some vread →
-    r # f ↦ᵣ{q} v' -∗
-    (⌜vread = v'⌝ -∗ r # f ↦ᵣ{q} v' -∗ WPasm es) -∗
-    WPasm (ReadReg r [Field f] v ann :t: es).
-  Proof.
-    iIntros (?) "Hr Hcont". setoid_rewrite wp_asm_unfold.
-    iIntros ([????]) "/= -> -> -> Hθ".
-    iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(?&Hictx&?)".
-    iApply fupd_mask_intro; first set_solver. iIntros "HE".
-    iDestruct (struct_reg_mapsto_lookup with "Hθ Hr") as %(?&?&?&?&?).
-    iSplit. {
-      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
-      eexists _, _, _. split_and! => //=. 2: by right.
-      rewrite /read_accessor/=. by simplify_option_eq.
-    }
-    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
-    inv_seq_step. revert select (∃ x, _) => -[?[?[?[?[?[?[?[?[[??]|?]]]]]]]]]; simplify_eq/=. 2: {
-      iFrame. iSplitL; [|done]. by iApply wp_value.
-    }
-    unfold register_name, read_accessor in *. simplify_option_eq.
-    iFrame; iSplitL; [|done].
-    iApply ("Hcont" with "[//] Hr"); [done..|].
-    iFrame.
-  Qed.
-
-  Lemma wp_read_reg r v v' ann es q:
-    r ↦ᵣ{q} v' -∗
-    (⌜v = v'⌝ -∗ r ↦ᵣ{q} v' -∗ WPasm es) -∗
-    WPasm (ReadReg r [] v ann :t: es).
-  Proof. by apply: wp_read_reg_acc. Qed.
-
-  Lemma wp_assume_reg_acc r v v' ann es q al:
-    read_accessor al v' = Some v →
-    r ↦ᵣ{q} v' -∗
-    (r ↦ᵣ{q} v' -∗ WPasm es) -∗
+  Lemma wp_assume_reg r v ann es al:
+    WPreadreg r @ al {{ v', ⌜v = v'⌝ ∗ WPasm es }} -∗
     WPasm (AssumeReg r al v ann :t: es).
   Proof.
-    iIntros (?) "Hr Hcont". setoid_rewrite wp_asm_unfold.
+    rewrite wp_asm_eq wpreadreg_eq. iIntros "Hr".
     iIntros ([????]) "/= -> -> -> Hθ".
     iApply wp_lift_step; [done|].
     iIntros (σ1 ??? ?) "(?&Hictx&?)".
     iApply fupd_mask_intro; first set_solver. iIntros "HE".
-    iDestruct (reg_mapsto_lookup with "Hθ Hr") as %Hr.
+    iDestruct ("Hr" with "Hθ") as (v' v'' ??) "[Hr [% Hcont]]"; subst.
     iSplit. {
       iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
       eexists _. split_and! => //.
     }
     iIntros "!>" (????). iMod "HE" as "_". iModIntro.
     inv_seq_step. revert select (∃ x, _) => -[?[?[?[?[??]]]]]; simplify_eq/=.
-    unfold register_name in *. simplify_eq/=.
     iFrame; iSplitL; [|done].
-    iApply ("Hcont" with "Hr"); [done..|].
+    iApply ("Hcont" with "[]"); [done..|].
     iFrame.
   Qed.
-
-  Lemma wp_assume_reg_struct r v ann es q f:
-    r # f ↦ᵣ{q} v -∗
-    (r # f ↦ᵣ{q} v -∗ WPasm es) -∗
-    WPasm (AssumeReg r [Field f] v ann :t: es).
-  Proof.
-    iIntros "Hr Hcont". setoid_rewrite wp_asm_unfold.
-    iIntros ([????]) "/= -> -> -> Hθ".
-    iApply wp_lift_step; [done|].
-    iIntros (σ1 ??? ?) "(?&Hictx&?)".
-    iApply fupd_mask_intro; first set_solver. iIntros "HE".
-    iDestruct (struct_reg_mapsto_lookup with "Hθ Hr") as %(?&?&?&?&?).
-    iSplit. {
-      iPureIntro. eexists _, _, _, _; simpl. econstructor; [done |by econstructor|]; simpl.
-      eexists _. split_and! => //=.
-      rewrite /read_accessor/=. by simplify_option_eq.
-    }
-    iIntros "!>" (????). iMod "HE" as "_". iModIntro.
-    inv_seq_step. revert select (∃ x, _) => -[?[?[?[?[??]]]]]; simplify_eq/=.
-    unfold register_name, read_accessor in *. simplify_option_eq.
-    iFrame; iSplitL; [|done].
-    iApply ("Hcont" with "Hr"); [done..|].
-    iFrame.
-  Qed.
-
-  Lemma wp_assume_reg r v ann es q:
-    r ↦ᵣ{q} v -∗
-    (r ↦ᵣ{q} v -∗ WPasm es) -∗
-    WPasm (AssumeReg r [] v ann :t: es).
-  Proof. by apply: wp_assume_reg_acc. Qed.
 
   Lemma wp_write_reg_acc r v v' v'' vnew ann es al:
     read_accessor al v = Some vnew →
@@ -506,6 +519,7 @@ Section lifting.
   Proof. by apply: wp_write_reg_acc. Qed.
 
 
+  (** * Memory  *)
   Lemma wp_read_mem n len a vread (vmem : bv n) es ann kind tag q:
     n = (8 * len)%N →
     0 < Z.of_N len →
@@ -651,6 +665,7 @@ Section lifting.
     by iApply ("Hcont" with "Hspec").
   Qed.
 
+  (** * Other lifting lemmas  *)
   Lemma wp_branch_address v es ann:
     WPasm es -∗
     WPasm (BranchAddress v ann :t: es).
@@ -865,30 +880,13 @@ Section exp_lifting.
     WPexp (Val v ann) {{ Φ }}.
   Proof. rewrite wp_exp_unfold. iIntros "?". iExists _. by iFrame. Qed.
 
-  Lemma wpae_var_reg_acc r q v v' Φ ann al :
-    read_accessor al v = Some (RegVal_Base v') →
-    r ↦ᵣ{q} v -∗
-    (r ↦ᵣ{q} v -∗ Φ v') -∗
+  Lemma wpae_var_reg r Φ ann al :
+    WPreadreg r @ al {{ v', if v' is RegVal_Base v'' then Φ v'' else False }} -∗
     WPaexp (AExp_Val (AVal_Var r al) ann) {{ Φ }}.
   Proof.
-    rewrite wp_a_exp_unfold. iIntros (?) "Hr HΦ". iIntros (?) "Hregs" => /=.
-    iDestruct (reg_mapsto_lookup with "Hregs Hr") as %->.
-    iExists _ => /=. simplify_option_eq. iSplit; [done|]. iFrame. by iApply "HΦ".
-  Qed.
-  Lemma wpae_var_reg r q v Φ ann :
-    r ↦ᵣ{q} RegVal_Base v -∗
-    (r ↦ᵣ{q} RegVal_Base v -∗ Φ v) -∗
-    WPaexp (AExp_Val (AVal_Var r []) ann) {{ Φ }}.
-  Proof. by apply: wpae_var_reg_acc. Qed.
-  Lemma wpae_var_struct r f q v Φ ann :
-    r # f ↦ᵣ{q} RegVal_Base v -∗
-    (r # f ↦ᵣ{q} RegVal_Base v -∗ Φ v) -∗
-    WPaexp (AExp_Val (AVal_Var r [Field f]) ann) {{ Φ }}.
-  Proof.
-    rewrite wp_a_exp_unfold. iIntros "Hr HΦ" (?) "Hregs" => /=.
-    iDestruct (struct_reg_mapsto_lookup with "Hregs Hr") as %[?[?[->[??]]]].
-    rewrite /read_accessor/=. simplify_option_eq.
-    iExists _ => /=. iSplit; [done|]. iFrame. by iApply "HΦ".
+    rewrite wp_a_exp_unfold wpreadreg_eq. iIntros "Hr" (?) "Hregs" => /=.
+    iDestruct ("Hr" with "Hregs") as (????) "[? ?]"; subst. case_match => //.
+    iExists _ => /=. simplify_option_eq. iSplit; [done|]. by iFrame.
   Qed.
 
   Lemma wpae_bits b Φ ann:

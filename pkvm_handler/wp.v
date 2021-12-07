@@ -468,7 +468,7 @@ Proof.
     by bits_simplify.
   + bits_simplify.
     bitify_hyp H4.
-    specialize (H4 n44 ltac:(lia)).
+    specialize (H4 n ltac:(lia)).
     bits_simplify_hyp H4.
     rewrite <- H4.
     f_equal.
