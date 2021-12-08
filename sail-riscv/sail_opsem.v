@@ -84,6 +84,7 @@ Qed.
 Lemma byte_to_memory_byte_length b: length (byte_to_memory_byte b) = 8%nat.
 Proof. done. Qed.
 
+Local Transparent bv_to_bits.
 Lemma byte_to_memory_byte_lookup_Some b i x:
   byte_to_memory_byte b !! i = Some x ↔ (i < 8)%nat ∧ x = bitU_of_bool (Z.testbit (bv_unsigned b) (7 - i)%nat).
 Proof. do 8 try destruct i => //=; naive_solver lia. Qed.

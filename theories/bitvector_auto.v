@@ -56,27 +56,6 @@
 From isla Require Export base.
 From refinedc.lithium Require Import Z_bitblast.
 
-Typeclasses Opaque Z_to_bv
-       bv_0 bv_succ bv_pred
-       bv_add bv_sub bv_opp
-       bv_mul bv_divu bv_modu
-       bv_divs bv_quots bv_mods bv_rems
-       bv_shiftl bv_shiftr bv_ashiftr bv_or
-       bv_and bv_xor bv_not bv_zero_extend
-       bv_sign_extend bv_extract bv_concat
-       bv_add_Z bv_sub_Z bv_mul_Z
-       bool_to_bv.
-Global Opaque Z_to_bv
-       bv_0 bv_succ bv_pred
-       bv_add bv_sub bv_opp
-       bv_mul bv_divu bv_modu
-       bv_divs bv_quots bv_mods bv_rems
-       bv_shiftl bv_shiftr bv_ashiftr bv_or
-       bv_and bv_xor bv_not bv_zero_extend
-       bv_sign_extend bv_extract bv_concat
-       bv_add_Z bv_sub_Z bv_mul_Z
-       bool_to_bv.
-
 Lemma bitblast_bool_to_Z b n:
   Bitblast (bool_to_Z b) n (bool_decide (n = 0) && b).
 Proof.
