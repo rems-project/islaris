@@ -59,7 +59,7 @@ From RecordUpdate Require Export RecordSet.
 From iris.proofmode Require Import tactics.
 From refinedc.lang Require Export base.
 From refinedc.lithium Require Export Z_bitblast.
-Require Export isla.bitvector.
+Require Export bitvector.bitvector.
 Export RecordSetNotations.
 
 Open Scope Z_scope.

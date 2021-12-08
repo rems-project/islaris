@@ -54,6 +54,7 @@
 (****************************************************************************)
 
 Require Export isla.isla_lang.
+Require Export isla.base.
 From iris.program_logic Require Export language.
 Open Scope Z_scope.
 
