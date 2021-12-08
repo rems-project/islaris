@@ -1283,16 +1283,77 @@ Section instances.
         iIntros "Hr". iApply ("Hwp" with "[//]"). iApply "Hregs". by iFrame.
   Qed.
 
-  Lemma li_wp_read_reg r v ann es al :
-    (∃ vread, ⌜read_accessor al v = Some vread⌝ ∗
-        WPreadreg r @ al {{ v', ⌜vread = v'⌝ -∗ WPasm es }}) -∗
-    WPasm (ReadReg r al v ann :t: es).
-  Proof. iDestruct 1 as (??) "Hwp". by iApply wp_read_reg. Qed.
+  Lemma li_wp_read_reg r v ann es :
+    (find_in_context (FindRegMapsTo r) (λ rk,
+      match rk with
+      | RKMapsTo v' => (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)
+      | RKCol regs =>
+          (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
+             reg_col regs -∗ ⌜valu_has_shape v s⌝ -∗ WPasm es))
+      end)) -∗
+    WPasm (ReadReg r [] v ann :t: es).
+  Proof.
+    unfold tactic_hint, regcol_compute_hint.
+    iDestruct 1 as (rk) "[Hrk HG]". iApply wp_read_reg; [done|].
+    iApply li_wpreadreg_nil. iExists _. iFrame. destruct rk => /=.
+    - iIntros "? %". by iApply "HG".
+    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+      iExists (_, _). iSplit; [done|]. iIntros (??) "? %". subst. by iApply ("HG" with "[$]").
+  Qed.
 
-  Lemma li_wp_assume_reg r v ann es al :
-    (WPreadreg r @ al {{ v', ⌜v = v'⌝ ∗ WPasm es }}) -∗
-    WPasm (AssumeReg r al v ann :t: es).
-  Proof. apply wp_assume_reg. Qed.
+  Lemma li_wp_read_reg_struct r f v ann es :
+    (∃ vread, ⌜read_accessor [Field f] v = Some vread⌝ ∗
+     (find_in_context (FindStructRegMapsTo r f) (λ rk,
+      match rk with
+      | RKMapsTo v' => (⌜vread = v'⌝ -∗ r # f ↦ᵣ v' -∗ WPasm es)
+      | RKCol regs => tactic_hint (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(b, s),
+             ⌜valu_has_shape vread s⌝ -∗ reg_col regs -∗ WPasm es)
+      end))) -∗
+    WPasm (ReadReg r [Field f] v ann :t: es).
+  Proof.
+    unfold tactic_hint, regcol_compute_hint.
+    iDestruct 1 as (vread ? rk) "[Hrk HG]". iApply wp_read_reg; [done|].
+    iApply li_wpreadreg_field. iExists _. iFrame. destruct rk => /=.
+    - iIntros "? %". by iApply "HG".
+    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+      iExists (_, _). iSplit; [done|]. iIntros (??) "? %". subst. by iApply ("HG" with "[] [$]").
+  Qed.
+
+  Lemma li_wp_assume_reg r v ann es :
+    (find_in_context (FindRegMapsTo r) (λ rk,
+      match rk with
+      | RKMapsTo v' => (⌜v = v'⌝ ∗ (r ↦ᵣ v' -∗ WPasm es))
+      | RKCol regs =>
+          (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
+             ⌜∀ v', valu_has_shape v' s → v' = v⌝ ∗ (reg_col regs -∗ WPasm es)))
+      end)) -∗
+    WPasm (AssumeReg r [] v ann :t: es).
+  Proof.
+    unfold tactic_hint, regcol_compute_hint.
+    iDestruct 1 as (rk) "[Hrk HG]". iApply wp_assume_reg.
+    iApply li_wpreadreg_nil. iExists _. iFrame. destruct rk => /=.
+    - iDestruct "HG" as (?) "HG". iIntros "?". iSplit; [done|]. by iApply "HG".
+    - iDestruct "HG" as ([??]??) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+      iExists (_, _). iSplit; [done|]. iIntros (??) "?". iSplit; [naive_solver|]. by iApply ("HG" with "[$]").
+  Qed.
+
+  Lemma li_wp_assume_reg_struct r f v ann es :
+    ((find_in_context (FindStructRegMapsTo r f) (λ rk,
+      match rk with
+      | RKMapsTo v' => ⌜v = v'⌝ ∗ (r # f ↦ᵣ v' -∗ WPasm es)
+      | RKCol regs => tactic_hint (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(b, s),
+          if s is ExactShape v' then ⌜v = v'⌝ ∗ (reg_col regs -∗ WPasm es) else False)
+      end))) -∗
+    WPasm (AssumeReg r [Field f] v ann :t: es).
+  Proof.
+    unfold tactic_hint, regcol_compute_hint.
+    iDestruct 1 as (rk) "[Hrk HG]". iApply wp_assume_reg.
+    iApply li_wpreadreg_field. iExists _. iFrame. destruct rk => /=.
+    - iDestruct "HG" as (?) "HG". iIntros "?". iSplit; [done|]. by iApply "HG".
+    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+      iExists (_, _). iSplit; [done|]. iIntros (??) "?". case_match => //. iDestruct "HG" as (?) "HG"; subst.
+      iSplit; [naive_solver|]. by iApply ("HG" with "[$]").
+  Qed.
 
   Lemma li_wp_write_reg r v ann es:
     (find_in_context (FindRegMapsTo r) (λ rk,
@@ -1464,10 +1525,43 @@ Section instances.
     WPexp (Val v ann) {{ Φ }}.
   Proof. apply: wpe_val. Qed.
 
-  Lemma li_wpae_var_reg r al Φ ann :
-    WPreadreg r @ al {{ v', if v' is RegVal_Base v'' then Φ v'' else False }} -∗
-    WPaexp (AExp_Val (AVal_Var r al) ann) {{ Φ }}.
-  Proof. apply wpae_var_reg. Qed.
+  Lemma li_wpae_var_reg r Φ ann :
+    (find_in_context (FindRegMapsTo r) (λ rk,
+      match rk with
+      | RKMapsTo v => (if v is RegVal_Base v' then r ↦ᵣ v -∗ Φ v' else False)
+      | RKCol regs =>
+          tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
+           ∀ v, ⌜valu_has_shape v s⌝ -∗ ∃ v', ⌜v = RegVal_Base v'⌝ ∗ (reg_col regs -∗ Φ v')
+             )
+      end)) -∗
+    WPaexp (AExp_Val (AVal_Var r []) ann) {{ Φ }}.
+  Proof.
+    unfold tactic_hint, regcol_compute_hint.
+    iDestruct 1 as (rk) "[Hrk HG]". iApply wpae_var_reg.
+    iApply li_wpreadreg_nil. iExists _. iFrame. destruct rk => /=.
+    - by case_match.
+    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+      iExists (_, _). iSplit; [done|]. iIntros (??) "?".
+      iDestruct ("HG" with "[//]") as (??) "HG"; subst. by iApply "HG".
+  Qed.
+
+  Lemma li_wpae_var_struct r f Φ ann :
+    (find_in_context (FindStructRegMapsTo r f) (λ rk,
+      match rk with
+      | RKMapsTo v => (if v is RegVal_Base v' then r # f ↦ᵣ v -∗ Φ v' else False)
+      | RKCol regs => tactic_hint (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(b, s),
+           ∀ v, ⌜valu_has_shape v s⌝ -∗ if v is RegVal_Base v' then (reg_col regs -∗ Φ v') else False)
+      end)) -∗
+    WPaexp (AExp_Val (AVal_Var r [Field f]) ann) {{ Φ }}.
+  Proof.
+    unfold tactic_hint, regcol_compute_hint.
+    iDestruct 1 as (rk) "[Hrk HG]". iApply wpae_var_reg.
+    iApply li_wpreadreg_field. iExists _. iFrame. destruct rk => /=.
+    - by case_match.
+    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+      iExists (_, _). iSplit; [done|]. iIntros (??) "?".
+      iDestruct ("HG" with "[//]") as "HG". case_match => //. by iApply "HG".
+  Qed.
 
   Lemma li_wpae_bits b Φ ann:
     Φ (Val_Bits b) -∗
@@ -1652,8 +1746,10 @@ Ltac liAAsm :=
     | tcases _ => notypeclasses refine (tac_fast_apply (li_wp_cases _) _)
     | ?e :t: _ =>
       lazymatch e with
-      | ReadReg _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg _ _ _ _ _) _)
-      | AssumeReg _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume_reg _ _ _ _ _) _)
+      | ReadReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg _ _ _ _) _)
+      | ReadReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg_struct _ _ _ _ _) _)
+      | AssumeReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume_reg _ _ _ _) _)
+      | AssumeReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume_reg_struct _ _ _ _ _) _)
       | WriteReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg _ _ _ _) _)
       | WriteReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg_struct _ _ _ _ _) _)
       | BranchAddress _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch_address _ _ _) _)
@@ -1696,7 +1792,8 @@ Ltac liAExp :=
     (* end *)
   | |- envs_entails ?Δ (wp_a_exp ?e _) =>
     lazymatch e with
-    | AExp_Val (AVal_Var _ _) _ => notypeclasses refine (tac_fast_apply (li_wpae_var_reg _ _ _ _) _)
+    | AExp_Val (AVal_Var _ []) _ => notypeclasses refine (tac_fast_apply (li_wpae_var_reg _ _ _) _)
+    | AExp_Val (AVal_Var _ [Field _]) _ => notypeclasses refine (tac_fast_apply (li_wpae_var_struct _ _ _ _) _)
     | AExp_Val (AVal_Bits _) _ => notypeclasses refine (tac_fast_apply (li_wpae_bits _ _ _) _)
     | AExp_Val (AVal_Bool _) _ => notypeclasses refine (tac_fast_apply (li_wpae_bool _ _ _) _)
     | AExp_Val (AVal_Enum _) _ => notypeclasses refine (tac_fast_apply (li_wpae_enum _ _ _) _)
