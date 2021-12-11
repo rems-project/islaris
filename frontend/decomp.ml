@@ -259,7 +259,8 @@ let gen_dune : Arch.t -> string list -> Format.formatter -> unit =
   pp "(coq.theory@.";
   pp " (name %s)@." (String.concat "." coq_prefix);
   pp " (package islaris)@.";
-  pp " (flags -w -notation-overridden -w -redundant-canonical-projection)@.";
+  pp " (flags :standard -w -notation-overridden \
+                        -w -redundant-canonical-projection)@.";
   pp " (synopsis \"Generated file\")@.";
   pp " (theories isla isla.%s))@." arch.arch_coq_name
 

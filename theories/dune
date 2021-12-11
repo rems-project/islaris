@@ -1,7 +1,7 @@
 (coq.theory
  (name isla)
  (package islaris)
- (flags -w -notation-overridden -w -redundant-canonical-projection)
+ (flags :standard -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "Coq Isla")
  (theories ))
 

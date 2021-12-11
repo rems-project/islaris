@@ -2,6 +2,6 @@
 (coq.theory
  (name isla.instructions.binary_search_riscv64)
  (package islaris)
- (flags -w -notation-overridden -w -redundant-canonical-projection)
+ (flags :standard -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "Generated file")
  (theories isla isla.riscv64))
