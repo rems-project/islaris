@@ -4,7 +4,8 @@
 
 It is recommended to install the dependencies of Islaris via opam
 (version 2.0.0 or newer) into a new switch. This can be done via the
-following commands:
+following commands. You also  need to make sure that you have the GNU
+MPFR library on your system (`libmpfr-dev` package on Debian).
 
 ```
 opam switch create . ocaml-base-compiler.4.12.0 --no-install
