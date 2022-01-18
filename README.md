@@ -18,13 +18,17 @@ make builddep
 
 You might need to run `eval $(opam env)` afterwards to update the environment of your shell.
 
-The Islaris frontend also requires cloning and setting up Isla ( https://github.com/rems-project/isla ) and Isla snapshots ( https://github.com/rems-project/isla-snapshots ) in a directory next to the Islaris repository:
+The Islaris frontend also requires cloning and setting up Isla ( https://github.com/rems-project/isla )
+and Isla snapshots ( https://github.com/rems-project/isla-snapshots ) in a directory next to
+the Islaris repository:
 ```
 cd ..
 git clone https://github.com/rems-project/isla.git
 git clone https://github.com/rems-project/isla-snapshots.git
 # Follow the instructions in https://github.com/rems-project/isla/blob/master/README.md to setup Isla
 ```
+(Alternatively, one can also set the "ISLA_ROOT" and "ISLA_SNAP_ROOT" environment variables
+to point to a working checkout of Isla resp. Isla snapshots.)
 
 ## Generating Coq traces from a partial decompilation
 
