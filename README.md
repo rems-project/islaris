@@ -27,7 +27,7 @@ git clone https://github.com/rems-project/isla.git
 git clone https://github.com/rems-project/isla-snapshots.git
 # Follow the instructions in https://github.com/rems-project/isla/blob/master/README.md to setup Isla
 ```
-(Alternatively, one can also set the "ISLA_ROOT" and "ISLA_SNAP_ROOT" environment variables
+(Alternatively, one can also set the "ISLA_REPO" and "ISLA_SNAP_REPO" environment variables
 to point to a working checkout of Isla resp. Isla snapshots.)
 
 ## Generating Coq traces from a partial decompilation
