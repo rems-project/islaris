@@ -20,7 +20,7 @@ else
 fi
 
 # Definition of ISLA_SNAPSHOTS_ROOT.
-if [ -z "$ISLA_REPO" ]; then
+if [ -z "$ISLA_SNAP_REPO" ]; then
   ISLA_SNAP_ROOT="$(realpath "$SCRIPT_DIR/../../isla-snapshots")"
 else
   ISLA_SNAP_ROOT="$(realpath "$ISLA_SNAP_REPO")"
