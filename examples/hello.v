@@ -57,6 +57,8 @@ Require Import isla.aarch64.aarch64.
 From isla.instructions.hello Require Import instrs.
 
 (*
+See https://godbolt.org/z/zrWs5cn1h
+
 C code:
 	char *string = "Hello, World!\n";
 	while(*string) {
