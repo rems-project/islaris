@@ -130,7 +130,7 @@ Building examples with a `make generate_` command will correctly place
 the output files under directory `instructions`, in a folder
 with the same name as the example.
 
-## People
+## People 
 
 - Michael Sammler
 - Rodolphe Lepigre
