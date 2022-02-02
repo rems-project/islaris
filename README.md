@@ -5,7 +5,8 @@
 It is recommended to install the dependencies of Islaris via opam
 (version 2.0.0 or newer) into a new switch. This can be done via the
 following commands. You also  need to make sure that you have the GNU
-MPFR library on your system (`libmpfr-dev` package on Debian).
+MPFR library on your system (`libmpfr-dev` package on Debian), 
+and also aarch64-linux-gnu-as (`binutils-aarch64-linux-gnu` package on Debian).
 
 ```
 opam switch create . ocaml-base-compiler.4.12.0 --no-install
@@ -15,6 +16,15 @@ opam pin add -n -y cerberus "git+https://github.com/rems-project/cerberus.git#7e
 opam pin add -n -y isla-lang "git+https://git@github.com/rems-project/isla-lang.git#ea66fcb67b541339cd8139ec110be96dd00758d5"
 make builddep
 ```
+
+There have been reports of `coq 8.14.1` failing to build in a switch inside 
+a directory with a dune-project file, resulting in the following error:
+```
+[ERROR] The installation of coq failed at "make COQ_USE_DUNE= install"
+```
+This can be fixed by pinning Coq to version 8.14.0 with `opam pin coq 8.14.0`
+and running `make builddep` again.
+The issue has been reported here: https://github.com/coq/coq/issues/15384
 
 You might need to run `eval $(opam env)` afterwards to update the environment of your shell.
 
@@ -30,9 +40,11 @@ git clone https://github.com/rems-project/isla-snapshots.git
 (Alternatively, one can also set the "ISLA_REPO" and "ISLA_SNAP_REPO" environment variables
 to point to a working checkout of Isla resp. Isla snapshots.)
 
-## Generating Coq traces from a partial decompilation
+Once all needed libraries have been installed, Islaris can be built by running `make` from its root directory.
 
-Currently, one needs to manually instrument the outout of `objdump` so that it
+## Generating Coq traces from a partial decompilation of pkvm
+
+Currently, one needs to manually instrument the output of `objdump` so that it
 contains only the relevant code.
 
 For example, we can start from the following segment of `objdump` output taken
@@ -107,7 +119,18 @@ using the following command instead.
 PATH=$PWD/bin:$PATH dune exec -- islaris pkvm_handler/pkvm_handler.dump
 ```
 
-## People
+## Building other examples
+
+Islaris ships with other examples under directory `examples`.
+To build these, run `make generate`. To build an individual example,
+consult the Makefile for the correct keyword to use (for instance,
+the `unaligned_accesses` example can be built with 
+`make generate_unaligned_accesses`).
+Building examples with a `make generate_` command will correctly place
+the output files under directory `instructions`, in a folder
+with the same name as the example.
+
+## People 
 
 - Michael Sammler
 - Rodolphe Lepigre
