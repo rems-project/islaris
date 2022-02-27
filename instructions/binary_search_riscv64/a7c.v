@@ -33,8 +33,10 @@ Definition a7c : isla_trace :=
   Smt (DefineConst 57%Z (Unop (ZeroExtend 64%N) (Val (Val_Symbolic 22%Z) Mk_annot) Mk_annot)) Mk_annot :t:
   Smt (DeclareConst 72%Z (Ty_BitVec 64%N)) Mk_annot :t:
   ReadMem (RegVal_Base (Val_Symbolic 72%Z)) (RegVal_Base (Val_Enum ((Mk_enum_id 2%nat), Mk_enum_ctor 0%nat))) (RegVal_Base (Val_Symbolic 22%Z)) 8%N None Mk_annot :t:
-  Smt (DefineConst 73%Z (Unop (SignExtend 0%N) (Val (Val_Symbolic 72%Z) Mk_annot) Mk_annot)) Mk_annot :t:
-  WriteReg "x21" [] (RegVal_Base (Val_Symbolic 73%Z)) Mk_annot :t:
+  Smt (DeclareConst 73%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  Smt (DeclareConst 74%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  Smt (DefineConst 75%Z (Unop (SignExtend 0%N) (Val (Val_Symbolic 72%Z) Mk_annot) Mk_annot)) Mk_annot :t:
+  WriteReg "x21" [] (RegVal_Base (Val_Symbolic 75%Z)) Mk_annot :t:
   WriteReg "PC" [] (RegVal_Base (Val_Symbolic 9%Z)) Mk_annot :t:
   tnil
 .

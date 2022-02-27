@@ -24,22 +24,22 @@ Definition a68 : isla_trace :=
   Smt (DefineConst 74%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 73%Z) Mk_annot; Val (Val_Bits (BV 64%N 0x0%Z)) Mk_annot] Mk_annot)) Mk_annot :t:
   Smt (DefineConst 78%Z (Binop (Eq) (Val (Val_Symbolic 74%Z) Mk_annot) (Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 74%Z) Mk_annot; Val (Val_Bits (BV 64%N 0xfffffffffffffff8%Z)) Mk_annot] Mk_annot) Mk_annot)) Mk_annot :t:
   ReadReg "PSTATE" [Field "D"] (RegVal_Struct [("D", RegVal_Base (Val_Symbolic 6%Z))]) Mk_annot :t:
-  Smt (DeclareConst 1319%Z (Ty_BitVec 56%N)) Mk_annot :t:
-  Smt (DefineConst 1328%Z (Unop (ZeroExtend 8%N) (Manyop Concat [Val (Val_Bits (BV 4%N 0x0%Z)) Mk_annot; Unop (Extract 51%N 0%N) (Val (Val_Symbolic 74%Z) Mk_annot) Mk_annot] Mk_annot) Mk_annot)) Mk_annot :t:
-  Smt (DeclareConst 1329%Z (Ty_BitVec 64%N)) Mk_annot :t:
-  ReadMem (RegVal_Base (Val_Symbolic 1329%Z)) (RegVal_Base (Val_Enum ((Mk_enum_id 6%nat), Mk_enum_ctor 0%nat))) (RegVal_Base (Val_Symbolic 1328%Z)) 8%N None Mk_annot :t:
-  Smt (DefineConst 1332%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 73%Z) Mk_annot; Val (Val_Bits (BV 64%N 0x8%Z)) Mk_annot] Mk_annot)) Mk_annot :t:
-  Smt (DefineConst 1336%Z (Binop (Eq) (Val (Val_Symbolic 1332%Z) Mk_annot) (Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 1332%Z) Mk_annot; Val (Val_Bits (BV 64%N 0xfffffffffffffff8%Z)) Mk_annot] Mk_annot) Mk_annot)) Mk_annot :t:
-  Smt (DefineConst 2556%Z (Unop (ZeroExtend 8%N) (Manyop Concat [Val (Val_Bits (BV 4%N 0x0%Z)) Mk_annot; Unop (Extract 51%N 0%N) (Val (Val_Symbolic 1332%Z) Mk_annot) Mk_annot] Mk_annot) Mk_annot)) Mk_annot :t:
-  Smt (DeclareConst 2557%Z (Ty_BitVec 64%N)) Mk_annot :t:
-  ReadMem (RegVal_Base (Val_Symbolic 2557%Z)) (RegVal_Base (Val_Enum ((Mk_enum_id 6%nat), Mk_enum_ctor 0%nat))) (RegVal_Base (Val_Symbolic 2556%Z)) 8%N None Mk_annot :t:
-  Smt (DefineConst 2560%Z (Val (Val_Symbolic 1329%Z) Mk_annot)) Mk_annot :t:
-  WriteReg "R24" [] (RegVal_Base (Val_Symbolic 2560%Z)) Mk_annot :t:
-  Smt (DefineConst 2561%Z (Val (Val_Symbolic 2557%Z) Mk_annot)) Mk_annot :t:
-  WriteReg "R23" [] (RegVal_Base (Val_Symbolic 2561%Z)) Mk_annot :t:
-  Smt (DeclareConst 2562%Z (Ty_BitVec 64%N)) Mk_annot :t:
-  ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 2562%Z)) Mk_annot :t:
-  Smt (DefineConst 2563%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 2562%Z) Mk_annot; Val (Val_Bits (BV 64%N 0x4%Z)) Mk_annot] Mk_annot)) Mk_annot :t:
-  WriteReg "_PC" [] (RegVal_Base (Val_Symbolic 2563%Z)) Mk_annot :t:
+  Smt (DeclareConst 2289%Z (Ty_BitVec 56%N)) Mk_annot :t:
+  Smt (DefineConst 2298%Z (Unop (ZeroExtend 8%N) (Manyop Concat [Val (Val_Bits (BV 4%N 0x0%Z)) Mk_annot; Unop (Extract 51%N 0%N) (Val (Val_Symbolic 74%Z) Mk_annot) Mk_annot] Mk_annot) Mk_annot)) Mk_annot :t:
+  Smt (DeclareConst 2299%Z (Ty_BitVec 64%N)) Mk_annot :t:
+  ReadMem (RegVal_Base (Val_Symbolic 2299%Z)) (RegVal_Base (Val_Enum ((Mk_enum_id 6%nat), Mk_enum_ctor 0%nat))) (RegVal_Base (Val_Symbolic 2298%Z)) 8%N None Mk_annot :t:
+  Smt (DefineConst 2302%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 73%Z) Mk_annot; Val (Val_Bits (BV 64%N 0x8%Z)) Mk_annot] Mk_annot)) Mk_annot :t:
+  Smt (DefineConst 2306%Z (Binop (Eq) (Val (Val_Symbolic 2302%Z) Mk_annot) (Manyop (Bvmanyarith Bvand) [Val (Val_Symbolic 2302%Z) Mk_annot; Val (Val_Bits (BV 64%N 0xfffffffffffffff8%Z)) Mk_annot] Mk_annot) Mk_annot)) Mk_annot :t:
+  Smt (DefineConst 4496%Z (Unop (ZeroExtend 8%N) (Manyop Concat [Val (Val_Bits (BV 4%N 0x0%Z)) Mk_annot; Unop (Extract 51%N 0%N) (Val (Val_Symbolic 2302%Z) Mk_annot) Mk_annot] Mk_annot) Mk_annot)) Mk_annot :t:
+  Smt (DeclareConst 4497%Z (Ty_BitVec 64%N)) Mk_annot :t:
+  ReadMem (RegVal_Base (Val_Symbolic 4497%Z)) (RegVal_Base (Val_Enum ((Mk_enum_id 6%nat), Mk_enum_ctor 0%nat))) (RegVal_Base (Val_Symbolic 4496%Z)) 8%N None Mk_annot :t:
+  Smt (DefineConst 4500%Z (Val (Val_Symbolic 2299%Z) Mk_annot)) Mk_annot :t:
+  WriteReg "R24" [] (RegVal_Base (Val_Symbolic 4500%Z)) Mk_annot :t:
+  Smt (DefineConst 4501%Z (Val (Val_Symbolic 4497%Z) Mk_annot)) Mk_annot :t:
+  WriteReg "R23" [] (RegVal_Base (Val_Symbolic 4501%Z)) Mk_annot :t:
+  Smt (DeclareConst 4502%Z (Ty_BitVec 64%N)) Mk_annot :t:
+  ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 4502%Z)) Mk_annot :t:
+  Smt (DefineConst 4503%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 4502%Z) Mk_annot; Val (Val_Bits (BV 64%N 0x4%Z)) Mk_annot] Mk_annot)) Mk_annot :t:
+  WriteReg "_PC" [] (RegVal_Base (Val_Symbolic 4503%Z)) Mk_annot :t:
   tnil
 .

@@ -55,7 +55,7 @@
 
 From stdpp Require Import coPset.
 From Coq Require Import QArith Qcanon.
-From iris.algebra Require Import big_op gmap frac agree frac_agree.
+From iris.algebra Require Import big_op gmap frac agree dfrac_agree.
 From iris.algebra Require Import csum excl auth cmra_big_op numbers.
 From iris.bi Require Import fractional.
 From iris.base_logic Require Export lib.own.
@@ -83,7 +83,7 @@ Class heapG Σ := HeapG {
   heap_backed_mem_name : gname;
   heap_full_trace : list seq_label;
   heap_spec_trace : list seq_label → Prop;
-  heap_spec_trace_inG :> inG Σ (frac_agreeR specO);
+  heap_spec_trace_inG :> inG Σ (dfrac_agreeR specO);
   heap_spec_trace_name : gname;
 }.
 
@@ -216,7 +216,7 @@ Section definitions.
     ghost_map_auth heap_mem_name 1 mem ∗ backed_mem (dom _ mem).
 
   Definition spec_trace_raw_def (Pκs: spec) : iProp Σ :=
-    own heap_spec_trace_name (to_frac_agree (A:=specO) (1/2) Pκs).
+    own heap_spec_trace_name (to_dfrac_agree (A:=specO) (DfracOwn (1/2)) Pκs).
   Definition spec_trace_raw_aux : seal (@spec_trace_raw_def). by eexists. Qed.
   Definition spec_trace_raw := unseal spec_trace_raw_aux.
   Definition spec_trace_raw_eq : @spec_trace_raw = @spec_trace_raw_def :=

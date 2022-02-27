@@ -32,8 +32,10 @@ Definition a4 : isla_trace :=
   Smt (DefineConst 51%Z (Unop (ZeroExtend 64%N) (Val (Val_Symbolic 22%Z) Mk_annot) Mk_annot)) Mk_annot :t:
   Smt (DeclareConst 66%Z (Ty_BitVec 8%N)) Mk_annot :t:
   ReadMem (RegVal_Base (Val_Symbolic 66%Z)) (RegVal_Base (Val_Enum ((Mk_enum_id 2%nat), Mk_enum_ctor 0%nat))) (RegVal_Base (Val_Symbolic 22%Z)) 1%N None Mk_annot :t:
-  Smt (DefineConst 67%Z (Unop (SignExtend 56%N) (Val (Val_Symbolic 66%Z) Mk_annot) Mk_annot)) Mk_annot :t:
-  WriteReg "x13" [] (RegVal_Base (Val_Symbolic 67%Z)) Mk_annot :t:
+  Smt (DeclareConst 67%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  Smt (DeclareConst 68%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  Smt (DefineConst 69%Z (Unop (SignExtend 56%N) (Val (Val_Symbolic 66%Z) Mk_annot) Mk_annot)) Mk_annot :t:
+  WriteReg "x13" [] (RegVal_Base (Val_Symbolic 69%Z)) Mk_annot :t:
   WriteReg "PC" [] (RegVal_Base (Val_Symbolic 9%Z)) Mk_annot :t:
   tnil
 .

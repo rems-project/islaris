@@ -55,7 +55,7 @@
 
 From iris.proofmode Require Import tactics.
 From iris.program_logic Require Export adequacy weakestpre.
-From iris.algebra Require Import csum excl auth cmra_big_op gmap frac_agree.
+From iris.algebra Require Import csum excl auth cmra_big_op gmap dfrac_agree.
 From iris.base_logic.lib Require Import ghost_map ghost_var.
 From isla Require Export ghost_state lifting.
 Set Default Proof Using "Type".
@@ -67,7 +67,7 @@ Class islaPreG Σ := PreIslaG {
   heap_pre_struct_regs_inG :> ghost_mapG Σ (string * string) valu;
   heap_pre_mem_inG :> ghost_mapG Σ addr byte;
   heap_pre_backed_mem_inG :> inG Σ (backed_memUR);
-  heap_pre_spec_inG :> inG Σ (frac_agreeR specO);
+  heap_pre_spec_inG :> inG Σ (dfrac_agreeR specO);
 }.
 
 Definition islaΣ : gFunctors :=
@@ -76,7 +76,7 @@ Definition islaΣ : gFunctors :=
    ghost_mapΣ (string * string) valu;
    ghost_mapΣ addr byte;
    GFunctor (constRF backed_memUR);
-   GFunctor (frac_agreeR specO)].
+   GFunctor (dfrac_agreeR specO)].
 
 Global Instance subG_islaPreG {Σ} : subG islaΣ Σ → islaPreG Σ.
 Proof. solve_inG. Qed.
