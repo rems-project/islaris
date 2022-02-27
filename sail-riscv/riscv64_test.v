@@ -117,7 +117,7 @@ Proof.
       unfold bv_wrap, bv_modulus in *. lia.
   - by rewrite mword_to_bv_add_vec.
   - by rewrite mword_to_bv_add_vec.
-    Unshelve. exact: inhabitant.
+    Unshelve. all: exact: inhabitant.
 Qed.
 
 Lemma sim_instr_ac:
@@ -155,7 +155,7 @@ Proof.
   - by rewrite mword_to_bv_add_vec.
   - rewrite mword_to_bv_EXTS // mword_to_bv_to_mword //.
   - by rewrite mword_to_bv_add_vec.
-    Unshelve. exact: inhabitant.
+    Unshelve. all: exact: inhabitant.
 Qed.
 
 Lemma sim_instr_a10:
