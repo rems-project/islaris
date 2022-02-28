@@ -23,3 +23,6 @@ _opam*
 /sail-riscv/coq/
 *.isla
 /data.json
+/deps/*.tar.gz
+/deps/bbv/
+/deps/sail-riscv/

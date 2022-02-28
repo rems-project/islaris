@@ -104,7 +104,7 @@ builddep-opamfiles: builddep/islaris-builddep.opam
 	@true
 .PHONY: builddep-opamfiles
 
-# Create a virtual Opam package with the same deps as RefinedC, but no
+# Create a virtual Opam package with the same deps as Islaris, but no
 # build. Uses a very ugly hack to use sed for removing the last 4
 # lines since head -n -4 does not work on MacOS
 # (https://stackoverflow.com/a/24298204)
@@ -114,10 +114,18 @@ builddep/islaris-builddep.opam: islaris.opam Makefile
 	@sed '$$d' $< | sed '$$d' | sed '$$d' | sed '$$d' | sed -E 's/^name: *"(.*)" */name: "\1-builddep"/' > $@
 
 # Install the virtual Opam package to ensure that:
-#  1) dependencies of RefinedC are installed,
+#  1) dependencies of Islaris are installed,
 #  2) they will remain satisfied even if other packages are updated/installed,
-#  3) we do not have to pin the RefinedC package itself (which takes time).
+#  3) we do not have to pin the Islaris package itself (which takes time).
 builddep: builddep/islaris-builddep.opam
 	@echo "# Installing package $^."
 	@opam install $(OPAMFLAGS) $^
 .PHONY: builddep
+
+saildep:
+	$(MAKE) -C deps
+.PHONY: saildep
+
+enable-sail-riscv:
+	ln -fs _dune sail-riscv/dune
+.PHONY: enable-sail-riscv

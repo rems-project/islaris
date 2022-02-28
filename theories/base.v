@@ -57,8 +57,8 @@ From Coq Require Export ssreflect.
 From stdpp Require Export prelude strings gmap.
 From RecordUpdate Require Export RecordSet.
 From iris.proofmode Require Import tactics.
-From refinedc.lang Require Export base.
-From refinedc.lithium Require Export Z_bitblast.
+From lithium Require Export base.
+From lithium Require Export Z_bitblast.
 Require Export bitvector.bitvector.
 Export RecordSetNotations.
 

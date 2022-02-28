@@ -54,7 +54,7 @@
 (****************************************************************************)
 
 From isla Require Export base.
-From refinedc.lithium Require Import Z_bitblast.
+From lithium Require Import Z_bitblast.
 
 Lemma bitblast_bool_to_Z b n:
   Bitblast (bool_to_Z b) n (bool_decide (n = 0) && b).

@@ -2,5 +2,5 @@
  (name isla.sail_riscv)
  (package islaris)
  (flags -w -notation-overridden -w -redundant-canonical-projection)
- (synopsis "???")
+ (synopsis "Validation of Islaris against Coq code from Sail model.")
  (theories isla isla.instructions isla.riscv64 isla.examples))

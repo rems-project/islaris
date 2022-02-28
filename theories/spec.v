@@ -53,8 +53,8 @@
 (* Exceptions to this license are detailed in THIRD_PARTY_FILES.md          *)
 (****************************************************************************)
 
-Require Import refinedc.lithium.infrastructure.
-Require Import refinedc.lithium.simpl_classes.
+Require Import lithium.infrastructure.
+Require Import lithium.simpl_classes.
 Require Import isla.opsem.
 
 Definition spec := list seq_label → Prop.
