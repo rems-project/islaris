@@ -39,6 +39,8 @@ sail-riscv: bbv sail-riscv-$(SAIL_RISCV_COMMIT).tar.gz
 	install -m a+rw -D -t "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/RVduopod" $(wildcard sail-riscv/duopod/*.v) $(wildcard sail-riscv/duopod/*.vo)
 .PHONY: sail-riscv
 
+sources: bbv-$(BBV_COMMIT).tar.gz sail-riscv-$(SAIL_RISCV_COMMIT).tar.gz
+
 clean:
 	rm -rf *.tar.gz
 	rm -rf bbv sail-riscv
