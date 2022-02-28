@@ -16,15 +16,6 @@ opam pin add -n -y isla-lang "git+https://git@github.com/rems-project/isla-lang.
 make builddep
 ```
 
-There have been reports of `coq 8.14.1` failing to build in a switch inside 
-a directory with a dune-project file, resulting in the following error:
-```
-[ERROR] The installation of coq failed at "make COQ_USE_DUNE= install"
-```
-This can be fixed by pinning Coq to version 8.14.0 with `opam pin coq 8.14.0`
-and running `make builddep` again.
-The issue has been reported here: https://github.com/coq/coq/issues/15384
-
 You might need to run `eval $(opam env)` afterwards to update the environment of your shell.
 
 The Islaris frontend also requires cloning and setting up Isla ( https://github.com/rems-project/isla )
