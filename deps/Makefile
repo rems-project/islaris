@@ -24,10 +24,11 @@ sail-riscv: bbv sail-riscv-$(SAIL_RISCV_COMMIT).tar.gz
 	tar xf sail-riscv-$(SAIL_RISCV_COMMIT).tar.gz
 	mv "sail-riscv-${SAIL_RISCV_COMMIT}/prover_snapshots/coq" sail-riscv
 	rm -r "sail-riscv-${SAIL_RISCV_COMMIT}"
-	git apply sail-riscv.patch
+	(cd .. && git apply deps/sail-riscv.patch) # Must be applied from the root for paths in the patch to be correct
 	sed -i s/omega/lia/ sail-riscv/RV32/riscv_extras.v
 	sed -i s/omega/lia/ sail-riscv/RV64/riscv_extras.v
 	sed -i s/omega/lia/ sail-riscv/duopod/riscv_extras.v
+	chmod a+x sail-riscv/build
 	cd sail-riscv && ./build
 	rm -rf "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/Sail"
 	install -m a+rw -D -t "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/Sail" $(wildcard sail-riscv/lib/sail/*.v) $(wildcard sail-riscv/lib/sail/*.vo)

@@ -17,13 +17,13 @@ update_etc:
 	@dune build _build/install/default/etc/islaris/riscv64_isla_coq.toml
 .PHONY: update_etc
 
-generate_memory_instructions: examples/memory_instructions.dump
+generate_memory_instructions: examples/memory_instructions.dump update_etc
 	@echo "[islaris] $<"
 	@PATH=$$PWD/bin:$$PATH dune exec -- islaris $< -j 8 -o instructions  -n "instr_{instr}" --coqdir=isla.instructions
 	@rm instructions/instrs.v
 .PHONY: generate_memory_instructions
 
-generate_unaligned_accesses: examples/unaligned_accesses.dump
+generate_unaligned_accesses: examples/unaligned_accesses.dump update_etc
 	@echo "[islaris] $<"
 	@PATH=$$PWD/bin:$$PATH dune exec -- islaris $< -j 8 -o instructions  -n "instr_{instr}_unaligned" --coqdir=isla.instructions
 	@rm instructions/instrs.v
