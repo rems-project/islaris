@@ -46,7 +46,7 @@ for e in examples:
         os.remove(compiled_coq_file)
     output = subprocess.run(
         ["dune", "build", "-j1", compiled_coq_file, "--display", "short"],
-        check = True, env=env, capture_output=True).stderr.decode("utf8")
+        check = True, env=env, stderr=subprocess.PIPE).stderr.decode("utf8")
 
     # print("Output:", output)
     example_data["itl"] = int(re.search(r"= ([0-9]+)%nat", output).group(1))
@@ -102,7 +102,7 @@ for e in examples:
             os.remove(filename)
         output = subprocess.run(
             ["time", "dune", "build", instrs_file, "--display", "short"],
-            check = True, capture_output=True).stderr.decode("utf8")
+            check = True, stderr=subprocess.PIPE).stderr.decode("utf8")
         example_data["instrs"] = float(re.search(r"0:([0-9]+.[0-9]+)elapsed", output).group(1))
 
         print(example_data)
