@@ -19,7 +19,7 @@ sail-riscv-%.tar.gz:
 	wget "https://github.com/riscv/sail-riscv/archive/$*.tar.gz" -O $@
 
 # patch generated via git diff -p -w --ignore-blank-lines . > sail-riscv.patch
-sail-riscv: bbv sail-riscv-$(SAIL_RISCV_COMMIT).tar.gz
+sail-riscv-build: bbv sail-riscv-$(SAIL_RISCV_COMMIT).tar.gz
 	rm -rf sail-riscv
 	tar xf sail-riscv-$(SAIL_RISCV_COMMIT).tar.gz
 	mv "sail-riscv-${SAIL_RISCV_COMMIT}/prover_snapshots/coq" sail-riscv
@@ -30,6 +30,10 @@ sail-riscv: bbv sail-riscv-$(SAIL_RISCV_COMMIT).tar.gz
 	sed -i s/omega/lia/ sail-riscv/duopod/riscv_extras.v
 	chmod a+x sail-riscv/build
 	cd sail-riscv && ./build
+.PHONY: sail-riscv-build
+
+# This must be a separate goal for the wildcard to be evaluated correctly
+sail-riscv: sail-riscv-build
 	rm -rf "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/Sail"
 	install -m a+rw -D -t "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/Sail" $(wildcard sail-riscv/lib/sail/*.v) $(wildcard sail-riscv/lib/sail/*.vo)
 	rm -rf "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/RV32"
