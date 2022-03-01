@@ -56,10 +56,35 @@
 Require Import isla.aarch64.aarch64.
 From isla.instructions.binary_search Require Import instrs.
 
+(*
+original code: https://godbolt.org/z/n8834s6a7
+#include <stddef.h>
+#include <stdbool.h>
+
+typedef bool ( *comp_fn)(size_t, size_t);
+
+size_t binary_search(comp_fn comp, size_t *xs, size_t n, size_t x) {
+  size_t l = 0, r = n;
+  while(l < r) {
+    size_t k = l + (r - l) / 2;
+    if (comp(xs[k], x)) {
+      l = k + 1;
+    } else {
+      r = k;
+    }
+  }
+  return l;
+}
+
+
+bool compare_int(size_t x, size_t y) {
+  return x <= y;
+}
+*)
+
 Section proof.
 Context `{!islaG Σ} `{!threadG}.
 
-(* TODO: allow the function to use the stack? *)
 (*SPEC_START*)
 Definition comp_spec (stack_size : Z) (R : bv 64 → bv 64 → Prop) (P : iProp Σ) : iProp Σ :=
   (c_call stack_size (λ args sp RET,

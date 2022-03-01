@@ -56,6 +56,20 @@
 Require Import isla.aarch64.aarch64.
 From isla.instructions.uart Require Import instrs.
 
+(* The original code for uart1_putc can be found here:
+https://github.com/rlepigre/bare-metal-aarch64/blob/a0029afd9c21f2ae86c7fa6caba95213f32f3541/step-08/uart1.c#L50
+
+void uart1_putc(char c){
+  // Wait until the FIFO can accept at least one byte.
+  while(!( *AUX_MU_LSR_REG & AUX_MU_LSR_TX_EMPTY)) {
+    asm volatile("nop");
+  }
+
+  // Write to the buffer.
+  *AUX_MU_IO_REG = (u32) c;
+}
+*)
+
 Section proof.
 Context `{!islaG Σ} `{!threadG}.
 

@@ -1,3 +1,4 @@
+                                        // https://godbolt.org/z/n8834s6a7
 binary_search:                          // @binary_search
         stp     x29, x30, [sp, #-64]!           // 16-byte Folded Spill
         stp     x24, x23, [sp, #16]             // 16-byte Folded Spill
