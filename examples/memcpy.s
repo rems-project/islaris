@@ -1,3 +1,5 @@
+                                        # https://godbolt.org/z/v8d7ecbhc
+                                        # compiled with ARM64 gcc 11.2 -O2
 mcpy:
         cbz     x2, .L1
         mov     x3, 0
