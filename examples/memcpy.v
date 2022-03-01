@@ -65,7 +65,7 @@ C code:
       }
     }
 
-ASM:
+ASM: (generated via ARM64 gcc 11.2 -O2, https://godbolt.org/z/v8d7ecbhc)
 0000000000000000 <mcpy>:
    0:	b40000e2 	cbz	x2, 1c <mcpy+0x1c>
    4:	d2800003 	mov	x3, #0x0                   	// #0
