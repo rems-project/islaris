@@ -10,5 +10,5 @@ set -e
 if [ -z "${TIMECMD}" ]; then
   opam exec -- coqc "$@"
 else
-  ${TIMECMD} opam exec -- coqc "$@"
+  opam exec -- ${TIMECMD} coqc "$@"
 fi
