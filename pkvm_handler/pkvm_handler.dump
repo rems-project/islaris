@@ -74,7 +74,7 @@
    1827c:	911e60a5 	add	x5, x5, #0x798
    18280:	d51cc005 	msr	vbar_el2, x5
 //@constraint: = ((_ extract 4  4 ) SPSR_EL2) 0b0
-//@constraint: = ((_ extract 3  2 ) SPSR_EL2) 0b10
+//@constraint: =  (bvxor ((_ extract 2 2) SPSR_EL2) ((_ extract 3 3) SPSR_EL2)) 0b1
 //@constraint: = ((_ extract 1  1 ) SPSR_EL2) 0b0
 //@constraint: = ((_ extract 20 20) SPSR_EL2) 0b0
 //@constraint: = ((_ extract 55 55) ELR_EL2) 0b0
@@ -83,7 +83,7 @@
    18288:	d2a175a0 	mov	x0, #0xbad0000             	// #195887104
    1828c:	f2994220 	movk	x0, #0xca11
 //@constraint: = ((_ extract 4  4 ) SPSR_EL2) 0b0
-//@constraint: = ((_ extract 3  2 ) SPSR_EL2) 0b01
+//@constraint: =  (bvxor ((_ extract 2 2) SPSR_EL2) ((_ extract 3 3) SPSR_EL2)) 0b1
 //@constraint: = ((_ extract 1  1 ) SPSR_EL2) 0b0
 //@constraint: = ((_ extract 20 20) SPSR_EL2) 0b0
 //@constraint: = ((_ extract 55 55) ELR_EL2) 0b0

@@ -86,7 +86,9 @@ Definition pkvm_sys_regs' : list (reg_kind * valu_shape) := [
   (KindReg "__v83_implemented", ExactShape (RVal_Bool false));
   (KindReg "__v82_implemented", ExactShape (RVal_Bool false));
   (KindReg "__v81_implemented", ExactShape (RVal_Bool true));
-  (KindReg "__trickbox_enabled", ExactShape (RVal_Bool false))
+  (KindReg "__trickbox_enabled", ExactShape (RVal_Bool false));
+  (KindReg "InGuardedPage", ExactShape (RVal_Bool false));
+  (KindReg "EventRegister", BitsShape 1)
 ].
 
 Definition pkvm_sys_regs :=
@@ -102,10 +104,6 @@ Definition pkvm_eret_sys_regs :=
   (KindField "PSTATE" "EL" , ExactShape (RVal_Bits (BV 2 1) )) ::
   pkvm_sys_regs'.
 (*SPEC_END*)
-
-Definition instrs_iprop `{!islaG Σ} `{!threadG} := ([∗ list] i ∈ instr_map, instr i.1 (Some i.2))%I.
-
-
 
 (*SPEC_START*)
 Definition mrs_regs_32 :=
@@ -124,14 +122,10 @@ Definition mrs_regs_64 :=
 Definition mrs_regs :=
   mrs_regs_32 ++ mrs_regs_64.
 
-Definition exists_reg r :=
-  [(KindReg r, BitsShape 64)].
-
 Definition rest_of_pstate : list (reg_kind * valu_shape) := [
   (KindField "PSTATE" "F"    , BitsShape 1);
   (KindField "PSTATE" "I"    , BitsShape 1);
   (KindField "PSTATE" "A"    , BitsShape 1);
-  (KindField "PSTATE" "D"    , ExactShape (RVal_Bits (BV 1 1)));
   (KindField "PSTATE" "BTYPE", BitsShape 2);
   (KindField "PSTATE" "SBSS" , BitsShape 1);
   (KindField "PSTATE" "IL"   , BitsShape 1);
@@ -141,101 +135,125 @@ Definition rest_of_pstate : list (reg_kind * valu_shape) := [
   (KindField "PSTATE" "DIT"  , BitsShape 1);
   (KindField "PSTATE" "TCO"  , BitsShape 1)
 ].
-(*SPEC_END*)
 
-(*PROOF_START*)
-Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
-  ∃ (elr : bv 64) (spsr : bv 32),
-  reg_col pkvm_sys_regs ∗
-  reg_col mrs_regs ∗
-  reg_col CNVZ_regs ∗
-  reg_col rest_of_pstate ∗
-  reg_col [
-    (KindReg "R5", BitsShape 64);
-    (KindReg "R6", BitsShape 64);
-    (KindReg "VBAR_EL2", BitsShape 64);
-    (KindReg "EventRegister", BitsShape 1)
-  ] ∗
+Definition spsr_constraint1 `{!islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ := 
   "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
   ⌜bv_extract 0  1 spsr = (BV 1 1)⌝ ∗
   ⌜bv_extract 1  1 spsr = (BV 1 0)⌝ ∗
   ⌜bv_extract 2  2 spsr = (BV 2 2)⌝ ∗
   ⌜bv_extract 4  1 spsr = (BV 1 0)⌝ ∗
   ⌜bv_extract 9  1 spsr = (BV 1 1)⌝ ∗
-  ⌜bv_extract 20 1 spsr = (BV 1 0)⌝ ∗
-  "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
-  ⌜bv_extract 55 1 elr = (BV 1 0)⌝ ∗
-  instr_body (bv_unsigned elr) (
-    (* sctlr is updated by this code, but we claim to know enough about its value that the update is trivial.
-       This should probably be relaxed *)
-    reg_col pkvm_sys_regs_updated ∗
-    reg_col mrs_regs ∗
-    reg_col CNVZ_regs ∗
-    reg_col rest_of_pstate ∗
-    reg_col [
-      (KindReg "R5", BitsShape 64);
-      (KindReg "R6", BitsShape 64);
-      (KindReg "SPSR_EL2", BitsShape 32);
-      (KindReg "ELR_EL2", BitsShape 64);
-      (KindReg "EventRegister", BitsShape 1)
-    ] ∗
-    "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
-    True
-  ).
+  ⌜bv_extract 20 1 spsr = (BV 1 0)⌝.
 
-  Definition stub_handler_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
-    ∃ (b elr el2_cont: bv 64) (spsr : bv 32),
-    reg_col pkvm_sys_regs ∗
-    reg_col mrs_regs ∗
-    reg_col CNVZ_regs ∗
-    reg_col rest_of_pstate ∗
-    reg_col [(KindReg "EventRegister", BitsShape 1)] ∗
-    "R0" ↦ᵣ RVal_Bits b ∗
-    "R1" ↦ᵣ RVal_Bits el2_cont ∗
-    reg_col [
-        (KindReg "R2", BitsShape 64);
-        (KindReg "R3", BitsShape 64);
-        (KindReg "R4", BitsShape 64);
-        (KindReg "R5", BitsShape 64);
-        (KindReg "R6", BitsShape 64);
-        (KindReg "VBAR_EL2", BitsShape 64)
-     ] ∗
+Global Instance : LithiumUnfold (@spsr_constraint1) := I.
+
+Definition spsr_constraint2 `{islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ :=
     "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
-    "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
     ⌜bv_extract 0  1 spsr = (BV 1 1)⌝ ∗
     ⌜bv_extract 1  1 spsr = (BV 1 0)⌝ ∗
     ⌜bv_extract 2  2 spsr = (BV 2 1)⌝ ∗
     ⌜bv_extract 4  1 spsr = (BV 1 0)⌝ ∗
     ⌜bv_extract 9  1 spsr = (BV 1 1)⌝ ∗
-    ⌜bv_extract 20 1 spsr = (BV 1 0)⌝ ∗
-    ⌜bv_extract 55 1 elr = (BV 1 0)⌝ ∗
-    ⌜bv_extract 55 1 el2_cont = (BV 1 0)⌝ ∗
-    (* We handle only two of the 3 hypercalls this handler supports for now*)
-    ⌜bv_unsigned b < 2⌝ ∗
-    instr_body (bv_unsigned el2_cont) (
-      (* There should be way more here, but eliding it for now as it doesn't affect the proof *)
-      ⌜bv_unsigned b = 1 ⌝ ∗
-      reg_col pkvm_sys_regs_updated ∗
-      reg_col CNVZ_regs ∗
-      "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
-      True
-    ) ∗
-    instr_body (bv_unsigned elr) (
-      "R0" ↦ᵣ RVal_Bits (BV 64 0xbadca11) ∗
-      reg_col pkvm_eret_sys_regs ∗
-      reg_col CNVZ_regs ∗
-      True
-    ).
+    ⌜bv_extract 20 1 spsr = (BV 1 0)⌝.
+
+Global Instance : LithiumUnfold (@spsr_constraint2) := I.
+
+Definition standard_regs `{islaG Σ} `{!threadG} : iProp Σ :=
+  reg_col pkvm_sys_regs ∗
+  reg_col mrs_regs ∗
+  reg_col CNVZ_regs ∗
+  reg_col rest_of_pstate.
+
+Global Instance : LithiumUnfold (@standard_regs) := I. 
+
+Definition standard_updated_regs `{islaG Σ} `{!threadG} : iProp Σ :=
+  reg_col pkvm_sys_regs_updated ∗
+  reg_col mrs_regs ∗
+  reg_col CNVZ_regs ∗
+  reg_col rest_of_pstate.
+
+Global Instance : LithiumUnfold (@standard_updated_regs) := I. 
+
+Definition valid_branch `{islaG Σ} `{!threadG} (p : bv 64) : iProp Σ :=
+  ⌜bv_extract 55 1 p = (BV 1 0)⌝.
+
+Global Instance : LithiumUnfold (@valid_branch) := I. 
+
+(* Requires that an address be in bounds and aligned *)
+Definition own_word_offset `{islaG Σ} `{!threadG} (p : bv 64) (n : nat) : iProp Σ :=
+  (bv_unsigned p - n) ↦ₘ? 8 ∗
+  ⌜ bv_unsigned p < 2^52 ⌝ ∗
+  ⌜ bv_unsigned p > n ⌝ ∗
+  ⌜ bv_unsigned p `mod` 8 = 0 ⌝.
+
+Global Instance : LithiumUnfold (@own_word_offset) := I. 
+
+(*SPEC_END*)
+
+(*PROOF_START*)
+Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
+  ∃ (elr : bv 64) (spsr : bv 32),
+  standard_regs ∗
+  reg_col [
+    (KindReg "R5", BitsShape 64);
+    (KindReg "R6", BitsShape 64);
+    (KindReg "VBAR_EL2", BitsShape 64)
+  ] ∗
+  spsr_constraint1 spsr ∗
+  "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
+  valid_branch elr ∗
+  (* POSTCONDITION (SUCCESSFUL) *)
+  instr_body (bv_unsigned elr) (
+    standard_updated_regs ∗
+    reg_col [
+      (KindReg "R5", BitsShape 64);
+      (KindReg "R6", BitsShape 64);
+      (KindReg "SPSR_EL2", BitsShape 32);
+      (KindReg "ELR_EL2", BitsShape 64)
+    ] ∗
+    "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
+    True
+  ).
+
+Definition stub_handler_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
+  ∃ (b elr el2_cont: bv 64) (spsr : bv 32),
+  standard_regs ∗
+  "R0" ↦ᵣ RVal_Bits b ∗
+  "R1" ↦ᵣ RVal_Bits el2_cont ∗
+  reg_col [
+      (KindReg "R2", BitsShape 64);
+      (KindReg "R3", BitsShape 64);
+      (KindReg "R4", BitsShape 64);
+      (KindReg "R5", BitsShape 64);
+      (KindReg "R6", BitsShape 64);
+      (KindReg "VBAR_EL2", BitsShape 64)
+   ] ∗
+  spsr_constraint2 spsr ∗
+  "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
+  valid_branch elr ∗
+  valid_branch el2_cont ∗
+  (* We handle only two of the 3 hypercalls this handler supports for now*)
+  ⌜bv_unsigned b < 2⌝ ∗
+  instr_body (bv_unsigned el2_cont) (
+    (* There should be way more here, but eliding it for now as it doesn't affect the proof *)
+    ⌜bv_unsigned b = 1 ⌝ ∗
+    standard_updated_regs ∗
+    "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
+    True
+  ) ∗
+  instr_body (bv_unsigned elr) (
+    ⌜bv_unsigned b = 0⌝ ∗
+    "R0" ↦ᵣ RVal_Bits (BV 64 0xbadca11) ∗
+    reg_col pkvm_eret_sys_regs ∗
+    reg_col CNVZ_regs ∗
+    True
+  ).
 (*PROOF_END*)
 
 (*SPEC_START*)
 Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (esr : bv 32) : iProp Σ :=
   ∃ (param el2_cont elr : bv 64) (spsr : bv 32),
-  reg_col pkvm_sys_regs ∗
-  reg_col mrs_regs ∗
-  reg_col CNVZ_regs ∗
-  reg_col rest_of_pstate ∗
-  reg_col [(KindReg "EventRegister", BitsShape 1)] ∗
+  standard_regs ∗
   reg_col [
     (KindReg "R2", BitsShape 64);
     (KindReg "R3", BitsShape 64);
@@ -245,36 +263,26 @@ Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (e
   ] ∗
   reg_col [(KindReg "VBAR_EL2", BitsShape 64)] ∗
   (* Move to pkvm_sys_regs *)
-  "InGuardedPage" ↦ᵣ RVal_Bool false ∗
   "ESR_EL2" ↦ᵣ RVal_Bits esr ∗
   "R0" ↦ᵣ RVal_Bits param ∗
   "R1" ↦ᵣ RVal_Bits el2_cont ∗
   "SP_EL2" ↦ᵣ RVal_Bits sp ∗
-  "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
   "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
-  ⌜bv_extract 0 1 spsr = (BV 1 1)⌝ ∗
-  ⌜bv_extract 1 1 spsr = (BV 1 0)⌝ ∗
-  ⌜bv_extract 2 2 spsr = (BV 2 1)⌝ ∗
-  ⌜bv_extract 4 1 spsr = (BV 1 0)⌝ ∗
-  ⌜bv_extract 9 1 spsr = (BV 1 1)⌝ ∗
-  ⌜bv_extract 20 1 spsr = (BV 1 0)⌝ ∗
-  ⌜bv_extract 55 1 elr = (BV 1 0)⌝ ∗
-  ⌜bv_extract 55 1 el2_cont = (BV 1 0)⌝ ∗
+  spsr_constraint2 spsr ∗
+  valid_branch elr ∗
+  valid_branch el2_cont ∗
   (* Don't handle this hypercall for now *)
   ⌜bv_unsigned param ≠ 2⌝ ∗
-  (bv_unsigned sp - 16) ↦ₘ? 8 ∗
-  (bv_unsigned sp - 8) ↦ₘ? 8 ∗
-  ⌜bv_unsigned sp < 2 ^ 52⌝ ∗
-  ⌜bv_unsigned sp > 16⌝ ∗
-  ⌜bv_unsigned sp `mod` 8 = 0⌝ ∗
+  own_word_offset sp 16 ∗
+  own_word_offset sp 8 ∗
   0x77f8 ↦ₘ stub_handler_addr ∗
   (instr_pre 0x6800 (⌜Z.shiftr (bv_unsigned esr) 26 ≠ 22⌝ ∗ ∃ (v : bv 64), "R0" ↦ᵣ RVal_Bits v ∗ ⌜bv_unsigned v ≠ 22⌝ ∗ True) ∧
   instr_pre 0x6800 (⌜Z.shiftr (bv_unsigned esr) 26 = 22⌝ ∗ ⌜Z.ge (bv_unsigned param) 3⌝ ∗ True)) ∗
   (* Possibly should handle that this address gets shifted (even if it's by zero in this code) *)
   instr_pre (bv_unsigned (bv_sub stub_handler_addr offset)) stub_handler_spec ∗
   instr_body (bv_unsigned el2_cont) (
-    ⌜bv_unsigned param = 1⌝ ∗ reg_col pkvm_sys_regs_updated ∗
-    reg_col CNVZ_regs ∗
+    ⌜bv_unsigned param = 1⌝ ∗
+    standard_updated_regs ∗
     "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
     True
   ) ∗
@@ -398,13 +406,13 @@ Proof.
   Unshelve.
   all: prepare_sidecond.
   all: try bv_solve.
-  * contradict H13.
-    rewrite H12.
+  * contradict H14.
+    rewrite H13.
     assert(G: bv_unsigned (bv_concat 64 (BV 32 0) esr) = bv_unsigned esr); [bv_solve|].
     by rewrite G.
   * assert(G: bv_unsigned (bv_concat 64 (BV 32 0) esr) = bv_unsigned esr); [bv_solve|].
-    rewrite G in H12.
-    by rewrite <- H12.
+    rewrite G in H13.
+    by rewrite <- H13.
 (*PROOF_END*)
 Time Qed.
 
@@ -462,6 +470,7 @@ Proof.
   Unshelve.
   all: prepare_sidecond.
   all: try bv_solve.
+  + admit.
   + assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bits_simplify|].
     rewrite Hshift.
     rewrite H0.
@@ -473,9 +482,64 @@ Proof.
     rewrite <- H4.
     f_equal.
     lia.
+  + admit.
 (*PROOF_END*)
-Time Qed.
+Time Admitted.
 
+From iris.proofmode Require Import coq_tactics reduction.
+Ltac liAAsm' :=
+  lazymatch goal with
+  | |- envs_entails ?Δ (WPasm ?es) =>
+    lazymatch es with
+    | tcases _ => notypeclasses refine (tac_fast_apply (li_wp_cases _) _)
+    | ?e :t: _ =>
+      lazymatch e with
+      | ReadReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg _ _ _ _) _)
+      | ReadReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg_struct _ _ _ _ _) _)
+      | AssumeReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume_reg _ _ _ _) _)
+      | AssumeReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume_reg_struct _ _ _ _ _) _)
+      | WriteReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg _ _ _ _) _)
+      | WriteReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg_struct _ _ _ _ _) _)
+      | BranchAddress _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch_address _ _ _) _)
+      | Branch _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch _ _ _ _) _)
+      | ReadMem _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_mem _ _ _ _ _ _ _ _) _)
+      | WriteMem _ _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_mem _ _ _ _ _ _ _ _ _) _)
+      | Smt (DeclareConst _ (Ty_BitVec _)) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bv _ _ _ _) _)
+      | Smt (DeclareConst _ Ty_Bool) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bool _ _ _) _)
+      | Smt (DeclareConst _ (Ty_Enum _)) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_enum _ _ _ _) _)
+      | Smt (DefineConst _ _) _ => notypeclasses refine (tac_fast_apply (li_wp_define_const _ _ _ _) _)
+      | Smt (Assert _) _ => notypeclasses refine (tac_fast_apply (li_wp_assert _ _ _) _)
+      | Assume _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume _ _ _) _)
+      | Barrier _ _ => notypeclasses refine (tac_fast_apply (li_wp_barrier _ _ _) _)
+      end
+    | parametric_trace _ _ => iEval (unfold parametric_trace)
+    | ?def => first [
+                 try unfold TRACE_LET in def; iEval (unfold def); try clear def
+               | fail "liAAsm: unknown asm" es
+               ]
+    end
+  | |- envs_entails ?Δ (instr_pre' _ _ _) =>
+    notypeclasses refine (tac_fast_apply (li_instr_pre _ _ _) _)
+  | |- envs_entails ?Δ (wpreadreg _ [] _) =>
+     notypeclasses refine (tac_fast_apply (li_wpreadreg_nil _ _) _)
+  | |- envs_entails ?Δ (wpreadreg _ [Field _] _) =>
+     notypeclasses refine (tac_fast_apply (li_wpreadreg_field _ _ _) _)
+  end.
+
+Ltac liAStep' :=
+ liEnforceInvariantAndUnfoldInstantiatedEvars;
+ try liAIntroduceLetInGoal;
+ first [
+    liAAsm'
+  | liAExp
+  | liAOther
+  | liUnfoldEarly
+  | liStep
+  | liLetBindHint
+  | liUnfoldLate
+]; liSimpl.
+
+Ltac liARun' := repeat liAStep'; liAStep; liShow.
 
 
 Lemma stub_handler_wp `{!islaG Σ} `{!threadG} :
@@ -500,6 +564,94 @@ Proof.
 (*PROOF_START*)
   unfold stub_handler_spec.
   iStartProof.
+  liARun'.
+  + liARun'.
+    - liARun'.
+      liARun'.
+      do 150 liAStep; liShow.
+      liAStep; liShow.
+      liAStep; liShow.
+      liAStep; liShow.
+      liAStep; liShow.
+      liAStep; liShow.
+      liAStep; liShow.
+      liAStep; liShow.
+      liAStep; liShow.
+      liAStep; liShow.
+      liAStep; liShow.
+      liAStep; liShow.
+      liAStep; liShow.
+      do 100 liAStep; liShow.
+      * liARun.
+      * do 20  liAStep; liShow.
+        do 10  liAStep; liShow.
+        liAStep; liShow.
+        liAStep; liShow.
+        liAStep; liShow.
+        liAStep; liShow.
+        liAStep; liShow.
+        unfold sys_regs.
+        About sys_regs.
+        liAStep; liShow.
+        liAStep; liShow.
+        liAStep; liShow.
+        liAStep; liShow.
+        Set Typeclasses Debug. 
+        liAStep; liShow.
+        (* FOR MICHAEL : proof state here is searching for reg in wrong reg_col *)
+        Set Nested Proofs Allowed.
+
+        Lemma test `{islaG Σ} `{threadG} : ∃ l g, (FindHypEqual (FICStructRegMapstoSemantic "PSTATE" "nRW")
+   (reg_col
+      [(KindField "PSTATE" "F", BitsShape 1); (KindField "PSTATE" "I", BitsShape 1); (KindField "PSTATE" "A", BitsShape 1);
+      (KindField "PSTATE" "BTYPE", BitsShape 2); (KindField "PSTATE" "SBSS", BitsShape 1); (KindField "PSTATE" "PAN", BitsShape 1);
+      (KindField "PSTATE" "UAO", BitsShape 1); (KindField "PSTATE" "DIT", BitsShape 1); (KindField "PSTATE" "TCO", BitsShape 1)])
+   (reg_col l)  g).
+          eexists _.
+          eexists _.
+          apply tac_struct_reg_mapsto_reg_col.
+          vm_compute.
+          eexists _.
+          done.
+        
+        liAStep; liShow.
+        liAStep; liShow.
+      liARun'.
+      liARun'.
+      liARun'.
+      liARun'.
+      liARun'.
+      liARun'.
+    admit.
+  + liARun'.
+    liARun'.
+    liARun'.
+    liARun'.
+    liARun'.
+    liARun'.
+    liARun'.
+    unfold reset_spec.
+    liARun'.
+  + liAStep. liShow. unfold IPM_JANNO. unfold sys_regs. liARun. - admit. - unfold reset_spec. liARun.
+  + liARun. unfold reset_spec. liARun.
+                                            
+  do 50 liAStep.
+  do 50 liAStep.
+  do 50 liAStep.
+  do 50 liAStep.
+  liAStep.
+  liAStep.
+  liAStep.
+  liAStep.
+  liAStep.
+  liAStep.
+  liAStep.
+  liAStep.
+  liAStep.
+  liAStep.
+  liAStep.
+  unfold sys_regs.
+  liAStep.
   liARun.
   + unfold reset_spec.
     liARun.
