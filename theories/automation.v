@@ -1650,14 +1650,14 @@ Lemma tac_reg_mapsto_reg_col `{islaG Σ} `{threadG} r regs1 regs2:
   FindHypEqual (FICRegMapstoSemantic r) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
 Proof. done. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual (FICRegMapstoSemantic _) (reg_col _) (reg_col _) _) =>
-( apply tac_reg_mapsto_reg_col; vm_compute; eexists _; done) : typeclass_instances.
+( apply tac_reg_mapsto_reg_col; vm_compute; eexists _; exact: eq_refl) : typeclass_instances.
 
 Lemma tac_struct_reg_mapsto_reg_col `{islaG Σ} `{threadG} r f regs1 regs2:
   is_Some (list_find_idx_bool (λ x, reg_kind_eqb x.1 (KindField r f) || reg_kind_eqb x.1 (KindReg r)) regs1) →
   FindHypEqual (FICStructRegMapstoSemantic r f) (reg_col regs1) (reg_col regs2) (reg_col regs2) .
 Proof. done. Qed.
 #[ global ] Hint Extern 10 (FindHypEqual (FICStructRegMapstoSemantic _ _) (reg_col _) (reg_col _) _) =>
-( apply tac_struct_reg_mapsto_reg_col; vm_compute; eexists _; done) : typeclass_instances.
+( apply tac_struct_reg_mapsto_reg_col; vm_compute; eexists _; exact: eq_refl) : typeclass_instances.
 
 Lemma tac_instr_pre_eq `{!Arch} `{islaG Σ} `{threadG} l1 l2 a1 a2 P1 P2:
   a1 = a2 →
