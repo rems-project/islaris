@@ -99,6 +99,10 @@ Definition pkvm_sys_regs_updated :=
   (KindReg "SCTLR_EL2", ExactShape (RVal_Bits (BV 64 0x4000000))) ::
   (KindField "PSTATE" "EL" , ExactShape (RVal_Bits (BV 2 2) )) ::
   pkvm_sys_regs'.
+Definition pkvm_sys_regs_updated_el1 :=
+  (KindReg "SCTLR_EL2", ExactShape (RVal_Bits (BV 64 0x4000000))) ::
+  (KindField "PSTATE" "EL" , ExactShape (RVal_Bits (BV 2 1) )) ::
+  pkvm_sys_regs'.
 Definition pkvm_eret_sys_regs :=
   (KindReg "SCTLR_EL2", ExactShape (RVal_Bits (BV 64 0x4000002))) ::
   (KindField "PSTATE" "EL" , ExactShape (RVal_Bits (BV 2 1) )) ::
@@ -136,18 +140,7 @@ Definition rest_of_pstate : list (reg_kind * valu_shape) := [
   (KindField "PSTATE" "TCO"  , BitsShape 1)
 ].
 
-Definition spsr_constraint1 `{!islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ := 
-  "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
-  ⌜bv_extract 0  1 spsr = (BV 1 1)⌝ ∗
-  ⌜bv_extract 1  1 spsr = (BV 1 0)⌝ ∗
-  ⌜bv_extract 2  2 spsr = (BV 2 2)⌝ ∗
-  ⌜bv_extract 4  1 spsr = (BV 1 0)⌝ ∗
-  ⌜bv_extract 9  1 spsr = (BV 1 1)⌝ ∗
-  ⌜bv_extract 20 1 spsr = (BV 1 0)⌝.
-
-Global Instance : LithiumUnfold (@spsr_constraint1) := I.
-
-Definition spsr_constraint2 `{islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ :=
+Definition spsr_constraint1 `{islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ :=
     "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
     ⌜bv_extract 0  1 spsr = (BV 1 1)⌝ ∗
     ⌜bv_extract 1  1 spsr = (BV 1 0)⌝ ∗
@@ -155,6 +148,17 @@ Definition spsr_constraint2 `{islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ :=
     ⌜bv_extract 4  1 spsr = (BV 1 0)⌝ ∗
     ⌜bv_extract 9  1 spsr = (BV 1 1)⌝ ∗
     ⌜bv_extract 20 1 spsr = (BV 1 0)⌝.
+
+Global Instance : LithiumUnfold (@spsr_constraint1) := I.
+
+Definition spsr_constraint2 `{!islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ := 
+  "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
+  ⌜bv_extract 0  1 spsr = (BV 1 1)⌝ ∗
+  ⌜bv_extract 1  1 spsr = (BV 1 0)⌝ ∗
+  ⌜bv_extract 2  2 spsr = (BV 2 2)⌝ ∗
+  ⌜bv_extract 4  1 spsr = (BV 1 0)⌝ ∗
+  ⌜bv_extract 9  1 spsr = (BV 1 1)⌝ ∗
+  ⌜bv_extract 20 1 spsr = (BV 1 0)⌝.
 
 Global Instance : LithiumUnfold (@spsr_constraint2) := I.
 
@@ -191,32 +195,41 @@ Global Instance : LithiumUnfold (@own_word_offset) := I.
 (*SPEC_END*)
 
 (*PROOF_START*)
-Definition reset_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
-  ∃ (elr : bv 64) (spsr : bv 32),
+Definition reset_spec `{!islaG Σ} `{!threadG} (b : bv 64) : iProp Σ :=
+  (∃ (elr : bv 64) (spsr : bv 32),
   standard_regs ∗
   reg_col [
     (KindReg "R5", BitsShape 64);
     (KindReg "R6", BitsShape 64);
     (KindReg "VBAR_EL2", BitsShape 64)
   ] ∗
-  spsr_constraint1 spsr ∗
+  ((⌜bv_unsigned b = 2⌝ ∗ spsr_constraint1 spsr)
+   ∨ (⌜bv_unsigned b = 1⌝ ∗ spsr_constraint2 spsr)) ∗
   "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
   valid_branch elr ∗
   (* POSTCONDITION (SUCCESSFUL) *)
   instr_body (bv_unsigned elr) (
+    ⌜bv_unsigned b = 1⌝ ∗
     standard_updated_regs ∗
     reg_col [
-      (KindReg "R5", BitsShape 64);
-      (KindReg "R6", BitsShape 64);
-      (KindReg "SPSR_EL2", BitsShape 32);
-      (KindReg "ELR_EL2", BitsShape 64)
+    (KindReg "R5", BitsShape 64);
+    (KindReg "R6", BitsShape 64);
+    (KindReg "SPSR_EL2", BitsShape 32);
+    (KindReg "ELR_EL2", BitsShape 64)
     ] ∗
     "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
-    True
+    True)
+  ∧ 
+  instr_body (bv_unsigned elr) (
+    (⌜bv_unsigned b = 2⌝ ∗
+    reg_col pkvm_sys_regs_updated_el1 ∗
+    "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
+    True)
+  )
   ).
 
-Definition stub_handler_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
-  ∃ (b elr el2_cont: bv 64) (spsr : bv 32),
+Definition stub_handler_spec `{!islaG Σ} `{!threadG} (b : bv 64) : iProp Σ :=
+  ∃ (elr el2_cont: bv 64) (spsr : bv 32),
   standard_regs ∗
   "R0" ↦ᵣ RVal_Bits b ∗
   "R1" ↦ᵣ RVal_Bits el2_cont ∗
@@ -228,12 +241,11 @@ Definition stub_handler_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
       (KindReg "R6", BitsShape 64);
       (KindReg "VBAR_EL2", BitsShape 64)
    ] ∗
-  spsr_constraint2 spsr ∗
+  spsr_constraint1 spsr ∗
   "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
   valid_branch elr ∗
   valid_branch el2_cont ∗
-  (* We handle only two of the 3 hypercalls this handler supports for now*)
-  ⌜bv_unsigned b < 2⌝ ∗
+  ⌜bv_unsigned b < 3⌝ ∗
   instr_body (bv_unsigned el2_cont) (
     (* There should be way more here, but eliding it for now as it doesn't affect the proof *)
     ⌜bv_unsigned b = 1 ⌝ ∗
@@ -242,11 +254,16 @@ Definition stub_handler_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
     True
   ) ∗
   instr_body (bv_unsigned elr) (
-    ⌜bv_unsigned b = 0⌝ ∗
+    (⌜bv_unsigned b = 0⌝ ∗
     "R0" ↦ᵣ RVal_Bits (BV 64 0xbadca11) ∗
     reg_col pkvm_eret_sys_regs ∗
     reg_col CNVZ_regs ∗
-    True
+    True)
+    ∨
+    (⌜bv_unsigned b = 2⌝ ∗
+    reg_col pkvm_sys_regs_updated_el1 ∗
+    "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
+    True)
   ).
 (*PROOF_END*)
 
@@ -268,18 +285,16 @@ Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (e
   "R1" ↦ᵣ RVal_Bits el2_cont ∗
   "SP_EL2" ↦ᵣ RVal_Bits sp ∗
   "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
-  spsr_constraint2 spsr ∗
+  spsr_constraint1 spsr ∗
   valid_branch elr ∗
   valid_branch el2_cont ∗
   (* Don't handle this hypercall for now *)
-  ⌜bv_unsigned param ≠ 2⌝ ∗
   own_word_offset sp 16 ∗
   own_word_offset sp 8 ∗
   0x77f8 ↦ₘ stub_handler_addr ∗
   (instr_pre 0x6800 (⌜Z.shiftr (bv_unsigned esr) 26 ≠ 22⌝ ∗ ∃ (v : bv 64), "R0" ↦ᵣ RVal_Bits v ∗ ⌜bv_unsigned v ≠ 22⌝ ∗ True) ∧
   instr_pre 0x6800 (⌜Z.shiftr (bv_unsigned esr) 26 = 22⌝ ∗ ⌜Z.ge (bv_unsigned param) 3⌝ ∗ True)) ∗
-  (* Possibly should handle that this address gets shifted (even if it's by zero in this code) *)
-  instr_pre (bv_unsigned (bv_sub stub_handler_addr offset)) stub_handler_spec ∗
+  instr_pre (bv_unsigned (bv_sub stub_handler_addr offset)) (stub_handler_spec param) ∗
   instr_body (bv_unsigned el2_cont) (
     ⌜bv_unsigned param = 1⌝ ∗
     standard_updated_regs ∗
@@ -287,10 +302,16 @@ Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (e
     True
   ) ∗
   instr_body (bv_unsigned elr) (
+    (⌜bv_unsigned param = 0⌝ ∗
     "R0" ↦ᵣ RVal_Bits (BV 64 0xbadca11) ∗
     reg_col pkvm_eret_sys_regs ∗
     reg_col CNVZ_regs ∗
-    True
+    True)
+    ∨
+    (⌜bv_unsigned param = 2⌝ ∗
+    reg_col pkvm_sys_regs_updated_el1 ∗
+    "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
+    True)
   ).
 (*SPEC_END*)
 
@@ -403,19 +424,27 @@ Proof.
     liARun.
     unfold stub_handler_spec.
     liARun.
+    iDestruct select (_∨_)%I as "[L|R]".
+    - iLeft.
+      iRevert "L".
+      liARun.
+    - iRight.
+      iRevert "R".
+      liARun.
   Unshelve.
   all: prepare_sidecond.
   all: try bv_solve.
-  * contradict H14.
-    rewrite H13.
+  * contradict H13.
+    rewrite H12.
     assert(G: bv_unsigned (bv_concat 64 (BV 32 0) esr) = bv_unsigned esr); [bv_solve|].
     by rewrite G.
   * assert(G: bv_unsigned (bv_concat 64 (BV 32 0) esr) = bv_unsigned esr); [bv_solve|].
-    rewrite G in H13.
-    by rewrite <- H13.
+    rewrite G in H12.
+    by rewrite <- H12.
+  (* Possibly should handle that this address gets shifted (even if it's by zero in this code) *)
 (*PROOF_END*)
 Time Qed.
-
+ 
 Lemma wp' `{!islaG Σ} `{!threadG} sp esr stub_handler_addr (offset : bv 64) :
   instr 29696 (Some a7400) ∗
   instr 29700 (Some a7404) ∗
@@ -443,48 +472,6 @@ Proof.
   + iApply wp. iFrame.
 (*PROOF_END*)
 Time Qed.
-
-Lemma reset_wp `{!islaG Σ} `{!threadG} :
-  instr 98888 (Some a18248) ∗
-  instr 98892 (Some a1824c) ∗
-  instr 98896 (Some a18250) ∗
-  instr 98900 (Some a18254) ∗
-  instr 98904 (Some a18258) ∗
-  instr 98908 (Some a1825c) ∗
-  instr 98912 (Some a18260) ∗
-  instr 98916 (Some a18264) ∗
-  instr 98920 (Some a18268) ∗
-  instr 98924 (Some a1826c) ∗
-  instr 98928 (Some a18270) ∗
-  instr 98932 (Some a18274) ∗
-  instr 98936 (Some a18278) ∗
-  instr 98940 (Some a1827c) ∗
-  instr 98944 (Some a18280) ∗
-  instr 98948 (Some a18284) -∗
-  instr_body 0x18248 reset_spec.
-Proof.
-(*PROOF_START*)
-  unfold reset_spec.
-  iStartProof.
-  liARun.
-  Unshelve.
-  all: prepare_sidecond.
-  all: try bv_solve.
-  + admit.
-  + assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bits_simplify|].
-    rewrite Hshift.
-    rewrite H0.
-    by bits_simplify.
-  + bits_simplify.
-    bitify_hyp H4.
-    specialize (H4 n44 ltac:(lia)).
-    bits_simplify_hyp H4.
-    rewrite <- H4.
-    f_equal.
-    lia.
-  + admit.
-(*PROOF_END*)
-Time Admitted.
 
 From iris.proofmode Require Import coq_tactics reduction.
 Ltac liAAsm' :=
@@ -539,10 +526,106 @@ Ltac liAStep' :=
   | liUnfoldLate
 ]; liSimpl.
 
-Ltac liARun' := repeat liAStep'; liAStep; liShow.
+Ltac liARun' := repeat liAStep'; try liAStep; liShow.
+
+Lemma bv_xor1 (b : bv 32) : (bv_extract 2 2 b) = (BV 2  1) -> (bv_xor (bv_extract 2 1 b) (bv_extract 3 1 b)) = (BV 1 1).
+Proof.
+  intros Hb.
+  bits_simplify.
+  bitify_hyp Hb.
+  assert (Z.testbit (bv_unsigned b) 3 = false).
+  { specialize (Hb 1 ltac:(lia)). bits_simplify_hyp Hb. rewrite <- Hb. f_equal. }
+  assert (Z.testbit (bv_unsigned b) 2 = true).
+  { specialize (Hb 0 ltac:(lia)). bits_simplify_hyp Hb. rewrite <- Hb. f_equal. }
+  assert (n = 0). { lia. }
+  rewrite H7.
+  rewrite !Z.add_0_l.
+  rewrite H5 H6. 
+  done.
+Qed.
+
+Lemma bv_xor2 (b : bv 32) : (bv_extract 2 2 b) = (BV 2  2) -> (bv_xor (bv_extract 2 1 b) (bv_extract 3 1 b)) = (BV 1 1).
+Proof.
+  intros Hb.
+  bits_simplify.
+  bitify_hyp Hb.
+  assert (Z.testbit (bv_unsigned b) 3 = true).
+  { specialize (Hb 1 ltac:(lia)). bits_simplify_hyp Hb. cbn in Hb. rewrite Hb. done. }
+  assert (Z.testbit (bv_unsigned b) 2 = false).
+  { specialize (Hb 0 ltac:(lia)). bits_simplify_hyp Hb. rewrite Hb. done. }
+  assert (n = 0). { lia. }
+  rewrite H7.
+  rewrite !Z.add_0_l.
+  rewrite H5 H6. 
+  done.
+Qed.
+
+Lemma reset_wp `{!islaG Σ} `{!threadG} (b : bv 64) :
+  instr 98888 (Some a18248) ∗
+  instr 98892 (Some a1824c) ∗
+  instr 98896 (Some a18250) ∗
+  instr 98900 (Some a18254) ∗
+  instr 98904 (Some a18258) ∗
+  instr 98908 (Some a1825c) ∗
+  instr 98912 (Some a18260) ∗
+  instr 98916 (Some a18264) ∗
+  instr 98920 (Some a18268) ∗
+  instr 98924 (Some a1826c) ∗
+  instr 98928 (Some a18270) ∗
+  instr 98932 (Some a18274) ∗
+  instr 98936 (Some a18278) ∗
+  instr 98940 (Some a1827c) ∗
+  instr 98944 (Some a18280) ∗
+  instr 98948 (Some a18284) -∗
+  instr_body 0x18248 (reset_spec b).
+Proof.
+(*PROOF_START*)
+  unfold reset_spec.
+  iStartProof.
+  liARun.
+  iDestruct select (_∨_)%I as "[L|R]".
+  + iRevert "L".
+    liARun.
+    * iDestruct select (_∧_)%I as "[_ ?]".
+      liARun.
+    * unLET. done.
+  + iRevert "R".
+    liARun.
+    * unLET. contradict H8. rewrite H4. bv_solve.
+    * iDestruct select (_∧_)%I as "[? _]".
+      liARun.
+  Unshelve.
+  all: prepare_sidecond.
+  all: try bv_solve.
+  - apply bv_xor1; done. 
+  - assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bits_simplify|].
+    rewrite Hshift.
+    rewrite H2.
+    by bits_simplify.
+  - bits_simplify.
+    bitify_hyp H6.
+    specialize (H6 n44 ltac:(lia)).
+    bits_simplify_hyp H6.
+    rewrite <- H6.
+    f_equal.
+    lia.
+  - apply bv_xor2; done.
+  - assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bits_simplify|].
+    rewrite Hshift.
+    rewrite H2.
+    by bits_simplify.
+  - bits_simplify.
+    bitify_hyp H6.
+    specialize (H6 n44 ltac:(lia)).
+    bits_simplify_hyp H6.
+    rewrite <- H6.
+    f_equal.
+    lia.
+(*PROOF_END*)
+Time Qed.
 
 
-Lemma stub_handler_wp `{!islaG Σ} `{!threadG} :
+Lemma stub_handler_wp `{!islaG Σ} `{!threadG} (b : bv 64):
   instr 98840 (Some a18218) ∗
   instr 98844 (Some a1821c) ∗
   instr 98848 (Some a18220) ∗
@@ -555,112 +638,44 @@ Lemma stub_handler_wp `{!islaG Σ} `{!threadG} :
   instr 98876 (Some a1823c) ∗
   instr 98880 (Some a18240) ∗
   instr 98884 (Some a18244) ∗
-  instr_body 0x18248 reset_spec ∗
+  instr_body 0x18248 (reset_spec b) ∗
   instr 98952 (Some a18288) ∗
   instr 98956 (Some a1828c) ∗
   instr 98960 (Some a18290) -∗
-  instr_body 0x18218 (stub_handler_spec).
+  instr_body 0x18218 (stub_handler_spec b).
 Proof.
 (*PROOF_START*)
   unfold stub_handler_spec.
   iStartProof.
   liARun'.
-  + liARun'.
-    - liARun'.
-      liARun'.
-      do 150 liAStep; liShow.
-      liAStep; liShow.
-      liAStep; liShow.
-      liAStep; liShow.
-      liAStep; liShow.
-      liAStep; liShow.
-      liAStep; liShow.
-      liAStep; liShow.
-      liAStep; liShow.
-      liAStep; liShow.
-      liAStep; liShow.
-      liAStep; liShow.
-      liAStep; liShow.
-      do 100 liAStep; liShow.
-      * liARun.
-      * do 20  liAStep; liShow.
-        do 10  liAStep; liShow.
-        liAStep; liShow.
-        liAStep; liShow.
-        liAStep; liShow.
-        liAStep; liShow.
-        liAStep; liShow.
-        unfold sys_regs.
-        About sys_regs.
-        liAStep; liShow.
-        liAStep; liShow.
-        liAStep; liShow.
-        liAStep; liShow.
-        Set Typeclasses Debug. 
-        liAStep; liShow.
-        (* FOR MICHAEL : proof state here is searching for reg in wrong reg_col *)
-        Set Nested Proofs Allowed.
-
-        Lemma test `{islaG Σ} `{threadG} : ∃ l g, (FindHypEqual (FICStructRegMapstoSemantic "PSTATE" "nRW")
-   (reg_col
-      [(KindField "PSTATE" "F", BitsShape 1); (KindField "PSTATE" "I", BitsShape 1); (KindField "PSTATE" "A", BitsShape 1);
-      (KindField "PSTATE" "BTYPE", BitsShape 2); (KindField "PSTATE" "SBSS", BitsShape 1); (KindField "PSTATE" "PAN", BitsShape 1);
-      (KindField "PSTATE" "UAO", BitsShape 1); (KindField "PSTATE" "DIT", BitsShape 1); (KindField "PSTATE" "TCO", BitsShape 1)])
-   (reg_col l)  g).
-          eexists _.
-          eexists _.
-          apply tac_struct_reg_mapsto_reg_col.
-          vm_compute.
-          eexists _.
-          done.
-        
-        liAStep; liShow.
-        liAStep; liShow.
-      liARun'.
-      liARun'.
-      liARun'.
-      liARun'.
-      liARun'.
-      liARun'.
-    admit.
-  + liARun'.
-    liARun'.
-    liARun'.
-    liARun'.
-    liARun'.
-    liARun'.
-    liARun'.
-    unfold reset_spec.
-    liARun'.
-  + liAStep. liShow. unfold IPM_JANNO. unfold sys_regs. liARun. - admit. - unfold reset_spec. liARun.
-  + liARun. unfold reset_spec. liARun.
-                                            
-  do 50 liAStep.
-  do 50 liAStep.
-  do 50 liAStep.
-  do 50 liAStep.
-  liAStep.
-  liAStep.
-  liAStep.
-  liAStep.
-  liAStep.
-  liAStep.
-  liAStep.
-  liAStep.
-  liAStep.
-  liAStep.
-  liAStep.
-  unfold sys_regs.
-  liAStep.
-  liARun.
-  + unfold reset_spec.
-    liARun.
-  + (* This branch is a contradiction, but for now just let the proof proceed and contradict it later? *)
+  + unLET. liARun'.
+    - unLET. liARun'.
+      liARun.
+      * iLeft.
+        liARun.
+      * iLeft.
+        liARun.
+    - liARun.
+      unfold reset_spec.
+      liARun.
+      iDestruct select ("SPSR_EL2" ↦ᵣ _)%I as "spsr".
+      iSplitL "spsr"; [iLeft; liARun; done|].
+      liARun.
+      * iRight.
+        liARun.
+      * iRight.
+        liARun.
+  + liARun.
     unfold reset_spec.
     liARun.
+    iDestruct select ("SPSR_EL2" ↦ᵣ _)%I as "spsr".
+    iSplitL "spsr"; [iRight; liARun; iPureIntro; bv_solve|].
+    liARun.
+    bv_solve.
   Unshelve.
   all: prepare_sidecond.
   all: try bv_solve.
+  * apply bv_xor1; done.
   * assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bits_simplify|].
     rewrite Hshift.
     rewrite H0.
