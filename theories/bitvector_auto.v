@@ -566,6 +566,7 @@ Ltac onesify_hyp n H :=
   Z.bits_0
   Z.lor_0_l Z.lor_0_r
   Z.land_spec Z.lor_spec
+  Z.lxor_spec
   andb_false_l andb_false_r andb_true_l andb_true_r
   orb_false_l orb_false_r orb_true_l orb_true_r : bits_simplify.
 
