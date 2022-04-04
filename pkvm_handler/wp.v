@@ -473,75 +473,20 @@ Proof.
 (*PROOF_END*)
 Time Qed.
 
-From iris.proofmode Require Import coq_tactics reduction.
-Ltac liAAsm' :=
-  lazymatch goal with
-  | |- envs_entails ?Δ (WPasm ?es) =>
-    lazymatch es with
-    | tcases _ => notypeclasses refine (tac_fast_apply (li_wp_cases _) _)
-    | ?e :t: _ =>
-      lazymatch e with
-      | ReadReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg _ _ _ _) _)
-      | ReadReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_reg_struct _ _ _ _ _) _)
-      | AssumeReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume_reg _ _ _ _) _)
-      | AssumeReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume_reg_struct _ _ _ _ _) _)
-      | WriteReg _ [] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg _ _ _ _) _)
-      | WriteReg _ [Field _] _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_reg_struct _ _ _ _ _) _)
-      | BranchAddress _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch_address _ _ _) _)
-      | Branch _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_branch _ _ _ _) _)
-      | ReadMem _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_read_mem _ _ _ _ _ _ _ _) _)
-      | WriteMem _ _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_write_mem _ _ _ _ _ _ _ _ _) _)
-      | Smt (DeclareConst _ (Ty_BitVec _)) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bv _ _ _ _) _)
-      | Smt (DeclareConst _ Ty_Bool) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_bool _ _ _) _)
-      | Smt (DeclareConst _ (Ty_Enum _)) _ => notypeclasses refine (tac_fast_apply (li_wp_declare_const_enum _ _ _ _) _)
-      | Smt (DefineConst _ _) _ => notypeclasses refine (tac_fast_apply (li_wp_define_const _ _ _ _) _)
-      | Smt (Assert _) _ => notypeclasses refine (tac_fast_apply (li_wp_assert _ _ _) _)
-      | Assume _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume _ _ _) _)
-      | Barrier _ _ => notypeclasses refine (tac_fast_apply (li_wp_barrier _ _ _) _)
-      end
-    | parametric_trace _ _ => iEval (unfold parametric_trace)
-    | ?def => first [
-                 try unfold TRACE_LET in def; iEval (unfold def); try clear def
-               | fail "liAAsm: unknown asm" es
-               ]
-    end
-  | |- envs_entails ?Δ (instr_pre' _ _ _) =>
-    notypeclasses refine (tac_fast_apply (li_instr_pre _ _ _) _)
-  | |- envs_entails ?Δ (wpreadreg _ [] _) =>
-     notypeclasses refine (tac_fast_apply (li_wpreadreg_nil _ _) _)
-  | |- envs_entails ?Δ (wpreadreg _ [Field _] _) =>
-     notypeclasses refine (tac_fast_apply (li_wpreadreg_field _ _ _) _)
-  end.
-
-Ltac liAStep' :=
- liEnforceInvariantAndUnfoldInstantiatedEvars;
- try liAIntroduceLetInGoal;
- first [
-    liAAsm'
-  | liAExp
-  | liAOther
-  | liUnfoldEarly
-  | liStep
-  | liLetBindHint
-  | liUnfoldLate
-]; liSimpl.
-
-Ltac liARun' := repeat liAStep'; try liAStep; liShow.
-
+(* These proofs are horrifying, but they'll do for now *)
 Lemma bv_xor1 (b : bv 32) : (bv_extract 2 2 b) = (BV 2  1) -> (bv_xor (bv_extract 2 1 b) (bv_extract 3 1 b)) = (BV 1 1).
 Proof.
   intros Hb.
   bits_simplify.
   bitify_hyp Hb.
   assert (Z.testbit (bv_unsigned b) 3 = false).
-  { specialize (Hb 1 ltac:(lia)). bits_simplify_hyp Hb. rewrite <- Hb. f_equal. }
+  { specialize (Hb 1 ltac:(lia)). bits_simplify_hyp Hb. { rewrite Z.ones_equiv in H5. lia. } by rewrite Hb. }
   assert (Z.testbit (bv_unsigned b) 2 = true).
   { specialize (Hb 0 ltac:(lia)). bits_simplify_hyp Hb. rewrite <- Hb. f_equal. }
   assert (n = 0). { lia. }
   rewrite H7.
   rewrite !Z.add_0_l.
-  rewrite H5 H6. 
-  done.
+  by rewrite H5 H6. 
 Qed.
 
 Lemma bv_xor2 (b : bv 32) : (bv_extract 2 2 b) = (BV 2  2) -> (bv_xor (bv_extract 2 1 b) (bv_extract 3 1 b)) = (BV 1 1).
@@ -550,7 +495,11 @@ Proof.
   bits_simplify.
   bitify_hyp Hb.
   assert (Z.testbit (bv_unsigned b) 3 = true).
-  { specialize (Hb 1 ltac:(lia)). bits_simplify_hyp Hb. cbn in Hb. rewrite Hb. done. }
+  { specialize (Hb 1 ltac:(lia)). bits_simplify_hyp Hb.
+    rewrite Z.shiftr_spec in Hb; [|rewrite Z.ones_equiv; lia].
+    rewrite Z.land_spec in Hb.
+    rewrite Z.ones_spec_low in Hb; [|rewrite Z.ones_equiv; lia].
+    rewrite andb_true_r in Hb. rewrite Hb. done. }
   assert (Z.testbit (bv_unsigned b) 2 = false).
   { specialize (Hb 0 ltac:(lia)). bits_simplify_hyp Hb. rewrite Hb. done. }
   assert (n = 0). { lia. }
@@ -647,26 +596,21 @@ Proof.
 (*PROOF_START*)
   unfold stub_handler_spec.
   iStartProof.
-  liARun'.
-  + unLET. liARun'.
-    - unLET. liARun'.
+  liARun.
+  + iLeft.
+    liARun.
+  + iLeft.
+    liARun.
+  + unfold reset_spec.
+    liARun.
+    iDestruct select ("SPSR_EL2" ↦ᵣ _)%I as "spsr".
+    iSplitL "spsr"; [iLeft; liARun; done|].
+    liARun.
+    * iRight.
       liARun.
-      * iLeft.
-        liARun.
-      * iLeft.
-        liARun.
-    - liARun.
-      unfold reset_spec.
+    * iRight.
       liARun.
-      iDestruct select ("SPSR_EL2" ↦ᵣ _)%I as "spsr".
-      iSplitL "spsr"; [iLeft; liARun; done|].
-      liARun.
-      * iRight.
-        liARun.
-      * iRight.
-        liARun.
-  + liARun.
-    unfold reset_spec.
+  + unfold reset_spec.
     liARun.
     iDestruct select ("SPSR_EL2" ↦ᵣ _)%I as "spsr".
     iSplitL "spsr"; [iRight; liARun; iPureIntro; bv_solve|].
