@@ -151,7 +151,7 @@ Definition spsr_constraint1 `{islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ :=
 
 Global Instance : LithiumUnfold (@spsr_constraint1) := I.
 
-Definition spsr_constraint2 `{!islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ := 
+Definition spsr_constraint2 `{!islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ :=
   "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
   ⌜bv_extract 0  1 spsr = (BV 1 1)⌝ ∗
   ⌜bv_extract 1  1 spsr = (BV 1 0)⌝ ∗
@@ -168,7 +168,7 @@ Definition standard_regs `{islaG Σ} `{!threadG} : iProp Σ :=
   reg_col CNVZ_regs ∗
   reg_col rest_of_pstate.
 
-Global Instance : LithiumUnfold (@standard_regs) := I. 
+Global Instance : LithiumUnfold (@standard_regs) := I.
 
 Definition standard_updated_regs `{islaG Σ} `{!threadG} : iProp Σ :=
   reg_col pkvm_sys_regs_updated ∗
@@ -176,12 +176,12 @@ Definition standard_updated_regs `{islaG Σ} `{!threadG} : iProp Σ :=
   reg_col CNVZ_regs ∗
   reg_col rest_of_pstate.
 
-Global Instance : LithiumUnfold (@standard_updated_regs) := I. 
+Global Instance : LithiumUnfold (@standard_updated_regs) := I.
 
 Definition valid_branch `{islaG Σ} `{!threadG} (p : bv 64) : iProp Σ :=
   ⌜bv_extract 55 1 p = (BV 1 0)⌝.
 
-Global Instance : LithiumUnfold (@valid_branch) := I. 
+Global Instance : LithiumUnfold (@valid_branch) := I.
 
 (* Requires that an address be in bounds and aligned *)
 Definition own_word_offset `{islaG Σ} `{!threadG} (p : bv 64) (n : nat) : iProp Σ :=
@@ -190,7 +190,7 @@ Definition own_word_offset `{islaG Σ} `{!threadG} (p : bv 64) (n : nat) : iProp
   ⌜ bv_unsigned p > n ⌝ ∗
   ⌜ bv_unsigned p `mod` 8 = 0 ⌝.
 
-Global Instance : LithiumUnfold (@own_word_offset) := I. 
+Global Instance : LithiumUnfold (@own_word_offset) := I.
 
 (*SPEC_END*)
 
@@ -219,7 +219,7 @@ Definition reset_spec `{!islaG Σ} `{!threadG} (b : bv 64) : iProp Σ :=
     ] ∗
     "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
     True)
-  ∧ 
+  ∧
   instr_body (bv_unsigned elr) (
     (⌜bv_unsigned b = 2⌝ ∗
     reg_col pkvm_sys_regs_updated_el1 ∗
@@ -288,7 +288,6 @@ Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (e
   spsr_constraint1 spsr ∗
   valid_branch elr ∗
   valid_branch el2_cont ∗
-  (* Don't handle this hypercall for now *)
   own_word_offset sp 16 ∗
   own_word_offset sp 8 ∗
   0x77f8 ↦ₘ stub_handler_addr ∗
@@ -326,8 +325,7 @@ Proof.
   liARun.
   Unshelve.
   all: prepare_sidecond.
-  change 18446744069414649855 with (Z.lor (Z.ones 32 ≪ 32) (Z.ones 16)).
-  bits_simplify.
+  bv_simplify. bitblast.
 Time Qed.
 
 Definition a742c_spec_inst `{!islaG Σ} `{!threadG} pc b :=
@@ -342,8 +340,7 @@ Proof.
   liARun.
   Unshelve.
   all: prepare_sidecond.
-  change 18446462603027808255 with (Z.lor (Z.ones 16 ≪ 48) (Z.ones 32)).
-  bits_simplify.
+  bv_simplify. bitblast.
 Time Qed.
 
 Definition a7430_spec_inst `{!islaG Σ} `{!threadG} pc b :=
@@ -434,17 +431,12 @@ Proof.
   Unshelve.
   all: prepare_sidecond.
   all: try bv_solve.
-  * contradict H13.
-    rewrite H12.
-    assert(G: bv_unsigned (bv_concat 64 (BV 32 0) esr) = bv_unsigned esr); [bv_solve|].
-    by rewrite G.
-  * assert(G: bv_unsigned (bv_concat 64 (BV 32 0) esr) = bv_unsigned esr); [bv_solve|].
-    rewrite G in H12.
-    by rewrite <- H12.
+  * bv_simplify select (bv_unsigned vnew = _). congruence.
+  * bv_simplify select (bv_unsigned vnew = (bv_unsigned _) ≫ _). congruence.
   (* Possibly should handle that this address gets shifted (even if it's by zero in this code) *)
 (*PROOF_END*)
 Time Qed.
- 
+
 Lemma wp' `{!islaG Σ} `{!threadG} sp esr stub_handler_addr (offset : bv 64) :
   instr 29696 (Some a7400) ∗
   instr 29700 (Some a7404) ∗
@@ -474,38 +466,27 @@ Proof.
 Time Qed.
 
 (* These proofs are horrifying, but they'll do for now *)
-Lemma bv_xor1 (b : bv 32) : (bv_extract 2 2 b) = (BV 2  1) -> (bv_xor (bv_extract 2 1 b) (bv_extract 3 1 b)) = (BV 1 1).
+Lemma bv_xor1 (b : bv 32) :
+  bv_extract 2 2 b = BV 2 1 ->
+  bv_xor (bv_extract 2 1 b) (bv_extract 3 1 b) = BV 1 1.
 Proof.
   intros Hb.
-  bits_simplify.
-  bitify_hyp Hb.
-  assert (Z.testbit (bv_unsigned b) 3 = false).
-  { specialize (Hb 1 ltac:(lia)). bits_simplify_hyp Hb. { rewrite Z.ones_equiv in H5. lia. } by rewrite Hb. }
-  assert (Z.testbit (bv_unsigned b) 2 = true).
-  { specialize (Hb 0 ltac:(lia)). bits_simplify_hyp Hb. rewrite <- Hb. f_equal. }
-  assert (n = 0). { lia. }
-  rewrite H7.
-  rewrite !Z.add_0_l.
-  by rewrite H5 H6. 
+  bv_simplify. bv_simplify Hb.
+  bitblast as n. have ?: n = 0 by lia. subst.
+  bitblast Hb with 0 as Hb0. rewrite Hb0.
+  bitblast Hb with 1 as Hb1. rewrite Hb1.
+  done.
 Qed.
 
-Lemma bv_xor2 (b : bv 32) : (bv_extract 2 2 b) = (BV 2  2) -> (bv_xor (bv_extract 2 1 b) (bv_extract 3 1 b)) = (BV 1 1).
+Lemma bv_xor2 (b : bv 32) :
+  bv_extract 2 2 b = BV 2 2 ->
+  bv_xor (bv_extract 2 1 b) (bv_extract 3 1 b) = BV 1 1.
 Proof.
   intros Hb.
-  bits_simplify.
-  bitify_hyp Hb.
-  assert (Z.testbit (bv_unsigned b) 3 = true).
-  { specialize (Hb 1 ltac:(lia)). bits_simplify_hyp Hb.
-    rewrite Z.shiftr_spec in Hb; [|rewrite Z.ones_equiv; lia].
-    rewrite Z.land_spec in Hb.
-    rewrite Z.ones_spec_low in Hb; [|rewrite Z.ones_equiv; lia].
-    rewrite andb_true_r in Hb. rewrite Hb. done. }
-  assert (Z.testbit (bv_unsigned b) 2 = false).
-  { specialize (Hb 0 ltac:(lia)). bits_simplify_hyp Hb. rewrite Hb. done. }
-  assert (n = 0). { lia. }
-  rewrite H7.
-  rewrite !Z.add_0_l.
-  rewrite H5 H6. 
+  bv_simplify. bv_simplify Hb.
+  bitblast as n. have ?: n = 0 by lia. subst.
+  bitblast Hb with 0 as Hb0. rewrite Hb0.
+  bitblast Hb with 1 as Hb1. rewrite Hb1.
   done.
 Qed.
 
@@ -546,7 +527,7 @@ Proof.
   Unshelve.
   all: prepare_sidecond.
   all: try bv_solve.
-  - apply bv_xor1; done. 
+  - apply bv_xor1; done.
   - assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bits_simplify|].
     rewrite Hshift.
     rewrite H2.
@@ -563,13 +544,8 @@ Proof.
     rewrite Hshift.
     rewrite H2.
     by bits_simplify.
-  - bits_simplify.
-    bitify_hyp H6.
-    specialize (H6 n44 ltac:(lia)).
-    bits_simplify_hyp H6.
-    rewrite <- H6.
-    f_equal.
-    lia.
+  - bv_simplify. bitblast. rename select (bv_extract 9 1 spsr = _) into Hspsr9.
+    bv_simplify Hspsr9. bitblast Hspsr9 with 0 as Heq. rewrite -Heq. f_equal. lia.
 (*PROOF_END*)
 Time Qed.
 
