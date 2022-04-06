@@ -17,7 +17,7 @@ depends: [
   "cmdliner" {= "1.0.4"}
   "pprint"
   "integers"
-  "dune" {>= "2.7.0"}
+  "dune" {= "3.0.3"} # dune updates like to break things so we fix a version
   "pprint" {>= "20171003"}
   "menhir" {build}
   "ott" {>= "0.31" & build}
