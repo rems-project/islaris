@@ -56,8 +56,8 @@
 Require Export Sail.Base.
 Require Export Sail.Prompt_monad.
 Require Export RV64.riscv_types.
-Require Export RV64.mem_metadata.
-Require Export RV64.riscv_extras.
+Require Export Riscv_common.mem_metadata.
+Require Export Riscv_common.riscv_extras.
 Require Export RV64.riscv.
 
 Local Arguments N.mul : simpl never.

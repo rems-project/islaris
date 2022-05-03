@@ -373,8 +373,8 @@ Definition register_value_to_valu (v : register_value) : valu :=
   match v with
   | Regval_bitvector_64_dec m => RVal_Bits (mword_to_bv (n2:=64) m)
   | Regval_bool b => RVal_Bool b
-  | Regval_Misa m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Misa_Misa_chunk_0)))]
-  | Regval_Mstatus m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Mstatus_Mstatus_chunk_0)))]
+  | Regval_Misa m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Misa_bits)))]
+  | Regval_Mstatus m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Mstatus_bits)))]
   | Regval_Privilege p => RVal_Enum (Mk_enum_id 3, Mk_enum_ctor (match p with | User => 0 | Supervisor => 1 | Machine => 2 end))
   | _ => RegVal_Poison
   end.
