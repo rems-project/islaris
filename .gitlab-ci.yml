@@ -33,7 +33,7 @@ variables:
 build-coq.8.14.0-timing:
   <<: *template
   variables:
-    OPAM_PINS: "coq version 8.14.0   isla-lang git git+https://git@github.com/rems-project/isla-lang.git#ea66fcb67b541339cd8139ec110be96dd00758d5"
+    OPAM_PINS: "coq version 8.14.0   isla-lang git git+https://git@github.com/rems-project/isla-lang.git#413f1d1c7fa725d757662d044dcebbf9d2e57d2e"
     DENY_WARNINGS: "1"
     # OPAM_PKG: "1"
   only:
@@ -46,7 +46,7 @@ build-coq.8.14.0-timing:
 build-coq.8.14.0:
   <<: *template
   variables:
-    OPAM_PINS: "coq version 8.14.0   isla-lang git git+https://git@github.com/rems-project/isla-lang.git#ea66fcb67b541339cd8139ec110be96dd00758d5"
+    OPAM_PINS: "coq version 8.14.0   isla-lang git git+https://git@github.com/rems-project/isla-lang.git#413f1d1c7fa725d757662d044dcebbf9d2e57d2e"
     DENY_WARNINGS: "1"
   only:
   - /^ci/@iris/isla-coq
