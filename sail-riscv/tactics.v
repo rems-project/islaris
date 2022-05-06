@@ -269,7 +269,7 @@ Proof.
   rewrite /within_mmio_writable/within_clint/within_htif_writable. apply orb_false_intro.
   - apply andb_false_iff. rewrite !Z.leb_gt. by rewrite /uint/= !uint_plain_to_bv_unsigned.
   - rewrite andb_false_iff orb_false_iff andb_false_iff /= Z.eqb_neq !Z.leb_gt.
-    by rewrite !(eq_vec_to_bv 64) // !bool_decide_eq_false !bv_neq mword_to_bv_add_vec_int.
+    by rewrite !(eq_vec_to_bv 64) // !bool_decide_eq_false !bv_neq mword_to_bv_add_vec.
 Qed.
 
 Lemma within_phys_mem_true b w H z:
