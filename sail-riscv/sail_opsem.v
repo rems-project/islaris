@@ -230,13 +230,16 @@ Lemma mword_to_bv_add_vec_int n1 n2 (b : mword n1) z:
   mword_to_bv (n2:=n2) (add_vec_int b z) = bv_add_Z (mword_to_bv b) z.
 Proof.
   move => ??.
-  apply bv_eq. rewrite mword_to_bv_unsigned // bv_add_Z_unsigned mword_to_bv_unsigned //.
-  rewrite /add_vec_int/Operators.arith_op_bv_int/arith_op_bv/=!get_word_mword_of_int.
-  rewrite -!Word.NToWord_Z_to_N //; [|lia].
-  rewrite !Word.wordToN_NToWord_eqn -Npow2_pow Z_nat_N.
-  rewrite -bv_wrap_add_idemp_r !N2Z.inj_mod N2Z.inj_pow !Z2N.id; [|lia..].
-  unfold bv_wrap, bv_modulus in *. f_equal; [|f_equal; lia].
-  do 3 f_equal. lia.
+  rewrite /add_vec_int mword_to_bv_add_vec //.
+  apply bv_eq.
+  rewrite bv_add_unsigned bv_add_Z_unsigned.
+  rewrite -(bv_wrap_add_idemp_r _ _ z).
+  f_equal. f_equal.
+  rewrite mword_to_bv_unsigned // get_word_mword_of_int.
+  rewrite -Word.NToWord_Z_to_N // Word.wordToN_NToWord_eqn -Npow2_pow Z_nat_N.
+  rewrite N2Z.inj_mod N2Z.inj_pow !Z2N.id; [|lia..].
+  unfold bv_wrap, bv_modulus in *.
+  do 2 f_equal. done.
 Qed.
 
 Lemma mword_to_bv_EXTS n1 n2' n2 (b : mword n1) H:
@@ -272,12 +275,12 @@ Proof.
   bitblast.
 Qed.
 
-Lemma mem_bytes_of_bits_to_bv n (v : mword n) len H:
+Lemma mem_bytes_of_bits_to_bv n (v : mword n) len:
   n = 8 * len →
-  mem_bytes_of_bits (H:=@mword_Bitvector _ H) v = Some (byte_to_memory_byte <$>
+  mem_bytes_of_bits v = Some (byte_to_memory_byte <$>
        (bv_to_little_endian len 8 (@bv_unsigned (Z.to_N n) (mword_to_bv v)))).
 Proof.
-  move => Hn. have ?:= use_ArithFact H.
+  move => Hn. have ?:= use_ArithFact (ArithFact_mword _ v).
   rewrite /mem_bytes_of_bits/bytes_of_bits/bits_of/= option_map_fmap map_fmap.
   apply fmap_Some. eexists (rev _). rewrite rev_involutive. split; [|done].
   rewrite (byte_chunks_reshape (Z.to_nat len)).
@@ -875,7 +878,7 @@ Proof.
   }
   move => ? ? ? ? Hstep. inversion_clear Hstep; simplify_eq.
   move: H3. rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned.
-  rewrite option_map_fmap map_fmap (read_mem_bytes_eq len') /=.
+  rewrite /of_bits option_map_fmap map_fmap (read_mem_bytes_eq len') /=.
   2: { rewrite H2. lia. } 2: { rewrite H2. lia. }
   move: Hor => [[? Hm]//|[Hm ?]]; rewrite Hm.
   - move => [??]. simplify_eq. eexists _. split. {
