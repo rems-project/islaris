@@ -50,3 +50,13 @@ build-coq.8.14.0:
     DENY_WARNINGS: "1"
   only:
   - /^ci/@iris/isla-coq
+
+trigger-iris.dev:
+  <<: *template
+  variables:
+    OPAM_PINS: "coq version 8.14.0   coq-stdpp.dev git git+https://gitlab.mpi-sws.org/iris/stdpp.git#$STDPP_REV   coq-iris.dev git git+https://gitlab.mpi-sws.org/iris/iris.git#$IRIS_REV  isla-lang git git+https://git@github.com/rems-project/isla-lang.git#413f1d1c7fa725d757662d044dcebbf9d2e57d2e"
+  except:
+  only:
+  - triggers
+  - schedules
+  - api
