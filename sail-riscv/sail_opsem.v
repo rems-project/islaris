@@ -440,7 +440,7 @@ Inductive sail_step : sail_state → option seq_label → sail_state → Prop :=
     bs = bs'
   else
     a + Z.of_N len ≤ 2 ^ 64 ∧
-    set_Forall (λ ad, ¬ (a ≤ bv_unsigned ad < a + Z.of_N len)) (dom (gset _) h) ∧
+    set_Forall (λ ad, ¬ (a ≤ bv_unsigned ad < a + Z.of_N len)) (dom h) ∧
     κ = Some (SReadMem adr (Z_to_bv (8 * len) (little_endian_to_bv 8 bs')))) →
   sail_step (SAIL (Read_mem Read_plain a sz e) rs h ins false) κ (SAIL (e (byte_to_memory_byte <$> bs')) rs h ins false)
 | SailWriteMem rs h h' ins e a bs bs' sz len adr κ:
@@ -452,7 +452,7 @@ Inductive sail_step : sail_state → option seq_label → sail_state → Prop :=
     κ = None
   else
     a + Z.of_N len ≤ 2 ^ 64 ∧
-    set_Forall (λ ad, ¬ (a ≤ bv_unsigned ad < a + Z.of_N len)) (dom (gset _) h) ∧
+    set_Forall (λ ad, ¬ (a ≤ bv_unsigned ad < a + Z.of_N len)) (dom h) ∧
     h = h' ∧
     κ = Some (SWriteMem adr (Z_to_bv (8 * len) (little_endian_to_bv 8 bs')))) →
   sail_step (SAIL (Write_mem Write_plain a sz bs e) rs h ins false) κ (SAIL (e true) rs h' ins false)
@@ -538,7 +538,7 @@ Definition sim {A E} (Σ : sim_state) (e1 : monad register_value A E) (K : mctx 
   (∀ sail_regs' isla_regs' mem',
       isla_regs_wf sail_regs' isla_regs' →
       private_regs_wf isla_regs' →
-      dom (gset _) isla_regs' = dom _ isla_regs →
+      dom isla_regs' = dom isla_regs →
       raw_sim sail_module (iris_module isla_lang) n
           (SAIL (Done tt) sail_regs' mem' sail_instrs false)
           ({| seq_trace := tnil; seq_regs := isla_regs'; seq_nb_state := false; seq_pc_reg := arch_pc_reg|},
@@ -552,7 +552,7 @@ Definition sim_instr (si : encoded_instruction) (i : isla_trace) :=
   ∀ regs, sim (SIM regs) (step_cpu si) NilMCtx i.
 
 Lemma sim_implies_refines sail_instrs isla_instrs sail_regs isla_regs mem :
-  dom (gset _) isla_instrs = dom (gset _) sail_instrs →
+  dom isla_instrs = dom sail_instrs →
   isla_regs_wf sail_regs isla_regs →
   private_regs_wf isla_regs →
   (∀ a si ii, sail_instrs !! a = Some si → isla_instrs !! a = Some ii → sim_instr si ii) →
@@ -795,7 +795,7 @@ Proof.
   have {Hsafe}[? Hor] : 0 < Z.of_N len' ∧ (is_Some (read_mem_list mem (bv_unsigned a') len') ∨
     (read_mem_list mem (bv_unsigned a') len' = None ∧
        bv_unsigned a' + Z.of_N len' ≤ 2 ^ 64 ∧
-       set_Forall (λ ad, ¬ (bv_unsigned a' ≤ bv_unsigned ad < bv_unsigned a' + Z.of_N len')) (dom (gset _) mem))). {
+       set_Forall (λ ad, ¬ (bv_unsigned a' ≤ bv_unsigned ad < bv_unsigned a' + Z.of_N len')) (dom mem))). {
     move: Hsafe => [?[?[?[? Hstep]]]]. inv_seq_step.
     revert select (∃ m, _) => -[?[?[?[Ha'[ _ [??]]]]]].
     injection Ha'. intros ?%Eqdep_dec.inj_pair2_eq_dec. 2: { by move => ??; apply decide; apply _. } subst.
@@ -855,7 +855,7 @@ Proof.
   have {Hsafe}[? Hor] : 0 < Z.of_N len' ∧ (is_Some (read_mem_list mem (bv_unsigned a') len') ∨
     (read_mem_list mem (bv_unsigned a') len' = None ∧
        bv_unsigned a' + Z.of_N len' ≤ 2 ^ 64 ∧
-       set_Forall (λ ad, ¬ (bv_unsigned a' ≤ bv_unsigned ad < bv_unsigned a' + Z.of_N len')) (dom (gset _) mem))). {
+       set_Forall (λ ad, ¬ (bv_unsigned a' ≤ bv_unsigned ad < bv_unsigned a' + Z.of_N len')) (dom mem))). {
     efeed pose proof Hsafe as He.
     { apply: steps_l'; [|apply steps_refl|done].
       constructor. econstructor; [done|eapply (DeclareConstBitVecS' (bv_0 _))|] => /=. done. }

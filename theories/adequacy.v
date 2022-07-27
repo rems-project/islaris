@@ -91,15 +91,15 @@ Definition initial_local_state `{!Arch} (regs : reg_map) : seq_local_state := {|
 Lemma isla_adequacy Σ `{!Arch} `{!islaPreG Σ} (instrs : gmap addr isla_trace) (mem : mem_map) (regs : list reg_map) (Pκs : spec) t2 σ2 κs n:
   Pκs [] →
   (∀ {HG : islaG Σ},
-    ⊢ instr_table instrs -∗ backed_mem (dom _ mem) -∗ spec_trace Pκs -∗ ([∗ map] a↦b∈mem, bv_unsigned a ↦ₘ b)
+    ⊢ instr_table instrs -∗ backed_mem (dom mem) -∗ spec_trace Pκs -∗ ([∗ map] a↦b∈mem, bv_unsigned a ↦ₘ b)
     ={⊤}=∗ [∗ list] rs ∈ regs, ∀ (_ : threadG), ([∗ map] r↦v∈rs, r ↦ᵣ v) -∗ WPasm tnil) →
   nsteps n (initial_local_state <$> regs, {| seq_instrs := instrs; seq_mem := mem |}) κs (t2, σ2) →
   (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧ Pκs κs.
 Proof.
   move => ? Hwp.
-  apply: wp_strong_adequacy => ?.
+  apply: wp_strong_adequacy_no_lc => ??.
   set i := to_instrtbl instrs.
-  set bm := to_backed_mem (dom _ mem).
+  set bm := to_backed_mem (dom mem).
   iMod (own_alloc (i)) as (γi) "#Hi" => //.
   iMod (own_alloc (bm)) as (γbm) "#Hb" => //.
   iMod (own_alloc (to_frac_agree (A:= _ -d> _) (1/2 + 1/2) Pκs)) as (γs) "Hs" => //.
@@ -109,7 +109,7 @@ Proof.
   set (HheapG := HeapG _ _ γi _ _ _ γm _ γbm κs Pκs _ γs).
   set (HislaG := IslaG _ _ HheapG).
   iAssert (instr_table instrs) as "#His". { by rewrite instr_table_eq. }
-  iAssert (backed_mem (dom _ mem)) as "#Hbm". { by rewrite backed_mem_eq. }
+  iAssert (backed_mem (dom mem)) as "#Hbm". { by rewrite backed_mem_eq. }
 
   iMod (Hwp HislaG with "His Hbm [Hs1] [Hm2]") as "Hwp". {
     rewrite spec_trace_eq. iExists _. rewrite spec_trace_raw_eq. by iFrame.
@@ -119,7 +119,7 @@ Proof.
     iExists _. iFrame. by rewrite Z_to_bv_checked_bv_unsigned.
   }
   iModIntro.
-  iExists NotStuck, _, (replicate (length regs) (λ _, True%I)), _, _.
+  iExists _, (replicate (length regs) (λ _, True%I)), _, _.
   iSplitL "Hs2 Hm1"; last first; [iSplitL|].
   - rewrite big_sepL2_replicate_r ?fmap_length // big_sepL_fmap.
     iApply (big_sepL_impl with "Hwp").

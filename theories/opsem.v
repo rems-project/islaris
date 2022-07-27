@@ -515,7 +515,7 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       (* If there is no memory, we emit an event. *)
       else
         bv_unsigned addr' + Z.of_N len ≤ 2 ^ 64 ∧
-        set_Forall (λ a, ¬ (bv_unsigned addr' ≤ bv_unsigned a < bv_unsigned addr' + Z.of_N len)) (dom (gset _) σ.(seq_mem)) ∧
+        set_Forall (λ a, ¬ (bv_unsigned addr' ≤ bv_unsigned a < bv_unsigned addr' + Z.of_N len)) (dom σ.(seq_mem)) ∧
         κ' = Some (SReadMem addr' data') ∧
         σ' = σ ∧
         θ' = θ <| seq_trace := t' |>
@@ -535,7 +535,7 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
       (* If there is no memory, we emit an event. *)
       else
         bv_unsigned addr' + Z.of_N len ≤ 2 ^ 64 ∧
-        set_Forall (λ a, ¬ (bv_unsigned addr' ≤ bv_unsigned a < bv_unsigned addr' + Z.of_N len)) (dom (gset _) σ.(seq_mem)) ∧
+        set_Forall (λ a, ¬ (bv_unsigned addr' ≤ bv_unsigned a < bv_unsigned addr' + Z.of_N len)) (dom σ.(seq_mem)) ∧
         κ' = Some (SWriteMem addr' data') ∧
         σ' = σ ∧
         θ' = θ <| seq_trace := t' |>

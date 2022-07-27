@@ -213,7 +213,7 @@ Section definitions.
     seal_eq mem_mapsto_uninit_aux.
 
   Definition mem_ctx (mem : mem_map) : iProp Σ :=
-    ghost_map_auth heap_mem_name 1 mem ∗ backed_mem (dom _ mem).
+    ghost_map_auth heap_mem_name 1 mem ∗ backed_mem (dom mem).
 
   Definition spec_trace_raw_def (Pκs: spec) : iProp Σ :=
     own heap_spec_trace_name (to_dfrac_agree (A:=specO) (DfracOwn (1/2)) Pκs).
@@ -492,7 +492,7 @@ Section mem.
   Lemma mmio_range_Forall mem a l :
     mem_ctx mem -∗
     mmio_range a l -∗
-    ⌜set_Forall (λ a', ¬ (a ≤ bv_unsigned a' < a + l)) (dom (gset _) mem)⌝.
+    ⌜set_Forall (λ a', ¬ (a ≤ bv_unsigned a' < a + l)) (dom mem)⌝.
   Proof.
     rewrite mmio_range_eq. iIntros "[_ Hbm] [%bm[% [% [% Hbm']]]]".
     by iDestruct (backed_mem_agree with "Hbm Hbm'") as %?; subst.

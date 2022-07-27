@@ -11,8 +11,8 @@ synopsis: "Islaris assembly verification tool"
 
 depends: [
   "coq" { (= "8.14.0") | (= "dev") }
-  "coq-lithium" { (= "dev.2022-02-28.1.da7ee501") | (= "dev") }
-  "coq-bitvector" { (= "dev.2022-02-27.0.37b640c2") | (= "dev") }
+  "coq-lithium" { (= "dev.2022-07-27.0.16017a2c") | (= "dev") }
+  "coq-bitvector" { (= "dev.2022-07-27.0.f256f5c9") | (= "dev") }
   "coq-record-update" { (= "0.3.0") | (= "dev") }
   "cmdliner" {= "1.0.4"}
   "pprint"
