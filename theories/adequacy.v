@@ -97,7 +97,7 @@ Lemma isla_adequacy Σ `{!Arch} `{!islaPreG Σ} (instrs : gmap addr isla_trace) 
   (∀ e2, e2 ∈ t2 → not_stuck e2 σ2) ∧ Pκs κs.
 Proof.
   move => ? Hwp.
-  apply: wp_strong_adequacy_no_lc => ??.
+  apply: wp_strong_adequacy => ?.
   set i := to_instrtbl instrs.
   set bm := to_backed_mem (dom mem).
   iMod (own_alloc (i)) as (γi) "#Hi" => //.
