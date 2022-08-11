@@ -62,6 +62,7 @@ From iris.base_logic Require Export lib.own.
 From iris.base_logic.lib Require Import ghost_map ghost_var.
 From iris.proofmode Require Export tactics.
 From isla Require Export opsem spec.
+From isla Require Import bitvector_auto.
 Set Default Proof Using "Type".
 Import uPred.
 
@@ -589,9 +590,7 @@ Section mem.
     iDestruct "Hbs" as "[Ha Hbs]". rewrite Z.add_0_r.
     iMod (mem_mapsto_byte_update with "Hmem Ha") as "[Hmem $]".
     setoid_rewrite Nat2Z.inj_succ. setoid_rewrite <-Z.add_succ_comm.
-    have -> : (bv_add_Z (Z_to_bv 64 a) 1) = (Z_to_bv 64 (Z.succ a)). {
-      apply bv_eq. rewrite bv_add_Z_unsigned !Z_to_bv_unsigned. bv_wrap_simplify_solve.
-    }
+    have -> : (bv_add_Z (Z_to_bv 64 a) 1) = (Z_to_bv 64 (Z.succ a)) by bv_solve.
     iApply ("IH" with "[] Hmem Hbs"). iPureIntro. lia.
   Qed.
 
