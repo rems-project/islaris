@@ -6,7 +6,7 @@
     7400:	a9bf07e0 	stp	x0, x1, [sp, #-16]!
     7404:	d53c5200 	mrs	x0, esr_el2
 //@spec: lsr_R_spec pc "R0" 26
-//@spec_tactic: by bits_simplify.
+//@spec_tactic: by bv_simplify; bitblast.
     7408:	d35afc00 	lsr	x0, x0, #26
 //@spec: cmp_R_imm_spec pc "R0" 0x16
 //@spec_tactic: 1: cmp_spec_tac1. 1: cmp_spec_tac2. 1: cmp_spec_tac3. 1: cmp_spec_tac4.

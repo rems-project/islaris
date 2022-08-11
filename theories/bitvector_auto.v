@@ -56,6 +56,8 @@
 From isla Require Export base.
 From lithium Require Import Z_bitblast.
 
+Local Open Scope Z_scope.
+
 Lemma bitblast_bool_to_Z b n:
   Bitblast (bool_to_Z b) n (bool_decide (n = 0) && b).
 Proof.
@@ -524,108 +526,3 @@ Ltac bv_solve :=
 
 Class BvSolve (P : Prop) : Prop := bv_solve_proof : P.
 Global Hint Extern 1 (BvSolve ?P) => (change P; bv_solve) : typeclass_instances.
-
-Definition bv_unsigned_land {n} (v : bv n) := Z.land (bv_unsigned v) (Z.ones (Z.of_N n)).
-
-Lemma bv_and_ones {n} (v : bv n) : bv_unsigned v = bv_unsigned_land v.
-Proof. unfold bv_unsigned_land. bitblast. Qed.
-
-Lemma Z_ones_spec' m n : 0 ≤ n → Z.testbit (Z.ones n) m = bool_decide (m < n) && bool_decide (0 ≤ m)%Z.
-Proof.
-  intros.
-  destruct (Z.le_gt_cases 0 m).
-  + rewrite Z_ones_spec; [|lia|lia].
-    rewrite (bool_decide_eq_true_2 (0 ≤ m)); [|lia].
-    by rewrite andb_true_r.
-  + rewrite (bool_decide_eq_false_2 (0 ≤ m)); [|lia].
-    rewrite Z.testbit_neg_r; [|lia].
-    by rewrite andb_false_r.
-Qed.
-
-Ltac onesify n :=
-  lazymatch n with
-  | O => idtac
-  | S ?n' =>
-    let m := eval vm_compute in (Z.of_nat n) in
-    let x := eval vm_compute in (Z.ones m) in
-    change x with (Z.ones m);
-    onesify n'
-  end.
-
-Ltac onesify_hyp n H :=
-  lazymatch n with
-  | O => idtac
-  | S ?n' =>
-    let m := eval vm_compute in (Z.of_nat n) in
-    let x := eval vm_compute in (Z.ones m) in
-    change x with (Z.ones m) in H;
-    onesify_hyp n' H
-  end.
-
-#[export] Hint Rewrite
-  Z.bits_0
-  Z.lor_0_l Z.lor_0_r
-  Z.land_spec Z.lor_spec
-  Z.lxor_spec
-  andb_false_l andb_false_r andb_true_l andb_true_r
-  orb_false_l orb_false_r orb_true_l orb_true_r : bits_simplify.
-
-#[export] Hint Rewrite
-  Z_ones_spec' Z.testbit_neg_r Z.shiftl_spec Z.shiftr_spec Z.lnot_spec using lia : bits_simplify.
-
-#[export] Hint Rewrite <- Z.land_ones using lia : bits_simplify.
-
-Ltac bool_decide_split :=
-  repeat match goal with
-  | |- context [bool_decide (?a < ?b)] =>
-    destruct (Z.lt_ge_cases a b);
-    [rewrite !(bool_decide_eq_true_2 (a < b)) | rewrite !(bool_decide_eq_false_2 (a < b)) ]; try lia
-  | G : context [bool_decide (?a < ?b)] |- _ =>
-    destruct (Z.lt_ge_cases a b);
-    [rewrite !(bool_decide_eq_true_2 (a < b)) in G | rewrite !(bool_decide_eq_false_2 (a < b)) in G ]; try lia
-  | |- context [bool_decide (?a ≤ ?b)] =>
-    destruct (Z.le_gt_cases a b);
-    [rewrite !(bool_decide_eq_true_2 (a ≤ b)) | rewrite !(bool_decide_eq_false_2 (a ≤ b)) ]; try lia
-  | G : context [bool_decide (?a ≤ ?b)] |- _ =>
-    destruct (Z.le_gt_cases a b);
-    [rewrite !(bool_decide_eq_true_2 (a ≤ b)) in G | rewrite !(bool_decide_eq_false_2 (a ≤ b)) in G ]; try lia
-  end.
-
-Ltac neg_bits_zero :=
-  repeat (match goal with |- context [Z.testbit _ ?a] => rewrite (Z.testbit_neg_r _ a); [|lia] end).
-
-
-Ltac bits_simplify :=
-  try apply/bv_eq;
-  bv_unfold;
-  unfold bv_wrap in *;
-  onesify (64%nat);
-  repeat match goal with b : bv _ |- _ => match goal with G : bv_unsigned b = _ |- _ => rewrite G; clear G end end;
-  repeat match goal with B : bv ?n |- _ => rewrite !(bv_and_ones B) end; unfold bv_unsigned_land;
-  try (apply Z.bits_inj_iff';
-  let n := fresh "n" in
-  let Hn := fresh "Hn" in
-  intros n Hn) ;
-  repeat (first [
-    progress autorewrite with bits_simplify |
-    progress bool_decide_split |
-    progress neg_bits_zero |
-    progress simpl |
-    (f_equal; lia)
-  ]).
-
-Ltac bitify_hyp H :=
-  try (rewrite -> bv_eq in H);
-  rewrite <- Z.bits_inj_iff' in H.
-
-Ltac bits_simplify_hyp H :=
-  tactic bv_unfold in H;
-  unfold bv_wrap in H;
-  onesify_hyp (64%nat) H;
-  repeat match goal with B : bv ?n |- _ => rewrite !(bv_and_ones B) in H end;
-  unfold bv_unsigned_land in H;
-  repeat (first [
-    progress autorewrite with bits_simplify in H|
-    progress bool_decide_split |
-    progress simpl in H
-  ]).

@@ -355,7 +355,7 @@ Proof.
   liARun.
   Unshelve.
   all: prepare_sidecond.
-  bits_simplify.
+  bv_simplify. bitblast.
 Time Qed.
 
 Definition a7434_spec_inst `{!islaG Σ} `{!threadG} pc b :=
@@ -385,7 +385,7 @@ Proof.
   liARun.
   Unshelve.
   all: prepare_sidecond.
-  bits_simplify.
+  bv_simplify. bitblast.
 Time Qed.
 (*PROOF_END*)
 
@@ -528,22 +528,15 @@ Proof.
   all: prepare_sidecond.
   all: try bv_solve.
   - apply bv_xor1; done.
-  - assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bits_simplify|].
+  - assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bv_simplify; bitblast|].
     rewrite Hshift.
-    rewrite H2.
-    by bits_simplify.
-  - bits_simplify.
-    bitify_hyp H6.
-    specialize (H6 n44 ltac:(lia)).
-    bits_simplify_hyp H6.
-    rewrite <- H6.
-    f_equal.
-    lia.
+    rewrite H2. by bv_simplify.
+  - bv_simplify. bitblast. rename select (bv_extract 9 1 spsr = _) into Hspsr9.
+    bv_simplify Hspsr9. bitblast Hspsr9 with 0 as Heq. rewrite -Heq. f_equal. lia.
   - apply bv_xor2; done.
-  - assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bits_simplify|].
+  - assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bv_simplify; bitblast|].
     rewrite Hshift.
-    rewrite H2.
-    by bits_simplify.
+    rewrite H2. by bv_simplify.
   - bv_simplify. bitblast. rename select (bv_extract 9 1 spsr = _) into Hspsr9.
     bv_simplify Hspsr9. bitblast Hspsr9 with 0 as Heq. rewrite -Heq. f_equal. lia.
 (*PROOF_END*)
@@ -596,16 +589,11 @@ Proof.
   all: prepare_sidecond.
   all: try bv_solve.
   * apply bv_xor1; done.
-  * assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bits_simplify|].
+  * assert (Hshift: bv_shiftr spsr (BV 32 0) = spsr); [by bv_simplify; bitblast|].
     rewrite Hshift.
     rewrite H0.
-    by bits_simplify.
-  * bits_simplify.
-    bitify_hyp H4.
-    specialize (H4 n ltac:(lia)).
-    bits_simplify_hyp H4.
-    rewrite <- H4.
-    f_equal.
-    lia.
+    by bv_simplify.
+  * bv_simplify. bitblast. rename select (bv_extract 9 1 spsr = _) into Hspsr9.
+    bv_simplify Hspsr9. bitblast Hspsr9 with 0 as Heq. rewrite -Heq. f_equal. lia.
 (*PROOF_END*)
 Time Qed.

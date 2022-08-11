@@ -9,7 +9,7 @@ Proof.
   iStartProof.
   repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
-  by bits_simplify.
+  by bv_simplify; bitblast.
 Qed.
 
 Definition a7408_spec_inst `{!islaG Σ} `{!threadG} pc :=
