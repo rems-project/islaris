@@ -61,8 +61,8 @@ From iris.bi Require Import fractional.
 From iris.base_logic Require Export lib.own.
 From iris.base_logic.lib Require Import ghost_map ghost_var.
 From iris.proofmode Require Export tactics.
-From isla Require Export opsem spec.
 From isla Require Import bitvector_auto.
+From isla Require Export opsem spec.
 Set Default Proof Using "Type".
 Import uPred.
 

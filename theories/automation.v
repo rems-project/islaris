@@ -55,7 +55,7 @@
 
 From iris.proofmode Require Import coq_tactics reduction.
 From lithium Require Export lithium tactics.
-From isla Require Export lifting bitvector_auto.
+From isla Require Export bitvector_auto lifting.
 Set Default Proof Using "Type".
 
 Global Hint Transparent addr byte : bv_unfold_db.
@@ -907,7 +907,7 @@ Section instances.
     iDestruct 1 as ([[regs1' regs2'] c] [=] Hf) "HT". move/Forall_fold_right in Hf.
     iIntros "Hregs".
     iDestruct (regcol_cancel_sound with "Hregs") as "[? H2]"; [done| |] => /=.
-    { apply: Forall_impl; [|done] => /= ????. by apply: valu_shape_implies_sound; [|done]. }
+    { apply: Forall_impl; [done|] => /= ????. by apply: valu_shape_implies_sound; [|done]. }
     iDestruct ("HT" with "[$]") as "[? $]". by iApply "H2".
   Qed.
   Global Instance subsume_regcol_regcol_inst regs1 regs2:
