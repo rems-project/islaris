@@ -56,6 +56,30 @@
 From bitvector Require Export bitvector.
 From lithium Require Import Z_bitblast.
 
+(** * Notation for [bv] operations *)
+Declare Scope bv_scope.
+Delimit Scope bv_scope with bv.
+Bind Scope bv_scope with bv.
+
+Infix "+" := bv_add : bv_scope.
+Infix "-" := bv_sub : bv_scope.
+Notation "- x" := (bv_opp x) : bv_scope.
+Infix "*" := bv_mul : bv_scope.
+Infix "`divu`" := bv_divu (at level 35) : bv_scope.
+Infix "`modu`" := bv_modu (at level 35) : bv_scope.
+Infix "`divs`" := bv_divs (at level 35) : bv_scope.
+Infix "`quots`" := bv_quots (at level 35) : bv_scope.
+Infix "`mods`" := bv_mods (at level 35) : bv_scope.
+Infix "`rems`" := bv_rems (at level 35) : bv_scope.
+Infix "≪" := bv_shiftl : bv_scope.
+Infix "≫" := bv_shiftr : bv_scope.
+Infix "`ashiftr`" := bv_ashiftr (at level 35) : bv_scope.
+
+Infix "`+Z`" := bv_add_Z (at level 50) : bv_scope.
+Infix "`-Z`" := bv_sub_Z (at level 50) : bv_scope.
+Infix "`*Z`" := bv_mul_Z (at level 40) : bv_scope.
+
+
 (** * bitvector automation *)
 (** This file provides automation for the bitvector library in
 [bitvector.v]. In particular, it provides integration of bitvectors
