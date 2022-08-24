@@ -168,16 +168,17 @@ Proof.
     by rewrite !mword_to_bv_unsigned // Hb.
 Qed.
 
-Lemma mword_to_bv_subrange_vec_dec z1 z2 n2 n1 (b : mword n1) H1 H2:
+Lemma mword_to_bv_subrange_vec_dec z1 z2 n2 n1 (b : mword n1):
+  0 <= z2 ->
+  z2 <= z1 < n1 ->
   (∀ b Heq, Word.wordToN (get_word (@cast_to_mword (Z.to_nat z1 - Z.to_nat z2 + 1) (z1 - z2 + 1) b Heq)) = Word.wordToN b) → (* TODO: remove this once there is a proof of wordToN_get_word_cast_to_mword *)
   n1 = Z.of_N n2 →
-  mword_to_bv (subrange_vec_dec (H:=H1) (H0:=H2) b z1 z2) =
+  mword_to_bv (subrange_vec_dec b z1 z2) =
     bv_extract (Z.to_N z2) (Z.to_N (z1 + 1 - z2)) (mword_to_bv (n2:=n2) b).
 Proof.
-  move => Hx ?.
-  have /Z.leb_le? := use_ArithFact H1.
-  have /andb_true_iff[/Z.leb_le? /Z.ltb_lt?] := use_ArithFact H2.
-  unfold subrange_vec_dec. apply bv_eq.
+  move => Hz2 Hz1 Hx ?.
+  unfold subrange_vec_dec.  destruct (sumbool_of_bool _); [|lia].
+  unfold subrange_vec_dec_precise. apply bv_eq.
   rewrite bv_extract_unsigned !mword_to_bv_unsigned; [|lia..].
   rewrite Hx wordToN_split2 wordToN_cast_word wordToN_split1 wordToN_cast_word.
   rewrite !Z_nat_N !Z2N.id ?N2Z.inj_div ?N2Z.inj_mod ?N2Z.inj_pow ?Z2N.id; [|lia..].
@@ -243,7 +244,7 @@ Proof.
 Qed.
 
 Lemma mword_to_bv_EXTS n1 n2' n2 (b : mword n1) H:
-  (∀ b Heq, Word.wordToZ (get_word (@cast_to_mword (Z.to_nat n1 + Z.to_nat (n2' - n1)) n2' b Heq)) = Word.wordToZ b) → (* TODO: remove this once there is a proof of wordToZ_get_word_cast_to_mword *)
+  (∀ b, Word.wordToZ (get_word (@fit_word (Z.to_nat n1 + Z.to_nat (n2' - n1)) n2' b)) = Word.wordToZ b) → (* TODO: remove this once there is a proof of wordToZ_get_word_cast_to_mword *)
   0 ≤ n1 →
   n2' = Z.of_N n2 →
   mword_to_bv (n2:=n2) (@EXTS _ n2' b H) = bv_sign_extend _ (mword_to_bv (n2:=(Z.to_N n1)) b).
@@ -277,10 +278,11 @@ Qed.
 
 Lemma mem_bytes_of_bits_to_bv n (v : mword n) len:
   n = 8 * len →
+  0 <= n →
   mem_bytes_of_bits v = Some (byte_to_memory_byte <$>
        (bv_to_little_endian len 8 (@bv_unsigned (Z.to_N n) (mword_to_bv v)))).
 Proof.
-  move => Hn. have ?:= use_ArithFact (ArithFact_mword _ v).
+  move => Hn ?.
   rewrite /mem_bytes_of_bits/bytes_of_bits/bits_of/= option_map_fmap map_fmap.
   apply fmap_Some. eexists (rev _). rewrite rev_involutive. split; [|done].
   rewrite (byte_chunks_reshape (Z.to_nat len)).
@@ -792,7 +794,7 @@ Proof.
   move => ? ? ? ? ? ? Hsim ? isla_regs mem ?? Hwf ? Hdone. subst.
   set a' := mword_to_bv a. set v' := mword_to_bv (n2:=8 * len') v.
   unfold Prompt_monad.write_mem. simplify_option_eq.
-  erewrite mem_bytes_of_bits_to_bv; [|done].
+  erewrite mem_bytes_of_bits_to_bv; [|done|lia].
   rewrite mctx_interp_Write_mem.
   apply: raw_sim_safe_here => /= -[|Hsafe]. { unfold seq_to_val. by case. }
   have {Hsafe}[? Hor] : 0 < Z.of_N len' ∧ (is_Some (read_mem_list mem (bv_unsigned a') len') ∨

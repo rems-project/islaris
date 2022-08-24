@@ -283,9 +283,9 @@ Lemma get_word_inj n (m1 m2 : mword n):
   get_word m1 = get_word m2 → m1 = m2.
 Proof. by destruct n. Qed.
 
-Lemma get_word_mword_of_int n H z:
-  get_word (@mword_of_int n H z) = Word.ZToWord (Z.to_nat n) z.
-Proof. destruct n => //=. case_match. Qed.
+Lemma get_word_mword_of_int n z:
+  get_word (@mword_of_int n z) = Word.ZToWord (Z.to_nat n) z.
+Proof. destruct n => //=. Qed.
 
 Lemma lt_Npow2 n n1:
   (0 ≤ n1)%Z →
