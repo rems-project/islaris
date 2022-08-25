@@ -73,10 +73,10 @@ Arguments set _ _ _ _ _ !_ /.
 
 Arguments N.mul : simpl never.
 Arguments bool_decide : simpl never.
-Typeclasses Opaque prefix.
+Global Typeclasses Opaque prefix.
 
 (* TODO: upstream? *)
-Typeclasses Opaque Z.ge Z.le.
+Global Typeclasses Opaque Z.ge Z.le.
 
 Ltac unLET :=
   repeat match goal with
