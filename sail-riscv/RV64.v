@@ -56,8 +56,8 @@
 Require Export Sail.Base.
 Require Export Sail.Prompt_monad.
 Require Export RV64.riscv_types.
-Require Export Riscv_common.mem_metadata.
-Require Export Riscv_common.riscv_extras.
+Require Export RV64.mem_metadata.
+Require Export RV64.riscv_extras.
 Require Export RV64.riscv.
 
 Local Arguments N.mul : simpl never.
@@ -264,6 +264,8 @@ Proof. now rewrite (regstate_eta regs). Qed.
 (* This breaks the `with` notations so we have to import it later. *)
 Require Import isla.base.
 Require Import isla.bitvector_auto.
+
+Local Open Scope Z_scope.
 
 (* This file should not depend on anything in islaris since it is quite slow to compile. *)
 
