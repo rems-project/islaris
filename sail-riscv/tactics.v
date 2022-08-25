@@ -117,7 +117,7 @@ Ltac reduce_closed_sim :=
    end.
 
 Ltac cbn_sim :=
-  cbn [returnm bind bind0 sim_regs
+  cbn [returnM returnm bind bind0 sim_regs
        x1_ref x2_ref x9_ref x10_ref x11_ref x12_ref misa_ref mstatus_ref PC_ref nextPC_ref cur_privilege_ref
        regval_of of_regval read_from write_to regval_from_reg
        Misa_of_regval regval_of_Misa
@@ -227,7 +227,7 @@ Ltac red_monad_sim :=
 
 
 Ltac unfold_sim :=
-  unfold wX_bits, rX_bits, rX, wX, set_next_pc, regval_from_reg, regval_into_reg, returnm, set, ext_data_get_addr,
+  unfold wX_bits, rX_bits, rX, wX, set_next_pc, regval_from_reg, regval_into_reg, returnM, returnm, set, ext_data_get_addr,
     mem_write_ea, write_ram_ea, write_mem_ea, phys_mem_write, write_ram, phys_mem_read, read_ram, process_load,
     mem_write_value_priv_meta, pmp_mem_write, checked_mem_write, mem_read_priv, mem_read_priv_meta, pmp_mem_read,
     checked_mem_read.
@@ -297,24 +297,6 @@ Proof.
   by red_sim.
 Qed.
 
-Lemma sim_is_RV32F_or_RV64F Σ K e2:
-  (∀ b, sim Σ (Done b) K e2) →
-  sim Σ (is_RV32F_or_RV64F ()) K e2.
-Proof.
-  move => Hsim.
-  unfold is_RV32F_or_RV64F. red_sim.
-  apply: sim_haveFExt => -[]; by red_sim.
-Qed.
-
-Lemma sim_is_RV64F Σ K e2:
-  (∀ b, sim Σ (Done b) K e2) →
-  sim Σ (is_RV64F ()) K e2.
-Proof.
-  move => Hsim.
-  unfold is_RV64F. red_sim.
-  apply: sim_haveFExt => -[]; by red_sim.
-Qed.
-
 Lemma sim_haveDExt Σ K e2:
   (∀ b, sim Σ (Done b) K e2) →
   sim Σ (haveDExt ()) K e2.
@@ -327,31 +309,13 @@ Proof.
   by red_sim.
 Qed.
 
-Lemma sim_is_RV32D_or_RV64D Σ K e2:
-  (∀ b, sim Σ (Done b) K e2) →
-  sim Σ (is_RV32D_or_RV64D ()) K e2.
-Proof.
-  move => Hsim.
-  unfold is_RV32D_or_RV64D. red_sim.
-  apply: sim_haveDExt => -[]; by red_sim.
-Qed.
-
-Lemma sim_is_RV64D Σ K e2:
-  (∀ b, sim Σ (Done b) K e2) →
-  sim Σ (is_RV64D ()) K e2.
-Proof.
-  move => Hsim.
-  unfold is_RV64D. red_sim.
-  apply: sim_haveDExt => -[]; by red_sim.
-Qed.
-
 Lemma bv_extract_17_1_and (b : bv 64):
   bv_and b (BV 64 0x20000) = (BV 64 0) →
   bv_extract 17 1 b = (BV 1 0).
 Proof. move => Hb. bv_simplify. bitblast as n. bv_simplify Hb. by bitblast Hb with (n + 17). Qed.
 
 Lemma sim_effectivePrivilege Σ K t m priv e2:
-  bv_and (mword_to_bv (n2:=64) (Mstatus_Mstatus_chunk_0 m)) (BV 64 0x20000) = (BV 64 0) →
+  bv_and (mword_to_bv (n2:=64) (Mstatus_bits m)) (BV 64 0x20000) = (BV 64 0) →
   sim Σ (Done priv) K e2 →
   sim Σ (effectivePrivilege t m priv) K e2.
 Proof.
