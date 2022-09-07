@@ -267,10 +267,18 @@ Definition stub_handler_spec `{!islaG Σ} `{!threadG} (b : bv 64) : iProp Σ :=
   ).
 (*PROOF_END*)
 
+(* This is the overall spec for the handler, it assumes the code at
+`stub_handler_addr - offset` has independently been proven to satisfy
+`stub_handler_spec`, which is proven separately *)
 (*SPEC_START*)
 Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (esr : bv 32) : iProp Σ :=
   ∃ (param el2_cont elr : bv 64) (spsr : bv 32),
+  (* standard_regs fixes values for a number of system registers, lsited in
+  `pkvm_sys_regs`, and asserts ownership over CNVZ and PSTATE without specifying
+  their values *)
   standard_regs ∗
+  (* assert ownership of the general purpose registers used internally by the
+  handler *)
   reg_col [
     (KindReg "R2", BitsShape 64);
     (KindReg "R3", BitsShape 64);
@@ -278,28 +286,50 @@ Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (e
     (KindReg "R5", BitsShape 64);
     (KindReg "R6", BitsShape 64)
   ] ∗
+  (* assert ownership of the exception handler base address register, which may
+  be updated by the handler *)
   reg_col [(KindReg "VBAR_EL2", BitsShape 64)] ∗
-  (* Move to pkvm_sys_regs *)
+  (* these registers contain the primary parameters used by the handler, so
+  assert ownership and give names to their current values *)
   "ESR_EL2" ↦ᵣ RVal_Bits esr ∗
   "R0" ↦ᵣ RVal_Bits param ∗
   "R1" ↦ᵣ RVal_Bits el2_cont ∗
   "SP_EL2" ↦ᵣ RVal_Bits sp ∗
   "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
+  (* constrain several of the bits of spsr, morally a part of `standard_regs`
+  but separated because it can be updated by the handler *)
   spsr_constraint1 spsr ∗
+  (* elr and el_2_cont are the two possible (non error) continuation adresses from
+  the handler, so we constrain bit 55 of them to be 0, which simplifies branch
+  traces *)
   valid_branch elr ∗
   valid_branch el2_cont ∗
+  (* the next two words of the stack are used by this handler, so are owned by
+  this spec, and computing their addresses must not cause overflow *)
   own_word_offset sp 16 ∗
   own_word_offset sp 8 ∗
+  (* the address of the "stub handler" code must be stored at the fixed memory address 0x77f8 *)
   0x77f8 ↦ₘ stub_handler_addr ∗
+  (* the main spec assumes the correctness of the stub handler code, but this is
+  separately proven in `stub_handler_wp`, so with a little care over addresses
+  this line could be removed *)
+  instr_pre (bv_unsigned (bv_sub stub_handler_addr offset)) (stub_handler_spec param) ∗
+  (* these terms describe the possible post conditions of the handler. They
+  should all pass on more of the ownership used by this spec, but don't for
+  brevity of demonstration*)
+  (* if the exception syndrome register is not 22, or if the first hypercall
+  parameter is greater than 2 we jump to the error handling code at 0x6800*)
   (instr_pre 0x6800 (⌜Z.shiftr (bv_unsigned esr) 26 ≠ 22⌝ ∗ ∃ (v : bv 64), "R0" ↦ᵣ RVal_Bits v ∗ ⌜bv_unsigned v ≠ 22⌝ ∗ True) ∧
   instr_pre 0x6800 (⌜Z.shiftr (bv_unsigned esr) 26 = 22⌝ ∗ ⌜Z.ge (bv_unsigned param) 3⌝ ∗ True)) ∗
-  instr_pre (bv_unsigned (bv_sub stub_handler_addr offset)) (stub_handler_spec param) ∗
+  (* If the hypercall parameter is 1 we update SCTLR_EL2 and VBAR_EL2, then
+  branch to the address specified in the second parameter, staying at el2 *)
   instr_body (bv_unsigned el2_cont) (
     ⌜bv_unsigned param = 1⌝ ∗
     standard_updated_regs ∗
     "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
     True
   ) ∗
+  (* If the hypercall parameter is 0 we return to the caller with an error code in R0 *)
   instr_body (bv_unsigned elr) (
     (⌜bv_unsigned param = 0⌝ ∗
     "R0" ↦ᵣ RVal_Bits (BV 64 0xbadca11) ∗
@@ -307,6 +337,7 @@ Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (e
     reg_col CNVZ_regs ∗
     True)
     ∨
+    (* If the hypercall parameter is 2 we update VBAR_EL2 then return to the caller *)
     (⌜bv_unsigned param = 2⌝ ∗
     reg_col pkvm_sys_regs_updated_el1 ∗
     "VBAR_EL2" ↦ᵣ RVal_Bits (BV 64 116632) ∗
