@@ -118,7 +118,7 @@ Proof.
   - move: Hwmsb => /Word.wmsb_true_bound.
     rewrite -Npow2_pow. have {1}-> : N.of_nat n = Z.to_N (n1 - 1) by lia.
     move => /N2Z.inj_le. rewrite N2Z.inj_pow Z2N.id ?ZLib.pow2_div2; [|lia..] => ?.
-    rewrite /bv_wrap (Zmod_in_range 1).
+    rewrite /bv_wrap (Z.mod_in_range 1).
     + rewrite /bv_modulus -Npow2_pow N2Z.inj_pow.
       have -> : N.of_nat (S n) = n2 by lia.
       lia.

@@ -262,8 +262,8 @@ Lemma nextPC_nextPC regs n:
 Proof. now rewrite (regstate_eta regs). Qed.
 
 (* This breaks the `with` notations so we have to import it later. *)
+Require Import bitvector.bitvector_tactics.
 Require Import isla.base.
-Require Import isla.bitvector_auto.
 
 Local Open Scope Z_scope.
 
@@ -336,7 +336,7 @@ Lemma wordToN_WS n b (w : Word.word n):
   (Z.of_N (Word.wordToN (Word.WS b w))) = Z.lor (bool_to_Z b) (Z.of_N (Word.wordToN w) ≪ 1).
 Proof.
   simpl. destruct b.
-  - rewrite N2Z.inj_succ. rewrite -Z_add_nocarry_lor /=.
+  - rewrite N2Z.inj_succ. rewrite -Z.add_nocarry_lor /=.
     + rewrite Z.shiftl_mul_pow2; lia.
     + bitblast.
   - rewrite Z.lor_0_l Z.shiftl_mul_pow2 //. lia.
@@ -347,7 +347,7 @@ Lemma wordToN_spec_high n i (w : Word.word n):
   Z.testbit (Z.of_N (Word.wordToN w)) i = false.
 Proof.
   move => ?.
-  eapply Z_bounded_iff_bits_nonneg; [..|reflexivity] => //; try lia.
+  eapply Z.bounded_iff_bits_nonneg; [..|reflexivity] => //; try lia.
   move: w. have -> : n = Z.to_nat n by lia. move => w.
   have /lt_Npow2? := Word.wordToN_bound w.
   apply: Z.lt_le_trans; [naive_solver lia|].

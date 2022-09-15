@@ -55,7 +55,8 @@
 
 From iris.proofmode Require Import coq_tactics reduction.
 From lithium Require Export lithium tactics.
-From isla Require Export bitvector_auto lifting.
+From bitvector Require Export bitvector_tactics.
+From isla Require Export lifting.
 Set Default Proof Using "Type".
 
 Global Hint Transparent addr byte : bv_unfold_db.
@@ -201,8 +202,8 @@ Global Instance simpl_and_bv_and_0xfff0000000000000 b :
   SimplAnd (bv_and b (BV 64 0xfff0000000000000) = (BV 64 0)) (λ T, bv_unsigned b < 2 ^ 52 ∧ T).
 Proof.
   split; move => [Hb ?]; split => //.
-  - bv_simplify. bitblast. eapply Z_bounded_iff_bits_nonneg; [| |done|]; bv_solve.
-  - eapply Z_bounded_iff_bits_nonneg; [lia | bv_solve|] => l ?. bitblast.
+  - bv_simplify. bitblast. eapply Z.bounded_iff_bits_nonneg; [| |done|]; bv_solve.
+  - eapply Z.bounded_iff_bits_nonneg; [lia | bv_solve|] => l ?. bitblast.
     bv_simplify Hb. by bitblast Hb with l.
 Qed.
 
@@ -213,9 +214,9 @@ Proof.
   - move => [Hb [Hmod ?]]; split => //.
     bv_simplify. bitblast as i.
     + by bitblast Hmod with i.
-    + eapply Z_bounded_iff_bits_nonneg; [| |done|]; bv_solve.
+    + eapply Z.bounded_iff_bits_nonneg; [| |done|]; bv_solve.
   - move => [Hb ?]. bv_simplify Hb. split_and!; [..|done].
-    + eapply Z_bounded_iff_bits_nonneg; [lia|bv_solve|] => l ?. bitblast.
+    + eapply Z.bounded_iff_bits_nonneg; [lia|bv_solve|] => l ?. bitblast.
       by bitblast Hb with l.
     + bitblast as i. by bitblast Hb with i.
 Qed.
@@ -364,8 +365,8 @@ Qed.
 
 Ltac solve_compute_wp_exp :=
   let H := fresh in move => ? H;
-  lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv decide decide_rel N_eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
-  lazymatch goal with | |- Some _ = _ => idtac | |- ?G => idtac "solve_copmute_wp_exp failed:" G; fail end;
+  lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv decide decide_rel N_eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect BinPos.Pos.eq_dec Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
+  lazymatch goal with | |- Some _ = _ => idtac | |- ?G => idtac "solve_compute_wp_exp failed:" G; fail end;
   autorewrite with isla_coq_rewrite;
   apply H.
 

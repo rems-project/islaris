@@ -56,7 +56,7 @@
 Require Import Sail.Base.
 Require Import Sail.State_monad.
 Require Import Sail.State_lifting.
-Require Import isla.bitvector_auto.
+Require Import bitvector.bitvector_tactics.
 Require Import isla.sail_riscv.sail_opsem.
 
 Arguments read_accessor : simpl nomatch.

@@ -55,11 +55,11 @@
 
 From Coq Require Export ssreflect.
 From stdpp Require Export prelude strings gmap.
+From stdpp.unstable Require Export bitblast.
 From RecordUpdate Require Export RecordSet.
 From iris.proofmode Require Import tactics.
 From lithium Require Export base.
-From lithium Require Export Z_bitblast.
-Require Export bitvector.bitvector.
+From bitvector Require Export bitvector.
 Export RecordSetNotations.
 
 Open Scope Z_scope.
@@ -82,6 +82,7 @@ Ltac unLET :=
   repeat match goal with
          | H := _ |- _ => unfold H in *; clear H
          end.
+
 Tactic Notation "case_match" "as" ident(Hd) :=
   match goal with
   | H : context [ match ?x with _ => _ end ] |- _ => destruct x eqn:Hd

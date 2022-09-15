@@ -61,7 +61,7 @@ From iris.bi Require Import fractional.
 From iris.base_logic Require Export lib.own.
 From iris.base_logic.lib Require Import ghost_map ghost_var.
 From iris.proofmode Require Export tactics.
-From isla Require Import bitvector_auto.
+From bitvector Require Import bitvector_tactics.
 From isla Require Export opsem spec.
 Set Default Proof Using "Type".
 Import uPred.
@@ -720,7 +720,7 @@ Section mem.
     rewrite mem_mapsto_uninit_eq.
     iIntros (?) "[%nn1 [% [% Hm1]]] [%nn2 [% [% Hm2]]]"; subst.
     iExists (nn1 + nn2)%nat. iSplit; [iPureIntro; lia|]. iSplit; [iPureIntro; lia|].
-    rewrite replicate_plus big_sepL_app. iFrame.
+    rewrite replicate_add big_sepL_app. iFrame.
     iApply (big_sepL_impl with "Hm2").
     iIntros "!>" (???) "[%v ?]". rewrite replicate_length. iExists _.
     have -> : (a + nn1 + k) = (a + (nn1 + k)%nat) by lia.
@@ -793,10 +793,10 @@ Section spec.
     iDestruct (spec_trace_raw_agree with "H1 H2") as %Heq.
     iDestruct (spec_trace_raw_mono with "H1") as "H1"; [done|].
     rewrite spec_trace_raw_eq /spec_trace_raw_def.
-    iCombine "H1 H2" as "H". rewrite -frac_agree_op Qp_half_half.
+    iCombine "H1 H2" as "H". rewrite -frac_agree_op Qp.half_half.
     iMod (own_update _ _ (to_frac_agree (A:=specO) 1 Pκs) with "H") as "H".
     { by apply cmra_update_exclusive. }
-    rewrite -{1}Qp_half_half frac_agree_op own_op.
+    rewrite -{1}Qp.half_half frac_agree_op own_op.
     by iFrame.
   Qed.
 
