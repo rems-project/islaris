@@ -89,7 +89,7 @@ Lemma byte_to_memory_byte_lookup_Some b i x:
   byte_to_memory_byte b !! i = Some x ↔ (i < 8)%nat ∧ x = bitU_of_bool (Z.testbit (bv_unsigned b) (7 - i)%nat).
 Proof. do 8 try destruct i => //=; naive_solver lia. Qed.
 
-Definition bv_to_mword {n1 n2} (b : bv n1) `{H:ArithFact (n2 >=? 0)} : mword n2 :=
+Definition bv_to_mword {n1 n2} (b : bv n1) : mword n2 :=
   word_to_mword (Word.NToWord _ (Z.to_N $ bv_unsigned b)).
 Arguments bv_to_mword : simpl never.
 Definition mword_to_bv {n1 n2} (b : mword n1) : bv n2 :=
@@ -141,7 +141,7 @@ Proof.
     lia.
 Qed.
 
-Lemma mword_to_bv_to_mword {n1 n2} (b : bv n1) `{!ArithFact (n2 >=? 0)} :
+Lemma mword_to_bv_to_mword {n1 n2} (b : bv n1) :
   n2 = Z.of_N n1 →
   (@mword_to_bv n2 n1 (bv_to_mword b)) = b.
 Proof.
@@ -153,7 +153,7 @@ Qed.
 
 Lemma uint_plain_to_bv_unsigned n (b : mword n) :
   0 ≤ n →
-  uint_plain b = bv_unsigned (mword_to_bv (n2:=Z.to_N n) b).
+  uint b = bv_unsigned (mword_to_bv (n2:=Z.to_N n) b).
 Proof. move => ?. rewrite mword_to_bv_unsigned //. lia. Qed.
 
 Lemma eq_vec_to_bv n1 {n2} (b1 b2 : mword n2) :
@@ -243,14 +243,14 @@ Proof.
   do 2 f_equal. done.
 Qed.
 
-Lemma mword_to_bv_EXTS n1 n2' n2 (b : mword n1) H:
+Lemma mword_to_bv_EXTS n1 n2' n2 (b : mword n1):
   (∀ b, Word.wordToZ (get_word (@fit_word (Z.to_nat n1 + Z.to_nat (n2' - n1)) n2' b)) = Word.wordToZ b) → (* TODO: remove this once there is a proof of wordToZ_get_word_cast_to_mword *)
   0 ≤ n1 →
   n2' = Z.of_N n2 →
-  mword_to_bv (n2:=n2) (@EXTS _ n2' b H) = bv_sign_extend _ (mword_to_bv (n2:=(Z.to_N n1)) b).
+  n1 ≤ n2' →
+  mword_to_bv (n2:=n2) (@EXTS _ n2' b) = bv_sign_extend _ (mword_to_bv (n2:=(Z.to_N n1)) b).
 Proof.
-  move => Hx ??.
-  have /Z.geb_le? := use_ArithFact H.
+  move => Hx ???.
   apply bv_eq_signed. rewrite mword_to_bv_signed //. rewrite /EXTS/sign_extend/exts_vec/= Hx.
   rewrite Word.sext_wordToZ bv_sign_extend_signed ?mword_to_bv_signed //.
   all: lia.
@@ -329,14 +329,15 @@ Proof.
   by rewrite bool_of_bitU_of_bool bv_to_bits_length.
 Qed.
 
-Lemma read_mem_bytes_eq (len' : N) n H H2 bs:
+Lemma read_mem_bytes_eq (len' : N) n bs:
   n = (length bs * 8) →
   len' = N.of_nat (length bs) →
-  ((λ bl, to_word (@isPositive n H) (fit_bbv_word (wordFromBitlist bl))) <$>
-     just_list (bool_of_bitU <$> bits_of_mem_bytes (byte_to_memory_byte <$> bs))) = Some
-     (bv_to_mword (H:=H2) (Z_to_bv (8 * len') (little_endian_to_bv 8 bs))).
+     of_bits (n:=n) (bits_of_mem_bytes (byte_to_memory_byte <$> bs)) = Some
+     (bv_to_mword (Z_to_bv (8 * len') (little_endian_to_bv 8 bs))).
 Proof.
-  rewrite just_list_bits_of_mem_bytes /= => ??. f_equal.
+  move => ??.
+  have n_pos : n >=? 0 = true by lia.
+  rewrite /of_bits just_list_bits_of_mem_bytes n_pos /=. f_equal.
   apply get_word_inj. rewrite !get_word_to_word fit_bbv_word_id. {
     rewrite join_length -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?reverse_length; [lia|].
     by apply Forall_true.
@@ -428,8 +429,8 @@ Inductive sail_step : sail_state → option seq_label → sail_state → Prop :=
 | SailStop rs h ins :
   ins !! mword_to_bv (PC rs) = None →
   sail_step (SAIL (Done tt) rs h ins false) (Some (SInstrTrap (mword_to_bv (PC rs)))) (SAIL (Done tt) rs h ins true)
-| SailChoose rs h ins e s b:
-  sail_step (SAIL (Choose s e) rs h ins false) None (SAIL (e b) rs h ins false)
+| SailChoose rs h ins ty e s v:
+  sail_step (SAIL (Choose s ty e) rs h ins false) None (SAIL (e v) rs h ins false)
 | SailReadReg rs h ins e r v:
   get_regval r rs = Some v →
   sail_step (SAIL (Read_reg r e) rs h ins false) None (SAIL (e v) rs h ins false)
@@ -437,27 +438,27 @@ Inductive sail_step : sail_state → option seq_label → sail_state → Prop :=
   set_regval r v rs = Some rs' →
   sail_step (SAIL (Write_reg r v e) rs h ins false) None (SAIL e rs' h ins false)
 | SailReadMem rs h ins e a bs' sz κ adr len:
-  adr = (Z_to_bv 64 (Z.of_nat a)) →
+  adr = (Z_to_bv 64 (Z.of_N a)) →
   (len = N.of_nat sz)%N →
   length bs' = sz →
-  (if read_mem_list h a len is Some bs then
+  (if read_mem_list h (Z.of_N a) len is Some bs then
     κ = None ∧
     bs = bs'
   else
-    a + Z.of_N len ≤ 2 ^ 64 ∧
-    set_Forall (λ ad, ¬ (a ≤ bv_unsigned ad < a + Z.of_N len)) (dom h) ∧
+    Z.of_N a + Z.of_N len ≤ 2 ^ 64 ∧
+    set_Forall (λ ad, ¬ (Z.of_N a ≤ bv_unsigned ad < Z.of_N a + Z.of_N len)) (dom h) ∧
     κ = Some (SReadMem adr (Z_to_bv (8 * len) (little_endian_to_bv 8 bs')))) →
   sail_step (SAIL (Read_mem Read_plain a sz e) rs h ins false) κ (SAIL (e (byte_to_memory_byte <$> bs')) rs h ins false)
 | SailWriteMem rs h h' ins e a bs bs' sz len adr κ:
-  adr = (Z_to_bv 64 (Z.of_nat a)) →
+  adr = (Z_to_bv 64 (Z.of_N a)) →
   (len = N.of_nat sz)%N →
   bs = byte_to_memory_byte <$> bs' →
-  (if read_mem_list h a len is Some _ then
-    write_mem_list h (Z_to_bv 64 (Z.of_nat a)) bs' = h' ∧
+  (if read_mem_list h (Z.of_N a) len is Some _ then
+    write_mem_list h (Z_to_bv 64 (Z.of_N a)) bs' = h' ∧
     κ = None
   else
-    a + Z.of_N len ≤ 2 ^ 64 ∧
-    set_Forall (λ ad, ¬ (a ≤ bv_unsigned ad < a + Z.of_N len)) (dom h) ∧
+    Z.of_N a + Z.of_N len ≤ 2 ^ 64 ∧
+    set_Forall (λ ad, ¬ (Z.of_N a ≤ bv_unsigned ad < Z.of_N a + Z.of_N len)) (dom h) ∧
     h = h' ∧
     κ = Some (SWriteMem adr (Z_to_bv (8 * len) (little_endian_to_bv 8 bs')))) →
   sail_step (SAIL (Write_mem Write_plain a sz bs e) rs h ins false) κ (SAIL (e true) rs h' ins false)
@@ -483,8 +484,8 @@ Fixpoint mctx_interp {A E} (K : mctx A E) : monad register_value A E → M () :=
    | TryMCtx f K => λ e, mctx_interp K (try_catch e f)
    end.
 
-Lemma mctx_interp_Choose A E K s e1:
-  @mctx_interp A E K (Choose s e1) = Choose s (λ v, mctx_interp K (e1 v)).
+Lemma mctx_interp_Choose A E K s choose_ty e1:
+  @mctx_interp A E K (Choose s choose_ty e1) = Choose s choose_ty (λ v, mctx_interp K (e1 v)).
 Proof. elim: K e1 => //=. Qed.
 Lemma mctx_interp_Read_reg A E K r e1:
   @mctx_interp A E K (Read_reg r e1) = Read_reg r (λ v, mctx_interp K (e1 v)).
@@ -652,12 +653,12 @@ Lemma sim_pop_try_Done A E1 E2 Σ K v f e2:
   sim (A:=A) (E:=E1) Σ (Done v) (TryMCtx f K) e2.
 Proof. move => Hsim. by apply: sim_mctx_impl. Qed.
 
-Lemma sim_Choose {A E} Σ s e1 e2 K:
-  (∀ b, sim Σ (e1 b) K e2) →
-  sim (A:=A) (E:=E) Σ (Choose s e1) K e2.
+Lemma sim_Choose {A E} Σ s ty e1 e2 K:
+  (∀ v, sim Σ (e1 v) K e2) →
+  sim (A:=A) (E:=E) Σ (Choose s ty e1) K e2.
 Proof.
   move => Hsim ????????/=. rewrite mctx_interp_Choose.
-  apply: raw_sim_step_i. { right. eexists _, _. unshelve constructor. by apply: true. }
+  apply: raw_sim_step_i. { right. eexists _, _. unshelve constructor. by apply: Values.inhabitant. }
   move => ????/= Hstep. inversion Hstep; simplify_eq. split; [done|].
   apply: raw_sim_weaken; [by apply: Hsim| lia].
 Qed.
@@ -781,9 +782,8 @@ Proof.
   apply: raw_sim_weaken; [by apply: Hsim| lia].
 Qed.
 
-Lemma sim_write_mem {E} Σ e2 n n' (v : mword n) K (v' : bv n') ann res wk' (a : mword 64) (a' : addr) len' (sz : Z) d:
-  n = 8 * Z.of_N len' →
-  Z.to_N n = n' →
+Lemma sim_write_mem {E} Σ e2 n' (sz : Z) (v : mword (8 * sz)) K (v' : bv n') ann res wk' (a : mword 64) (a' : addr) len' d:
+  (8 * len' = n')%N →
   sz = Z.of_N len' →
   res = RVal_Bool true →
   mword_to_bv a = a' →
@@ -791,7 +791,7 @@ Lemma sim_write_mem {E} Σ e2 n n' (v : mword n) K (v' : bv n') ann res wk' (a :
   sim Σ (Done true) K e2 →
   sim (E:=E) Σ (Prompt_monad.write_mem Write_plain d a sz v) K (WriteMem res wk' (RVal_Bits a') (RVal_Bits v') len' None ann :t: e2).
 Proof.
-  move => ? ? ? ? ? ? Hsim ? isla_regs mem ?? Hwf ? Hdone. subst.
+  move => ? ? ? ? ? Hsim ? isla_regs mem ?? Hwf ? Hdone. subst.
   set a' := mword_to_bv a. set v' := mword_to_bv (n2:=8 * len') v.
   unfold Prompt_monad.write_mem. simplify_option_eq.
   erewrite mem_bytes_of_bits_to_bv; [|done|lia].
@@ -808,8 +808,8 @@ Proof.
     + move: Hmem => /fmap_Some. naive_solver.
     + move: Hmem => /fmap_None. naive_solver.
   }
-  have Heq : Z.of_nat (Word.wordToNat a) = bv_unsigned a'.
-  { rewrite /a' mword_to_bv_unsigned // Word.wordToN_nat nat_N_Z. done. }
+  have Heq : Z.of_N (Word.wordToN a) = bv_unsigned a'.
+  { rewrite mword_to_bv_unsigned //. }
   have Heq2 : (bv_unsigned (mword_to_bv (n2:=(Z.to_N (8 * Z.of_N len'))) v) = (bv_unsigned v')).
   { rewrite /v' !mword_to_bv_unsigned //; lia. }
   constructor => _. split. {
@@ -824,7 +824,6 @@ Proof.
       apply: (steps_l' _ _ _ _ _ []); [ |by apply: steps_refl| by rewrite right_id_L].
       econstructor. econstructor; [done| by econstructor|] => /=.
       eexists _, _, v'. split_and! => //.
-      { do 2 f_equal. apply bvn_eq => /=. split; [lia|] => /=. by rewrite /bvn_unsigned/= Heq2. }
       by rewrite /read_mem Hm.
     }
     rewrite /write_mem N_nat_Z Heq2.
@@ -833,7 +832,6 @@ Proof.
       apply: (steps_l' _ _ _ _ _ []); [ |by apply: steps_refl| by rewrite right_id_L].
       econstructor. econstructor; [done| by econstructor|] => /=.
       eexists _, _, v'. split_and! => //.
-      { do 2 f_equal. apply bvn_eq => /=. split; [lia|] => /=. by rewrite /bvn_unsigned/= Heq2. }
       rewrite /read_mem Hm /=. split_and! => //.
       rewrite Heq2 Z_to_bv_little_endian_to_bv_to_little_endian //; lia.
     }
@@ -841,21 +839,20 @@ Proof.
     Unshelve. apply: inhabitant.
 Qed.
 
-Lemma sim_read_mem {E} Σ sz' H e2 K ann ann' rk' (a : mword 64) (a' : addr) len' len'' (sz : Z) d sm:
+Lemma sim_read_mem {E} Σ (sz : Z) e2 K ann ann' rk' (a : mword 64) (a' : addr) len' len'' d sm:
   len'' = (8 * len')%N →
   sz = Z.of_N len' →
-  sz' = Z.of_N len' * 8 →
   mword_to_bv a = a' →
   (∀ r1 (r2 : bv len''), r1 = bv_to_mword r2 → sim Σ (Done r1) K (subst_trace (Val_Bits r2) sm e2)) →
-  sim (E:=E) Σ (Prompt_monad.read_mem (B:=sz') (H:=H) Read_plain d a sz) K
+  sim (E:=E) Σ (Prompt_monad.read_mem Read_plain d a sz) K
       (Smt (DeclareConst sm (Ty_BitVec len'')) ann' :t:
        ReadMem (RVal_Symbolic sm) rk' (RVal_Bits a') len' None ann :t: e2).
 Proof.
-  move => ? ? ? ? Hsim. subst. set a' := mword_to_bv a.
+  move => ? ? ? Hsim. subst. set a' := mword_to_bv a.
   unfold Prompt_monad.read_mem, read_mem_bytes. apply sim_bind.
   move => ? isla_regs mem ?? Hwf ? Hdone. rewrite mctx_interp_Read_mem.
-  have Heq : Z.of_nat (Word.wordToNat a) = bv_unsigned a'.
-  { rewrite /a' mword_to_bv_unsigned // Word.wordToN_nat nat_N_Z. done. }
+  have Heq : Z.of_N (Word.wordToN a) = bv_unsigned a'.
+  { rewrite mword_to_bv_unsigned //. }
   constructor => Hsafe.
   have {Hsafe}[? Hor] : 0 < Z.of_N len' ∧ (is_Some (read_mem_list mem (bv_unsigned a') len') ∨
     (read_mem_list mem (bv_unsigned a') len' = None ∧
@@ -879,9 +876,9 @@ Proof.
     - apply replicate_length.
   }
   move => ? ? ? ? Hstep. inversion_clear Hstep; simplify_eq.
-  move: H3. rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned.
-  rewrite /of_bits option_map_fmap map_fmap (read_mem_bytes_eq len') /=.
-  2: { rewrite H2. lia. } 2: { rewrite H2. lia. }
+  move: H2. rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned.
+  rewrite (read_mem_bytes_eq len') /=.
+  2: { rewrite H1. lia. } 2: { rewrite H1. lia. }
   move: Hor => [[? Hm]//|[Hm ?]]; rewrite Hm.
   - move => [??]. simplify_eq. eexists _. split. {
       apply: steps_l'.

@@ -75,7 +75,7 @@ Ltac reduce_closed_mword_to_bv :=
 
 Ltac reduce_closed_sim :=
   repeat match goal with
-   | |- context [@subrange_vec_dec ?n ?a ?b ?c ?F1 ?F2] => progress reduce_closed (@subrange_vec_dec n a b c F1 F2)
+   | |- context [@subrange_vec_dec ?n ?a ?b ?c] => progress reduce_closed (@subrange_vec_dec n a b c)
    | |- context [@access_vec_dec ?n ?w ?m] => progress reduce_closed (@access_vec_dec n w m)
    | |- context [vec_of_bits ?l] => progress reduce_closed (vec_of_bits l)
    | |- context [Word.weqb ?b1 ?b2] => progress reduce_closed (Word.weqb b1 b2)
@@ -219,9 +219,9 @@ Ltac red_monad_sim :=
          | |- sim _ (get_next_pc ()) _ _  => apply: sim_read_reg_l; [done..|]
          | |- sim _ (write_reg _ _) _ (WriteReg _ _ _ _:t:_)  => apply: sim_write_reg; [done | done | shelve |]
          | |- sim _ (Write_ea _ _ _ _) _ _  => apply: sim_Write_ea
-         | |- sim _ (Prompt_monad.write_mem _ _ _ _ _) _ (WriteMem _ _ _ _ _ _ _ :t:_)  => apply sim_write_mem; [done|done|done|done|shelve|shelve|]
+         | |- sim _ (Prompt_monad.write_mem _ _ _ _ _) _ (WriteMem _ _ _ _ _ _ _ :t:_)  => apply sim_write_mem; [done|done|done|shelve|shelve|]
          | |- sim _ (Prompt_monad.read_mem _ _ _ _) _ (Smt (DeclareConst _ (Ty_BitVec _)) _:t:ReadMem _ _ _ _ _ _ :t:_) =>
-             apply sim_read_mem; [done|done|done|shelve|] => ?? ->
+             apply sim_read_mem; [done|done|shelve|] => ?? ->
          | |- sim _ (Done _) NilMCtx tnil  => apply: sim_done
          end.
 
@@ -253,7 +253,7 @@ Proof.
   all: by lazymatch goal with | |- Z.testbit _ ?n = _ => bitblast He with n end.
 Qed.
 
-Lemma within_mmio_writable_false b w H z:
+Lemma within_mmio_writable_false b w z:
   z = bv_unsigned (mword_to_bv (n2:=64) b) →
   (z < bv_unsigned (mword_to_bv (n2:=64) (plat_clint_base ())) ∨
     bv_unsigned (mword_to_bv (n2:=64) (plat_clint_base ())) +
@@ -263,25 +263,25 @@ Lemma within_mmio_writable_false b w H z:
   bv_unsigned (mword_to_bv (n2:=64) (to_bits 64 (elf_tohost ()))) ≠ z ∧
     (bv_wrap 64 (bv_unsigned (mword_to_bv (n2:=64) (to_bits 64 (elf_tohost ()))) + 4) ≠ z ∨ w ≠ 4) ∨ 8 < w)
   →
-  @within_mmio_writable b w H = false.
+  within_mmio_writable b w = false.
 Proof.
   move => -> [Hclint Helf].
   rewrite /within_mmio_writable/within_clint/within_htif_writable. apply orb_false_intro.
-  - apply andb_false_iff. rewrite !Z.leb_gt. by rewrite /uint/= !uint_plain_to_bv_unsigned.
+  - apply andb_false_iff. rewrite !Z.leb_gt. by rewrite /= !uint_plain_to_bv_unsigned.
   - rewrite andb_false_iff orb_false_iff andb_false_iff /= Z.eqb_neq !Z.leb_gt.
     by rewrite !(eq_vec_to_bv 64) // !bool_decide_eq_false !bv_neq mword_to_bv_add_vec.
 Qed.
 
-Lemma within_phys_mem_true b w H z:
+Lemma within_phys_mem_true b w z:
   z = bv_unsigned (mword_to_bv (n2:=64) b) →
   bv_unsigned (mword_to_bv (n2:=64) (plat_ram_base ())) ≤ z
   ∧ z + w
     ≤ bv_unsigned (mword_to_bv (n2:=64) (plat_ram_base ())) +
       bv_unsigned (mword_to_bv (n2:=64) (plat_ram_size ())) →
-  @within_phys_mem b w H = true.
+  within_phys_mem b w = true.
 Proof.
   move => -> ?. rewrite /within_phys_mem.
-  by rewrite andb_true_intro // !Z.leb_le /uint/= !uint_plain_to_bv_unsigned.
+  by rewrite andb_true_intro // !Z.leb_le /= !uint_plain_to_bv_unsigned.
 Qed.
 
 

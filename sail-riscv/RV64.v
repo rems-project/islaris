@@ -56,8 +56,8 @@
 Require Export Sail.Base.
 Require Export Sail.Prompt_monad.
 Require Export RV64.riscv_types.
-Require Export RV64.mem_metadata.
-Require Export RV64.riscv_extras.
+Require Export Riscv_common.mem_metadata.
+Require Export Riscv_common.riscv_extras.
 Require Export RV64.riscv.
 
 Local Arguments N.mul : simpl never.
@@ -273,8 +273,8 @@ Lemma get_word_word_binop {n} f (b1 b2 : mword n):
   get_word (word_binop f b1 b2) = f _ (get_word b1) (get_word b2).
 Proof. by destruct n. Qed.
 
-Lemma get_word_to_word n H (w : Word.word (Z.to_nat n)):
-  get_word (to_word H w) = w.
+Lemma get_word_to_word n (w : Word.word (Z.to_nat n)):
+  get_word (to_word w) = w.
 Proof. destruct n => //. Qed.
 
 Lemma get_word_with_word n (b : mword n) f:
