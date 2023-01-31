@@ -310,14 +310,14 @@ Proof.
 Qed.
 
 Lemma length_bitlistFromWord_rev n (w : Word.word n):
-  length (bitlistFromWord_rev w) = n.
+  length (Values.bitlistFromWord_rev w) = n.
 Proof.
   elim: n w. { move => w. have ->:= Word.shatter_word_0 w. done. }
   move => n IH w. have [b [c ->]]:= Word.shatter_word_S w => /=. by rewrite IH.
 Qed.
 
 Lemma bitlistFromWord_rev_lookup_Some n (w : Word.word n) (i : nat) x:
-  bitlistFromWord_rev w !! i = Some x ↔ x = Z.testbit (Z.of_N (Word.wordToN w)) i ∧ (i < n)%nat.
+  Values.bitlistFromWord_rev w !! i = Some x ↔ x = Z.testbit (Z.of_N (Word.wordToN w)) i ∧ (i < n)%nat.
 Proof.
   revert n w. induction i => /=; intros n w.
   - destruct n => /=.
