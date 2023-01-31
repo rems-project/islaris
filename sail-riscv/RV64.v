@@ -289,6 +289,17 @@ Lemma get_word_mword_of_int n z:
   get_word (@mword_of_int n z) = Word.ZToWord (Z.to_nat n) z.
 Proof. destruct n => //=. Qed.
 
+Lemma Npow2_pow {n} : (2 ^ (N.of_nat n) = NatLib.Npow2 n)%N.
+induction n.
+* reflexivity.
+* rewrite Nnat.Nat2N.inj_succ.
+  rewrite N.pow_succ_r'.
+  rewrite IHn.
+  rewrite NatLib.Npow2_S.
+  rewrite Word.Nmul_two.
+  reflexivity.
+Qed.
+
 Lemma lt_Npow2 n n1:
   (0 ≤ n1)%Z →
   (n < NatLib.Npow2 (Z.to_nat n1))%N ↔ (Z.of_N n < 2 ^ n1)%Z.
