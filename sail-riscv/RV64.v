@@ -55,6 +55,7 @@
 
 Require Export Sail.Base.
 Require Export Sail.Prompt_monad.
+Require Export Sail.MachineWord.
 Require Export RV64.riscv_types.
 Require Export Riscv_common.mem_metadata.
 Require Export Riscv_common.riscv_extras.
@@ -262,7 +263,7 @@ Lemma nextPC_nextPC regs n:
 Proof. now rewrite (regstate_eta regs). Qed.
 
 (* This breaks the `with` notations so we have to import it later. *)
-Require Import bitvector.bitvector_tactics.
+Require Import stdpp.unstable.bitvector_tactics.
 Require Import isla.base.
 
 Local Open Scope Z_scope.
@@ -309,39 +310,40 @@ Proof.
   by rewrite N2Z.inj_pow Z2N.id.
 Qed.
 
-Lemma length_bitlistFromWord_rev n (w : Word.word n):
-  length (Values.bitlistFromWord_rev w) = n.
-Proof.
-  elim: n w. { move => w. have ->:= Word.shatter_word_0 w. done. }
-  move => n IH w. have [b [c ->]]:= Word.shatter_word_S w => /=. by rewrite IH.
+Lemma nth_error_lookup_some {A : Type} (l : list A) (i : nat) (x : A) :
+  l !! i = Some x <-> List.nth_error l i = Some x.
+split.
+* move => H.
+  have := (lookup_lt_Some _ _ _ H) => I.
+  apply nth_lookup_Some with (d := x) in H.
+  rewrite -H -nth_error_nth' //.
+* move => H.
+  destruct (l !! i) eqn:L.
+  - apply nth_error_nth with (d:=x) in H.
+    rewrite nth_lookup L in H.
+    simpl in H.
+    by subst.
+  - apply lookup_ge_None_1 in L.
+    have := nth_error_Some l i.
+    rewrite H.
+    intuition (congruence || lia).
 Qed.
 
-Lemma bitlistFromWord_rev_lookup_Some n (w : Word.word n) (i : nat) x:
-  Values.bitlistFromWord_rev w !! i = Some x ↔ x = Z.testbit (Z.of_N (Word.wordToN w)) i ∧ (i < n)%nat.
-Proof.
-  revert n w. induction i => /=; intros n w.
-  - destruct n => /=.
-    + have -> := Word.shatter_word_0 w => /=. naive_solver lia.
-    + have [b [? ->]] := Word.shatter_word_S w => /=. rewrite Z.bit0_odd.
-      destruct b; rewrite ?N2Z.inj_succ ?Z.odd_succ N2Z.inj_mul ?Z.even_mul ?Z.odd_mul /=.
-      all: naive_solver lia.
-  - destruct n => /=.
-    + have -> := Word.shatter_word_0 w => /=. naive_solver lia.
-    + have [b [? ->]] := Word.shatter_word_S w => /=. rewrite IHi.
-      have <-: (Z.succ i = S i) by lia. rewrite -Z.div2_bits; [|lia].
-      f_equiv; [|lia]. do 2 f_equiv. destruct b; lia.
-Qed.
-
-Lemma bitlistFromWord_lookup_Some n (w : Word.word n) (i : nat) x:
-  bitlistFromWord w !! i = Some x ↔ x = Z.testbit (Z.of_N (Word.wordToN w)) (n - S i)%nat ∧ (i < n)%nat.
-Proof.
-  unfold bitlistFromWord. rewrite rev_reverse reverse_lookup_Some bitlistFromWord_rev_lookup_Some ?length_bitlistFromWord_rev.
-  naive_solver lia.
+Lemma word_to_bools_lookup_Some n (w : Word.word n) (i : nat) x:
+  (n > 0)%nat ->
+  MachineWord.word_to_bools w !! i = Some x ↔ x = Z.testbit (Z.of_N (Word.wordToN w)) (n - S i)%nat ∧ (i < n)%nat.
+move => ?.
+rewrite nth_error_lookup_some MachineWord.word_to_bools_nth_Some //.
+rewrite -nat_N_Z.
+rewrite Z.testbit_of_N.
+unfold MachineWord.word_to_N.
+replace (N.of_nat (n - i -1)) with (N.of_nat (n - S i)) by lia.
+done.
 Qed.
 
 Lemma wordToN_cast_word n m (b : Word.word n) (Heq : n = m):
-  Word.wordToN (cast_word b Heq) = Word.wordToN b.
-Proof. destruct Heq. by rewrite cast_word_refl. Qed.
+  Word.wordToN (cast_nat b Heq) = Word.wordToN b.
+Proof. destruct Heq. by rewrite cast_nat_refl. Qed.
 
 Lemma wordToN_WS n b (w : Word.word n):
   (Z.of_N (Word.wordToN (Word.WS b w))) = Z.lor (bool_to_Z b) (Z.of_N (Word.wordToN w) ≪ 1).
@@ -373,6 +375,8 @@ Proof.
   move => /lt_Npow2. lia.
 Qed.
 Global Hint Resolve bitblast_bounded_WordToN | 15 : bitblast.
+(* Also allow for terms where the Sail shim appears *)
+Global Hint Unfold MachineWord.word : bitblast.
 
 Lemma bitwp_spec f n (w1 w2 : Word.word n) z:
   f false false = false →
@@ -422,10 +426,10 @@ Qed.
 Lemma wordToN_setBit n (z : nat) (w : Word.word n) b:
   0 ≤ z →
   (z < n)%nat →
-  Z.of_N (Word.wordToN (setBit w z b)) =
+  Z.of_N (Word.wordToN (MachineWord.set_bit w z b)) =
     Z.lor (Z.land (Z.lnot (1 ≪ z)) (Z.of_N (Word.wordToN w))) (bool_to_Z b ≪ z).
 Proof.
-  unfold setBit => ??. destruct n; [lia|].
+  unfold MachineWord.set_bit => ??. destruct n; [lia|].
   have H1 : Z.of_N (Word.wordToN (Word.natToWord (S n) 1)) = 1. {
     rewrite Word.wordToN_nat Word.wordToNat_natToWord_idempotent //.
     rewrite NatLib.Npow2_S. have := NatLib.Npow2_pos n. lia.
@@ -466,24 +470,28 @@ Proof.
 Qed.
 
 Lemma getBit_testbit n z (w : Word.word n):
-  n ≠ 0%nat →
-  getBit w z = Z.testbit (Z.of_N (Word.wordToN w)) (Z.of_nat z).
-Proof. destruct n => //=. by rewrite wlsb_testbit wordToN_wrshift' Z.shiftr_spec. Qed.
-
-Lemma wordFromBitlist_rev_spec l (i : nat):
-  Z.testbit (Z.of_N (Word.wordToN (wordFromBitlist_rev l))) i = default false (l !! i).
-Proof.
-  revert l. induction i; intros [|x l] => //=.
-  - rewrite Z.bit0_odd. by destruct x; rewrite ?N2Z.inj_succ ?Z.odd_succ N2Z.inj_mul ?Z.even_mul ?Z.odd_mul /=.
-  - have <-: (Z.succ i = S i) by lia. rewrite -Z.div2_bits; [|lia].
-    rewrite -IHi. f_equal. destruct x; lia.
+  (z < n)%nat →
+  MachineWord.get_bit w z = Z.testbit (Z.of_N (Word.wordToN w)) (Z.of_nat z).
+Proof. move => ?. rewrite MachineWord.word_to_N_get_bit // Z.testbit_of_N' /MachineWord.word_to_N -?Z_nat_N ?Nat2Z.id //.
+apply Nat2Z.is_nonneg.
 Qed.
 
-Lemma wordFromBitlist_spec l (i : nat):
-  Z.testbit (Z.of_N (Word.wordToN (wordFromBitlist l))) i = default false (rev l !! i).
+Lemma bools_to_word_spec l (i : nat):
+  Z.testbit (Z.of_N (Word.wordToN (MachineWord.bools_to_word l))) i = default false (rev l !! i).
 Proof.
-  rewrite /wordFromBitlist. destruct (rev_length l) => /=. rewrite DepEqNat.nat_cast_same.
-  by rewrite wordFromBitlist_rev_spec.
+  rewrite -nat_N_Z Z.testbit_of_N -nth_lookup.
+  destruct (lt_dec i (List.length l)) as [L|L].
+  * rewrite rev_nth //.
+    specialize (MachineWord.bools_to_word_nth_Some l (length l - S i)) as H.
+    rewrite (nth_error_nth' _ false) in H. 2: lia.
+    specialize (H (nth (length l - S i) l false)).
+    destruct H as [H1].
+    intuition.
+    rewrite H1.
+    f_equal.
+    lia.
+  * rewrite MachineWord.testbit_word_to_N_high; [|lia].
+    rewrite nth_overflow // rev_length; lia.
 Qed.
 
 Lemma bit_to_bool_false b:
@@ -534,17 +542,8 @@ Proof.
   by rewrite /= take_0 drop_0.
 Qed.
 
-Lemma length_bitlistFromWord n (w : Word.word n):
-  length (bitlistFromWord w) = n.
-Proof. by rewrite /bitlistFromWord rev_length length_bitlistFromWord_rev. Qed.
-
-Lemma nat_diff_eq n T l e g (x : T n):
-  nat_diff n n l e g x = e x.
-Proof. revert T x l e g. induction n => //=. move => T ????. apply (IHn (λ x, T (S x))). Qed.
-
-Lemma fit_bbv_word_id n1 n2 (m : Word.word n1):
-  ∀ Heq : n1 = n2, fit_bbv_word m = eq_rect n1 _ m n2 Heq.
-Proof. move => Heq. destruct Heq => /=. by rewrite /fit_bbv_word nat_diff_eq. Qed.
+Lemma cast_Z_id T m n x E : @cast_Z T m n x E = eq_rect m T x n E.
+Proof. destruct E. apply cast_Z_refl. Qed.
 
 Lemma length_bits_of_bytes l:
   (∀ x, x ∈ l → length x = 8%nat) →
