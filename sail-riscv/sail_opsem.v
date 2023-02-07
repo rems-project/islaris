@@ -68,7 +68,7 @@ Proof. move => [] []; done. Qed.
 
 Global Instance byte_to_memory_byte_inj : Inj eq eq byte_to_memory_byte.
 Proof.
-  move => x y. rewrite /byte_to_memory_byte/= => ?. simplify_list_eq. unfold byte in *.
+  move => x y. rewrite /byte_to_memory_byte/= => ?. simplify_list_eq.
   apply bv_eq. bitblast as n.
   destruct (decide (n = 0)); subst => //.
   destruct (decide (n = 1)); subst => //.
@@ -348,7 +348,7 @@ Proof.
   { apply list.Forall_forall => ? /elem_of_list_fmap[?[??]]. subst. by rewrite reverse_length bv_to_bits_length. }
   { done. }
   move => ?. rewrite list_lookup_fmap => -[/fmap_Some[?[/reverse_lookup_Some[??] ?]] Hl].
-  unfold byte in *; rewrite fmap_length in Hbs; simplify_eq.
+  rewrite fmap_length in Hbs; simplify_eq.
   move: Hl => /reverse_lookup_Some [/bv_to_bits_lookup_Some[??] ?]; simplify_eq.
   by rewrite bool_of_bitU_of_bool bv_to_bits_length.
 Qed.

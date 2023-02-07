@@ -59,7 +59,6 @@ From stdpp.unstable Require Export bitvector_tactics.
 From isla Require Export lifting.
 Set Default Proof Using "Type".
 
-Global Hint Transparent addr byte : bv_unfold_db.
 Lemma bv_unfold_ite s w n b1 b2 z1 z2 b:
   BvUnfold n s w b1 z1 →
   BvUnfold n s w b2 z2 →
@@ -624,8 +623,7 @@ Ltac normalize_tac ::=
   autorewrite with isla_coq_rewrite; exact: eq_refl.
 (* Ltac normalize_tac ::= normalize_autorewrite. *)
 
-Ltac bv_solve_unfold_tac ::=
-  unfold byte, addr in *.
+Ltac bv_solve_unfold_tac ::= idtac.
 
 Ltac solve_protected_eq_unfold_tac ::=
   reduce_closed_N.

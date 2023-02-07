@@ -22,7 +22,7 @@ jobs:
 
     env:
       OCAML: "ocaml-base-compiler.4.11.1"
-      OPAM_PINS: "coq version 8.16.0   isla-lang git git+https://git@github.com/rems-project/isla-lang.git#413f1d1c7fa725d757662d044dcebbf9d2e57d2e"
+      OPAM_PINS: "coq version 8.16.0   isla-lang git git+https://git@github.com/rems-project/isla-lang.git#7efe5e1ca8abbd40e4d574a7cd60b6370bc13c89"
       CPU_CORES: "1"
       DENY_WARNINGS: "1"
       CI_RUNNER: "dummy"

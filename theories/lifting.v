@@ -270,7 +270,7 @@ Section lifting.
     }
     iIntros "!>" (????) "_". iMod "HE" as "_". iModIntro.
     inv_seq_step.
-    revert select (∃ _, _) => -[?[?]]; unfold addr, register_name in *; simplify_option_eq.
+    revert select (∃ _, _) => -[?[?]]; unfold register_name in *; simplify_option_eq.
     move => [-> [? ->]].
     iFrame. iSplitL; [|done].
     iApply ("Hcont" with "HPC"); [done|done|done|].

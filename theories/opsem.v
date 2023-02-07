@@ -197,8 +197,8 @@ Qed.
 
 (*** operational sematics *)
 
-Definition addr := bv 64.
-Definition byte := bv 8.
+Notation addr := (bv 64) (only parsing).
+Notation byte := (bv 8) (only parsing).
 (* TODO: this should probably be a simpler type than valu:
 - take out poison and symbolic
 - take out list and (maybe) arbitrary integer and (maybe) enum
