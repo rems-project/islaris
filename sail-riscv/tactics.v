@@ -56,7 +56,7 @@
 Require Import Sail.Base.
 Require Import Sail.State_monad.
 Require Import Sail.State_lifting.
-Require Import isla.bitvector_auto.
+Require Import stdpp.unstable.bitvector_tactics.
 Require Import isla.sail_riscv.sail_opsem.
 
 Arguments read_accessor : simpl nomatch.
@@ -75,7 +75,7 @@ Ltac reduce_closed_mword_to_bv :=
 
 Ltac reduce_closed_sim :=
   repeat match goal with
-   | |- context [@subrange_vec_dec ?n ?a ?b ?c ?F1 ?F2] => progress reduce_closed (@subrange_vec_dec n a b c F1 F2)
+   | |- context [@subrange_vec_dec ?n ?a ?b ?c] => progress reduce_closed (@subrange_vec_dec n a b c)
    | |- context [@access_vec_dec ?n ?w ?m] => progress reduce_closed (@access_vec_dec n w m)
    | |- context [vec_of_bits ?l] => progress reduce_closed (vec_of_bits l)
    | |- context [Word.weqb ?b1 ?b2] => progress reduce_closed (Word.weqb b1 b2)
@@ -117,7 +117,7 @@ Ltac reduce_closed_sim :=
    end.
 
 Ltac cbn_sim :=
-  cbn [returnm bind bind0 sim_regs
+  cbn [returnM returnm bind bind0 sim_regs
        x1_ref x2_ref x9_ref x10_ref x11_ref x12_ref misa_ref mstatus_ref PC_ref nextPC_ref cur_privilege_ref
        regval_of of_regval read_from write_to regval_from_reg
        Misa_of_regval regval_of_Misa
@@ -219,15 +219,15 @@ Ltac red_monad_sim :=
          | |- sim _ (get_next_pc ()) _ _  => apply: sim_read_reg_l; [done..|]
          | |- sim _ (write_reg _ _) _ (WriteReg _ _ _ _:t:_)  => apply: sim_write_reg; [done | done | shelve |]
          | |- sim _ (Write_ea _ _ _ _) _ _  => apply: sim_Write_ea
-         | |- sim _ (Prompt_monad.write_mem _ _ _ _ _) _ (WriteMem _ _ _ _ _ _ _ :t:_)  => apply sim_write_mem; [done|done|done|done|shelve|shelve|]
+         | |- sim _ (Prompt_monad.write_mem _ _ _ _ _) _ (WriteMem _ _ _ _ _ _ _ :t:_)  => apply sim_write_mem; [done|done|done|shelve|shelve|]
          | |- sim _ (Prompt_monad.read_mem _ _ _ _) _ (Smt (DeclareConst _ (Ty_BitVec _)) _:t:ReadMem _ _ _ _ _ _ :t:_) =>
-             apply sim_read_mem; [done|done|done|shelve|] => ?? ->
+             apply sim_read_mem; [done|done|shelve|] => ?? ->
          | |- sim _ (Done _) NilMCtx tnil  => apply: sim_done
          end.
 
 
 Ltac unfold_sim :=
-  unfold wX_bits, rX_bits, rX, wX, set_next_pc, regval_from_reg, regval_into_reg, returnm, set, ext_data_get_addr,
+  unfold wX_bits, rX_bits, rX, wX, set_next_pc, regval_from_reg, regval_into_reg, returnM, returnm, set, ext_data_get_addr,
     mem_write_ea, write_ram_ea, write_mem_ea, phys_mem_write, write_ram, phys_mem_read, read_ram, process_load,
     mem_write_value_priv_meta, pmp_mem_write, checked_mem_write, mem_read_priv, mem_read_priv_meta, pmp_mem_read,
     checked_mem_read.
@@ -253,7 +253,7 @@ Proof.
   all: by lazymatch goal with | |- Z.testbit _ ?n = _ => bitblast He with n end.
 Qed.
 
-Lemma within_mmio_writable_false b w H z:
+Lemma within_mmio_writable_false b w z:
   z = bv_unsigned (mword_to_bv (n2:=64) b) →
   (z < bv_unsigned (mword_to_bv (n2:=64) (plat_clint_base ())) ∨
     bv_unsigned (mword_to_bv (n2:=64) (plat_clint_base ())) +
@@ -263,25 +263,25 @@ Lemma within_mmio_writable_false b w H z:
   bv_unsigned (mword_to_bv (n2:=64) (to_bits 64 (elf_tohost ()))) ≠ z ∧
     (bv_wrap 64 (bv_unsigned (mword_to_bv (n2:=64) (to_bits 64 (elf_tohost ()))) + 4) ≠ z ∨ w ≠ 4) ∨ 8 < w)
   →
-  @within_mmio_writable b w H = false.
+  within_mmio_writable b w = false.
 Proof.
   move => -> [Hclint Helf].
   rewrite /within_mmio_writable/within_clint/within_htif_writable. apply orb_false_intro.
-  - apply andb_false_iff. rewrite !Z.leb_gt. by rewrite /uint/= !uint_plain_to_bv_unsigned.
+  - apply andb_false_iff. rewrite !Z.leb_gt. by rewrite /= !uint_plain_to_bv_unsigned.
   - rewrite andb_false_iff orb_false_iff andb_false_iff /= Z.eqb_neq !Z.leb_gt.
-    by rewrite !(eq_vec_to_bv 64) // !bool_decide_eq_false !bv_neq mword_to_bv_add_vec_int.
+    by rewrite !(eq_vec_to_bv 64) // !bool_decide_eq_false !bv_neq mword_to_bv_add_vec.
 Qed.
 
-Lemma within_phys_mem_true b w H z:
+Lemma within_phys_mem_true b w z:
   z = bv_unsigned (mword_to_bv (n2:=64) b) →
   bv_unsigned (mword_to_bv (n2:=64) (plat_ram_base ())) ≤ z
   ∧ z + w
     ≤ bv_unsigned (mword_to_bv (n2:=64) (plat_ram_base ())) +
       bv_unsigned (mword_to_bv (n2:=64) (plat_ram_size ())) →
-  @within_phys_mem b w H = true.
+  within_phys_mem b w = true.
 Proof.
   move => -> ?. rewrite /within_phys_mem.
-  by rewrite andb_true_intro // !Z.leb_le /uint/= !uint_plain_to_bv_unsigned.
+  by rewrite andb_true_intro // !Z.leb_le /= !uint_plain_to_bv_unsigned.
 Qed.
 
 
@@ -297,24 +297,6 @@ Proof.
   by red_sim.
 Qed.
 
-Lemma sim_is_RV32F_or_RV64F Σ K e2:
-  (∀ b, sim Σ (Done b) K e2) →
-  sim Σ (is_RV32F_or_RV64F ()) K e2.
-Proof.
-  move => Hsim.
-  unfold is_RV32F_or_RV64F. red_sim.
-  apply: sim_haveFExt => -[]; by red_sim.
-Qed.
-
-Lemma sim_is_RV64F Σ K e2:
-  (∀ b, sim Σ (Done b) K e2) →
-  sim Σ (is_RV64F ()) K e2.
-Proof.
-  move => Hsim.
-  unfold is_RV64F. red_sim.
-  apply: sim_haveFExt => -[]; by red_sim.
-Qed.
-
 Lemma sim_haveDExt Σ K e2:
   (∀ b, sim Σ (Done b) K e2) →
   sim Σ (haveDExt ()) K e2.
@@ -327,31 +309,13 @@ Proof.
   by red_sim.
 Qed.
 
-Lemma sim_is_RV32D_or_RV64D Σ K e2:
-  (∀ b, sim Σ (Done b) K e2) →
-  sim Σ (is_RV32D_or_RV64D ()) K e2.
-Proof.
-  move => Hsim.
-  unfold is_RV32D_or_RV64D. red_sim.
-  apply: sim_haveDExt => -[]; by red_sim.
-Qed.
-
-Lemma sim_is_RV64D Σ K e2:
-  (∀ b, sim Σ (Done b) K e2) →
-  sim Σ (is_RV64D ()) K e2.
-Proof.
-  move => Hsim.
-  unfold is_RV64D. red_sim.
-  apply: sim_haveDExt => -[]; by red_sim.
-Qed.
-
 Lemma bv_extract_17_1_and (b : bv 64):
   bv_and b (BV 64 0x20000) = (BV 64 0) →
   bv_extract 17 1 b = (BV 1 0).
 Proof. move => Hb. bv_simplify. bitblast as n. bv_simplify Hb. by bitblast Hb with (n + 17). Qed.
 
 Lemma sim_effectivePrivilege Σ K t m priv e2:
-  bv_and (mword_to_bv (n2:=64) (Mstatus_Mstatus_chunk_0 m)) (BV 64 0x20000) = (BV 64 0) →
+  bv_and (mword_to_bv (n2:=64) (Mstatus_bits m)) (BV 64 0x20000) = (BV 64 0) →
   sim Σ (Done priv) K e2 →
   sim Σ (effectivePrivilege t m priv) K e2.
 Proof.

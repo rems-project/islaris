@@ -55,10 +55,10 @@
 
 From iris.proofmode Require Import coq_tactics reduction.
 From lithium Require Export lithium tactics.
-From isla Require Export bitvector_auto lifting.
+From stdpp.unstable Require Export bitvector_tactics.
+From isla Require Export lifting.
 Set Default Proof Using "Type".
 
-Global Hint Transparent addr byte : bv_unfold_db.
 Lemma bv_unfold_ite s w n b1 b2 z1 z2 b:
   BvUnfold n s w b1 z1 →
   BvUnfold n s w b2 z2 →
@@ -201,8 +201,8 @@ Global Instance simpl_and_bv_and_0xfff0000000000000 b :
   SimplAnd (bv_and b (BV 64 0xfff0000000000000) = (BV 64 0)) (λ T, bv_unsigned b < 2 ^ 52 ∧ T).
 Proof.
   split; move => [Hb ?]; split => //.
-  - bv_simplify. bitblast. eapply Z_bounded_iff_bits_nonneg; [| |done|]; bv_solve.
-  - eapply Z_bounded_iff_bits_nonneg; [lia | bv_solve|] => l ?. bitblast.
+  - bv_simplify. bitblast. eapply Z.bounded_iff_bits_nonneg; [| |done|]; bv_solve.
+  - eapply Z.bounded_iff_bits_nonneg; [lia | bv_solve|] => l ?. bitblast.
     bv_simplify Hb. by bitblast Hb with l.
 Qed.
 
@@ -213,9 +213,9 @@ Proof.
   - move => [Hb [Hmod ?]]; split => //.
     bv_simplify. bitblast as i.
     + by bitblast Hmod with i.
-    + eapply Z_bounded_iff_bits_nonneg; [| |done|]; bv_solve.
+    + eapply Z.bounded_iff_bits_nonneg; [| |done|]; bv_solve.
   - move => [Hb ?]. bv_simplify Hb. split_and!; [..|done].
-    + eapply Z_bounded_iff_bits_nonneg; [lia|bv_solve|] => l ?. bitblast.
+    + eapply Z.bounded_iff_bits_nonneg; [lia|bv_solve|] => l ?. bitblast.
       by bitblast Hb with l.
     + bitblast as i. by bitblast Hb with i.
 Qed.
@@ -224,7 +224,7 @@ Qed.
 Definition normalize_instr_addr {Σ} (a1 : Z) (T : Z → iProp Σ) : iProp Σ :=
   ∃ a2, ⌜bv_wrap 64 a1 = bv_wrap 64 a2⌝ ∗ T a2.
 Arguments normalize_instr_addr : simpl never.
-Typeclasses Opaque normalize_instr_addr.
+Global Typeclasses Opaque normalize_instr_addr.
 
 Program Definition normalize_instr_addr_hint {Σ} a1 a2 :
   (bv_wrap 64 a1 = bv_wrap 64 a2) →
@@ -272,7 +272,7 @@ Global Hint Extern 10 (TacticHint (normalize_instr_addr _)) =>
 Definition normalize_bv_wrap {Σ} (a1 : Z) (T : Z → iProp Σ) : iProp Σ :=
   ∃ a2, ⌜bv_wrap 64 a1 = bv_wrap 64 a2⌝ ∗ T a2.
 Arguments normalize_bv_wrap : simpl never.
-Typeclasses Opaque normalize_bv_wrap.
+Global Typeclasses Opaque normalize_bv_wrap.
 
 Program Definition normalize_bv_wrap_hint {Σ} a1 a2 :
   (∀ x, bv_wrap 64 a2 = x → block bv_wrap 64%N a1 = x) →
@@ -309,7 +309,7 @@ Global Hint Extern 10 (TacticHint (normalize_bv_wrap _)) =>
 Definition compute_wp_exp {Σ} `{!islaG Σ} (e : exp) (T : base_val → iProp Σ) : iProp Σ :=
   WPexp e {{ T }}.
 Arguments compute_wp_exp : simpl never.
-Typeclasses Opaque compute_wp_exp.
+Global Typeclasses Opaque compute_wp_exp.
 
 Fixpoint eval_exp' (e : exp) : option base_val :=
   match e with
@@ -364,8 +364,8 @@ Qed.
 
 Ltac solve_compute_wp_exp :=
   let H := fresh in move => ? H;
-  lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv decide decide_rel N_eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
-  lazymatch goal with | |- Some _ = _ => idtac | |- ?G => idtac "solve_copmute_wp_exp failed:" G; fail end;
+  lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv decide decide_rel N_eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect BinPos.Pos.eq_dec Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
+  lazymatch goal with | |- Some _ = _ => idtac | |- ?G => idtac "solve_compute_wp_exp failed:" G; fail end;
   autorewrite with isla_coq_rewrite;
   apply H.
 
@@ -376,7 +376,7 @@ Global Hint Extern 10 (TacticHint (compute_wp_exp _)) =>
 Definition regcol_compute_hint {Σ A B} (f : A → option B) (x : A) (T : B → iProp Σ) : iProp Σ :=
   ∃ y, ⌜f x = Some y⌝ ∗ T y.
 Arguments regcol_compute_hint : simpl never.
-Typeclasses Opaque regcol_compute_hint.
+Global Typeclasses Opaque regcol_compute_hint.
 
 Program Definition regcol_compute_hint_hint {Σ A B} (f : A → option B) x a :
   (∀ y, Some x = y → f a = y) →
@@ -623,8 +623,7 @@ Ltac normalize_tac ::=
   autorewrite with isla_coq_rewrite; exact: eq_refl.
 (* Ltac normalize_tac ::= normalize_autorewrite. *)
 
-Ltac bv_solve_unfold_tac ::=
-  unfold byte, addr in *.
+Ltac bv_solve_unfold_tac ::= idtac.
 
 Ltac solve_protected_eq_unfold_tac ::=
   reduce_closed_N.
@@ -652,7 +651,7 @@ Definition FindInstrKind {Σ} `{!Arch} `{!islaG Σ} `{!threadG} (a : Z) (l : boo
     | IKPre l' P => instr_pre' l' a P
     end
 |}.
-Typeclasses Opaque FindInstrKind.
+Global Typeclasses Opaque FindInstrKind.
 
 Inductive reg_mapsto_kind : Type :=
 | RKMapsTo (v : valu) | RKCol (regs : list (reg_kind * valu_shape)).
@@ -664,7 +663,7 @@ Definition FindRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r : string) := {|
   | RKCol regs => reg_col regs
   end
 |}.
-Typeclasses Opaque FindRegMapsTo.
+Global Typeclasses Opaque FindRegMapsTo.
 Definition FindStructRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r f : string) := {|
   fic_A := reg_mapsto_kind;
   fic_Prop rk :=
@@ -673,7 +672,7 @@ Definition FindStructRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r f : string) := {
   | RKCol regs => reg_col regs
   end
 |}.
-Typeclasses Opaque FindStructRegMapsTo.
+Global Typeclasses Opaque FindStructRegMapsTo.
 
 Inductive mem_mapsto_kind : Type :=
 | MKMapsTo (n : N) (v : bv n)
@@ -687,7 +686,7 @@ Definition mem_mapsto_kind_prop `{!islaG Σ} (a : Z) (mk : mem_mapsto_kind) : iP
   | MKUninit a' n => (a' ↦ₘ? n)%I
   | MKMMIO a' l => mmio_range a' l
   end.
-Typeclasses Opaque mem_mapsto_kind_prop.
+Global Typeclasses Opaque mem_mapsto_kind_prop.
 Definition FindMemMapsTo {Σ} `{!islaG Σ} (a : Z) := {|
   fic_A := mem_mapsto_kind;
   fic_Prop := mem_mapsto_kind_prop a

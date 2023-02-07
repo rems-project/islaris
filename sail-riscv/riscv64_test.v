@@ -211,8 +211,8 @@ Lemma riscv_test_safe regs (satpv x10v x2v mstatus_bits x11v : bv 64):
   x11 regs = bv_to_mword x11v →
   satp regs = bv_to_mword satpv →
   cur_privilege regs = Machine →
-  misa regs = {| Misa_Misa_chunk_0 := bv_to_mword misa_bits |} →
-  mstatus regs = {| Mstatus_Mstatus_chunk_0 := bv_to_mword mstatus_bits |} →
+  misa regs = {| Misa_bits := bv_to_mword misa_bits |} →
+  mstatus regs = {| Mstatus_bits := bv_to_mword mstatus_bits |} →
   safe sail_module (riscv_test_initial_sail_state x2v regs) ∧
     (∀ κs σ', steps sail_module (riscv_test_initial_sail_state x2v regs) κs σ' → riscv_test_spec x11v κs).
 Proof.
