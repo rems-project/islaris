@@ -13,7 +13,7 @@ riscv64-linux-gnu-as (`binutils-riscv64-linux-gnu` package on Debian).
 opam switch create . ocaml-base-compiler.4.12.0 --no-install
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
-opam pin add -n -y isla-lang "git+https://git@github.com/rems-project/isla-lang.git#7efe5e1ca8abbd40e4d574a7cd60b6370bc13c89"
+opam pin add -n -y isla-lang "git+https://git@github.com/rems-project/isla-lang.git#14541f64fc25f98ce77be070d1fa3a8eb08207dc"
 make builddep
 ```
 
