@@ -252,18 +252,20 @@ Qed.
 Lemma unfold_sign_extend m n (w: Word.word m) :
   forall H : (m <= n)%nat,
   MachineWord.sign_extend n w = cast_nat (Word.sext w (n - m)) (le_plus_minus_r m n H).
-intro.
-rewrite /MachineWord.sign_extend.
-destruct (le_lt_dec m n).
-* rewrite (le_unique m n H) //.
-* lia.
+Proof.
+  intro.
+  rewrite /MachineWord.sign_extend.
+  destruct (le_lt_dec m n).
+  * rewrite (le_unique m n H) //.
+  * lia.
 Qed.
 
 Lemma wordToZ_cast_nat m n (E : m = n) w :
   Word.wordToZ (cast_nat w E) = Word.wordToZ w.
-subst.
-rewrite cast_nat_refl.
-reflexivity.
+Proof.
+  subst.
+  rewrite cast_nat_refl.
+  reflexivity.
 Qed.
 
 Lemma mword_to_bv_EXTS n1 n2' n2 (b : mword n1):
@@ -274,7 +276,7 @@ Lemma mword_to_bv_EXTS n1 n2' n2 (b : mword n1):
 Proof.
   move => ???.
   apply bv_eq_signed. rewrite mword_to_bv_signed //. rewrite /EXTS/sign_extend/exts_vec/= get_word_to_word.
-  rewrite unfold_sign_extend. 1:lia. move => ?. rewrite wordToZ_cast_nat.
+  rewrite unfold_sign_extend. 1: lia. move => ?. rewrite wordToZ_cast_nat.
   rewrite Word.sext_wordToZ bv_sign_extend_signed ?mword_to_bv_signed //.
   all: lia.
 Qed.

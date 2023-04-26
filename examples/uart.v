@@ -83,7 +83,10 @@ Definition spec_uart_wait_write_body (P R : spec) : spec :=
                               (sif (Z.testbit (bv_unsigned b) 5 = true) P R)).
 Global Instance spec_uart_wait_write_body_mono P :
   MonoPred (spec_uart_wait_write_body P).
-Proof. constructor. unfold spec_uart_wait_write_body. by unshelve spec_solver. Qed.
+Proof.
+  constructor. unfold spec_uart_wait_write_body.
+  spec_unfold. move => ???? [x [?|?]]; exists x; naive_solver.
+Qed.
 
 Definition spec_uart_wait_write (P : spec) : spec :=
   srec (spec_uart_wait_write_body P).
