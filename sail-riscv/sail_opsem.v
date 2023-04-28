@@ -445,8 +445,8 @@ Definition instruction_length (i : encoded_instruction) : mword 64 :=
 
 Definition step_cpu (i : encoded_instruction) : M () :=
   (match i with
-   | Uncompressed ie => riscv.decode (bv_to_mword ie)
-   | Compressed ie => riscv.decodeCompressed (bv_to_mword ie)
+   | Uncompressed ie => riscv.encdec_backwards (bv_to_mword ie)
+   | Compressed ie => riscv.encdec_compressed_backwards (bv_to_mword ie)
    end) >>= λ dec,
    read_reg PC_ref >>= λ PC,
    write_reg nextPC_ref (add_vec PC (instruction_length i)) >>

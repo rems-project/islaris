@@ -378,8 +378,8 @@ Definition regcol_compute_hint {Σ A B} (f : A → option B) (x : A) (T : B → 
 Arguments regcol_compute_hint : simpl never.
 Global Typeclasses Opaque regcol_compute_hint.
 
-Program Definition regcol_compute_hint_hint {Σ A B} (f : A → option B) x a :
-  (∀ y, Some x = y → f a = y) →
+Program Definition regcol_compute_hint_hint {Σ A B} x (f : A → option B) a :
+  f a = Some x →
   TacticHint (regcol_compute_hint (Σ:=Σ) f a) := λ H, {|
     tactic_hint_P T := T x;
 |}.
@@ -449,32 +449,34 @@ Ltac remember_regcol :=
   repeat match goal with
    | |- context [ExactShape ?v] =>
      assert_fails (is_fully_reduced_valu v);
-     remember_mark v
+     let H := fresh "H" in move: (v) => H
    | |- context [PropShape ?v] =>
      assert_fails (is_var v);
-     remember_mark v
+     let H := fresh "H" in move: (v) => H
    end.
 
 Create HintDb regcol_compute_unfold discriminated.
 
 Ltac solve_regcol_compute_hint :=
-  let H := fresh in intros ? H;
+  clear;
   autounfold with regcol_compute_unfold;
-  (* TODO: If it turns out that remember_regcol is too slow, it might
-  be worth investigating using let bindings instead of equalities.
-  I.e. one can create let-bindings for everything that should be
-  opaque, then doing etrans, then clearing the body of the letbindings
-  in the first goal and calling vm_compute, and in the second goal
-  from etrans one still has the bodies of the letbindings which can
-  then be unfolded. As an additional optimization, one can reuse
-  existing letbindings (e.g. as created by let_bind_hint). *)
+  repeat match goal with | H := _ |- _  => clearbody H end;
   remember_regcol;
-  vm_compute;
-  subst_remembered;
-  apply H.
+  lazymatch goal with
+  | |- TacticHint (regcol_compute_hint ?f ?a) =>
+      (* We first compute the result of f a such that we don't need to
+      create an evor for it, but can use [abstract]. This is important
+      since the [clearbody]s above are otherwise ignored at Qed time,
+      leading to divergence of vm_compute. This means that we run
+      vm_compute twice, but it should be fast anyway. *)
+      let x := eval vm_compute in (f a) in
+      lazymatch x with
+      | Some ?y => apply (regcol_compute_hint_hint y)
+      end
+  end;
+  abstract (vm_compute; exact eq_refl).
 
 Global Hint Extern 10 (TacticHint (regcol_compute_hint _ _)) =>
-  eapply regcol_compute_hint_hint;
   solve_regcol_compute_hint : typeclass_instances.
 
 

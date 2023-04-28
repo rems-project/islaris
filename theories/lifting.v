@@ -66,7 +66,7 @@ Class Arch := {
 
 Class islaG Σ := IslaG {
   islaG_invG : invGS Σ;
-  islaG_gen_heapG :> heapG Σ
+  islaG_gen_heapG :: heapG Σ
 }.
 
 Global Instance isla_irisG `{!islaG Σ} : irisGS isla_lang Σ := {

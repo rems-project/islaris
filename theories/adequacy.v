@@ -61,13 +61,13 @@ From isla Require Export ghost_state lifting.
 Set Default Proof Using "Type".
 
 Class islaPreG Σ := PreIslaG {
-  isla_pre_invG :> invGpreS Σ;
-  heap_pre_instrs_inG :> inG Σ (instrtblUR);
-  heap_pre_regs_inG :> ghost_mapG Σ string valu;
-  heap_pre_struct_regs_inG :> ghost_mapG Σ (string * string) valu;
-  heap_pre_mem_inG :> ghost_mapG Σ addr byte;
-  heap_pre_backed_mem_inG :> inG Σ (backed_memUR);
-  heap_pre_spec_inG :> inG Σ (dfrac_agreeR specO);
+  isla_pre_invG :: invGpreS Σ;
+  heap_pre_instrs_inG :: inG Σ (instrtblUR);
+  heap_pre_regs_inG :: ghost_mapG Σ string valu;
+  heap_pre_struct_regs_inG :: ghost_mapG Σ (string * string) valu;
+  heap_pre_mem_inG :: ghost_mapG Σ addr byte;
+  heap_pre_backed_mem_inG :: inG Σ (backed_memUR);
+  heap_pre_spec_inG :: inG Σ (dfrac_agreeR specO);
 }.
 
 Definition islaΣ : gFunctors :=

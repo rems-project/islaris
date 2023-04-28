@@ -74,17 +74,17 @@ Definition backed_memUR : cmra :=
 
 
 Class heapG Σ := HeapG {
-  heap_instrs_inG :> inG Σ instrtblUR;
+  heap_instrs_inG :: inG Σ instrtblUR;
   heap_instrs_name : gname;
-  heap_regs_inG :> ghost_mapG Σ string valu;
-  heap_struct_regs_inG :> ghost_mapG Σ (string * string) valu;
-  heap_mem_inG :> ghost_mapG Σ addr byte;
+  heap_regs_inG :: ghost_mapG Σ string valu;
+  heap_struct_regs_inG :: ghost_mapG Σ (string * string) valu;
+  heap_mem_inG :: ghost_mapG Σ addr byte;
   heap_mem_name : gname;
-  heap_backed_mem_inG :> inG Σ backed_memUR;
+  heap_backed_mem_inG :: inG Σ backed_memUR;
   heap_backed_mem_name : gname;
   heap_full_trace : list seq_label;
   heap_spec_trace : list seq_label → Prop;
-  heap_spec_trace_inG :> inG Σ (dfrac_agreeR specO);
+  heap_spec_trace_inG :: inG Σ (dfrac_agreeR specO);
   heap_spec_trace_name : gname;
 }.
 

@@ -111,8 +111,8 @@ Ltac reduce_closed_sim :=
   have -> : (if b then Done false else Done false) = Done false by destruct b.
   red_sim.
 *)
-   | |- context [riscv.decode ?i] => progress reduce_closed (riscv.decode i)
-   | |- context [decodeCompressed ?i] => progress reduce_closed (decodeCompressed i)
+   | |- context [riscv.encdec_backwards ?i] => progress reduce_closed (riscv.encdec_backwards i)
+   | |- context [encdec_compressed_backwards ?i] => progress reduce_closed (encdec_compressed_backwards i)
    | |- context [get_config_print_reg ()] => progress reduce_closed (get_config_print_reg ())
    end.
 
