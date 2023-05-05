@@ -73,7 +73,7 @@ generate_rbit: examples/rbit.dump update_etc
 	@PATH=$$PWD/bin:$$PATH dune exec -- islaris $< -j 8 -o instructions/rbit --coqdir=isla.instructions.rbit
 .PHONY: generate_clz
 
-generate: generate_memory_instructions generate_unaligned_accesses generate_aarch64 generate_riscv64 generate_el2_to_el1 generate_clz generate_simple_hvc generate_rbit
+generate: generate_memory_instructions generate_unaligned_accesses generate_aarch64 generate_el2_to_el1 generate_clz generate_simple_hvc generate_rbit generate_riscv64
 .PHONY: generate
 
 clean:

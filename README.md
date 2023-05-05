@@ -32,7 +32,7 @@ to point to a working checkout of Isla resp. Isla snapshots.)
 
 The following commits of isla and isla-snapshots are tested:
 ```
-isla: 0d02880c2aaf6616d4960cc1632564f00443a999
+isla: 8325ef10e6c5dea8bf73cb255746f815169c974f
 isla-snapshots: b948da37487479ea470e735ea158d62f73bf314f (riscv snapshot is outdated and does not work with isla)
 ```
 
