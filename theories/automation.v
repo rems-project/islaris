@@ -189,7 +189,7 @@ Global Instance simpl_impl_valu_struct_shape v ss :
     foldr (λ s (T : _ → Prop) rs, ∀ v, valu_has_shape v s.2 → T (rs ++ [(s.1, v)])) (λ rs, v = RegVal_Struct rs → T) ss []).
 Proof.
   move => T. move Hrs': {2}[] => rs'.
-  destruct v as [| | | | | | | rs |] => //= Hfold [Hlen /Forall_fold_right Hall].
+  destruct v as [| | | | | | rs | |] => //= Hfold [Hlen /Forall_fold_right Hall].
   have Hrs: rs = rs' ++ rs by simplify_list_eq. clear Hrs'.
   elim: ss {1 3 5}rs rs' Hlen Hrs Hfold Hall.
   { move => []//= ? ? ->. rewrite app_nil_r. naive_solver. }
@@ -534,7 +534,7 @@ Proof.
           apply bind_Some. by eexists _.
         }
         iIntros "[? %]". iExists _. by iFrame.
-      * destruct v as [| | | | | | |rs|] => //; simplify_eq/=.
+      * destruct v as [| | | | | |rs| |] => //; simplify_eq/=.
         move: Hs => [Hlen Hall'']. move: (Hall'') => /Forall_fold_right/(Forall_lookup_1 _ _ _ _)Hall.
         have [|[??]?]:= lookup_lt_is_Some_2 rs i.
         { rewrite -Hlen. apply: lookup_lt_is_Some_1. naive_solver. }
@@ -1447,6 +1447,11 @@ Section instances.
     ⊢ WPasm (Barrier v ann :t: es).
   Proof. iApply wp_barrier. Qed.
 
+  Lemma li_wp_abstract_primop es n v args ann:
+    WPasm es
+    ⊢ WPasm (AbstractPrimop n v args ann :t: es).
+  Proof. iApply wp_abstract_primop. Qed.
+
   Lemma li_wp_write_mem len n success kind a (vnew : bv n) tag ann es:
     (⌜n = (8*len)%N⌝ ∗
     ⌜len ≠ 0%N⌝ ∗
@@ -1764,6 +1769,7 @@ Ltac liAAsm :=
       | Smt (Assert _) _ => notypeclasses refine (tac_fast_apply (li_wp_assert _ _ _) _)
       | Assume _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume _ _ _) _)
       | Barrier _ _ => notypeclasses refine (tac_fast_apply (li_wp_barrier _ _ _) _)
+      | AbstractPrimop _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_abstract_primop _ _ _ _ _) _)
       end
     | parametric_trace _ _ => iEval (unfold parametric_trace)
     | ?def => first [

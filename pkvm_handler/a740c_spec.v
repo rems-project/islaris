@@ -3,8 +3,8 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.examples.pkvm_handler.a740c.
 
 Lemma a740c_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a740c) ⊢
-  instr_body pc (cmp_R_imm_spec pc "R0" 0x16).
+  instr pc (Some a740c)
+  ⊢ instr_body pc (cmp_R_imm_spec pc "R0" 0x16).
 Proof.
   iStartProof.
   repeat liAStep; liShow.

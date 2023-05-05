@@ -247,27 +247,30 @@ let pp_assume_val ff v =
 let rec pp_valu ff v =
   let pp fmt = Format.fprintf ff fmt in
   match v with
-  | Ast.RegVal_Base(v')  ->
+  | Ast.RegVal_Base(v')          ->
       pp "RegVal_Base (%a)" pp_base_val v'
-  | Ast.RegVal_I(i,j)       ->
+  | Ast.RegVal_I(i,j)            ->
       pp "RegVal_I %a %a" pp_Z i pp_Z j
-  | Ast.RegVal_String(s)    ->
+  | Ast.RegVal_String(s)         ->
       pp "RegVal_String %a" pp_str s
-  | Ast.RegVal_Unit         ->
+  | Ast.RegVal_Unit              ->
       pp "RegVal_Unit"
-  | Ast.RegVal_NamedUnit(r) ->
-      pp "NamedUnit %a" pp_register_name r
-  | Ast.RegVal_Vector(l)    ->
+  | Ast.RegVal_Vector(l)         ->
       pp "RegVal_Vector %a" (pp_list pp_valu) l
-  | Ast.RegVal_List(l)      ->
+  | Ast.RegVal_List(l)           ->
       pp "RegVal_List %a" (pp_list pp_valu) l
-  | Ast.RegVal_Struct(l)    ->
+  | Ast.RegVal_Struct(l)         ->
       let pp_elt ff (r, v) =
         Format.fprintf ff "(%a, %a)" pp_register_name r pp_valu v
       in
       pp "RegVal_Struct %a" (pp_list pp_elt) l
-  | Ast.RegVal_Poison       ->
+  | Ast.RegVal_Constructor(r, v) ->
+      pp "RegVal_Constructor %a (%a)" pp_register_name r pp_valu v
+  | Ast.RegVal_Poison            ->
       pp "RegVal_Poison"
+
+let pp_arg_list ff l =
+  pp_list pp_valu ff (match l with Ast.NilArgs -> [] | Ast.ListArgs(l) -> l)
 
 let rec pp_exp ff e =
   let pp fmt = Format.fprintf ff fmt in
@@ -325,12 +328,20 @@ let pp_event ff e =
       pp "WriteReg %a %a (%a) %a" pp_register_name r pp_accessor_list l
         pp_valu v pp_lrng a
   | Ast.ReadMem(v1,v2,v3,i,v,a)    ->
+      (* TODO: We remove the kind information since it is quite big and not used.
+         Add it back when we actually need it. *)
+      (* let v2' = v2 in *)
+      let v2' = Ast.RegVal_Poison in
       pp "ReadMem (%a) (%a) (%a) %a %a %a"
-        pp_valu v1 pp_valu v2 pp_valu v3 pp_N i
+        pp_valu v1 pp_valu v2' pp_valu v3 pp_N i
         (pp_option (fun ff -> Format.fprintf ff "(%a)" pp_valu)) v pp_lrng a
   | Ast.WriteMem(i,v1,v2,v3,j,v,a) ->
+      (* TODO: We remove the kind information since it is quite big and not used.
+         Add it back when we actually need it. *)
+      (* let v1' = v1 in *)
+      let v1' = Ast.RegVal_Poison in
       pp "WriteMem (%a) (%a) (%a) (%a) %a %a %a"
-        pp_valu i pp_valu v1 pp_valu v2 pp_valu v3 pp_N j
+        pp_valu i pp_valu v1' pp_valu v2 pp_valu v3 pp_N j
         (pp_option (fun ff -> Format.fprintf ff "(%a)" pp_valu)) v pp_lrng a
   | Ast.BranchAddress(v,a)         ->
       pp "BranchAddress (%a) %a" pp_valu v pp_lrng a
@@ -353,8 +364,16 @@ let pp_event ff e =
   | Ast.AssumeReg(r,l,v,a)         ->
       pp "AssumeReg %a %a (%a) %a" pp_register_name r pp_accessor_list l
         pp_valu v pp_lrng a
-  | Ast.Assume(e,a)               ->
+  | Ast.Assume(e,a)                ->
       pp "Assume (%a) %a" pp_a_exp e pp_lrng a
+  | Ast.FunAssume(r,v,args,a)      ->
+      pp "FunAssume %a %a %a %a" pp_register_name r pp_valu v pp_arg_list args pp_lrng a
+  | Ast.UseFunAssume(r,v,args,a)   ->
+      pp "UseFunAssume %a %a %a %a" pp_register_name r pp_valu v pp_arg_list args pp_lrng a
+  | Ast.AbstractCall(r,v,args,a)   ->
+      pp "AbstractCall %a %a %a %a" pp_register_name r pp_valu v pp_arg_list args pp_lrng a
+  | Ast.AbstractPrimop(r,v,args,a)   ->
+      pp "AbstractPrimop %a %a %a %a" pp_register_name r pp_valu v pp_arg_list args pp_lrng a
 
 (** [pp_trace_def name] is a pretty-printer for the Coq definition of a trace,
 with given definition name [name]. *)

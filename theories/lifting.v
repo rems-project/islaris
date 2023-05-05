@@ -850,6 +850,25 @@ Section lifting.
     iApply "Hcont"; [done..|iFrame].
   Qed.
 
+  Lemma wp_abstract_primop es n v args ann:
+    WPasm es -∗
+    WPasm (AbstractPrimop n v args ann :t: es).
+  Proof.
+    rewrite wp_asm_eq.
+    iIntros "Hcont" ([????]) "/= -> -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "Hctx".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iSplit. {
+      iPureIntro.
+      eexists _, _, _, _; econstructor; [done |by econstructor| done].
+    }
+    iIntros "!>" (????) "_". iMod "HE" as "_". iModIntro.
+    inv_seq_step.
+    iFrame; iSplit; [|done].
+    iApply "Hcont"; [done..|iFrame].
+  Qed.
+
 End lifting.
 
 Section exp_lifting.

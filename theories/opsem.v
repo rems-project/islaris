@@ -383,8 +383,8 @@ Fixpoint eval_a_exp (regs : reg_map) (e : a_exp) : option base_val :=
 Inductive trace_label : Set :=
 | LReadReg (r : register_name) (al : accessor_list) (v : valu)
 | LWriteReg (r : register_name) (al : accessor_list) (v : valu)
-| LReadMem (data : valu) (kind : valu) (addr : valu) (len : N) (tag : valu_option)
-| LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : N) (tag : valu_option)
+| LReadMem (data : valu) (kind : valu) (addr : valu) (len : N) (tag : tag_value)
+| LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : N) (tag : tag_value)
 | LBranchAddress (v : valu)
 | LBranch (c : Z) (desc : string)
 | LDone (next : isla_trace)
@@ -425,6 +425,9 @@ Inductive trace_step : isla_trace → reg_map → option trace_label → isla_tr
     trace_step (Branch c desc ann :t: es) regs (Some (LBranch c desc)) es
 | BarrierS v ann es regs :
     trace_step (Barrier v ann :t: es) regs None es
+| AbstractPrimopS n v args ann es regs :
+    (* TODO: Add some validity check here? *)
+    trace_step (AbstractPrimop n v args ann :t: es) regs None es
 | CasesES es ts regs:
     es ∈ ts →
     trace_step (tcases ts) regs None es

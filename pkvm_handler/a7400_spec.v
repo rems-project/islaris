@@ -3,8 +3,8 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.examples.pkvm_handler.a7400.
 
 Lemma a7400_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a7400) ⊢
-  instr_body pc (stp_uninit_spec pc "R0" "R1" "SP_EL2" (-16) true).
+  instr pc (Some a7400)
+  ⊢ instr_body pc (stp_uninit_spec pc "R0" "R1" "SP_EL2" (-16) true).
 Proof.
   iStartProof.
   repeat liAStep; liShow.

@@ -30,6 +30,12 @@ git clone https://github.com/rems-project/isla-snapshots.git
 (Alternatively, one can also set the "ISLA_REPO" and "ISLA_SNAP_REPO" environment variables
 to point to a working checkout of Isla resp. Isla snapshots.)
 
+The following commits of isla and isla-snapshots are tested:
+```
+isla: 0d02880c2aaf6616d4960cc1632564f00443a999
+isla-snapshots: b948da37487479ea470e735ea158d62f73bf314f (riscv snapshot is outdated and does not work with isla)
+```
+
 Once all needed libraries have been installed, Islaris can be built by running `make` from its root directory.
 
 ## Generating Coq traces from a partial decompilation of pkvm

@@ -3,8 +3,8 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.instructions.binary_search.a8.
 
 Lemma a8_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a8) ⊢
-  instr_body pc (stp_uninit_spec pc "R22" "R21" "SP_EL2" (32) false).
+  instr pc (Some a8)
+  ⊢ instr_body pc (stp_uninit_spec pc "R22" "R21" "SP_EL2" (32) false).
 Proof.
   iStartProof.
   repeat liAStep; liShow.

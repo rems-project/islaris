@@ -3,8 +3,8 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.instructions.binary_search.a44.
 
 Lemma a44_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a44) ⊢
-  instr_body pc (csel_spec pc "R20" "R24").
+  instr pc (Some a44)
+  ⊢ instr_body pc (csel_spec pc "R20" "R24").
 Proof.
   iStartProof.
   repeat liAStep; liShow.
