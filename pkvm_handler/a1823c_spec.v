@@ -3,7 +3,7 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.examples.pkvm_handler.a1823c.
 
 Lemma a1823c_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a1823c) -∗
+  instr pc (Some a1823c) ⊢
   instr_body pc (cmp_R_imm_spec pc "R0" 0x2).
 Proof.
   iStartProof.

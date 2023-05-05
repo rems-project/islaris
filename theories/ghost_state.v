@@ -764,7 +764,7 @@ Section spec.
 
   Lemma spec_trace_raw_mono Pκs1 Pκs2 :
     (∀ x, Pκs1 x ↔ Pκs2 x) →
-    spec_trace_raw Pκs1 -∗ spec_trace_raw Pκs2.
+    spec_trace_raw Pκs1 ⊢ spec_trace_raw Pκs2.
   Proof.
     rewrite spec_trace_raw_eq /spec_trace_raw_def => ?.
     by have ->: Pκs1 ≡@{specO} Pκs2.
@@ -772,7 +772,7 @@ Section spec.
 
   Lemma spec_trace_mono Pκs1 Pκs2 :
     Pκs2 ⊆ Pκs1 →
-    spec_trace Pκs1 -∗ spec_trace Pκs2.
+    spec_trace Pκs1 ⊢ spec_trace Pκs2.
   Proof.
     rewrite spec_trace_eq /spec_trace_def => ?.
     iDestruct 1 as (Pκs' ?) "Hspec". iExists _. iFrame. iPureIntro. spec_solver.

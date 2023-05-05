@@ -7,7 +7,7 @@
 OLD_HASH=14541f64fc25f98ce77be070d1fa3a8eb08207dc
 NEW_HASH=
 
-sed -i "s/${OLD_HASH}/${NEW_HASH}/g" README.md .gitlab-ci.yml .github/workflows/ci.yml update_isla_lang.sh
+sed -i "s/${OLD_HASH}/${NEW_HASH}/g" README.md .gitlab-ci.yml .github/workflows/ci.yml update_isla_lang.sh Makefile
 sed -i "s/^NEW_HASH=.*/NEW_HASH=/g" update_isla_lang.sh
 
 opam pin remove -y isla-lang

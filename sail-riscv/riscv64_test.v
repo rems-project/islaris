@@ -114,7 +114,10 @@ Proof.
     + rewrite mword_to_bv_add_vec; [|done]. reduce_closed_mword_to_bv. done.
     + move: Hassume13. move: Hassume11 => /bv_eq. rewrite bv_extract_0_unsigned.
       rewrite ->Hassume1, Hassume2, !bv_add_unsigned, !bv_unsigned_BV in *.
-      unfold bv_wrap, bv_modulus in *. lia.
+      unfold bv_wrap, bv_modulus in *.
+      (* TODO: Why is this necessary? *)
+      change (2 + 1 - 0)%N with (3%N).
+      lia.
   - by rewrite mword_to_bv_add_vec.
   - by rewrite mword_to_bv_add_vec.
     Unshelve. all: exact: inhabitant.
@@ -151,7 +154,10 @@ Proof.
     + rewrite mword_to_bv_add_vec; [|done]. reduce_closed_mword_to_bv. done.
     + move: Hassume13. move: Hassume11 => /bv_eq. rewrite bv_extract_0_unsigned.
       rewrite ->Hassume1, Hassume2, !bv_add_unsigned, !bv_unsigned_BV in *.
-      unfold bv_wrap, bv_modulus in *. lia.
+      unfold bv_wrap, bv_modulus in *.
+      (* TODO: Why is this necessary? *)
+      change (2 + 1 - 0)%N with (3%N).
+      lia.
   - by rewrite mword_to_bv_add_vec.
   - rewrite mword_to_bv_EXTS // mword_to_bv_to_mword //.
   - by rewrite mword_to_bv_add_vec.
@@ -173,7 +179,7 @@ Proof.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_true in Hb1. by rewrite Hb1.
   + rewrite access_vec_dec_to_bv // bitU_of_bool_B0 //.
     rewrite mword_to_bv_add_vec //=. reduce_closed_mword_to_bv.
-    bv_simplify. rename select (bv_extract 1 1 _ = _) into He. bv_simplify He.
+    bv_simplify. rename select (bv_extract 1 _ _ = _) into He. bv_simplify He.
     bitblast. by bitblast He with 0.
   + rewrite mword_to_bv_add_vec //.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_false in Hb1. done.

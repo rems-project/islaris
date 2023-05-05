@@ -233,7 +233,7 @@ Section lifting.
   Lemma wp_event_intro e Φ:
     (∀ t, (Φ -∗ WPasm t) -∗ WPasm (e:t:t)) -∗
     WPevent e {{ Φ }}.
-  Proof. rewrite wp_event_eq. done. Qed.
+  Proof. rewrite wp_event_eq. iIntros "?". done. Qed.
 
   Lemma wp_event_elim e t Φ:
     WPevent e {{ Φ }} -∗
@@ -339,7 +339,7 @@ Section lifting.
   Lemma instr_pre_to_body a P:
     ▷ instr_body a P -∗
     instr_pre a P.
-  Proof. rewrite instr_pre'_eq. done. Qed.
+  Proof. rewrite instr_pre'_eq. iIntros "?". done. Qed.
 
   Lemma instr_pre_intro_Some l P ins a:
     instr a (Some ins) -∗

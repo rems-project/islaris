@@ -3,7 +3,7 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.instructions.binary_search.a48.
 
 Lemma a48_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a48) -∗
+  instr pc (Some a48) ⊢
   instr_body pc (csinc_spec pc "R23" "R24").
 Proof.
   iStartProof.

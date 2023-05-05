@@ -3,7 +3,7 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.instructions.binary_search.a0.
 
 Lemma a0_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a0) -∗
+  instr pc (Some a0) ⊢
   instr_body pc (stp_uninit_spec pc "R29" "R30" "SP_EL2" (-64) true).
 Proof.
   iStartProof.

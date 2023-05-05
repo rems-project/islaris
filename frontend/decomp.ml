@@ -232,8 +232,8 @@ let gen_spec_file : Arch.t -> Template.t -> string -> string list
     List.iter (pp "Require Import %s.@.") spec.spec_imports;
     (* Lemma. *)
     pp "@.Lemma %s_spec `{!islaG Σ} `{!threadG} pc:@." name;
-    pp "  instr pc (Some %s) -∗@." name;
-    pp "  instr_body pc (%s).@." spec.spec_spec;
+    pp "  instr pc (Some %s)@." name;
+    pp "  ⊢ instr_body pc (%s).@." spec.spec_spec;
     pp "Proof.@.";
     if spec.spec_admitted then
       pp "Admitted.@."

@@ -3,7 +3,7 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.instructions.binary_search.a64.
 
 Lemma a64_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a64) -∗
+  instr pc (Some a64) ⊢
   instr_body pc (ldp_mapsto_spec pc "R22" "R21" "SP_EL2" (32) None).
 Proof.
   iStartProof.

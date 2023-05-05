@@ -100,6 +100,11 @@ strip_license:
 	@ocaml tools/update_license.ml --strip ${SRC}
 .PHONY: strip_license
 
+# We cannot use builddep-pins as a dependency of builddep-opamfiles because the CI removes all pins.
+builddep-pins:
+	@opam pin add -n -y isla-lang "git+https://git@github.com/rems-project/isla-lang.git#14541f64fc25f98ce77be070d1fa3a8eb08207dc"
+.PHONY: builddep-pins
+
 builddep-opamfiles: builddep/islaris-builddep.opam
 	@true
 .PHONY: builddep-opamfiles
@@ -117,9 +122,10 @@ builddep/islaris-builddep.opam: islaris.opam Makefile
 #  1) dependencies of Islaris are installed,
 #  2) they will remain satisfied even if other packages are updated/installed,
 #  3) we do not have to pin the Islaris package itself (which takes time).
-builddep: builddep/islaris-builddep.opam
-	@echo "# Installing package $^."
-	@opam install $(OPAMFLAGS) $^
+# Note: We also need to install isla-lang to make sure that new pins are propagated correctly.
+builddep: builddep/islaris-builddep.opam builddep-pins
+	@echo "# Installing package $<."
+	@opam install $(OPAMFLAGS) $< isla-lang
 .PHONY: builddep
 
 saildep:

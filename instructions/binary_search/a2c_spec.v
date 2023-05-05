@@ -3,7 +3,7 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.instructions.binary_search.a2c.
 
 Lemma a2c_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a2c) -∗
+  instr pc (Some a2c) ⊢
   instr_body pc (sub_R_R_R_spec pc "R8" "R20" "R23").
 Proof.
   iStartProof.
