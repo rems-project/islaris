@@ -54,7 +54,7 @@
 (****************************************************************************)
 
 From iris.proofmode Require Import coq_tactics reduction.
-From lithium Require Export lithium tactics.
+From lithium Require Export all.
 From stdpp.unstable Require Export bitvector_tactics.
 From isla Require Export lifting.
 Set Default Proof Using "Type".
@@ -621,9 +621,9 @@ Qed.
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
-Ltac normalize_tac ::=
+Ltac normalize_hook ::=
   autorewrite with isla_coq_rewrite; exact: eq_refl.
-(* Ltac normalize_tac ::= normalize_autorewrite. *)
+(* Ltac normalize_hook ::= normalize_autorewrite. *)
 
 Ltac bv_solve_unfold_tac ::= idtac.
 
@@ -631,7 +631,7 @@ Ltac solve_protected_eq_unfold_tac ::=
   reduce_closed_N.
 
 (* injection on bitvectors sometimes creates weird matches, so we disable it. *)
-Ltac check_injection_tac ::=
+Ltac check_injection_hook ::=
   lazymatch goal with
   | |- @eq (bv _) _ _ → _ => fail
   | |- _ => idtac

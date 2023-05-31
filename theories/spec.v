@@ -53,7 +53,7 @@
 (* Exceptions to this license are detailed in THIRD_PARTY_FILES.md          *)
 (****************************************************************************)
 
-Require Import lithium.infrastructure.
+Require Import lithium.pure_definitions.
 Require Import lithium.simpl_classes.
 Require Import isla.opsem.
 
