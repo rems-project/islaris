@@ -1459,8 +1459,9 @@ Section instances.
       match mk with
       | MKMapsTo n' vold => ⌜n' = n⌝ ∗ (bv_unsigned a ↦ₘ vnew -∗ WPasm es)
       | MKArray n' a' l =>
-          ∃ i : nat, ⌜a' = bv_unsigned a - (i * Z.of_N len)⌝ ∗ ⌜i < length l⌝%nat ∗
-          ∃ Heq : n = n', (a' ↦ₘ∗ <[i := (eq_rect n bv vnew n' Heq)]>l -∗ WPasm es)
+        ⌜(Z.of_N len | bv_unsigned a - a')⌝ ∗
+        ∃ i : nat, ⌜Z.of_nat i = (bv_unsigned a - a') / Z.of_N len⌝ ∗ ⌜i < length l⌝%nat ∗
+        ∃ Heq : n = n', (a' ↦ₘ∗ <[i := (eq_rect n bv vnew n' Heq)]>l -∗ WPasm es)
       | MKUninit a' n' =>
         ⌜a' ≤ bv_unsigned a⌝ ∗ ⌜bv_unsigned a + Z.of_N len ≤ a' + n'⌝ ∗ (
         bv_unsigned a ↦ₘ vnew -∗
@@ -1477,7 +1478,9 @@ Section instances.
   Proof.
     iDestruct 1 as (?? mk) "[HP Hcont]" => /=. case_match.
     - iDestruct "Hcont" as (->) "Hcont". iApply (wp_write_mem with "HP Hcont"); [done | lia].
-    - iDestruct "Hcont" as (i?? Heq) "Hcont". subst => /=.
+    - iDestruct "Hcont" as (? i iEq ? Heq) "Hcont". subst => /=. rename a0 into a'.
+      have {} iEq: a' = bv_unsigned a - i * Z.of_N len.
+      { rewrite iEq Z.mul_comm -Znumtheory.Zdivide_Zdiv_eq; [lia|lia|done]. }
       iApply (wp_write_mem_array with "HP [Hcont]"); [done|lia|done|done|].
       iIntros "Hl". by iApply "Hcont".
     - iDestruct "Hcont" as (??) "Hcont". subst n.
@@ -1503,8 +1506,10 @@ Section instances.
     find_in_context (FindMemMapsTo (bv_unsigned a)) (λ mk,
       match mk with
       | MKMapsTo n' vmem => ∃ Heq : n = n', (⌜(eq_rect n bv vread n' Heq) = vmem⌝ -∗ bv_unsigned a ↦ₘ vmem -∗ WPasm es)
-      | MKArray n' a' l => ∃ i : nat, ⌜a' = bv_unsigned a - (i * Z.of_N len)⌝ ∗ ⌜i < length l⌝%nat ∗
-         ∃ Heq : n = n', (∀ vmem, ⌜l !! i = Some vmem⌝ -∗ ⌜(eq_rect n bv vread n' Heq) = vmem⌝ -∗ a' ↦ₘ∗ l -∗ WPasm es)
+      | MKArray n' a' l =>
+        ⌜(Z.of_N len | bv_unsigned a - a')⌝ ∗
+        ∃ i : nat, ⌜Z.of_nat i = (bv_unsigned a - a') / Z.of_N len⌝ ∗ ⌜i < length l⌝%nat ∗
+        ∃ Heq : n = n', (∀ vmem, ⌜l !! i = Some vmem⌝ -∗ ⌜(eq_rect n bv vread n' Heq) = vmem⌝ -∗ a' ↦ₘ∗ l -∗ WPasm es)
       | MKUninit a' n' => False
       | MKMMIO a' l =>
         ⌜a' ≤ bv_unsigned a⌝ ∗ ⌜bv_unsigned a + Z.of_N len ≤ a' + l⌝ ∗
@@ -1515,7 +1520,9 @@ Section instances.
   Proof.
     iDestruct 1 as (?? mk) "[Hmem Hcont]" => /=. case_match.
     - iDestruct "Hcont" as (?) "Hcont". subst => /=. iApply (wp_read_mem with "Hmem Hcont"); [done|lia].
-    - iDestruct "Hcont" as (i?[??]%lookup_lt_is_Some_2 ?) "Hcont". subst => /=.
+    - iDestruct "Hcont" as (? i iEq [??]%lookup_lt_is_Some_2 ?) "Hcont". subst => /=. rename a0 into a'.
+      have {} iEq: a' = bv_unsigned a - i * Z.of_N len.
+      { rewrite iEq Z.mul_comm -Znumtheory.Zdivide_Zdiv_eq; [lia|lia|done]. }
       iApply (wp_read_mem_array with "Hmem [Hcont]"); [done|lia|done|done|].
       iIntros (?) "Hl". by iApply "Hcont".
     - done.

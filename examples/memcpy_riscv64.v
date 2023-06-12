@@ -95,10 +95,6 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  liInst Hevar i.
-  liARun.
-  liInst Hevar i.
-  liARun.
   liInst Hevar5 (S i).
   liARun.
 
@@ -107,17 +103,18 @@ Proof.
   all: try bv_simplify select (bv_add n _ ≠ _).
   all: try rewrite insert_length.
   all: try bv_solve.
+  1,2: auto with zarith.
   - rewrite -(take_drop i (<[_ := _]> dstdata)).
     rewrite -(take_drop i srcdata).
     f_equal.
-    + by rewrite take_insert.
-    + erewrite drop_S. 2: { apply: list_lookup_insert. bv_solve. }
-      erewrite (drop_S srcdata); [|done].
+    + rewrite take_insert; [done|bv_solve].
+    + erewrite drop_S. 2: { erewrite <- list_lookup_insert; do 2 f_equal; bv_solve. }
+      erewrite (drop_S srcdata). 2: { rewrite <- H10. f_equal. bv_solve. }
       rewrite !drop_ge ?insert_length //; [ |bv_solve..].
       f_equal. bv_solve.
-  - erewrite take_S_r. 2: apply list_lookup_insert; bv_solve.
-    erewrite take_S_r; [|done].
-    rewrite take_insert; [|lia].
+  - erewrite take_S_r. 2: { erewrite <- list_lookup_insert; do 2 f_equal; bv_solve. }
+    erewrite take_S_r. 2: { rewrite <- H10. f_equal. bv_solve. }
+    rewrite take_insert; [|bv_solve].
     f_equal; [done|]. f_equal. bv_solve.
 (*PROOF_END*)
 Time Qed.

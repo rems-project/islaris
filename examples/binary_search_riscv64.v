@@ -184,12 +184,11 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  liInst Hevar (Z.to_nat (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2)).
-  liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   all: try (rename select (_ ↔ R _ _) into HR).
   all: try (rewrite bv_sign_extend_idemp bv_add_0_r in HR; [|done]).
+  - apply Z.mod_divide; [lia|bv_solve].
   - bv_simplify_arith select (_ >= _).
     apply: binary_search_cond_2; [solve_goal..| bv_solve].
   - bv_simplify_arith select (¬ (_ >= _)). bv_solve.

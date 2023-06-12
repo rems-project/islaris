@@ -92,8 +92,7 @@ Definition hello_spec_trace : list seq_label → Prop :=
   scons (SInstrTrap (BV 64 0x0000000010300020)) $
   snil.
 
-Definition hello_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
-  ∃ (i : nat),
+Definition hello_loop_spec `{!islaG Σ} `{!threadG} (i : nat): iProp Σ :=
   ⌜i + 1 < length hello_world_string⌝ ∗
   reg_col sys_regs ∗
   0x0000000010300690 ↦ₘ∗ hello_world_string ∗
@@ -106,49 +105,54 @@ Definition hello_loop_spec `{!islaG Σ} `{!threadG} : iProp Σ :=
 
 Arguments hello_loop_spec /.
 
-Lemma hello_loop `{!islaG Σ} `{!threadG} :
+Lemma Z_to_bv_eq_bv (n : N) (z : Z) (_ : BvWf n z) : Z_to_bv n z = BV n z.
+Proof. bv_solve. Qed.
+
+Lemma hello_loop `{!islaG Σ} `{!threadG} (i : nat):
+  mmio_range 0x101f1000 0x10 -∗
   instr 0x0000000010300014 (Some a14) -∗
   instr 0x0000000010300018 (Some a18) -∗
   instr 0x000000001030001c (Some a1c) -∗
   instr 0x0000000010300020 None -∗
-  □ instr_pre 0x0000000010300014 hello_loop_spec -∗
-  mmio_range 0x101f1000 0x10 -∗
-  instr_body 0x0000000010300014 hello_loop_spec.
+  □ instr_pre 0x0000000010300014 (hello_loop_spec (S i)) -∗
+  instr_body 0x0000000010300014 (hello_loop_spec i).
 Proof.
   iStartProof.
-  Time repeat liAStep; liShow.
-  erewrite drop_S; csimpl.
-  2: { apply: list_lookup_lookup_total_lt => /=. lia. }
-  Time repeat liAStep; liShow.
-  liInst Hevar (S i)%nat.
-  Time repeat liAStep; liShow.
-  liInst Hevar (S i)%nat.
-  Time repeat liAStep; liShow.
+  liARun.
+  erewrite drop_S; csimpl. 2: { apply: list_lookup_lookup_total_lt => /=. lia. }
+  liARun.
 
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
-  - rewrite lookup_total_take /=; [|lia]. bv_solve.
-  - have ? : i = 13%nat. {
-      rename select (bv_concat _ _ _ = _) into Heq.
-      revert select (_ !! i = Some vmem). move: Heq. clear => ??.
-      by repeat (destruct i; simplify_eq/=).
+  all: bv_simplify.
+  - f_equal. f_equal. repeat (destruct i; simpl; [reflexivity|]); lia.
+  - auto with zarith.
+  - have ? : i < 13%nat. {
+      repeat (destruct i; [lia|]).
+      have ?: i = 0%nat by lia. subst. simpl in H1.
+      injection H1 as ?. subst.
+      bv_simplify H3.
+      contradiction.
     }
-    subst. rewrite drop_ge //. normalize_and_simpl_goal => //. bv_solve.
-  - rename select (bv_concat _ _ _ ≠ _) into Hneq.
-    bv_simplify Hneq.
-    revert select (_ !! i = Some vmem). move: Hneq. clear => ??.
-    by repeat (destruct i; simplify_eq/=).
-  - erewrite list_lookup_total_correct; [|done]. bv_solve.
+    lia.
+  - ring_simplify (271582864 + i + 1 - 271582864) in H1. rewrite Z.div_1_r in H1.
+    apply list_lookup_total_correct in H1. subst.
+    repeat (destruct i; simpl; [bv_solve|try lia]).
+  - bv_simplify H1.
+    repeat (destruct i; [set_solver|]).
+    have ?: i = 0%nat by lia. subst.
+    rewrite Z_to_bv_eq_bv.
+    reflexivity.
 Time Qed.
 
 
-Lemma hello `{!islaG Σ} `{!threadG} :
+Lemma hello `{!islaG Σ} `{!threadG}:
   instr 0x0000000010300000 (Some a0) -∗
   instr 0x0000000010300004 (Some a4) -∗
   instr 0x0000000010300008 (Some a8) -∗
   instr 0x000000001030000c (Some ac) -∗
   instr 0x0000000010300010 (Some a10) -∗
-  □ instr_pre 0x0000000010300014 hello_loop_spec -∗
+  □ instr_pre 0x0000000010300014 (hello_loop_spec 0) -∗
   instr_body 0x0000000010300000 (
     reg_col sys_regs ∗
     0x0000000010300690 ↦ₘ∗ hello_world_string ∗
@@ -163,8 +167,6 @@ Lemma hello `{!islaG Σ} `{!threadG} :
     .
 Proof.
   iStartProof.
-  Time repeat liAStep; liShow.
-  liInst Hevar 0%nat.
   Time repeat liAStep; liShow.
   Unshelve. all: prepare_sidecond.
   all: bv_simplify; try done.
