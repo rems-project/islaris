@@ -125,7 +125,6 @@ Proof.
   all: try bv_solve.
   all: try bv_simplify_arith select (bv_extract _ _ _ ≠ _).
   all: try bv_simplify_arith select (bv_extract _ _ _ = _).
-  1,2: auto with zarith.
   - rewrite insert_length. bv_solve.
   - bv_solve.
   - bv_simplify.

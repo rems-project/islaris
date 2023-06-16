@@ -103,7 +103,6 @@ Proof.
   all: try bv_simplify select (bv_add n _ ≠ _).
   all: try rewrite insert_length.
   all: try bv_solve.
-  1,2: auto with zarith.
   - rewrite -(take_drop i (<[_ := _]> dstdata)).
     rewrite -(take_drop i srcdata).
     f_equal.

@@ -239,7 +239,7 @@ Proof.
             match type of HR with | (Is_true ?b) ↔ _ => rename b into bres end).
   - bv_solve.
   - bv_solve.
-  - apply Z.mod_divide; [lia|bv_solve].
+  - bv_solve.
   - bv_solve.
   - bv_solve.
   - bv_simplify_arith select (ite _ _ _ ≠ ite _ _ _).

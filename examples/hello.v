@@ -105,9 +105,6 @@ Definition hello_loop_spec `{!islaG Σ} `{!threadG} (i : nat): iProp Σ :=
 
 Arguments hello_loop_spec /.
 
-Lemma Z_to_bv_eq_bv (n : N) (z : Z) (_ : BvWf n z) : Z_to_bv n z = BV n z.
-Proof. bv_solve. Qed.
-
 Lemma hello_loop `{!islaG Σ} `{!threadG} (i : nat):
   mmio_range 0x101f1000 0x10 -∗
   instr 0x0000000010300014 (Some a14) -∗
@@ -125,24 +122,17 @@ Proof.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   all: bv_simplify.
-  - f_equal. f_equal. repeat (destruct i; simpl; [reflexivity|]); lia.
-  - auto with zarith.
-  - have ? : i < 13%nat. {
-      repeat (destruct i; [lia|]).
-      have ?: i = 0%nat by lia. subst. simpl in H1.
-      injection H1 as ?. subst.
-      bv_simplify H3.
-      contradiction.
-    }
-    lia.
-  - ring_simplify (271582864 + i + 1 - 271582864) in H1. rewrite Z.div_1_r in H1.
-    apply list_lookup_total_correct in H1. subst.
-    repeat (destruct i; simpl; [bv_solve|try lia]).
-  - bv_simplify H1.
-    repeat (destruct i; [set_solver|]).
-    have ?: i = 0%nat by lia. subst.
-    rewrite Z_to_bv_eq_bv.
-    reflexivity.
+  - rewrite lookup_total_take /=; [|lia]. bv_solve.
+  - repeat (destruct i; [lia|]). destruct i; [|lia]. exfalso.
+    revert select (_ !! _ = Some _). vm_compute. move => [?]. subst.
+    by bv_simplify select (_ ≠ _).
+  - revert select (_ !! _ = Some _). move => /(list_lookup_total_correct _ _ _) <-.
+    repeat (destruct i; [by vm_compute|try lia]).
+  - rewrite drop_ge /=. { normalize_and_simpl_goal. bv_solve. }
+    revert select (_ !! _ = Some _). bv_simplify.
+    move => /(list_lookup_total_correct _ _ _) ?. subst.
+    revert select (_ = BV 32 0).
+    repeat (destruct i; [by vm_compute|try lia]).
 Time Qed.
 
 
