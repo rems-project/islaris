@@ -184,8 +184,6 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  liInst Hevar (Z.to_nat (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2)).
-  liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   all: try (rename select (_ ↔ R _ _) into HR).
