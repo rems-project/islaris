@@ -30,7 +30,7 @@ sail: sail-$(SAIL_COMMIT).tar.gz
 .PHONY: sail
 
 sail-riscv-coq: bbv sail
-	opam pin add coq-sail-riscv 'git+https://github.com/bacam/sail-riscv#a3f04c99477bba10758cef150e7cacf80a57b45d' -n
+	opam pin add coq-sail-riscv 'git+https://github.com/riscv/sail-riscv#17a9929821470e119a6d5b4359d0a51d6dae6679' -n
 	opam install coq-sail-riscv
 .PHONY: sail-riscv-coq
 

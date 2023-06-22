@@ -158,7 +158,7 @@ Lemma regstate_eta (regs : regstate) :
     marchid := marchid regs;
     mimpid := mimpid regs;
     mvendorid := mvendorid regs;
-    minstret_written := minstret_written regs;
+    minstret_increment := minstret_increment regs;
     minstret := minstret regs;
     mtime := mtime regs;
     mcycle := mcycle regs;
@@ -687,7 +687,7 @@ Definition riscv_regs := [
   ("marchid", RegRef marchid_ref);
   ("mimpid", RegRef mimpid_ref);
   ("mvendorid", RegRef mvendorid_ref);
-  ("minstret_written", RegRef minstret_written_ref);
+  ("minstret_increment", RegRef minstret_increment_ref);
   ("minstret", RegRef minstret_ref);
   ("mtime", RegRef mtime_ref);
   ("mcycle", RegRef mcycle_ref);

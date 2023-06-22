@@ -101,12 +101,12 @@ Proof. spec_solver. Qed.
 
 (* This is unsafe due to the κs' = [] ∨ ... in scons. *)
 Global Instance simpl_and_scons_subseteq κ1 κ2 Pκs1 Pκs2:
-  SimplAndUnsafe true (scons κ1 Pκs1 ⊆ scons κ2 Pκs2) (λ T, κ1 = κ2 ∧ Pκs1 ⊆ Pκs2 ∧ T).
+  SimplAndUnsafe (scons κ1 Pκs1 ⊆ scons κ2 Pκs2) (λ T, κ1 = κ2 ∧ Pκs1 ⊆ Pκs2 ∧ T).
 Proof. move => ?. spec_solver. Qed.
 
 (* Unsafe since there might be multiple different choices for x for different traces. *)
 Global Instance simpl_and_scons_subseteq_sexists {A} κ1 Pκs1 Pκs2:
-  SimplAndUnsafe true (scons κ1 Pκs1 ⊆ sexists Pκs2) (λ T, ∃ x : A, scons κ1 Pκs1 ⊆ Pκs2 x ∧ T).
+  SimplAndUnsafe (scons κ1 Pκs1 ⊆ sexists Pκs2) (λ T, ∃ x : A, scons κ1 Pκs1 ⊆ Pκs2 x ∧ T).
 Proof. move => ?. spec_solver. Qed.
 
 Global Instance simpl_and_scons_subseteq_srec κ1 Pκs1 Prec `{!MonoPred Prec}:
@@ -114,5 +114,5 @@ Global Instance simpl_and_scons_subseteq_srec κ1 Pκs1 Prec `{!MonoPred Prec}:
 Proof. split; move => [??]; (split; [|done]) => ??; apply/least_fixpoint_unfold; spec_solver. Qed.
 
 Global Instance simpl_and_spec_subseteq_evar (Pκs1 Pκs2 : spec) `{!IsProtected Pκs1}:
-  SimplAndUnsafe true (Pκs1 ⊆ Pκs2) (λ T, Pκs1 = Pκs2 ∧ T).
+  SimplAndUnsafe (Pκs1 ⊆ Pκs2) (λ T, Pκs1 = Pκs2 ∧ T).
 Proof. move => ?. spec_solver. Qed.
