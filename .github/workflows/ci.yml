@@ -46,5 +46,6 @@ jobs:
 
       - name: Run CI
         run: |
+          export CI_PROJECT_DIR="$(pwd)"
           git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
           ci/buildjob
