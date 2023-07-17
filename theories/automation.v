@@ -638,6 +638,9 @@ Ltac check_injection_hook ::=
   | |- _ => idtac
   end.
 
+(* TODO: enable liToSyntax *)
+Ltac liToSyntax_hook ::= fail.
+
 Ltac prepare_sidecond :=
   unshelve_sidecond; unLET; normalize_and_simpl_goal => //=.
 

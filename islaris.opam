@@ -11,13 +11,13 @@ synopsis: "Islaris assembly verification tool"
 
 depends: [
   "coq" { (= "8.17.0") | (= "dev") }
-  "coq-lithium" { (= "dev.2023-06-16.0.644a1fb3") | (= "dev") }
+  "coq-lithium" { (= "dev.2023-07-17.1.48385a7e") | (= "dev") }
   "coq-stdpp-unstable"
   "coq-record-update" { (= "0.3.0") | (= "dev") }
   "cmdliner" {= "1.0.4"}
   "pprint"
   "integers"
-  "dune" {= "3.3.1"} # dune updates like to break things so we fix a version
+  "dune" {= "3.9.1"} # dune updates like to break things so we fix a version
   "pprint" {>= "20171003"}
   "menhir" {build}
   "ott" {>= "0.31" & build}

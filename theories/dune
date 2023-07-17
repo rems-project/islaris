@@ -3,7 +3,7 @@
  (package islaris)
  (flags :standard -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "Coq Isla")
- (theories ))
+ (theories lithium iris stdpp RecordUpdate Ltac2))
 
 (rule
  (target isla-lang.share)
