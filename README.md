@@ -10,7 +10,7 @@ aarch64-linux-gnu-as (`binutils-aarch64-linux-gnu` package on Debian) and
 riscv64-linux-gnu-as (`binutils-riscv64-linux-gnu` package on Debian).
 
 ```
-opam switch create . ocaml-base-compiler.4.12.0 --no-install
+opam switch create . ocaml-variants.4.14.0+options ocaml-option-flambda --no-install
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
 make builddep
