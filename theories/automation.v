@@ -363,6 +363,13 @@ Next Obligation.
   apply eval_exp'_sound. naive_solver.
 Qed.
 
+(* TODO: one could use vm_compute instead of lazy here by
+parametrizing eval_exp' by the operations that vm_compute should not
+reduce (e.g., bv_add) and then generalizing them (and all part of the
+goal that should not be reduced) before calling vm_compute. Also
+vm_compute does not reduce in parameters of inductions, but unclear if
+this is useful (if one defines a function [Definition test_to_A {A} (x : A) (X : test x) : A := x],
+then vm_compute still reduces x). *)
 Ltac solve_compute_wp_exp :=
   let H := fresh in move => ? H;
   lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv decide decide_rel BinNat.N.eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect BinPos.Pos.eq_dec Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
