@@ -374,7 +374,7 @@ let opts_config : config Term.t =
     {input_file; mode}
   in
   let open Term in
-  pure build $ no_simp $ arch $ output $ def_name $ mode_flag $ coq_prefix $ j
+  const build $ no_simp $ arch $ output $ def_name $ mode_flag $ coq_prefix $ j
     $ input_file
 
 let cmd =
@@ -384,10 +384,11 @@ let cmd =
      mode, used to process and annotated object dump file."
   in
   let exits =
-    Term.exit_info ~doc:"on fatal errors." 1 ::
-    Term.default_exits
+    Cmd.Exit.info ~doc:"on fatal errors." 1 ::
+    Cmd.Exit.defaults
   in
-  (Term.(pure run $ opts_config), Term.info "islaris" ~doc ~exits ~version)
+  let info = Cmd.info "islaris" ~doc ~exits ~version in
+  let term = Term.(const run $ opts_config) in
+  Cmd.v info term
 
-let _ =
-  Term.(exit @@ eval cmd)
+let _ = exit @@ Cmd.eval cmd
