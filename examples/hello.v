@@ -116,7 +116,8 @@ Lemma hello_loop `{!islaG Σ} `{!threadG} (i : nat):
 Proof.
   iStartProof.
   liARun.
-  erewrite drop_S; csimpl. 2: { apply: list_lookup_lookup_total_lt => /=. lia. }
+  erewrite (drop_S hello_world_string_printed); csimpl.
+  2: { apply: list_lookup_lookup_total_lt => /=. lia. }
   liARun.
 
   Unshelve. all: prepare_sidecond.

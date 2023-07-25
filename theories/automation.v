@@ -178,44 +178,43 @@ Global Instance simpl_SInstrTrap a1 a2:
 Proof. split; naive_solver. Qed.
 
 Global Instance simpl_impl_valu_has_shape_mask v n m z:
-  SimplImpl true (valu_has_shape v (MaskShape n m z))
-        (λ T, ∀ b : bv n, v = RVal_Bits b → Z.land (bv_unsigned b) m = z → T).
-Proof. move => ?. split; [| naive_solver]. move => Hb /valu_has_mask_shape. naive_solver. Qed.
+  SimplImpl (valu_has_shape v (MaskShape n m z))
+        (∃ b : bv n, v = RVal_Bits b ∧ Z.land (bv_unsigned b) m = z).
+Proof. split; [naive_solver|]. move => /valu_has_mask_shape. naive_solver. Qed.
 Global Instance simpl_impl_valu_has_shape_bits v n:
-  SimplImpl true (valu_has_shape v (BitsShape n)) (λ T, ∀ b : bv n, v = RVal_Bits b → T).
-Proof. move => ?. split; [| naive_solver]. move => Hb /valu_has_bits_shape. naive_solver. Qed.
+  SimplImpl (valu_has_shape v (BitsShape n)) (∃ b : bv n, v = RVal_Bits b).
+Proof. split; [naive_solver|]. move => /valu_has_bits_shape. naive_solver. Qed.
 (* unsafe because proving both directions is annoying *)
 Global Instance simpl_impl_valu_struct_shape v ss :
-  SimplImplUnsafe true (valu_has_shape v (StructShape ss)) (λ T,
-    foldr (λ s (T : _ → Prop) rs, ∀ v, valu_has_shape v s.2 → T (rs ++ [(s.1, v)])) (λ rs, v = RegVal_Struct rs → T) ss []).
+  SimplImplUnsafe true (valu_has_shape v (StructShape ss)) (foldr (λ s (T : _ → Prop) rs, ∃ v, valu_has_shape v s.2 ∧ T (rs ++ [(s.1, v)])) (λ rs, v = RegVal_Struct rs) ss []).
 Proof.
-  move => T. move Hrs': {2}[] => rs'.
-  destruct v as [| | | | | | rs | |] => //= Hfold [Hlen /Forall_fold_right Hall].
+  unfold SimplImplUnsafe. move Hrs': {2}[] => rs'.
+  destruct v as [| | | | | | rs | |] => //= -[Hlen /Forall_fold_right Hall].
   have Hrs: rs = rs' ++ rs by simplify_list_eq. clear Hrs'.
-  elim: ss {1 3 5}rs rs' Hlen Hrs Hfold Hall.
-  { move => []//= ? ? ->. rewrite app_nil_r. naive_solver. }
-  move => [??] ss IH [|[??]?]//= ? [?] ? Hfold /list.Forall_cons[[??]?]. simplify_eq/=.
-  apply: IH; [done| | by apply: Hfold |done]. by simplify_list_eq.
+  elim: ss {1 3 4}rs rs' Hlen Hrs Hall.
+  { move => []//=?? ->. rewrite app_nil_r. naive_solver. }
+  move => [??] ss IH [|[??]?]//= ? [?] ? /list.Forall_cons[[??]?]. simplify_eq/=.
+  eexists _. split; [done|]. apply: IH; [done| |done]. by simplify_list_eq.
 Qed.
 
 Global Instance simpl_and_bv_and_0xfff0000000000000 b :
-  SimplAnd (bv_and b (BV 64 0xfff0000000000000) = (BV 64 0)) (λ T, bv_unsigned b < 2 ^ 52 ∧ T).
+  SimplAnd (bv_and b (BV 64 0xfff0000000000000) = (BV 64 0)) (bv_unsigned b < 2 ^ 52).
 Proof.
-  split; move => [Hb ?]; split => //.
+  split; move => Hb.
   - bv_simplify. bitblast. eapply Z.bounded_iff_bits_nonneg; [| |done|]; bv_solve.
   - eapply Z.bounded_iff_bits_nonneg; [lia | bv_solve|] => l ?. bitblast.
     bv_simplify Hb. by bitblast Hb with l.
 Qed.
 
 Global Instance simpl_and_bv_and_0xfff0000000000007 b :
-  SimplAnd (bv_and b (BV 64 0xfff0000000000007) = (BV 64 0)) (λ T, bv_unsigned b < 2 ^ 52 ∧ bv_unsigned b `mod` 8 = 0 ∧ T).
+  SimplAnd (bv_and b (BV 64 0xfff0000000000007) = (BV 64 0)) (bv_unsigned b < 2 ^ 52 ∧ bv_unsigned b `mod` 8 = 0).
 Proof.
   split.
-  - move => [Hb [Hmod ?]]; split => //.
+  - move => [Hb Hmod].
     bv_simplify. bitblast as i.
     + by bitblast Hmod with i.
     + eapply Z.bounded_iff_bits_nonneg; [| |done|]; bv_solve.
-  - move => [Hb ?]. bv_simplify Hb. split_and!; [..|done].
+  - move => Hb. bv_simplify Hb. split.
     + eapply Z.bounded_iff_bits_nonneg; [lia|bv_solve|] => l ?. bitblast.
       by bitblast Hb with l.
     + bitblast as i. by bitblast Hb with i.

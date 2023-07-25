@@ -244,6 +244,8 @@ Proof.
   - bv_solve.
   - bv_simplify_arith select (ite _ _ _ ≠ ite _ _ _).
     destruct bres; simpl in *; bv_solve.
+  - bv_simplify_arith select (ite _ _ _ ≠ ite _ _ _).
+    destruct bres; simpl in *; bv_solve.
   - bv_simplify_arith select (i < _).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
