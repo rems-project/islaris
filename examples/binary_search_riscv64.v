@@ -80,7 +80,7 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  liInst Hevar (bv_unsigned b10 <=? bv_unsigned b11). rewrite Zleb_bool_decide.
+  liInst (λ x, x.1ₗ = (bv_unsigned b10 <=? bv_unsigned b11)). rewrite Zleb_bool_decide.
   liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
@@ -184,12 +184,20 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
+  (* TODO: This is necessary because Lithium does not support sharing evars between subgoals. *)
+  all: liInst (λ x, comp_spec stack_size R P = comp_spec x.3ₗ x.2ₗ x.1ₗ).
+  all: liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   all: try (rename select (_ ↔ R _ _) into HR).
   all: try (rewrite bv_sign_extend_idemp bv_add_0_r in HR; [|done]).
   - bv_simplify_arith select (_ >= _).
     apply: binary_search_cond_2; [solve_goal..| bv_solve].
+  - bv_simplify_arith select (_ < _).
+    apply: binary_search_cond_1; [solve_goal..| bv_solve].
+  - bv_simplify_arith select (_ ≤ _).
+    bv_simplify_arith select (¬ (_ < _)).
+    naive_solver bv_solve.
   - bv_simplify_arith select (¬ (_ >= _)). bv_solve.
   - bv_simplify_arith select (¬ (_ >= _)).
     bv_simplify_arith select (_ ≤ _).
@@ -197,11 +205,6 @@ Proof.
   - bv_simplify_arith select (_ < _). bv_solve.
   - bv_simplify_arith select (_ < _).
     apply: binary_search_cond_1; [solve_goal..| bv_solve].
-  - bv_simplify_arith select (_ < _).
-    apply: binary_search_cond_1; [solve_goal..| bv_solve].
-  - bv_simplify_arith select (_ ≤ _).
-    bv_simplify_arith select (¬ (_ < _)).
-    naive_solver bv_solve.
 (*PROOF_END*)
 Time Qed.
 
@@ -264,6 +267,8 @@ Lemma binary_search stack_size :
 Proof.
 (*PROOF_START*)
   move => ?. iStartProof.
+  liARun.
+  liInst (λ x, comp_spec stack_size R P = comp_spec x.3ₗ x.2ₗ x.1ₗ).
   liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.

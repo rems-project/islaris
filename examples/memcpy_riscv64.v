@@ -95,7 +95,7 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  liInst Hevar5 (S i).
+  liInst (λ x, x.1ₗ = (S i)).
   liARun.
 
   Unshelve. all: prepare_sidecond.
@@ -148,7 +148,7 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  liInst Hevar5 0%nat.
+  liInst (λ x, x.1ₗ = 0%nat).
   liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.

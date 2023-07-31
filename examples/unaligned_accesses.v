@@ -245,8 +245,8 @@ Proof.
   rewrite /pstate_to_reg_col /spsr_of_pstate /=. move => *.
   iStartProof.
   liARun.
-  - liInst Hevar false. liARun.
-  - liInst Hevar true.  liARun.
+  - liInst (λ x, x.1ₗ = false). liARun.
+  - liInst (λ x, x.1ₗ = true). liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
   all: bv_simplify; f_equal.

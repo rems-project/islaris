@@ -113,6 +113,6 @@ Global Instance simpl_and_scons_subseteq_srec κ1 Pκs1 Prec `{!MonoPred Prec}:
   SimplAnd (scons κ1 Pκs1 ⊆ srec Prec) (scons κ1 Pκs1 ⊆ Prec (srec Prec)).
 Proof. split; move => ???; apply/least_fixpoint_unfold; spec_solver. Qed.
 
-Global Instance simpl_and_spec_subseteq_evar (Pκs1 Pκs2 : spec) `{!IsProtected Pκs1}:
+Global Instance simpl_and_spec_subseteq_evar (Pκs1 Pκs2 : spec) `{!IsEx Pκs1}:
   SimplAndUnsafe (Pκs1 ⊆ Pκs2) (Pκs1 = Pκs2).
 Proof. move => ?. spec_solver. Qed.
