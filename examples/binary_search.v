@@ -234,8 +234,6 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  liInst (λ x, comp_spec stack_size R P = comp_spec x.3ₗ x.2ₗ x.1ₗ).
-  liARun.
   Unshelve. all: prepare_sidecond.
   all: try (rename select (_ ↔ R _ _) into HR; rewrite bv_or_0_l in HR; [|done];
             match type of HR with | (Is_true ?b) ↔ _ => rename b into bres end).
@@ -244,6 +242,18 @@ Proof.
   - bv_solve.
   - bv_solve.
   - bv_solve.
+  - bv_simplify_arith select (ite _ _ _ ≠ ite _ _ _).
+    destruct bres; simpl in *; bv_solve.
+  - bv_simplify_arith select (ite _ _ _ ≠ ite _ _ _).
+    destruct bres; simpl in *; bv_solve.
+  - bv_simplify_arith select (i < _).
+    destruct bres; simpl in *; eauto.
+    apply: binary_search_cond_1; [solve_goal..|].
+    bv_solve.
+  - bv_simplify_arith select (_ ≤ i).
+    destruct bres; simpl in *; eauto.
+    apply: binary_search_cond_2; [solve_goal..|].
+    bv_solve.
   - bv_simplify_arith select (i < _).
     destruct bres; simpl in *; eauto.
     apply: binary_search_cond_1; [solve_goal..|].
@@ -260,18 +270,6 @@ Proof.
   - bv_simplify_arith select (¬ _ ≤ _).
     bv_simplify_arith select (_ ≤ i).
     destruct bres; simpl in *; bv_solve.
-  - bv_simplify_arith select (ite _ _ _ ≠ ite _ _ _).
-    destruct bres; simpl in *; bv_solve.
-  - bv_simplify_arith select (ite _ _ _ ≠ ite _ _ _).
-    destruct bres; simpl in *; bv_solve.
-  - bv_simplify_arith select (i < _).
-    destruct bres; simpl in *; eauto.
-    apply: binary_search_cond_1; [solve_goal..|].
-    bv_solve.
-  - bv_simplify_arith select (_ ≤ i).
-    destruct bres; simpl in *; eauto.
-    apply: binary_search_cond_2; [solve_goal..|].
-    bv_solve.
 (*PROOF_END*)
 Time Qed.
 
@@ -327,8 +325,6 @@ Lemma binary_search stack_size :
 Proof.
 (*PROOF_START*)
   move => ?. iStartProof.
-  liARun.
-  liInst (λ x, comp_spec stack_size R P = comp_spec x.3ₗ x.2ₗ x.1ₗ).
   liARun.
   Unshelve. all: prepare_sidecond.
   all: try rewrite ->@bv_or_0_l in * by done.
