@@ -14,7 +14,7 @@ depends: [
   "coq-lithium" { (= "dev.2023-08-14.1.766a0051") | (= "dev") }
   "coq-stdpp-unstable"
   "coq-record-update" { (= "0.3.0") | (= "dev") }
-  "cmdliner" {= "1.0.4"}
+  "cmdliner" {>= "1.1.0"}
   "pprint"
   "integers"
   "dune" {= "3.9.1"} # dune updates like to break things so we fix a version
