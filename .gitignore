@@ -22,6 +22,7 @@ _opam*
 /sail-riscv/bbv/
 /sail-riscv/coq/
 *.isla
+fromCN/
 /data.json
 /deps/*.tar.gz
 /deps/bbv/
