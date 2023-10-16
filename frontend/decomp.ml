@@ -269,6 +269,7 @@ let run no_simp arch name_template output_dir coq_prefix nb_jobs input_file =
   no_aggressive_simplification := no_simp;
   (* Process the decompilation file. *)
   let lines = Parse_dump.parse input_file in
+  let lines = Constraint_heuristics.dosth lines in
   (* Run isla-footprint on the instructions. *)
   let build_task = build_task arch name_template output_dir in
   run_tasks nb_jobs (List.map build_task lines);
