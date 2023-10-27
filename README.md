@@ -10,10 +10,9 @@ aarch64-linux-gnu-as (`binutils-aarch64-linux-gnu` package on Debian) and
 riscv64-linux-gnu-as (`binutils-riscv64-linux-gnu` package on Debian).
 
 ```
-opam switch create . ocaml-base-compiler.4.12.0 --no-install
+opam switch create . ocaml-variants.4.14.0+options ocaml-option-flambda --no-install
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
-opam pin add -n -y isla-lang "git+https://git@github.com/rems-project/isla-lang.git"
 make builddep
 ```
 
@@ -30,6 +29,12 @@ git clone https://github.com/rems-project/isla-snapshots.git
 ```
 (Alternatively, one can also set the "ISLA_REPO" and "ISLA_SNAP_REPO" environment variables
 to point to a working checkout of Isla resp. Isla snapshots.)
+
+The following commits of isla and isla-snapshots are tested:
+```
+isla: 8325ef10e6c5dea8bf73cb255746f815169c974f
+isla-snapshots: b948da37487479ea470e735ea158d62f73bf314f (riscv snapshot is outdated and does not work with isla)
+```
 
 Once all needed libraries have been installed, Islaris can be built by running `make` from its root directory.
 
@@ -144,4 +149,3 @@ the European Union’s Horizon 2020 research and innovation programme
 Government Industrial Strategy Challenge Fund (ISCF) under the Digital
 Security by Design (DSbD) Programme, to deliver a DSbDtech enabled
 digital platform (grant 105694), and in part funded by Google.
-

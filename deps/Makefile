@@ -1,52 +1,40 @@
-BBV_COMMIT=d5ab9c04db85eb85688816dc687d118000a65736
-SAIL_RISCV_COMMIT=50f4bbaa5bd397ff5a71b7b39fa543d656934b80
+SAIL_COMMIT=605cd3cffe4b18fb5d0a99beef5d6ee33e1a7dcb
+BBV_COMMIT=6144e214583b72182a4ed89e4328ea62ba766e2e
 
-all: sail-riscv
+all: sail-riscv-coq
 .PHONY: all
+
+sail-%.tar.gz:
+	wget "https://github.com/rems-project/sail/archive/$*.tar.gz" -O $@
 
 bbv-%.tar.gz:
 	wget "https://github.com/mit-plv/bbv/archive/$*.tar.gz" -O $@
 
+# TODO: maybe add opam install z3?
 bbv: bbv-$(BBV_COMMIT).tar.gz
-	rm -rf bbv
+	rm -rf coq-bbv
 	tar xf bbv-$(BBV_COMMIT).tar.gz
-	mv "bbv-${BBV_COMMIT}" bbv
-	$(MAKE) -C bbv
-	$(MAKE) -C bbv install
+	mv "bbv-${BBV_COMMIT}" coq-bbv
+	cp coq-bbv-1.3.opam coq-bbv/opam
+	opam pin add ./coq-bbv -n
 .PHONY: bbv
 
-sail-riscv-%.tar.gz:
-	wget "https://github.com/riscv/sail-riscv/archive/$*.tar.gz" -O $@
+# TODO: maybe add opam install z3?
+sail: sail-$(SAIL_COMMIT).tar.gz
+	rm -rf sail
+	tar xf sail-$(SAIL_COMMIT).tar.gz
+	mv "sail-${SAIL_COMMIT}" sail
+	opam pin add ./sail -n
+	sed -i 's#make "-C" "lib/coq"#make "-C" "."#g' ./sail/lib/coq/coq-sail.opam
+	opam pin add coq-sail ./sail/lib/coq -n
+.PHONY: sail
 
-# patch generated via git diff -p -w --ignore-blank-lines . > sail-riscv.patch
-sail-riscv-build: bbv sail-riscv-$(SAIL_RISCV_COMMIT).tar.gz
-	rm -rf sail-riscv
-	tar xf sail-riscv-$(SAIL_RISCV_COMMIT).tar.gz
-	mv "sail-riscv-${SAIL_RISCV_COMMIT}/prover_snapshots/coq" sail-riscv
-	rm -r "sail-riscv-${SAIL_RISCV_COMMIT}"
-	(cd .. && git apply deps/sail-riscv.patch) # Must be applied from the root for paths in the patch to be correct
-	sed -i s/omega/lia/ sail-riscv/RV32/riscv_extras.v
-	sed -i s/omega/lia/ sail-riscv/RV64/riscv_extras.v
-	sed -i s/omega/lia/ sail-riscv/duopod/riscv_extras.v
-	chmod a+x sail-riscv/build
-	cd sail-riscv && ./build
-.PHONY: sail-riscv-build
-
-# This must be a separate goal for the wildcard to be evaluated correctly
-sail-riscv: sail-riscv-build
-	rm -rf "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/Sail"
-	install -m a+rw -D -t "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/Sail" $(wildcard sail-riscv/lib/sail/*.v) $(wildcard sail-riscv/lib/sail/*.vo)
-	rm -rf "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/RV32"
-	install -m a+rw -D -t "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/RV32" $(wildcard sail-riscv/RV32/*.v) $(wildcard sail-riscv/RV32/*.vo)
-	rm -rf "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/RV64"
-	install -m a+rw -D -t "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/RV64" $(wildcard sail-riscv/RV64/*.v) $(wildcard sail-riscv/RV64/*.vo)
-	rm -rf "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/RVduopod"
-	install -m a+rw -D -t "$(OPAM_SWITCH_PREFIX)/lib/coq/user-contrib/RVduopod" $(wildcard sail-riscv/duopod/*.v) $(wildcard sail-riscv/duopod/*.vo)
-.PHONY: sail-riscv
-
-sources: bbv-$(BBV_COMMIT).tar.gz sail-riscv-$(SAIL_RISCV_COMMIT).tar.gz
+sail-riscv-coq: bbv sail
+	opam pin add coq-sail-riscv 'git+https://github.com/riscv/sail-riscv#17a9929821470e119a6d5b4359d0a51d6dae6679' -n
+	opam install coq-sail-riscv
+.PHONY: sail-riscv-coq
 
 clean:
 	rm -rf *.tar.gz
-	rm -rf bbv sail-riscv
+	rm -rf sail
 .PHONY: clean

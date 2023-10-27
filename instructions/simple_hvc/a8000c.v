@@ -16,44 +16,43 @@ Definition a8000c : isla_trace :=
   AssumeReg "SCR_EL3" [] (RegVal_Base (Val_Bits (BV 32%N 0x501%Z))) Mk_annot :t:
   AssumeReg "SCTLR_EL1" [] (RegVal_Base (Val_Bits (BV 64%N 0x4000002%Z))) Mk_annot :t:
   AssumeReg "SCTLR_EL2" [] (RegVal_Base (Val_Bits (BV 64%N 0x4000002%Z))) Mk_annot :t:
+  Smt (DeclareConst 55%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  ReadReg "CPTR_EL2" [] (RegVal_Base (Val_Symbolic 55%Z)) Mk_annot :t:
+  Smt (DeclareConst 57%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  ReadReg "CPTR_EL3" [] (RegVal_Base (Val_Symbolic 57%Z)) Mk_annot :t:
+  Smt (DeclareConst 62%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  ReadReg "CPACR_EL1" [] (RegVal_Base (Val_Symbolic 62%Z)) Mk_annot :t:
+  Smt (DeclareConst 66%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  ReadReg "CNTHCTL_EL2" [] (RegVal_Base (Val_Symbolic 66%Z)) Mk_annot :t:
   Smt (DeclareConst 69%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "CPTR_EL2" [] (RegVal_Base (Val_Symbolic 69%Z)) Mk_annot :t:
-  Smt (DeclareConst 71%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "CPTR_EL3" [] (RegVal_Base (Val_Symbolic 71%Z)) Mk_annot :t:
-  Smt (DeclareConst 76%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "CPACR_EL1" [] (RegVal_Base (Val_Symbolic 76%Z)) Mk_annot :t:
-  Smt (DeclareConst 84%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "CNTHCTL_EL2" [] (RegVal_Base (Val_Symbolic 84%Z)) Mk_annot :t:
-  Smt (DeclareConst 87%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "ICC_SRE_EL2" [] (RegVal_Base (Val_Symbolic 87%Z)) Mk_annot :t:
+  ReadReg "ICC_SRE_EL2" [] (RegVal_Base (Val_Symbolic 69%Z)) Mk_annot :t:
+  Smt (DeclareConst 72%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  ReadReg "CNTKCTL_EL1" [] (RegVal_Base (Val_Symbolic 72%Z)) Mk_annot :t:
+  Smt (DeclareConst 79%Z (Ty_BitVec 64%N)) Mk_annot :t:
+  ReadReg "MPAM2_EL2" [] (RegVal_Base (Val_Symbolic 79%Z)) Mk_annot :t:
   Smt (DeclareConst 90%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "CNTKCTL_EL1" [] (RegVal_Base (Val_Symbolic 90%Z)) Mk_annot :t:
-  Smt (DeclareConst 97%Z (Ty_BitVec 64%N)) Mk_annot :t:
-  ReadReg "MPAM2_EL2" [] (RegVal_Base (Val_Symbolic 97%Z)) Mk_annot :t:
-  Smt (DeclareConst 108%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "ICH_HCR_EL2" [] (RegVal_Base (Val_Symbolic 108%Z)) Mk_annot :t:
-  Smt (DeclareConst 121%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "ICC_SRE_EL1_NS" [] (RegVal_Base (Val_Symbolic 121%Z)) Mk_annot :t:
-  Smt (DeclareConst 126%Z (Ty_BitVec 64%N)) Mk_annot :t:
-  ReadReg "MPAMIDR_EL1" [] (RegVal_Base (Val_Symbolic 126%Z)) Mk_annot :t:
-  Smt (DeclareConst 140%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "PMUSERENR_EL0" [] (RegVal_Base (Val_Symbolic 140%Z)) Mk_annot :t:
-  Smt (DeclareConst 147%Z (Ty_BitVec 64%N)) Mk_annot :t:
-  ReadReg "MPAM3_EL3" [] (RegVal_Base (Val_Symbolic 147%Z)) Mk_annot :t:
+  ReadReg "ICH_HCR_EL2" [] (RegVal_Base (Val_Symbolic 90%Z)) Mk_annot :t:
+  Smt (DeclareConst 101%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  ReadReg "ICC_SRE_EL1_NS" [] (RegVal_Base (Val_Symbolic 101%Z)) Mk_annot :t:
+  Smt (DeclareConst 106%Z (Ty_BitVec 64%N)) Mk_annot :t:
+  ReadReg "MPAMIDR_EL1" [] (RegVal_Base (Val_Symbolic 106%Z)) Mk_annot :t:
+  Smt (DeclareConst 118%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  ReadReg "PMUSERENR_EL0" [] (RegVal_Base (Val_Symbolic 118%Z)) Mk_annot :t:
+  Smt (DeclareConst 125%Z (Ty_BitVec 64%N)) Mk_annot :t:
+  ReadReg "MPAM3_EL3" [] (RegVal_Base (Val_Symbolic 125%Z)) Mk_annot :t:
+  Smt (DeclareConst 128%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  ReadReg "ICC_SRE_EL3" [] (RegVal_Base (Val_Symbolic 128%Z)) Mk_annot :t:
+  Smt (DeclareConst 135%Z (Ty_BitVec 32%N)) Mk_annot :t:
+  ReadReg "MPAMHCR_EL2" [] (RegVal_Base (Val_Symbolic 135%Z)) Mk_annot :t:
   Smt (DeclareConst 150%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "ICC_SRE_EL3" [] (RegVal_Base (Val_Symbolic 150%Z)) Mk_annot :t:
-  Smt (DeclareConst 157%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "MPAMHCR_EL2" [] (RegVal_Base (Val_Symbolic 157%Z)) Mk_annot :t:
-  Smt (DeclareConst 174%Z (Ty_BitVec 32%N)) Mk_annot :t:
-  ReadReg "HSTR_EL2" [] (RegVal_Base (Val_Symbolic 174%Z)) Mk_annot :t:
-  Smt (DeclareConst 196%Z (Ty_BitVec 64%N)) Mk_annot :t:
-  ReadReg "R0" [] (RegVal_Base (Val_Symbolic 196%Z)) Mk_annot :t:
-  Smt (DefineConst 197%Z (Val (Val_Symbolic 196%Z) Mk_annot)) Mk_annot :t:
-  WriteReg "HCR_EL2" [] (RegVal_Base (Val_Symbolic 197%Z)) Mk_annot :t:
-  Barrier (RegVal_Base (Val_Enum ((Mk_enum_id 2%nat), Mk_enum_ctor 27%nat))) Mk_annot :t:
-  Smt (DeclareConst 227%Z (Ty_BitVec 64%N)) Mk_annot :t:
-  ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 227%Z)) Mk_annot :t:
-  Smt (DefineConst 228%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 227%Z) Mk_annot; Val (Val_Bits (BV 64%N 0x4%Z)) Mk_annot] Mk_annot)) Mk_annot :t:
-  WriteReg "_PC" [] (RegVal_Base (Val_Symbolic 228%Z)) Mk_annot :t:
+  ReadReg "HSTR_EL2" [] (RegVal_Base (Val_Symbolic 150%Z)) Mk_annot :t:
+  Smt (DeclareConst 168%Z (Ty_BitVec 64%N)) Mk_annot :t:
+  ReadReg "R0" [] (RegVal_Base (Val_Symbolic 168%Z)) Mk_annot :t:
+  Smt (DefineConst 169%Z (Val (Val_Symbolic 168%Z) Mk_annot)) Mk_annot :t:
+  WriteReg "HCR_EL2" [] (RegVal_Base (Val_Symbolic 169%Z)) Mk_annot :t:
+  Smt (DeclareConst 170%Z (Ty_BitVec 64%N)) Mk_annot :t:
+  ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 170%Z)) Mk_annot :t:
+  Smt (DefineConst 171%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 170%Z) Mk_annot; Val (Val_Bits (BV 64%N 0x4%Z)) Mk_annot] Mk_annot)) Mk_annot :t:
+  WriteReg "_PC" [] (RegVal_Base (Val_Symbolic 171%Z)) Mk_annot :t:
   tnil
 .

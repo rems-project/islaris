@@ -3,8 +3,8 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.examples.pkvm_handler.a7414.
 
 Lemma a7414_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a7414) -∗
-  instr_body pc (ldp_mapsto_spec pc "R0" "R1" "SP_EL2" 0 None).
+  instr pc (Some a7414)
+  ⊢ instr_body pc (ldp_mapsto_spec pc "R0" "R1" "SP_EL2" 0 None).
 Proof.
   iStartProof.
   repeat liAStep; liShow.

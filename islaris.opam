@@ -10,14 +10,14 @@ dev-repo: "git+https://github.com/rems-project/islaris.git"
 synopsis: "Islaris assembly verification tool"
 
 depends: [
-  "coq" { (= "8.14.0") | (= "dev") }
-  "coq-lithium" { (= "dev.2022-08-04.0.8e3d292e") | (= "dev") }
-  "coq-bitvector" { (= "dev.2022-07-27.0.f256f5c9") | (= "dev") }
+  "coq" { (= "8.17.0") | (= "dev") }
+  "coq-lithium" { (= "dev.2023-08-14.1.766a0051") | (= "dev") }
+  "coq-stdpp-unstable"
   "coq-record-update" { (= "0.3.0") | (= "dev") }
-  "cmdliner" {= "1.0.4"}
+  "cmdliner" {>= "1.1.0"}
   "pprint"
   "integers"
-  "dune" {= "3.3.1"} # dune updates like to break things so we fix a version
+  "dune" {= "3.9.1"} # dune updates like to break things so we fix a version
   "pprint" {>= "20171003"}
   "menhir" {build}
   "ott" {>= "0.31" & build}

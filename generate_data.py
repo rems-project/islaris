@@ -50,7 +50,7 @@ for e in examples:
 
     # print("Output:", output)
     example_data["itl"] = int(re.search(r"= ([0-9]+)%nat", output).group(1))
-    example_data["total"] = float(re.search(r"^\s*([0-9]+\.[0-9]+)s", output, re.MULTILINE).group(1))
+    example_data["total"] = float(re.findall(r"^\s*([0-9]+\.[0-9]+)s", output, re.MULTILINE)[-1])
     example_data["lithium"] = sum(map(float, re.findall(r"Tactic call liARun ran for ([0-9]+\.[0-9]+) secs", output)))
     example_data["Qed"] = sum(map(float, re.findall(r"Finished transaction in ([0-9]+\.[0-9]+) secs", output)))
     example_data["other"] = example_data["total"] - example_data["lithium"] - example_data["Qed"]

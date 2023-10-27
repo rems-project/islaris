@@ -3,8 +3,8 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.examples.pkvm_handler.a7438.
 
 Lemma a7438_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a7438) -∗
-  instr_body pc (sub_R_R_R_self_spec pc "R5" "R6").
+  instr pc (Some a7438)
+  ⊢ instr_body pc (sub_R_R_R_self_spec pc "R5" "R6").
 Proof.
   iStartProof.
   repeat liAStep; liShow.

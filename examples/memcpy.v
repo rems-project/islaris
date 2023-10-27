@@ -120,10 +120,6 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  liInst Hevar (Z.to_nat (bv_unsigned i)).
-  liARun.
-  liInst Hevar (Z.to_nat (bv_unsigned i)).
-  liARun.
 
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
@@ -132,19 +128,19 @@ Proof.
   - rewrite insert_length. bv_solve.
   - bv_solve.
   - bv_simplify.
-    rewrite (bv_wrap_small _ (bv_unsigned i + _)); [|bv_solve].
+    rewrite bv_wrap_small; [|bv_solve].
     have ->: (Z.to_nat (bv_unsigned i + 1)) = S ((Z.to_nat (bv_unsigned i))) by bv_solve.
-    erewrite take_S_r. 2: apply list_lookup_insert; bv_solve.
-    erewrite take_S_r; [|done].
-    rewrite take_insert; [|lia].
+    erewrite take_S_r. 2: { erewrite <- list_lookup_insert; do 2 f_equal; bv_solve. }
+    erewrite take_S_r. 2: { rewrite <- H6. f_equal. bv_solve. }
+    rewrite take_insert; [|bv_solve].
     f_equal; [done|]. f_equal. bv_solve.
   - bv_solve.
-  - rewrite -(take_drop (Z.to_nat (bv_unsigned i)) (<[_ := _]> dstdata)).
+  - rewrite -(take_drop (Z.to_nat (bv_unsigned i)) (<[_ := _]> _)).
     rewrite -(take_drop (Z.to_nat (bv_unsigned i)) srcdata).
     f_equal.
-    + by rewrite take_insert.
-    + erewrite drop_S. 2: { apply: list_lookup_insert. bv_solve. }
-      erewrite (drop_S srcdata); [|done].
+    + rewrite take_insert; [done|bv_solve].
+    + erewrite drop_S. 2: { erewrite <- list_lookup_insert; do 2 f_equal; bv_solve. }
+      erewrite (drop_S srcdata). 2: { rewrite <- H6. f_equal. bv_solve. }
       rewrite !drop_ge ?insert_length; [ |bv_solve..].
       f_equal. bv_solve.
 (*PROOF_END*)

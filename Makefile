@@ -73,7 +73,7 @@ generate_rbit: examples/rbit.dump update_etc
 	@PATH=$$PWD/bin:$$PATH dune exec -- islaris $< -j 8 -o instructions/rbit --coqdir=isla.instructions.rbit
 .PHONY: generate_clz
 
-generate: generate_memory_instructions generate_unaligned_accesses generate_aarch64 generate_riscv64 generate_el2_to_el1 generate_clz generate_simple_hvc generate_rbit
+generate: generate_memory_instructions generate_unaligned_accesses generate_aarch64 generate_el2_to_el1 generate_clz generate_simple_hvc generate_rbit generate_riscv64
 .PHONY: generate
 
 clean:
@@ -100,6 +100,11 @@ strip_license:
 	@ocaml tools/update_license.ml --strip ${SRC}
 .PHONY: strip_license
 
+# We cannot use builddep-pins as a dependency of builddep-opamfiles because the CI removes all pins.
+builddep-pins:
+	@opam pin add -n -y isla-lang "git+https://git@github.com/rems-project/isla-lang.git#4ee3daa3a9f04b2d6a55dd94026ff5f9d79db5fc"
+.PHONY: builddep-pins
+
 builddep-opamfiles: builddep/islaris-builddep.opam
 	@true
 .PHONY: builddep-opamfiles
@@ -117,9 +122,10 @@ builddep/islaris-builddep.opam: islaris.opam Makefile
 #  1) dependencies of Islaris are installed,
 #  2) they will remain satisfied even if other packages are updated/installed,
 #  3) we do not have to pin the Islaris package itself (which takes time).
-builddep: builddep/islaris-builddep.opam
-	@echo "# Installing package $^."
-	@opam install $(OPAMFLAGS) $^
+# Note: We also need to install isla-lang to make sure that new pins are propagated correctly.
+builddep: builddep/islaris-builddep.opam builddep-pins
+	@echo "# Installing package $<."
+	@opam install $(OPAMFLAGS) $< isla-lang
 .PHONY: builddep
 
 saildep:

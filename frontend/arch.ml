@@ -83,12 +83,13 @@ let aarch64 : arch = {
     "__trickbox_enabled";
     "__CNTControlBase";
     "__defaultRAM";
-    "__isla_monomorphize_reads";
-    "__isla_monomorphize_writes";
+    "__monomorphize_reads";
+    "__monomorphize_writes";
+    "__isla_vector_gpr";
     "__highest_el_aarch32";
   ];
   arch_isla_config   = Filename.concat Config.etc "aarch64_isla_coq.toml";
-  arch_snapshot_file = "aarch64-pc.ir";
+  arch_snapshot_file = "aarch64.ir";
   arch_coq_name      = "aarch64";
 }
 

@@ -140,8 +140,8 @@ Definition rest_of_pstate : list (reg_kind * valu_shape) := [
   (KindField "PSTATE" "TCO"  , BitsShape 1)
 ].
 
-Definition spsr_constraint1 `{islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ :=
-    "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
+Definition spsr_constraint1 `{islaG Σ} `{!threadG} : iProp Σ :=
+    ∃ (spsr : bv 32), "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
     ⌜bv_extract 0  1 spsr = (BV 1 1)⌝ ∗
     ⌜bv_extract 1  1 spsr = (BV 1 0)⌝ ∗
     ⌜bv_extract 2  2 spsr = (BV 2 1)⌝ ∗
@@ -151,8 +151,8 @@ Definition spsr_constraint1 `{islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ :=
 
 Global Instance : LithiumUnfold (@spsr_constraint1) := I.
 
-Definition spsr_constraint2 `{!islaG Σ} `{!threadG} (spsr : bv 32) : iProp Σ :=
-  "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
+Definition spsr_constraint2 `{!islaG Σ} `{!threadG} : iProp Σ :=
+  ∃ (spsr : bv 32), "SPSR_EL2" ↦ᵣ RVal_Bits spsr ∗
   ⌜bv_extract 0  1 spsr = (BV 1 1)⌝ ∗
   ⌜bv_extract 1  1 spsr = (BV 1 0)⌝ ∗
   ⌜bv_extract 2  2 spsr = (BV 2 2)⌝ ∗
@@ -196,16 +196,15 @@ Global Instance : LithiumUnfold (@own_word_offset) := I.
 
 (*PROOF_START*)
 Definition reset_spec `{!islaG Σ} `{!threadG} (b : bv 64) : iProp Σ :=
-  (∃ (elr : bv 64) (spsr : bv 32),
-  standard_regs ∗
+  (standard_regs ∗
   reg_col [
     (KindReg "R5", BitsShape 64);
     (KindReg "R6", BitsShape 64);
     (KindReg "VBAR_EL2", BitsShape 64)
   ] ∗
-  ((⌜bv_unsigned b = 2⌝ ∗ spsr_constraint1 spsr)
-   ∨ (⌜bv_unsigned b = 1⌝ ∗ spsr_constraint2 spsr)) ∗
-  "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
+  ((⌜bv_unsigned b = 2⌝ ∗ spsr_constraint1)
+   ∨ (⌜bv_unsigned b = 1⌝ ∗ spsr_constraint2)) ∗
+  ∃ (elr : bv 64), "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
   valid_branch elr ∗
   (* POSTCONDITION (SUCCESSFUL) *)
   instr_body (bv_unsigned elr) (
@@ -229,7 +228,7 @@ Definition reset_spec `{!islaG Σ} `{!threadG} (b : bv 64) : iProp Σ :=
   ).
 
 Definition stub_handler_spec `{!islaG Σ} `{!threadG} (b : bv 64) : iProp Σ :=
-  ∃ (elr el2_cont: bv 64) (spsr : bv 32),
+  ∃ (elr el2_cont: bv 64),
   standard_regs ∗
   "R0" ↦ᵣ RVal_Bits b ∗
   "R1" ↦ᵣ RVal_Bits el2_cont ∗
@@ -241,7 +240,7 @@ Definition stub_handler_spec `{!islaG Σ} `{!threadG} (b : bv 64) : iProp Σ :=
       (KindReg "R6", BitsShape 64);
       (KindReg "VBAR_EL2", BitsShape 64)
    ] ∗
-  spsr_constraint1 spsr ∗
+  spsr_constraint1 ∗
   "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
   valid_branch elr ∗
   valid_branch el2_cont ∗
@@ -269,7 +268,7 @@ Definition stub_handler_spec `{!islaG Σ} `{!threadG} (b : bv 64) : iProp Σ :=
 
 (*SPEC_START*)
 Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (esr : bv 32) : iProp Σ :=
-  ∃ (param el2_cont elr : bv 64) (spsr : bv 32),
+  ∃ (param el2_cont elr : bv 64),
   standard_regs ∗
   reg_col [
     (KindReg "R2", BitsShape 64);
@@ -285,7 +284,7 @@ Definition spec `{!islaG Σ} `{!threadG} (sp stub_handler_addr offset: bv 64) (e
   "R1" ↦ᵣ RVal_Bits el2_cont ∗
   "SP_EL2" ↦ᵣ RVal_Bits sp ∗
   "ELR_EL2" ↦ᵣ RVal_Bits elr ∗
-  spsr_constraint1 spsr ∗
+  spsr_constraint1 ∗
   valid_branch elr ∗
   valid_branch el2_cont ∗
   own_word_offset sp 16 ∗

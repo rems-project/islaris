@@ -109,7 +109,7 @@ Proof. solve_decision. Qed.
 
 Definition ite {A} (b : bool) (x y : A) : A :=
   if b then x else y.
-Typeclasses Opaque ite.
+Global Typeclasses Opaque ite.
 
 Lemma ite_bv_unsigned n b (x1 x2 : bv n) :
   bv_unsigned (ite b x1 x2) = ite b (bv_unsigned x1) (bv_unsigned x2).
@@ -197,8 +197,8 @@ Qed.
 
 (*** operational sematics *)
 
-Definition addr := bv 64.
-Definition byte := bv 8.
+Notation addr := (bv 64) (only parsing).
+Notation byte := (bv 8) (only parsing).
 (* TODO: this should probably be a simpler type than valu:
 - take out poison and symbolic
 - take out list and (maybe) arbitrary integer and (maybe) enum
@@ -231,8 +231,8 @@ Fixpoint write_accessor (al : accessor_list) (v : valu) (vnew : valu) : option v
 
 Arguments write_accessor : simpl never.
 Arguments read_accessor : simpl never.
-Typeclasses Opaque write_accessor.
-Typeclasses Opaque read_accessor.
+Global Typeclasses Opaque write_accessor.
+Global Typeclasses Opaque read_accessor.
 
 Definition eval_unop (u : unop) (v : base_val) : option base_val :=
   match u, v with
@@ -383,8 +383,8 @@ Fixpoint eval_a_exp (regs : reg_map) (e : a_exp) : option base_val :=
 Inductive trace_label : Set :=
 | LReadReg (r : register_name) (al : accessor_list) (v : valu)
 | LWriteReg (r : register_name) (al : accessor_list) (v : valu)
-| LReadMem (data : valu) (kind : valu) (addr : valu) (len : N) (tag : valu_option)
-| LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : N) (tag : valu_option)
+| LReadMem (data : valu) (kind : valu) (addr : valu) (len : N) (tag : tag_value)
+| LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : N) (tag : tag_value)
 | LBranchAddress (v : valu)
 | LBranch (c : Z) (desc : string)
 | LDone (next : isla_trace)
@@ -425,6 +425,9 @@ Inductive trace_step : isla_trace → reg_map → option trace_label → isla_tr
     trace_step (Branch c desc ann :t: es) regs (Some (LBranch c desc)) es
 | BarrierS v ann es regs :
     trace_step (Barrier v ann :t: es) regs None es
+| AbstractPrimopS n v args ann es regs :
+    (* TODO: Add some validity check here? *)
+    trace_step (AbstractPrimop n v args ann :t: es) regs None es
 | CasesES es ts regs:
     es ∈ ts →
     trace_step (tcases ts) regs None es

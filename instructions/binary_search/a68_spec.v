@@ -3,8 +3,8 @@ Require Import isla.aarch64.aarch64.
 Require Export isla.instructions.binary_search.a68.
 
 Lemma a68_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a68) -∗
-  instr_body pc (ldp_mapsto_spec pc "R24" "R23" "SP_EL2" (16) None).
+  instr pc (Some a68)
+  ⊢ instr_body pc (ldp_mapsto_spec pc "R24" "R23" "SP_EL2" (16) None).
 Proof.
   iStartProof.
   repeat liAStep; liShow.

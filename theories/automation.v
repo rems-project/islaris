@@ -54,11 +54,12 @@
 (****************************************************************************)
 
 From iris.proofmode Require Import coq_tactics reduction.
-From lithium Require Export lithium tactics.
-From isla Require Export bitvector_auto lifting.
+From lithium Require Import hooks.
+From lithium Require Export all.
+From stdpp.unstable Require Export bitvector_tactics.
+From isla Require Export lifting.
 Set Default Proof Using "Type".
 
-Global Hint Transparent addr byte : bv_unfold_db.
 Lemma bv_unfold_ite s w n b1 b2 z1 z2 b:
   BvUnfold n s w b1 z1 →
   BvUnfold n s w b2 z2 →
@@ -177,45 +178,44 @@ Global Instance simpl_SInstrTrap a1 a2:
 Proof. split; naive_solver. Qed.
 
 Global Instance simpl_impl_valu_has_shape_mask v n m z:
-  SimplImpl true (valu_has_shape v (MaskShape n m z))
-        (λ T, ∀ b : bv n, v = RVal_Bits b → Z.land (bv_unsigned b) m = z → T).
-Proof. move => ?. split; [| naive_solver]. move => Hb /valu_has_mask_shape. naive_solver. Qed.
+  SimplImpl (valu_has_shape v (MaskShape n m z))
+        (∃ b : bv n, v = RVal_Bits b ∧ Z.land (bv_unsigned b) m = z).
+Proof. split; [naive_solver|]. move => /valu_has_mask_shape. naive_solver. Qed.
 Global Instance simpl_impl_valu_has_shape_bits v n:
-  SimplImpl true (valu_has_shape v (BitsShape n)) (λ T, ∀ b : bv n, v = RVal_Bits b → T).
-Proof. move => ?. split; [| naive_solver]. move => Hb /valu_has_bits_shape. naive_solver. Qed.
+  SimplImpl (valu_has_shape v (BitsShape n)) (∃ b : bv n, v = RVal_Bits b).
+Proof. split; [naive_solver|]. move => /valu_has_bits_shape. naive_solver. Qed.
 (* unsafe because proving both directions is annoying *)
 Global Instance simpl_impl_valu_struct_shape v ss :
-  SimplImplUnsafe true (valu_has_shape v (StructShape ss)) (λ T,
-    foldr (λ s (T : _ → Prop) rs, ∀ v, valu_has_shape v s.2 → T (rs ++ [(s.1, v)])) (λ rs, v = RegVal_Struct rs → T) ss []).
+  SimplImplUnsafe true (valu_has_shape v (StructShape ss)) (foldr (λ s (T : _ → Prop) rs, ∃ v, valu_has_shape v s.2 ∧ T (rs ++ [(s.1, v)])) (λ rs, v = RegVal_Struct rs) ss []).
 Proof.
-  move => T. move Hrs': {2}[] => rs'.
-  destruct v as [| | | | | | | rs |] => //= Hfold [Hlen /Forall_fold_right Hall].
+  unfold SimplImplUnsafe. move Hrs': {2}[] => rs'.
+  destruct v as [| | | | | | rs | |] => //= -[Hlen /Forall_fold_right Hall].
   have Hrs: rs = rs' ++ rs by simplify_list_eq. clear Hrs'.
-  elim: ss {1 3 5}rs rs' Hlen Hrs Hfold Hall.
-  { move => []//= ? ? ->. rewrite app_nil_r. naive_solver. }
-  move => [??] ss IH [|[??]?]//= ? [?] ? Hfold /list.Forall_cons[[??]?]. simplify_eq/=.
-  apply: IH; [done| | by apply: Hfold |done]. by simplify_list_eq.
+  elim: ss {1 3 4}rs rs' Hlen Hrs Hall.
+  { move => []//=?? ->. rewrite app_nil_r. naive_solver. }
+  move => [??] ss IH [|[??]?]//= ? [?] ? /list.Forall_cons[[??]?]. simplify_eq/=.
+  eexists _. split; [done|]. apply: IH; [done| |done]. by simplify_list_eq.
 Qed.
 
 Global Instance simpl_and_bv_and_0xfff0000000000000 b :
-  SimplAnd (bv_and b (BV 64 0xfff0000000000000) = (BV 64 0)) (λ T, bv_unsigned b < 2 ^ 52 ∧ T).
+  SimplAnd (bv_and b (BV 64 0xfff0000000000000) = (BV 64 0)) (bv_unsigned b < 2 ^ 52).
 Proof.
-  split; move => [Hb ?]; split => //.
-  - bv_simplify. bitblast. eapply Z_bounded_iff_bits_nonneg; [| |done|]; bv_solve.
-  - eapply Z_bounded_iff_bits_nonneg; [lia | bv_solve|] => l ?. bitblast.
+  split; move => Hb.
+  - bv_simplify. bitblast. eapply Z.bounded_iff_bits_nonneg; [| |done|]; bv_solve.
+  - eapply Z.bounded_iff_bits_nonneg; [lia | bv_solve|] => l ?. bitblast.
     bv_simplify Hb. by bitblast Hb with l.
 Qed.
 
 Global Instance simpl_and_bv_and_0xfff0000000000007 b :
-  SimplAnd (bv_and b (BV 64 0xfff0000000000007) = (BV 64 0)) (λ T, bv_unsigned b < 2 ^ 52 ∧ bv_unsigned b `mod` 8 = 0 ∧ T).
+  SimplAnd (bv_and b (BV 64 0xfff0000000000007) = (BV 64 0)) (bv_unsigned b < 2 ^ 52 ∧ bv_unsigned b `mod` 8 = 0).
 Proof.
   split.
-  - move => [Hb [Hmod ?]]; split => //.
+  - move => [Hb Hmod].
     bv_simplify. bitblast as i.
     + by bitblast Hmod with i.
-    + eapply Z_bounded_iff_bits_nonneg; [| |done|]; bv_solve.
-  - move => [Hb ?]. bv_simplify Hb. split_and!; [..|done].
-    + eapply Z_bounded_iff_bits_nonneg; [lia|bv_solve|] => l ?. bitblast.
+    + eapply Z.bounded_iff_bits_nonneg; [| |done|]; bv_solve.
+  - move => Hb. bv_simplify Hb. split.
+    + eapply Z.bounded_iff_bits_nonneg; [lia|bv_solve|] => l ?. bitblast.
       by bitblast Hb with l.
     + bitblast as i. by bitblast Hb with i.
 Qed.
@@ -224,12 +224,12 @@ Qed.
 Definition normalize_instr_addr {Σ} (a1 : Z) (T : Z → iProp Σ) : iProp Σ :=
   ∃ a2, ⌜bv_wrap 64 a1 = bv_wrap 64 a2⌝ ∗ T a2.
 Arguments normalize_instr_addr : simpl never.
-Typeclasses Opaque normalize_instr_addr.
+Global Typeclasses Opaque normalize_instr_addr.
 
 Program Definition normalize_instr_addr_hint {Σ} a1 a2 :
   (bv_wrap 64 a1 = bv_wrap 64 a2) →
-  TacticHint (normalize_instr_addr (Σ:=Σ) a1) := λ H, {|
-    tactic_hint_P T := T a2;
+  LiTactic (normalize_instr_addr (Σ:=Σ) a1) := λ H, {|
+    li_tactic_P T := T a2;
 |}.
 Next Obligation. unfold normalize_instr_addr. move => ??? -> ?. iIntros "?". iExists _. by iFrame. Qed.
 
@@ -264,7 +264,7 @@ Ltac solve_normalize_instr_addr :=
   end;
   exact: eq_refl.
 
-Global Hint Extern 10 (TacticHint (normalize_instr_addr _)) =>
+Global Hint Extern 10 (LiTactic (normalize_instr_addr _)) =>
   eapply normalize_instr_addr_hint; solve_normalize_instr_addr : typeclass_instances.
 
 
@@ -272,12 +272,12 @@ Global Hint Extern 10 (TacticHint (normalize_instr_addr _)) =>
 Definition normalize_bv_wrap {Σ} (a1 : Z) (T : Z → iProp Σ) : iProp Σ :=
   ∃ a2, ⌜bv_wrap 64 a1 = bv_wrap 64 a2⌝ ∗ T a2.
 Arguments normalize_bv_wrap : simpl never.
-Typeclasses Opaque normalize_bv_wrap.
+Global Typeclasses Opaque normalize_bv_wrap.
 
 Program Definition normalize_bv_wrap_hint {Σ} a1 a2 :
   (∀ x, bv_wrap 64 a2 = x → block bv_wrap 64%N a1 = x) →
-  TacticHint (normalize_bv_wrap (Σ:=Σ) a1) := λ H, {|
-    tactic_hint_P T := T a2;
+  LiTactic (normalize_bv_wrap (Σ:=Σ) a1) := λ H, {|
+    li_tactic_P T := T a2;
 |}.
 Next Obligation. unfold normalize_bv_wrap, block. move => ??? Heq ?. iIntros "?". iExists _. iFrame. iPureIntro. by apply: Heq. Qed.
 
@@ -302,14 +302,14 @@ Ltac solve_normalize_bv_wrap :=
   lazymatch goal with | |- bv_wrap _ ?z = _ => ring_simplify z end;
   apply H.
 
-Global Hint Extern 10 (TacticHint (normalize_bv_wrap _)) =>
+Global Hint Extern 10 (LiTactic (normalize_bv_wrap _)) =>
   eapply normalize_bv_wrap_hint; solve_normalize_bv_wrap : typeclass_instances.
 
 (** * [compute_wp_exp] *)
 Definition compute_wp_exp {Σ} `{!islaG Σ} (e : exp) (T : base_val → iProp Σ) : iProp Σ :=
   WPexp e {{ T }}.
 Arguments compute_wp_exp : simpl never.
-Typeclasses Opaque compute_wp_exp.
+Global Typeclasses Opaque compute_wp_exp.
 
 Fixpoint eval_exp' (e : exp) : option base_val :=
   match e with
@@ -354,34 +354,41 @@ Qed.
 
 Program Definition compute_wp_exp_hint `{!islaG Σ} e v :
   (∀ x, Some v = x → eval_exp' e = x) →
-  TacticHint (compute_wp_exp e) := λ H, {|
-    tactic_hint_P T := T v;
+  LiTactic (compute_wp_exp e) := λ H, {|
+    li_tactic_P T := T v;
 |}.
 Next Obligation.
   iIntros (??????) "HT". rewrite /compute_wp_exp wp_exp_unfold. iExists _. iFrame. iPureIntro.
   apply eval_exp'_sound. naive_solver.
 Qed.
 
+(* TODO: one could use vm_compute instead of lazy here by
+parametrizing eval_exp' by the operations that vm_compute should not
+reduce (e.g., bv_add) and then generalizing them (and all part of the
+goal that should not be reduced) before calling vm_compute. Also
+vm_compute does not reduce in parameters of inductions, but unclear if
+this is useful (if one defines a function [Definition test_to_A {A} (x : A) (X : test x) : A := x],
+then vm_compute still reduces x). *)
 Ltac solve_compute_wp_exp :=
   let H := fresh in move => ? H;
-  lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv decide decide_rel N_eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
-  lazymatch goal with | |- Some _ = _ => idtac | |- ?G => idtac "solve_copmute_wp_exp failed:" G; fail end;
+  lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv decide decide_rel BinNat.N.eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect BinPos.Pos.eq_dec Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
+  lazymatch goal with | |- Some _ = _ => idtac | |- ?G => idtac "solve_compute_wp_exp failed:" G; fail end;
   autorewrite with isla_coq_rewrite;
   apply H.
 
-Global Hint Extern 10 (TacticHint (compute_wp_exp _)) =>
+Global Hint Extern 10 (LiTactic (compute_wp_exp _)) =>
   eapply compute_wp_exp_hint; solve_compute_wp_exp : typeclass_instances.
 
 (** ** [regcol_compute_hint] *)
 Definition regcol_compute_hint {Σ A B} (f : A → option B) (x : A) (T : B → iProp Σ) : iProp Σ :=
   ∃ y, ⌜f x = Some y⌝ ∗ T y.
 Arguments regcol_compute_hint : simpl never.
-Typeclasses Opaque regcol_compute_hint.
+Global Typeclasses Opaque regcol_compute_hint.
 
-Program Definition regcol_compute_hint_hint {Σ A B} (f : A → option B) x a :
-  (∀ y, Some x = y → f a = y) →
-  TacticHint (regcol_compute_hint (Σ:=Σ) f a) := λ H, {|
-    tactic_hint_P T := T x;
+Program Definition regcol_compute_hint_hint {Σ A B} x (f : A → option B) a :
+  f a = Some x →
+  LiTactic (regcol_compute_hint (Σ:=Σ) f a) := λ H, {|
+    li_tactic_P T := T x;
 |}.
 Next Obligation. move => ????????. iIntros "HT". iExists _. iFrame. iPureIntro. naive_solver. Qed.
 
@@ -449,32 +456,34 @@ Ltac remember_regcol :=
   repeat match goal with
    | |- context [ExactShape ?v] =>
      assert_fails (is_fully_reduced_valu v);
-     remember_mark v
+     let H := fresh "H" in move: (v) => H
    | |- context [PropShape ?v] =>
      assert_fails (is_var v);
-     remember_mark v
+     let H := fresh "H" in move: (v) => H
    end.
 
 Create HintDb regcol_compute_unfold discriminated.
 
 Ltac solve_regcol_compute_hint :=
-  let H := fresh in intros ? H;
+  clear;
   autounfold with regcol_compute_unfold;
-  (* TODO: If it turns out that remember_regcol is too slow, it might
-  be worth investigating using let bindings instead of equalities.
-  I.e. one can create let-bindings for everything that should be
-  opaque, then doing etrans, then clearing the body of the letbindings
-  in the first goal and calling vm_compute, and in the second goal
-  from etrans one still has the bodies of the letbindings which can
-  then be unfolded. As an additional optimization, one can reuse
-  existing letbindings (e.g. as created by let_bind_hint). *)
+  repeat match goal with | H := _ |- _  => clearbody H end;
   remember_regcol;
-  vm_compute;
-  subst_remembered;
-  apply H.
+  lazymatch goal with
+  | |- LiTactic (regcol_compute_hint ?f ?a) =>
+      (* We first compute the result of f a such that we don't need to
+      create an evor for it, but can use [abstract]. This is important
+      since the [clearbody]s above are otherwise ignored at Qed time,
+      leading to divergence of vm_compute. This means that we run
+      vm_compute twice, but it should be fast anyway. *)
+      let x := eval vm_compute in (f a) in
+      lazymatch x with
+      | Some ?y => apply (regcol_compute_hint_hint y)
+      end
+  end;
+  abstract (vm_compute; exact eq_refl).
 
-Global Hint Extern 10 (TacticHint (regcol_compute_hint _ _)) =>
-  eapply regcol_compute_hint_hint;
+Global Hint Extern 10 (LiTactic (regcol_compute_hint _ _)) =>
   solve_regcol_compute_hint : typeclass_instances.
 
 
@@ -532,7 +541,7 @@ Proof.
           apply bind_Some. by eexists _.
         }
         iIntros "[? %]". iExists _. by iFrame.
-      * destruct v as [| | | | | | |rs|] => //; simplify_eq/=.
+      * destruct v as [| | | | | |rs| |] => //; simplify_eq/=.
         move: Hs => [Hlen Hall'']. move: (Hall'') => /Forall_fold_right/(Forall_lookup_1 _ _ _ _)Hall.
         have [|[??]?]:= lookup_lt_is_Some_2 rs i.
         { rewrite -Hlen. apply: lookup_lt_is_Some_1. naive_solver. }
@@ -619,25 +628,27 @@ Qed.
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
-Ltac normalize_tac ::=
+Ltac normalize_hook ::=
   autorewrite with isla_coq_rewrite; exact: eq_refl.
-(* Ltac normalize_tac ::= normalize_autorewrite. *)
+(* Ltac normalize_hook ::= normalize_autorewrite. *)
 
-Ltac bv_solve_unfold_tac ::=
-  unfold byte, addr in *.
+Ltac bv_solve_unfold_tac ::= idtac.
 
-Ltac solve_protected_eq_unfold_tac ::=
+Ltac solve_protected_eq_hook ::=
   reduce_closed_N.
 
 (* injection on bitvectors sometimes creates weird matches, so we disable it. *)
-Ltac check_injection_tac ::=
+Ltac check_injection_hook ::=
   lazymatch goal with
   | |- @eq (bv _) _ _ → _ => fail
   | |- _ => idtac
   end.
 
+(* TODO: enable liToSyntax *)
+Ltac liToSyntax_hook ::= fail.
+
 Ltac prepare_sidecond :=
-  li_unshelve_sidecond; unLET; normalize_and_simpl_goal => //=.
+  unshelve_sidecond; unLET; normalize_and_simpl_goal => //=.
 
 Definition let_bind_hint {A B} (x : A) (f : A → B) : B :=
   f x.
@@ -652,7 +663,7 @@ Definition FindInstrKind {Σ} `{!Arch} `{!islaG Σ} `{!threadG} (a : Z) (l : boo
     | IKPre l' P => instr_pre' l' a P
     end
 |}.
-Typeclasses Opaque FindInstrKind.
+Global Typeclasses Opaque FindInstrKind.
 
 Inductive reg_mapsto_kind : Type :=
 | RKMapsTo (v : valu) | RKCol (regs : list (reg_kind * valu_shape)).
@@ -664,7 +675,7 @@ Definition FindRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r : string) := {|
   | RKCol regs => reg_col regs
   end
 |}.
-Typeclasses Opaque FindRegMapsTo.
+Global Typeclasses Opaque FindRegMapsTo.
 Definition FindStructRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r f : string) := {|
   fic_A := reg_mapsto_kind;
   fic_Prop rk :=
@@ -673,7 +684,7 @@ Definition FindStructRegMapsTo {Σ} `{!islaG Σ} `{!threadG} (r f : string) := {
   | RKCol regs => reg_col regs
   end
 |}.
-Typeclasses Opaque FindStructRegMapsTo.
+Global Typeclasses Opaque FindStructRegMapsTo.
 
 Inductive mem_mapsto_kind : Type :=
 | MKMapsTo (n : N) (v : bv n)
@@ -687,7 +698,7 @@ Definition mem_mapsto_kind_prop `{!islaG Σ} (a : Z) (mk : mem_mapsto_kind) : iP
   | MKUninit a' n => (a' ↦ₘ? n)%I
   | MKMMIO a' l => mmio_range a' l
   end.
-Typeclasses Opaque mem_mapsto_kind_prop.
+Global Typeclasses Opaque mem_mapsto_kind_prop.
 Definition FindMemMapsTo {Σ} `{!islaG Σ} (a : Z) := {|
   fic_A := mem_mapsto_kind;
   fic_Prop := mem_mapsto_kind_prop a
@@ -706,271 +717,268 @@ Section instances.
      we should only find instr_pre with false in the context. Otherwise, we can find an
      arbitrary instr_pre. *)
   Lemma find_in_context_instr_kind_pre_false a T:
-    (∃ P, instr_pre' false a P ∗ T (IKPre false P)) -∗
-    find_in_context (FindInstrKind a false) T.
+    (∃ P, instr_pre' false a P ∗ T (IKPre false P))
+    ⊢ find_in_context (FindInstrKind a false) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
-  Global Instance find_in_context_instr_kind_pre_false_inst a :
-    FindInContext (FindInstrKind a false) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_instr_kind_pre_false a T).
+  Definition find_in_context_instr_kind_pre_false_inst :=
+    [instance find_in_context_instr_kind_pre_false with FICSyntactic].
+  Global Existing Instance find_in_context_instr_kind_pre_false_inst | 1.
 
   Lemma find_in_context_instr_kind_pre_true a T:
-    (∃ l P, instr_pre' l a P ∗ T (IKPre l P)) -∗
-    find_in_context (FindInstrKind a true) T.
+    (∃ l P, instr_pre' l a P ∗ T (IKPre l P))
+    ⊢ find_in_context (FindInstrKind a true) T.
   Proof. iDestruct 1 as (??) "[??]". iExists _. by iFrame. Qed.
-  Global Instance find_in_context_instr_kind_pre_true_inst a :
-    FindInContext (FindInstrKind a true) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_instr_kind_pre_true a T).
+  Definition find_in_context_instr_kind_pre_true_inst :=
+    [instance find_in_context_instr_kind_pre_true with FICSyntactic].
+  Global Existing Instance find_in_context_instr_kind_pre_true_inst | 1.
 
-  Lemma find_in_context_instr_kind_instr a T l:
-    (∃ ins, instr a ins ∗ T (IKInstr ins)) -∗
-    find_in_context (FindInstrKind a l) T.
+  Lemma find_in_context_instr_kind_instr a l T:
+    (∃ ins, instr a ins ∗ T (IKInstr ins))
+    ⊢ find_in_context (FindInstrKind a l) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
-  Global Instance find_in_context_instr_kind_instr_inst a l:
-    FindInContext (FindInstrKind a l) FICSyntactic | 10 :=
-    λ T, i2p (find_in_context_instr_kind_instr a T l).
+  Definition find_in_context_instr_kind_instr_inst :=
+    [instance find_in_context_instr_kind_instr with FICSyntactic].
+  Global Existing Instance find_in_context_instr_kind_instr_inst | 10.
 
   Inductive FICInstrSemantic : Set :=.
-  Global Instance find_in_context_instr_pre_semantic_false_inst a :
-    FindInContext (FindInstrKind a false) FICInstrSemantic | 100 :=
-    λ T, i2p (find_in_context_instr_kind_pre_false a T).
-  Global Instance find_in_context_instr_pre_semantic_true_inst a :
-    FindInContext (FindInstrKind a true) FICInstrSemantic | 100 :=
-    λ T, i2p (find_in_context_instr_kind_pre_true a T).
+  Definition find_in_context_instr_pre_semantic_false_inst :=
+    [instance find_in_context_instr_kind_pre_false with FICInstrSemantic].
+  Global Existing Instance find_in_context_instr_pre_semantic_false_inst | 100.
+  Definition find_in_context_instr_pre_semantic_true_inst :=
+    [instance find_in_context_instr_kind_pre_true with FICInstrSemantic].
+  Global Existing Instance find_in_context_instr_pre_semantic_true_inst | 100.
 
-  Global Instance find_in_context_instr_semantic_inst a l:
-    FindInContext (FindInstrKind a l) FICInstrSemantic | 110 :=
-    λ T, i2p (find_in_context_instr_kind_instr a T l).
+  Definition find_in_context_instr_semantic_inst :=
+    [instance find_in_context_instr_kind_instr with FICInstrSemantic].
+  Global Existing Instance find_in_context_instr_semantic_inst | 110.
 
-  Global Instance mem_related a n (v : bv n) : RelatedTo (a ↦ₘ v) := {|
+  Global Instance mem_related A a n (v : A → bv n) : RelatedTo (λ x, a ↦ₘ (v x))%I := {|
     rt_fic := FindMemMapsTo a;
   |}.
 
-  Global Instance mem_array_related a n (l : list (bv n)) : RelatedTo (a ↦ₘ∗ l) := {|
+  Global Instance mem_array_related A a n (l : A → list (bv n)) : RelatedTo (λ x, a ↦ₘ∗ l x)%I := {|
     rt_fic := FindMemMapsTo a;
   |}.
 
-  Global Instance mem_uninit_related a n : RelatedTo (a ↦ₘ? n) := {|
+  Global Instance mem_uninit_related A a n : RelatedTo (λ x : A, a ↦ₘ? n x)%I := {|
     rt_fic := FindMemMapsTo a;
   |}.
 
   Lemma find_in_context_mem_mapsto_id a T:
-    (∃ n (v : bv n), a ↦ₘ v ∗ T (MKMapsTo n v)) -∗
-    find_in_context (FindMemMapsTo a) T.
+    (∃ n (v : bv n), a ↦ₘ v ∗ T (MKMapsTo n v))
+    ⊢ find_in_context (FindMemMapsTo a) T.
   Proof. iDestruct 1 as (? v) "[Hl HT]". iExists _ => /=. by iFrame. Qed.
-  Global Instance find_in_context_mapsto_id_inst a :
-    FindInContext (FindMemMapsTo a) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_mem_mapsto_id a T).
+  Definition find_in_context_mem_mapsto_id_inst :=
+    [instance find_in_context_mem_mapsto_id with FICSyntactic].
+  Global Existing Instance find_in_context_mem_mapsto_id_inst | 1.
 
   Inductive FICMemMapstoSemantic (a : Z) : Set :=.
   Lemma find_in_context_mem_mapsto_semantic a T:
-    (∃ mk, mem_mapsto_kind_prop a mk ∗ T mk) -∗
-    find_in_context (FindMemMapsTo a) T.
+    (∃ mk, mem_mapsto_kind_prop a mk ∗ T mk)
+    ⊢ find_in_context (FindMemMapsTo a) T.
   Proof. iDestruct 1 as (?) "[Hl HT]". iExists _ => /=. iFrame. Qed.
-  Global Instance find_in_context_mem_mapsto_semantic_inst a :
-    FindInContext (FindMemMapsTo a) (FICMemMapstoSemantic a) | 10 :=
-    λ T, i2p (find_in_context_mem_mapsto_semantic a T).
+  Definition find_in_context_mem_mapsto_semantic_inst a :=
+    [instance find_in_context_mem_mapsto_semantic a with FICMemMapstoSemantic a].
+  Global Existing Instance find_in_context_mem_mapsto_semantic_inst | 10.
 
-  Global Instance reg_related r v : RelatedTo (r ↦ᵣ v) := {|
+  Global Instance reg_related A r v : RelatedTo (λ x : A, r ↦ᵣ v x)%I := {|
     rt_fic := FindRegMapsTo r;
   |}.
-  Global Instance struct_reg_related r f v : RelatedTo (r # f ↦ᵣ v) := {|
+  Global Instance struct_reg_related A r f v : RelatedTo (λ x : A, r # f ↦ᵣ v x)%I := {|
     rt_fic := FindStructRegMapsTo r f;
   |}.
 
-  Global Instance reg_col_reg_related r s rs : RelatedTo (reg_col ((KindReg r, s)::rs)) := {|
+  Global Instance reg_col_reg_related A r s rs : RelatedTo (λ x : A, reg_col ((KindReg r, s x)::rs x)) := {|
     rt_fic := FindRegMapsTo r;
   |}.
-  Global Instance reg_col_struct_reg_related r f s rs : RelatedTo (reg_col ((KindField r f, s)::rs)) := {|
+  Global Instance reg_col_struct_reg_related A r f s rs : RelatedTo (λ x : A, reg_col ((KindField r f, s x)::rs x)) := {|
     rt_fic := FindStructRegMapsTo r f;
   |}.
 
-  Global Instance reg_pred_related r P : RelatedTo (r ↦ᵣ: P) := {|
+  Global Instance reg_pred_related A r P : RelatedTo (λ x : A, r ↦ᵣ: P x)%I := {|
     rt_fic := FindRegMapsTo r;
   |}.
-  Global Instance struct_reg_pred_related r f P : RelatedTo (r # f ↦ᵣ: P) := {|
+  Global Instance struct_reg_pred_related A r f P : RelatedTo (λ x : A, r # f ↦ᵣ: P x)%I := {|
     rt_fic := FindStructRegMapsTo r f;
   |}.
 
   Lemma find_in_context_reg_mapsto r T:
-    (∃ v, r ↦ᵣ v ∗ T (RKMapsTo v)) -∗
-    find_in_context (FindRegMapsTo r) T.
+    (∃ v, r ↦ᵣ v ∗ T (RKMapsTo v))
+    ⊢ find_in_context (FindRegMapsTo r) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
-  Global Instance find_in_context_reg_mapsto_inst r :
-    FindInContext (FindRegMapsTo r) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_reg_mapsto r T).
+  Definition find_in_context_reg_mapsto_inst :=
+    [instance find_in_context_reg_mapsto with FICSyntactic].
+  Global Existing Instance find_in_context_reg_mapsto_inst | 1.
 
   Lemma find_in_context_reg_mapsto_col r T:
-    (∃ regs, reg_col regs ∗ T (RKCol regs)) -∗
-    find_in_context (FindRegMapsTo r) T.
+    (∃ regs, reg_col regs ∗ T (RKCol regs))
+    ⊢ find_in_context (FindRegMapsTo r) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
   Inductive FICRegMapstoSemantic (r : string) : Set :=.
-  Global Instance find_in_context_reg_mapsto_col_inst r :
-    FindInContext (FindRegMapsTo r) (FICRegMapstoSemantic r) | 10 :=
-    λ T, i2p (find_in_context_reg_mapsto_col r T).
+  Definition find_in_context_reg_mapsto_col_inst r :=
+    [instance find_in_context_reg_mapsto_col r with FICRegMapstoSemantic r].
+  Global Existing Instance find_in_context_reg_mapsto_col_inst | 10.
 
   Lemma find_in_context_struct_reg_mapsto r f T:
-    (∃ v, r # f ↦ᵣ v ∗ T (RKMapsTo v)) -∗
-    find_in_context (FindStructRegMapsTo r f) T.
+    (∃ v, r # f ↦ᵣ v ∗ T (RKMapsTo v))
+    ⊢ find_in_context (FindStructRegMapsTo r f) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
-  Global Instance find_in_context_struct_reg_mapsto_inst r f :
-    FindInContext (FindStructRegMapsTo r f) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_struct_reg_mapsto r f T).
+  Definition find_in_context_struct_reg_mapsto_inst :=
+    [instance find_in_context_struct_reg_mapsto with FICSyntactic].
+  Global Existing Instance find_in_context_struct_reg_mapsto_inst | 1.
 
   Lemma find_in_context_struct_reg_mapsto_col r f T:
-    (∃ regs, reg_col regs ∗ T (RKCol regs)) -∗
-    find_in_context (FindStructRegMapsTo r f) T.
+    (∃ regs, reg_col regs ∗ T (RKCol regs))
+    ⊢ find_in_context (FindStructRegMapsTo r f) T.
   Proof. iDestruct 1 as (?) "[??]". iExists _. by iFrame. Qed.
   Inductive FICStructRegMapstoSemantic (r f : string) : Set :=.
-  Global Instance find_in_context_struct_reg_mapsto_col_inst r f:
-    FindInContext (FindStructRegMapsTo r f) (FICStructRegMapstoSemantic r f) | 10 :=
-    λ T, i2p (find_in_context_struct_reg_mapsto_col r f T).
+  Definition find_in_context_struct_reg_mapsto_col_inst r f :=
+    [instance find_in_context_struct_reg_mapsto_col r f with FICStructRegMapstoSemantic r f].
+  Global Existing Instance find_in_context_struct_reg_mapsto_col_inst | 10.
 
-  Global Instance instr_related a i : RelatedTo (instr a i) := {|
+  Global Instance instr_related A a i : RelatedTo (λ x : A, instr a (i x)) := {|
     rt_fic := FindDirect (λ i, instr a i)%I;
   |}.
 
-  Global Instance instr_pre'_related b a P : RelatedTo (instr_pre' b a P) := {|
+  Global Instance instr_pre'_related A b a P : RelatedTo (λ x : A, instr_pre' b a (P x)) := {|
     rt_fic := FindInstrKind a b;
   |}.
 
-  Global Instance spec_trace_related κs : RelatedTo (spec_trace κs) := {|
+  Global Instance spec_trace_related A κs : RelatedTo (λ x : A, spec_trace (κs x)) := {|
     rt_fic := FindDirect (λ κs, spec_trace κs)%I;
   |}.
 
-  Lemma subsume_reg r v1 v2 G:
-    ⌜v1 = v2⌝ ∗ G -∗
-    subsume (r ↦ᵣ v1) (r ↦ᵣ v2) G.
-  Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
-  Global Instance subsume_reg_inst r v1 v2 :
-    Subsume (r ↦ᵣ v1) (r ↦ᵣ v2) :=
-    λ G, i2p (subsume_reg r v1 v2 G).
+  Lemma subsume_reg A r v1 v2 G:
+    (∃ x, ⌜v1 = v2 x⌝ ∗ G x)
+    ⊢ subsume (r ↦ᵣ v1) (λ x : A, r ↦ᵣ v2 x) G.
+  Proof. iDestruct 1 as (?->) "?". iIntros "?". iExists _. iFrame. Qed.
+  Definition subsume_reg_inst := [instance subsume_reg].
+  Global Existing Instance subsume_reg_inst.
 
-  Lemma subsume_struct_reg r f v1 v2 G:
-    ⌜v1 = v2⌝ ∗ G -∗
-    subsume (r # f ↦ᵣ v1) (r # f ↦ᵣ v2) G.
-  Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
-  Global Instance subsume_struct_reg_inst r f v1 v2 :
-    Subsume (r # f ↦ᵣ v1) (r # f ↦ᵣ v2) :=
-    λ G, i2p (subsume_struct_reg r f v1 v2 G).
+  Lemma subsume_struct_reg A r f v1 v2 G:
+    (∃ x, ⌜v1 = v2 x⌝ ∗ G x)
+    ⊢ subsume (r # f ↦ᵣ v1) (λ x : A, r # f ↦ᵣ v2 x) G.
+  Proof. iDestruct 1 as (?->) "?". iIntros "?". iExists _. iFrame. Qed.
+  Definition subsume_struct_reg_inst := [instance subsume_struct_reg].
+  Global Existing Instance subsume_struct_reg_inst.
 
-  Lemma subsume_regcol_reg regs r v G:
-    (tactic_hint (regcol_compute_hint (regcol_extract (KindReg r)) regs) (λ '(s, regs'),
-      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ ⌜v = v'⌝ ∗ G)) -∗
-    subsume (reg_col regs) (r ↦ᵣ v) G.
+  Lemma subsume_regcol_reg A regs r v G:
+    (li_tactic (regcol_compute_hint (regcol_extract (KindReg r)) regs) (λ '(s, regs'),
+      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ ∃ x, ⌜v x = v'⌝ ∗ G x))
+    ⊢ subsume (reg_col regs) (λ x : A, r ↦ᵣ v x) G.
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as ([??] ?) "HG"; simplify_eq/=. iIntros "Hr".
     iDestruct (regcol_extract_Some with "Hr") as (??) "[? Hregs]"; [done|] => /=.
-    iDestruct ("HG" with "[//] Hregs") as "[% HG]"; simplify_eq/=. by iFrame.
+    iDestruct ("HG" with "[//] Hregs") as (?) "[% HG]"; simplify_eq/=. iExists _. by iFrame.
   Qed.
-  Global Instance subsume_regcol_reg_inst regs r v:
-    Subsume (reg_col regs) (r ↦ᵣ v) :=
-    λ G, i2p (subsume_regcol_reg regs r v G).
+  Definition subsume_regcol_reg_inst := [instance subsume_regcol_reg].
+  Global Existing Instance subsume_regcol_reg_inst.
 
-  Lemma subsume_struct_regcol_reg regs r f v G:
-    (tactic_hint (regcol_compute_hint (regcol_extract (KindField r f)) regs) (λ '(s, regs'),
-      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ ⌜v = v'⌝ ∗ G)) -∗
-    subsume (reg_col regs) (r # f ↦ᵣ v) G.
+  Lemma subsume_struct_regcol_reg A regs r f v G:
+    (li_tactic (regcol_compute_hint (regcol_extract (KindField r f)) regs) (λ '(s, regs'),
+      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ ∃ x, ⌜v x = v'⌝ ∗ G x))
+    ⊢ subsume (reg_col regs) (λ x : A, r # f ↦ᵣ v x) G.
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as ([??] ?) "HG"; simplify_eq/=. iIntros "Hr".
     iDestruct (regcol_extract_Some with "Hr") as (??) "[? Hregs]"; [done|] => /=.
-    iDestruct ("HG" with "[//] Hregs") as "[% HG]"; simplify_eq/=. by iFrame.
+    iDestruct ("HG" with "[//] Hregs") as (?) "[% HG]"; simplify_eq/=. iExists _. by iFrame.
   Qed.
-  Global Instance subsume_struct_regcol_reg_inst regs r f v:
-    Subsume (reg_col regs) (r # f ↦ᵣ v) :=
-    λ G, i2p (subsume_struct_regcol_reg regs r f v G).
+  Definition subsume_struct_regcol_reg_inst := [instance subsume_struct_regcol_reg].
+  Global Existing Instance subsume_struct_regcol_reg_inst.
 
-  Lemma subsume_reg_regcol regs r v s G:
-    (⌜valu_has_shape v s⌝ ∗ reg_col regs ∗ G) -∗
-    subsume (r ↦ᵣ v) (reg_col ((KindReg r, s)::regs)) G.
-  Proof. iIntros "[% [Hregs $]] Hr". rewrite reg_col_cons. eauto with iFrame. Qed.
-  Global Instance subsume_reg_regcol_inst regs r v s:
-    Subsume (r ↦ᵣ v) (reg_col ((KindReg r, s)::regs)) :=
-    λ G, i2p (subsume_reg_regcol regs r v s G).
-  Lemma subsume_struct_reg_regcol regs r f v s G:
-    (⌜valu_has_shape v s⌝ ∗ reg_col regs ∗ G) -∗
-    subsume (r # f ↦ᵣ v) (reg_col ((KindField r f, s)::regs)) G.
-  Proof. iIntros "[% [Hregs $]] Hr". rewrite reg_col_cons. eauto with iFrame. Qed.
-  Global Instance subsume_struct_reg_regcol_inst regs r f v s:
-    Subsume (r # f ↦ᵣ v) (reg_col ((KindField r f, s)::regs)) :=
-    λ G, i2p (subsume_struct_reg_regcol regs r f v s G).
+  Lemma subsume_reg_regcol A regs r v s G:
+    (∃ x, ⌜valu_has_shape v (s x)⌝ ∗ reg_col (regs x) ∗ G x)
+    ⊢ subsume (r ↦ᵣ v) (λ x : A, reg_col ((KindReg r, s x)::regs x)) G.
+  Proof. iIntros "[% [% [Hregs ?]]] Hr". iExists _. rewrite reg_col_cons. eauto with iFrame. Qed.
+  Definition subsume_reg_regcol_inst := [instance subsume_reg_regcol].
+  Global Existing Instance subsume_reg_regcol_inst.
+  Lemma subsume_struct_reg_regcol A regs r f v s G:
+    (∃ x, ⌜valu_has_shape v (s x)⌝ ∗ reg_col (regs x) ∗ G x)
+    ⊢ subsume (r # f ↦ᵣ v) (λ x : A, reg_col ((KindField r f, s x)::regs x)) G.
+  Proof. iIntros "[% [% [Hregs ?]]] Hr". iExists _. rewrite reg_col_cons. eauto with iFrame. Qed.
+  Definition subsume_struct_reg_regcol_inst := [instance subsume_struct_reg_regcol].
+  Global Existing Instance subsume_struct_reg_regcol_inst.
 
-  Lemma subsume_regcol_regcol regs1 regs2 G:
-    (tactic_hint (regcol_compute_hint (λ '(regs1, regs2), Some (regcol_cancel regs1 regs2)) (regs1, regs2))
+  Lemma subsume_regcol_regcol A regs1 regs2 G:
+    (li_tactic (regcol_compute_hint (λ '(regs1, regs2), Some (regcol_cancel regs1 regs2)) (regs1, regs2))
                  (λ '(regs1', regs2', c),
        ⌜foldr (λ c, and (valu_shape_implies c.1 c.2)) True c⌝ ∗
-       (reg_col regs1' -∗ reg_col regs2' ∗ G))) -∗
-    subsume (reg_col regs1) (reg_col regs2) G.
+       (reg_col regs1' -∗ ∃ x, reg_col regs2' ∗ G x)))
+    ⊢ subsume (reg_col regs1) (λ x : A, reg_col regs2) G.
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as ([[regs1' regs2'] c] [=] Hf) "HT". move/Forall_fold_right in Hf.
     iIntros "Hregs".
     iDestruct (regcol_cancel_sound with "Hregs") as "[? H2]"; [done| |] => /=.
     { apply: Forall_impl; [done|] => /= ????. by apply: valu_shape_implies_sound; [|done]. }
-    iDestruct ("HT" with "[$]") as "[? $]". by iApply "H2".
+    iDestruct ("HT" with "[$]") as (?) "[? ?]". iExists _. iFrame. by iApply "H2".
   Qed.
-  Global Instance subsume_regcol_regcol_inst regs1 regs2:
-    Subsume (reg_col regs1) (reg_col regs2) :=
-    λ G, i2p (subsume_regcol_regcol regs1 regs2 G).
+  Definition subsume_regcol_regcol_inst := [instance subsume_regcol_regcol].
+  Global Existing Instance subsume_regcol_regcol_inst.
 
-  Lemma subsume_reg_reg_pred r v P G:
-    P v ∗ G -∗
-    subsume (r ↦ᵣ v) (r ↦ᵣ: P) G.
-  Proof. iIntros "[? $] ?". rewrite reg_mapsto_pred_eq. iExists _. iFrame. Qed.
-  Global Instance subsume_reg_reg_pred_inst r v P:
-    Subsume (r ↦ᵣ v) (r ↦ᵣ: P) :=
-      λ G, i2p (subsume_reg_reg_pred r v P G).
+  Lemma subsume_reg_reg_pred A r v P G:
+    (∃ x, P x v ∗ G x)
+    ⊢ subsume (r ↦ᵣ v) (λ x : A, r ↦ᵣ: P x) G.
+  Proof. iIntros "[% [? ?]] ?". iExists _. iFrame. rewrite reg_mapsto_pred_eq. iExists _. iFrame. Qed.
+  Definition subsume_reg_reg_pred_inst := [instance subsume_reg_reg_pred].
+  Global Existing Instance subsume_reg_reg_pred_inst.
 
-  Lemma subsume_struct_reg_reg_pred r f v P G:
-    P v ∗ G -∗
-      subsume (r # f ↦ᵣ v) (r # f ↦ᵣ: P) G.
-  Proof. iIntros "[? $] ?". rewrite struct_reg_mapsto_pred_eq. iExists _. iFrame. Qed.
-  Global Instance subsume_struct_reg_reg_pred_inst r f v P:
-    Subsume (r # f ↦ᵣ v) (r # f ↦ᵣ: P) :=
-    λ G, i2p (subsume_struct_reg_reg_pred r f v P G).
+  Lemma subsume_struct_reg_reg_pred A r f v P G:
+    (∃ x, P x v ∗ G x)
+    ⊢ subsume (r # f ↦ᵣ v) (λ x : A, r # f ↦ᵣ: P x) G.
+  Proof. iIntros "[% [? ?]] ?". iExists _. iFrame. rewrite struct_reg_mapsto_pred_eq. iExists _. iFrame. Qed.
+  Definition subsume_struct_reg_reg_pred_inst := [instance subsume_struct_reg_reg_pred].
+  Global Existing Instance subsume_struct_reg_reg_pred_inst.
 
-  Lemma subsume_regcol_reg_pred regs r P G:
-    (tactic_hint (regcol_compute_hint (regcol_extract (KindReg r)) regs) (λ '(s, regs'),
-      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ P v' ∗ G)) -∗
-    subsume (reg_col regs) (r ↦ᵣ: P) G.
+  Lemma subsume_regcol_reg_pred A regs r P G:
+    (li_tactic (regcol_compute_hint (regcol_extract (KindReg r)) regs) (λ '(s, regs'),
+      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ ∃ x, P x v' ∗ G x))
+    ⊢ subsume (reg_col regs) (λ x : A, r ↦ᵣ: P x) G.
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as ([??] ?) "HG"; simplify_eq/=. iIntros "Hr".
     iDestruct (regcol_extract_Some with "Hr") as (??) "[? Hregs]"; [done|] => /=.
-    iDestruct ("HG" with "[//] Hregs") as "[? HG]"; simplify_eq/=. iFrame.
-    rewrite reg_mapsto_pred_eq. iExists _. by iFrame.
+    iDestruct ("HG" with "[//] Hregs") as (?) "[? HG]"; simplify_eq/=.
+    iExists _. iFrame. rewrite reg_mapsto_pred_eq. iExists _. by iFrame.
   Qed.
-  Global Instance subsume_regcol_reg_pred_inst regs r P:
-    Subsume (reg_col regs) (r ↦ᵣ: P) :=
-    λ G, i2p (subsume_regcol_reg_pred regs r P G).
+  Definition subsume_regcol_reg_pred_inst := [instance subsume_regcol_reg_pred].
+  Global Existing Instance subsume_regcol_reg_pred_inst.
 
-  Lemma subsume_struct_regcol_reg_pred regs r f P G:
-    (tactic_hint (regcol_compute_hint (regcol_extract (KindField r f)) regs) (λ '(s, regs'),
-      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ P v' ∗ G)) -∗
-    subsume (reg_col regs) (r # f ↦ᵣ: P) G.
+  Lemma subsume_struct_regcol_reg_pred A regs r f P G:
+    (li_tactic (regcol_compute_hint (regcol_extract (KindField r f)) regs) (λ '(s, regs'),
+      ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ ∃ x, P x v' ∗ G x))
+    ⊢ subsume (reg_col regs) (λ x : A, r # f ↦ᵣ: P x) G.
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as ([??] ?) "HG"; simplify_eq/=. iIntros "Hr".
     iDestruct (regcol_extract_Some with "Hr") as (??) "[? Hregs]"; [done|] => /=.
-    iDestruct ("HG" with "[//] Hregs") as "[? HG]"; simplify_eq/=. iFrame.
+    iDestruct ("HG" with "[//] Hregs") as (?) "[? HG]"; simplify_eq/=. iExists _. iFrame.
     rewrite struct_reg_mapsto_pred_eq. iExists _. by iFrame.
   Qed.
-  Global Instance subsume_struct_regcol_reg_pred_inst regs r f P:
-    Subsume (reg_col regs) (r # f ↦ᵣ: P) :=
-    λ G, i2p (subsume_struct_regcol_reg_pred regs r f P G).
+  Definition subsume_struct_regcol_reg_pred_inst := [instance subsume_struct_regcol_reg_pred].
+  Global Existing Instance subsume_struct_regcol_reg_pred_inst.
+
+  Lemma reg_mapsto_pred_ex {A B} r (P : (A *ₗ B) → _ → _) :
+    r ↦ᵣ: (λ y, ∃ₗ x, P x y)
+    ⊢ ∃ₗ x, r ↦ᵣ: (P x).
+  Proof.
+    rewrite reg_mapsto_pred_eq /reg_mapsto_pred_def.
+    iIntros "(%&?&%&?)". iExists _, _. iFrame.
+  Qed.
 
   Lemma reg_mapsto_pred_intro r P :
     find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v => P v
       | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_extract (KindReg r)) regs) (λ '(s, regs'),
+          (li_tactic (regcol_compute_hint (regcol_extract (KindReg r)) regs) (λ '(s, regs'),
             ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ P v'))
-      end) -∗
-    r ↦ᵣ: P.
+      end)
+    ⊢ r ↦ᵣ: P.
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     rewrite reg_mapsto_pred_eq /reg_mapsto_pred_def.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - eauto with iFrame.
@@ -984,12 +992,12 @@ Section instances.
       match rk with
       | RKMapsTo v => P v
       | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_extract (KindField r f)) regs) (λ '(s, regs'),
+          (li_tactic (regcol_compute_hint (regcol_extract (KindField r f)) regs) (λ '(s, regs'),
             ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs' -∗ P v'))
-      end) -∗
-    r # f ↦ᵣ: P.
+      end)
+    ⊢ r # f ↦ᵣ: P.
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     rewrite struct_reg_mapsto_pred_eq /struct_reg_mapsto_pred_def.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - eauto with iFrame.
@@ -999,88 +1007,80 @@ Section instances.
   Qed.
 
   Lemma simpl_hyp_reg_pred r P G:
-    (∀ v, r ↦ᵣ v -∗ P v -∗ G) -∗
-    simplify_hyp (r ↦ᵣ: P) G.
+    (∀ v, r ↦ᵣ v -∗ P v -∗ G)
+    ⊢ simplify_hyp (r ↦ᵣ: P) G.
   Proof.
     rewrite reg_mapsto_pred_eq /reg_mapsto_pred_def.
     iIntros "HG [%v [? ?]]". by iApply ("HG" with "[$]").
   Qed.
-  Global Instance simpl_hyp_reg_pred_inst r P:
-    SimplifyHyp (r ↦ᵣ: P) (Some 0%N) :=
-    λ G, i2p (simpl_hyp_reg_pred r P G).
+  Definition simpl_hyp_reg_pred_inst := [instance simpl_hyp_reg_pred with 0%N].
+  Global Existing Instance simpl_hyp_reg_pred_inst.
 
   Lemma simpl_hyp_struct_reg_pred r f P G:
-    (∀ v, r # f ↦ᵣ v -∗ P v -∗ G) -∗
-    simplify_hyp (r # f ↦ᵣ: P) G.
+    (∀ v, r # f ↦ᵣ v -∗ P v -∗ G)
+    ⊢ simplify_hyp (r # f ↦ᵣ: P) G.
   Proof.
     rewrite struct_reg_mapsto_pred_eq /struct_reg_mapsto_pred_def.
     iIntros "HG [%v [? ?]]". by iApply ("HG" with "[$]").
   Qed.
-  Global Instance simpl_hyp_struct_reg_pred_inst r f P:
-    SimplifyHyp (r # f ↦ᵣ: P) (Some 0%N) :=
-    λ G, i2p (simpl_hyp_struct_reg_pred r f P G).
+  Definition simpl_hyp_struct_reg_pred_inst := [instance simpl_hyp_struct_reg_pred with 0%N].
+  Global Existing Instance simpl_hyp_struct_reg_pred_inst.
 
-  Lemma subsume_instr a i1 i2 G:
-    ⌜i1 = i2⌝ ∗ G -∗
-    subsume (instr a i1) (instr a i2) G.
-  Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
-  Global Instance subsume_instr_inst a i1 i2 :
-    Subsume (instr a i1) (instr a i2) :=
-    λ G, i2p (subsume_instr a i1 i2 G).
+  Lemma subsume_instr A a i1 i2 G:
+    (∃ x, ⌜i1 = i2 x⌝ ∗ G x)
+    ⊢ subsume (instr a i1) (λ x : A, instr a (i2 x)) G.
+  Proof. iDestruct 1 as (? ->) "?". iIntros "?". iExists _. iFrame. Qed.
+  Definition subsume_instr_inst := [instance subsume_instr].
+  Global Existing Instance subsume_instr_inst.
 
-  Lemma subsume_instr_pre' a b1 b2 P1 P2 G:
-    ⌜b1 = b2⌝ ∗ ⌜P1 = P2⌝ ∗ G -∗
-    subsume (instr_pre' b1 a P1) (instr_pre' b2 a P2) G.
-  Proof. iDestruct 1 as (-> ->) "$". iIntros "$". Qed.
-  Global Instance subsume_instr_pre'_inst a b1 b2 P1 P2 :
-    Subsume (instr_pre' b1 a P1) (instr_pre' b2 a P2) :=
-    λ G, i2p (subsume_instr_pre' a b1 b2 P1 P2 G).
+  Lemma subsume_instr_pre' A a b1 b2 P1 P2 G:
+    (∃ x, ⌜b1 = b2 x⌝ ∗ ⌜P1 = P2 x⌝ ∗ G x)
+    ⊢ subsume (instr_pre' b1 a P1) (λ x : A, instr_pre' (b2 x) a (P2 x)) G.
+  Proof. iDestruct 1 as (? -> ->) "?". iIntros "?". iExists _. iFrame. Qed.
+  Definition subsume_instr_pre'_inst := [instance subsume_instr_pre'].
+  Global Existing Instance subsume_instr_pre'_inst.
 
-  Lemma subsume_spec_trace_protected Pκs1 Pκs2 G `{!IsProtected Pκs2}:
-    ⌜Pκs1 = Pκs2⌝ ∗ G -∗
-    subsume (spec_trace Pκs1) (spec_trace Pκs2) G.
-  Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
-  Global Instance subsume_spec_trace_protected_inst Pκs1 Pκs2 `{!IsProtected Pκs2}:
-    Subsume (spec_trace Pκs1) (spec_trace Pκs2) | 10 :=
-    λ G, i2p (subsume_spec_trace_protected Pκs1 Pκs2 G).
+  Lemma subsume_spec_trace_ex A Pκs1 Pκs2 G `{!∀ x, IsEx (Pκs2 x)}:
+    (∃ x, ⌜Pκs1 = Pκs2 x⌝ ∗ G x)
+    ⊢ subsume (spec_trace Pκs1) (λ x : A, spec_trace (Pκs2 x)) G.
+  Proof. iDestruct 1 as (? ->) "?". iIntros "?". iExists _. iFrame. Qed.
+  Definition subsume_spec_trace_ex_inst := [instance subsume_spec_trace_ex].
+  Global Existing Instance subsume_spec_trace_ex_inst | 10.
 
-  Lemma subsume_spec_trace Pκs1 Pκs2 G:
-    ⌜Pκs2 ⊆ Pκs1⌝ ∗ G -∗
-    subsume (spec_trace Pκs1) (spec_trace Pκs2) G.
-  Proof. iDestruct 1 as (?) "$". by iApply spec_trace_mono. Qed.
-  Global Instance subsume_spec_trace_inst κs1 κs2 :
-    Subsume (spec_trace κs1) (spec_trace κs2) | 50 :=
-    λ G, i2p (subsume_spec_trace κs1 κs2 G).
+  Lemma subsume_spec_trace A Pκs1 Pκs2 G:
+    (∃ x, ⌜Pκs2 x ⊆ Pκs1⌝ ∗ G x)
+    ⊢ subsume (spec_trace Pκs1) (λ x : A, spec_trace (Pκs2 x)) G.
+  Proof. iDestruct 1 as (??) "?". iIntros "?". iExists _. iFrame. by iApply spec_trace_mono. Qed.
+  Definition subsume_spec_trace_inst := [instance subsume_spec_trace].
+  Global Existing Instance subsume_spec_trace_inst | 50.
 
-  Lemma subsume_mem a n (v1 v2 : bv n) G:
-    ⌜v1 = v2⌝ ∗ G -∗
-    subsume (a ↦ₘ v1) (a ↦ₘ v2) G.
-  Proof. iDestruct 1 as (->) "$". iIntros "$". Qed.
-  Global Instance subsume_mem_inst a n (v1 v2 : bv n) :
-    Subsume (a ↦ₘ v1) (a ↦ₘ v2) :=
-    λ G, i2p (subsume_mem a n v1 v2 G).
+  Lemma subsume_mem A a n (v1 : bv n) (v2 : A → bv n) G:
+    (∃ x, ⌜v1 = v2 x⌝ ∗ G x)
+    ⊢ subsume (a ↦ₘ v1) (λ x : A, a ↦ₘ v2 x) G.
+  Proof. iDestruct 1 as (? ->) "?". iIntros "?". iExists _. iFrame. Qed.
+  Definition subsume_mem_inst := [instance subsume_mem].
+  Global Existing Instance subsume_mem_inst.
 
-  Lemma subsume_mem_array a1 a2 n (l1 l2 : list (bv n)) G:
-    ⌜a1 = a2⌝ ∗ ⌜l1 = l2⌝ ∗ G -∗
-    subsume (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) G.
-  Proof. iDestruct 1 as (-> ->) "$". iIntros "$". Qed.
-  Global Instance subsume_mem_array_inst a1 a2 n (l1 l2 : list (bv n)) :
-    Subsume (a1 ↦ₘ∗ l1) (a2 ↦ₘ∗ l2) :=
-    λ G, i2p (subsume_mem_array a1 a2 n l1 l2 G).
+  Lemma subsume_mem_array A a1 a2 n (l1 : list (bv n)) (l2 : A → list (bv n)) G:
+    (∃ x, ⌜a1 = a2⌝ ∗ ⌜l1 = l2 x⌝ ∗ G x)
+    ⊢ subsume (a1 ↦ₘ∗ l1) (λ x : A, a2 ↦ₘ∗ (l2 x)) G.
+  Proof. iDestruct 1 as (? -> ->) "?". iIntros "?". iExists _. iFrame. Qed.
+  Definition subsume_mem_array_inst := [instance subsume_mem_array].
+  Global Existing Instance subsume_mem_array_inst.
 
   (* This handles the case where the goal is fully contained in the hypthesis. I.e.
      |------ hyp ------|
           |-- goal --|
   *)
-  Lemma subsume_mem_uninit_mem_uninit a1 a2 n1 n2 G
+  Lemma subsume_mem_uninit_mem_uninit A a1 a2 n1 n2 G
         `{!BvSolve (0 ≤ n2 ∧ a1 ≤ a2 ∧ a2 + n2 ≤ a1 + n1)}:
-    (tactic_hint (normalize_bv_wrap (a2 - a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
-     tactic_hint (normalize_bv_wrap (n1 - n2 - m1)) (λ m2, ⌜0 ≤ m2 < 2 ^ 64 ∧ n1 < 2 ^ 64⌝ ∗ (
+    (li_tactic (normalize_bv_wrap (a2 - a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
+     li_tactic (normalize_bv_wrap (n1 - n2 - m1)) (λ m2, ⌜0 ≤ m2 < 2 ^ 64 ∧ n1 < 2 ^ 64⌝ ∗ (
       a1 ↦ₘ? m1 -∗
-     (a2 + n2) ↦ₘ? m2 -∗ G)))) -∗
-     subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) G.
+     (a2 + n2) ↦ₘ? m2 -∗ ∃ x, G x))))
+    ⊢ subsume (a1 ↦ₘ? n1) (λ x : A, a2 ↦ₘ? n2) G.
   Proof.
-    unfold BvSolve, normalize_bv_wrap, tactic_hint in *. iIntros "HG Ha".
+    unfold BvSolve, normalize_bv_wrap, li_tactic in *. iIntros "HG Ha".
     iDestruct "HG" as "(%m1&%Hm1&%&%m2&%Hm2&%&HG)".
     iDestruct (mem_mapsto_uninit_split m1 with "Ha") as "[? Ha]"; [bv_solve|].
     iDestruct (mem_mapsto_uninit_split n2 with "Ha") as "[? Ha]"; [bv_solve|].
@@ -1088,90 +1088,79 @@ Section instances.
     have -> : (n1 - m1 - n2) = m2 by bv_solve.
     iFrame. iApply ("HG" with "[$] [$]").
   Qed.
-  Global Instance subsume_mem_uninit_mem_uninit_inst a1 a2 n1 n2
-         `{!BvSolve (0 ≤ n2 ∧ a1 ≤ a2 ∧ a2 + n2 ≤ a1 + n1)}:
-    Subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) :=
-    λ G, i2p (subsume_mem_uninit_mem_uninit a1 a2 n1 n2 G).
+  Definition subsume_mem_uninit_mem_uninit_inst := [instance subsume_mem_uninit_mem_uninit].
+  Global Existing Instance subsume_mem_uninit_mem_uninit_inst.
 
   (* This handles the case where the kypothesis does not fully containe the goal. I.e.
      |--- hyp ---|
           |-- goal --|
    *)
   (* This rule breaks if one of the uninit spans 2^64 bytes but that seems quite rare. *)
-  Lemma subsume_mem_uninit_mem_uninit2 a1 a2 n1 n2 G
+  Lemma subsume_mem_uninit_mem_uninit2 A a1 a2 n1 n2 G
         `{!BvSolve (0 ≤ n2 ∧ a1 ≤ a2 ∧ a2 ≤ a1 + n1 ∧ a1 + n1 ≤ a2 + n2)}:
-    (tactic_hint (normalize_bv_wrap (a2 - a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
-     tactic_hint (normalize_bv_wrap (n2 - (n1 - m1))) (λ m2, ⌜0 ≤ m2 < 2 ^ 64⌝ ∗
-     tactic_hint (normalize_bv_wrap (a2 + n1 - m1)) (λ m3, ⌜a2 + n2 < 2 ^ 64 ∧ m3 + m2 < 2 ^ 64⌝ ∗ (
+    (li_tactic (normalize_bv_wrap (a2 - a1)) (λ m1, ⌜0 ≤ m1 < 2 ^ 64⌝ ∗
+     li_tactic (normalize_bv_wrap (n2 - (n1 - m1))) (λ m2, ⌜0 ≤ m2 < 2 ^ 64⌝ ∗
+     li_tactic (normalize_bv_wrap (a2 + n1 - m1)) (λ m3, ⌜a2 + n2 < 2 ^ 64 ∧ m3 + m2 < 2 ^ 64⌝ ∗ (
      a1 ↦ₘ? m1 -∗
-     m3 ↦ₘ? m2 ∗ G))))) -∗
-     subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) G.
+     m3 ↦ₘ? m2 ∗ ∃ x, G x)))))
+    ⊢ subsume (a1 ↦ₘ? n1) (λ x : A, a2 ↦ₘ? n2) G.
   Proof.
-    unfold BvSolve, normalize_bv_wrap, tactic_hint in *. iIntros "HG Ha".
+    unfold BvSolve, normalize_bv_wrap, li_tactic in *. iIntros "HG Ha".
     iDestruct "HG" as "(%m1&%Hm1&%&%m2&%Hm2&%&%m3&%Hm3&%&HG)".
     iDestruct (mem_mapsto_uninit_in_range with "Ha") as %?.
     iDestruct (mem_mapsto_uninit_split m1 with "Ha") as "[? Ha]"; [bv_solve|].
-    iDestruct ("HG" with "[$]") as "[H1 $]".
+    iDestruct ("HG" with "[$]") as "[H1 [% ?]]". iExists _. iFrame.
     have -> : a1 + m1 = a2 by bv_solve.
     iApply (mem_mapsto_uninit_combine with "Ha"); [bv_solve|].
     iDestruct (mem_mapsto_uninit_in_range with "H1") as %?.
     have -> : (a2 + (n1 - m1)) = m3 by bv_solve.
     by have -> : (n2 - (n1 - m1)) = m2 by bv_solve.
   Qed.
-  Global Instance subsume_mem_uninit_mem_uninit2_inst a1 a2 n1 n2
-        `{!BvSolve (0 ≤ n2 ∧ a1 ≤ a2 ∧ a2 ≤ a1 + n1 ∧ a1 + n1 ≤ a2 + n2)}:
-    Subsume (a1 ↦ₘ? n1) (a2 ↦ₘ? n2) :=
-    λ G, i2p (subsume_mem_uninit_mem_uninit2 a1 a2 n1 n2 G).
+  Definition subsume_mem_uninit_mem_uninit2_inst := [instance subsume_mem_uninit_mem_uninit2].
+  Global Existing Instance subsume_mem_uninit_mem_uninit2_inst.
 
   (* This rule breaks if one of the uninit spans 2^64 bytes but that seems quite rare. *)
-  Lemma subsume_mem_mapsto_mem_uninit a1 a2 n (b : bv n) n2 G:
+  Lemma subsume_mem_mapsto_mem_uninit A a1 a2 n (b : bv n) n2 G:
     (⌜a1 = a2⌝ ∗ ⌜Z.of_N (n `div` 8) ≤ n2⌝ ∗
-    (a2 + (Z.of_N (n `div` 8))) ↦ₘ? (n2 - (Z.of_N (n `div` 8))) ∗ G) -∗
-     subsume (a1 ↦ₘ b) (a2 ↦ₘ? n2) G.
+    (a2 + (Z.of_N (n `div` 8))) ↦ₘ? (n2 - (Z.of_N (n `div` 8))) ∗ ∃ x, G x)
+    ⊢ subsume (a1 ↦ₘ b) (λ x : A, a2 ↦ₘ? n2) G.
   Proof.
-    iIntros "[-> [% [Ha2 $]]] Ha".
+    iIntros "[-> [% [Ha2 [% ?]]]] Ha". iExists _. iFrame.
     iDestruct (mem_mapsto_n_mult_8 with "Ha") as %[n' ?]; subst.
     iDestruct (mem_mapsto_mapsto_to_uninit with "Ha") as "Ha".
     by iApply (mem_mapsto_uninit_combine with "Ha"); [bv_solve|].
   Qed.
-  Global Instance subsume_mem_mapsto_mem_uninit_inst a1 a2 n (b : bv n) n2:
-    Subsume (a1 ↦ₘ b) (a2 ↦ₘ? n2) :=
-    λ G, i2p (subsume_mem_mapsto_mem_uninit a1 a2 n b n2 G).
+  Definition subsume_mem_mapsto_mem_uninit_inst := [instance subsume_mem_mapsto_mem_uninit].
+  Global Existing Instance subsume_mem_mapsto_mem_uninit_inst.
 
-  Lemma simpl_hyp_uninit_0 a n G:
-    G -∗
-    simplify_hyp (a ↦ₘ? n) G.
+  Lemma simpl_hyp_uninit_0 a n G `{!BvSolve (n = 0)}:
+    G
+    ⊢ simplify_hyp (a ↦ₘ? n) G.
   Proof. by iIntros "$ ?". Qed.
-  Global Instance simpl_hyp_uninit_0_inst a n `{!BvSolve (n = 0)}:
-    SimplifyHyp (a ↦ₘ? n) (Some 0%N) :=
-    λ G, i2p (simpl_hyp_uninit_0 a n G).
+  Definition simpl_hyp_uninit_0_inst := [instance simpl_hyp_uninit_0 with 0%N].
+  Global Existing Instance simpl_hyp_uninit_0_inst.
 
   Lemma simpl_goal_uninit_0 a n G `{!BvSolve (n = 0)}:
-    G ⌜0 ≤ a ≤ 2 ^ 64⌝ -∗
-    simplify_goal (a ↦ₘ? n) G.
+    ⌜0 ≤ a ≤ 2 ^ 64⌝ ∗ G
+    ⊢ simplify_goal (a ↦ₘ? n) G.
   Proof.
-    unfold BvSolve in *. subst. iIntros "?". iExists _.
-    iFrame. iIntros (?). by rewrite mem_mapsto_uninit_0.
+    unfold BvSolve in *. subst. iIntros "[% $]". by rewrite mem_mapsto_uninit_0.
   Qed.
-  Global Instance simpl_goal_uninit_0_inst a n `{!BvSolve (n = 0)}:
-    SimplifyGoal (a ↦ₘ? n) (Some 0%N) :=
-    λ G, i2p (simpl_goal_uninit_0 a n G).
+  Definition simpl_goal_uninit_0_inst := [instance simpl_goal_uninit_0 with 0%N].
+  Global Existing Instance simpl_goal_uninit_0_inst.
 
   Lemma simpl_goal_reg_col_nil T:
-    (T True) -∗
-    simplify_goal (reg_col []) T.
-  Proof.
-    iIntros "?". iExists _. iFrame. by rewrite reg_col_nil.
-  Qed.
-  Global Instance simpl_goal_reg_col_nil_inst :
-    SimplifyGoal (reg_col []) (Some 100%N) :=
-    λ T, i2p (simpl_goal_reg_col_nil T).
+    T
+    ⊢ simplify_goal (reg_col []) T.
+  Proof. iIntros "$". by rewrite reg_col_nil. Qed.
+  Definition simpl_goal_reg_col_nil_inst := [instance simpl_goal_reg_col_nil with 100%N].
+  Global Existing Instance simpl_goal_reg_col_nil_inst.
 
   Lemma li_wp_next_instr:
-    (∃ (nPC newPC : addr),
+    (∃ (nPC : addr),
      arch_pc_reg ↦ᵣ RVal_Bits nPC ∗
-     tactic_hint (normalize_instr_addr (bv_unsigned nPC)) (λ normPC,
-     ⌜newPC = Z_to_bv 64 normPC⌝ ∗
+     li_tactic (normalize_instr_addr (bv_unsigned nPC)) (λ normPC,
+     let newPC := Z_to_bv 64 normPC in
      find_in_context (FindInstrKind normPC true) (λ ik,
      match ik with
      | IKInstr (Some t) => arch_pc_reg ↦ᵣ RVal_Bits newPC -∗ WPasm t
@@ -1179,10 +1168,10 @@ Section instances.
        ∃ Pκs, spec_trace Pκs ∗ ⌜scons (SInstrTrap newPC) snil ⊆ Pκs⌝ ∗ True
      | IKPre l P => P
      end
-    ))) -∗
-    WPasm tnil.
+    )))
+    ⊢ WPasm tnil.
   Proof.
-    unfold normalize_instr_addr. iDestruct 1 as (??) "(HPC&%normPC&%Hnorm&->&Hwp)".
+    unfold normalize_instr_addr. iDestruct 1 as (?) "(HPC&%normPC&%Hnorm&Hwp)".
     have ? := bv_unsigned_in_range _ nPC.
     iDestruct "Hwp" as (ins) "[Hi Hwp]".
     destruct ins as [[?|]|?] => /=.
@@ -1203,9 +1192,8 @@ Section instances.
   Qed.
 
   Lemma li_instr_pre l a P:
-    (∃ newPC,
-     tactic_hint (normalize_instr_addr a) (λ normPC,
-     ⌜newPC = Z_to_bv 64 normPC⌝ ∗
+    (li_tactic (normalize_instr_addr a) (λ normPC,
+     let newPC := Z_to_bv 64 normPC in
      find_in_context (FindInstrKind normPC l) (λ ik,
      match ik with
      | IKInstr (Some t) =>
@@ -1214,10 +1202,10 @@ Section instances.
        P -∗ ∃ Pκs, spec_trace Pκs ∗ ⌜scons (SInstrTrap newPC) snil ⊆ Pκs⌝ ∗ True
      | IKPre l' Q => ⌜implb l' l⌝ ∗ (P -∗ Q)
      end
-    ))) -∗
-    instr_pre' l a P.
+    )))
+    ⊢ instr_pre' l a P.
   Proof.
-    unfold normalize_instr_addr.  iDestruct 1 as (? normPC Hnorm -> ins) "[Hinstr Hwp]".
+    unfold normalize_instr_addr.  iDestruct 1 as (normPC Hnorm ins) "[Hinstr Hwp]".
     destruct ins as [[?|]|?] => /=.
     - iDestruct (instr_addr_in_range with "Hinstr") as %?.
       rewrite (bv_wrap_small _ normPC) // in Hnorm. subst.
@@ -1236,8 +1224,8 @@ Section instances.
   Qed.
 
   Lemma li_wp_cases ts:
-    (⌜ts ≠ []⌝ ∗ [∧ list] t ∈ ts, WPasm t) -∗
-    WPasm (tcases ts).
+    (⌜ts ≠ []⌝ ∗ [∧ list] t ∈ ts, WPasm t)
+    ⊢ WPasm (tcases ts).
   Proof.
     iIntros "[% Hwp]". iApply wp_cases; [done|].
     iIntros (t Ht). by iApply (big_andL_elem_of with "Hwp").
@@ -1248,12 +1236,12 @@ Section instances.
       match rk with
       | RKMapsTo v' => r ↦ᵣ v' -∗ Φ v'
       | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
+          (li_tactic (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
              ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs -∗ Φ v'))
-      end)) -∗
-    WPreadreg r @ [] {{ Φ }}.
+      end))
+    ⊢ WPreadreg r @ [] {{ Φ }}.
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (read_reg_nil with "Hr").
     - iDestruct "Hwp" as ([??] ?%regcol_lookup_Some) "Hwp"; simplify_eq/=.
@@ -1267,12 +1255,12 @@ Section instances.
       match rk with
       | RKMapsTo v' => r # f ↦ᵣ v' -∗ Φ v'
       | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(_, s),
+          (li_tactic (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(_, s),
              ∀ v', ⌜valu_has_shape v' s⌝ -∗ reg_col regs -∗ Φ v'))
-      end)) -∗
-    WPreadreg r @ [Field f] {{ Φ }}.
+      end))
+    ⊢ WPreadreg r @ [Field f] {{ Φ }}.
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (read_reg_struct with "Hr").
     - iDestruct "Hwp" as ([b s] Hs) "Hwp"; simplify_eq/=.
@@ -1288,16 +1276,16 @@ Section instances.
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ -∗ r ↦ᵣ v' -∗ WPasm es)
       | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
+          (li_tactic (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
              reg_col regs -∗ ⌜valu_has_shape v s⌝ -∗ WPasm es))
-      end)) -∗
-    WPasm (ReadReg r [] v ann :t: es).
+      end))
+    ⊢ WPasm (ReadReg r [] v ann :t: es).
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hrk HG]". iApply wp_read_reg; [done|].
     iApply li_wpreadreg_nil. iExists _. iFrame. destruct rk => /=.
     - iIntros "? %". by iApply "HG".
-    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold li_tactic, regcol_compute_hint.
       iExists (_, _). iSplit; [done|]. iIntros (??) "? %". subst. by iApply ("HG" with "[$]").
   Qed.
 
@@ -1306,16 +1294,16 @@ Section instances.
      (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => (⌜vread = v'⌝ -∗ r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => tactic_hint (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(b, s),
+      | RKCol regs => li_tactic (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(b, s),
              ⌜valu_has_shape vread s⌝ -∗ reg_col regs -∗ WPasm es)
-      end))) -∗
-    WPasm (ReadReg r [Field f] v ann :t: es).
+      end)))
+    ⊢ WPasm (ReadReg r [Field f] v ann :t: es).
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as (vread ? rk) "[Hrk HG]". iApply wp_read_reg; [done|].
     iApply li_wpreadreg_field. iExists _. iFrame. destruct rk => /=.
     - iIntros "? %". by iApply "HG".
-    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold li_tactic, regcol_compute_hint.
       iExists (_, _). iSplit; [done|]. iIntros (??) "? %". subst. by iApply ("HG" with "[] [$]").
   Qed.
 
@@ -1324,16 +1312,16 @@ Section instances.
       match rk with
       | RKMapsTo v' => (⌜v = v'⌝ ∗ (r ↦ᵣ v' -∗ WPasm es))
       | RKCol regs =>
-          (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
+          (li_tactic (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
              ⌜∀ v', valu_has_shape v' s → v' = v⌝ ∗ (reg_col regs -∗ WPasm es)))
-      end)) -∗
-    WPasm (AssumeReg r [] v ann :t: es).
+      end))
+    ⊢ WPasm (AssumeReg r [] v ann :t: es).
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hrk HG]". iApply wp_assume_reg.
     iApply li_wpreadreg_nil. iExists _. iFrame. destruct rk => /=.
     - iDestruct "HG" as (?) "HG". iIntros "?". iSplit; [done|]. by iApply "HG".
-    - iDestruct "HG" as ([??]??) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+    - iDestruct "HG" as ([??]??) "HG"; simplify_eq/=. unfold li_tactic, regcol_compute_hint.
       iExists (_, _). iSplit; [done|]. iIntros (??) "?". iSplit; [naive_solver|]. by iApply ("HG" with "[$]").
   Qed.
 
@@ -1341,16 +1329,16 @@ Section instances.
     ((find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v' => ⌜v = v'⌝ ∗ (r # f ↦ᵣ v' -∗ WPasm es)
-      | RKCol regs => tactic_hint (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(b, s),
+      | RKCol regs => li_tactic (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(b, s),
           if s is ExactShape v' then ⌜v = v'⌝ ∗ (reg_col regs -∗ WPasm es) else False)
-      end))) -∗
-    WPasm (AssumeReg r [Field f] v ann :t: es).
+      end)))
+    ⊢ WPasm (AssumeReg r [Field f] v ann :t: es).
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hrk HG]". iApply wp_assume_reg.
     iApply li_wpreadreg_field. iExists _. iFrame. destruct rk => /=.
     - iDestruct "HG" as (?) "HG". iIntros "?". iSplit; [done|]. by iApply "HG".
-    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold li_tactic, regcol_compute_hint.
       iExists (_, _). iSplit; [done|]. iIntros (??) "?". case_match => //. iDestruct "HG" as (?) "HG"; subst.
       iSplit; [naive_solver|]. by iApply ("HG" with "[$]").
   Qed.
@@ -1363,12 +1351,12 @@ Section instances.
           (* We don't use regcol_extract here because it unfolds
           regs', which slows down the pKVM handler example quite a bit.
            TODO: find a more principled solution. *)
-          (tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(i, s),
+          (li_tactic (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(i, s),
              r ↦ᵣ v -∗ reg_col (delete i regs) -∗ WPasm es))
-      end)) -∗
-    WPasm (WriteReg r [] v ann :t: es).
+      end))
+    ⊢ WPasm (WriteReg r [] v ann :t: es).
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_write_reg with "Hr").
     - iDestruct "Hwp" as ([??] ?%regcol_lookup_Some) "Hwp"; simplify_eq/=.
@@ -1385,12 +1373,12 @@ Section instances.
           (* We don't use regcol_extract here because it unfolds
           regs', which slows down the pKVM handler example quite a bit.
            TODO: find a more principled solution. *)
-          (tactic_hint (regcol_compute_hint (regcol_lookup (KindField r f)) regs) (λ '(i, s),
+          (li_tactic (regcol_compute_hint (regcol_lookup (KindField r f)) regs) (λ '(i, s),
              r # f ↦ᵣ vnew -∗ reg_col (delete i regs) -∗ WPasm es))
-      end))) -∗
-    WPasm (WriteReg r [Field f] v ann :t: es).
+      end)))
+    ⊢ WPasm (WriteReg r [Field f] v ann :t: es).
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as (vnew ? rk) "[Hr Hwp]" => /=. case_match; simplify_eq.
     - by iApply (wp_write_reg_struct with "Hr").
     - iDestruct "Hwp" as ([??] ?%regcol_lookup_Some) "Hwp"; simplify_eq/=.
@@ -1399,52 +1387,57 @@ Section instances.
   Qed.
 
   Lemma li_wp_branch_address v ann es:
-    WPasm es -∗
-    WPasm (BranchAddress v ann :t: es).
-  Proof. apply: wp_branch_address. Qed.
+    WPasm es
+    ⊢ WPasm (BranchAddress v ann :t: es).
+  Proof. iApply wp_branch_address. Qed.
 
   Lemma li_wp_branch c desc ann es:
-    WPasm es -∗
-    WPasm (Branch c desc ann :t: es).
-  Proof. apply: wp_branch. Qed.
+    WPasm es
+    ⊢ WPasm (Branch c desc ann :t: es).
+  Proof. iApply wp_branch. Qed.
 
   Lemma li_wp_declare_const_bv v es ann b:
-    (∀ (n : bv b), WPasm (subst_trace (Val_Bits n) v es)) -∗
-    WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :t: es).
-  Proof. apply: wp_declare_const_bv. Qed.
+    (∀ (n : bv b), WPasm (subst_trace (Val_Bits n) v es))
+    ⊢ WPasm (Smt (DeclareConst v (Ty_BitVec b)) ann :t: es).
+  Proof. iApply wp_declare_const_bv. Qed.
 
   Lemma li_wp_declare_const_bool v es ann:
-    (∀ b : bool, WPasm (subst_trace (Val_Bool b) v es)) -∗
-    WPasm (Smt (DeclareConst v Ty_Bool) ann :t: es).
-  Proof. apply: wp_declare_const_bool. Qed.
+    (∀ b : bool, WPasm (subst_trace (Val_Bool b) v es))
+    ⊢ WPasm (Smt (DeclareConst v Ty_Bool) ann :t: es).
+  Proof. iApply wp_declare_const_bool. Qed.
 
   Lemma li_wp_declare_const_enum v es i ann:
-    (∀ c, WPasm (subst_trace (Val_Enum (i, c)) v es)) -∗
-    WPasm (Smt (DeclareConst v (Ty_Enum i)) ann :t: es).
-  Proof. apply: wp_declare_const_enum. Qed.
+    (∀ c, WPasm (subst_trace (Val_Enum (i, c)) v es))
+    ⊢ WPasm (Smt (DeclareConst v (Ty_Enum i)) ann :t: es).
+  Proof. iApply wp_declare_const_enum. Qed.
 
   Lemma li_wp_define_const n es ann e:
-    tactic_hint (compute_wp_exp e) (λ v, let_bind_hint v (λ v, WPasm (subst_trace v n es))) -∗
-    WPasm (Smt (DefineConst n e) ann :t: es).
+    li_tactic (compute_wp_exp e) (λ v, let_bind_hint v (λ v, WPasm (subst_trace v n es)))
+    ⊢ WPasm (Smt (DefineConst n e) ann :t: es).
   Proof.
     iIntros "Hexp". iApply wp_define_const. unfold let_bind_hint.
     iApply (wpe_wand with "Hexp"). iIntros (?) "$".
   Qed.
 
   Lemma li_wp_assert es ann e:
-    tactic_hint (compute_wp_exp e) (λ v, ∃ b, ⌜v = Val_Bool b⌝ ∗ (⌜b = true⌝ -∗ WPasm es)) -∗
-    WPasm (Smt (Assert e) ann :t: es).
-  Proof. apply: wp_assert. Qed.
+    li_tactic (compute_wp_exp e) (λ v, ∃ b, ⌜v = Val_Bool b⌝ ∗ (⌜b = true⌝ -∗ WPasm es))
+    ⊢ WPasm (Smt (Assert e) ann :t: es).
+  Proof. iApply wp_assert. Qed.
 
   Lemma li_wp_assume es ann e:
-    WPaexp e {{ v, ⌜v = Val_Bool true⌝ ∗ WPasm es }} -∗
-    WPasm (Assume e ann :t: es).
-  Proof. apply: wp_assume. Qed.
+    WPaexp e {{ v, ⌜v = Val_Bool true⌝ ∗ WPasm es }}
+    ⊢ WPasm (Assume e ann :t: es).
+  Proof. iApply wp_assume. Qed.
 
   Lemma li_wp_barrier es v ann:
-    WPasm es -∗
-    WPasm (Barrier v ann :t: es).
-  Proof. apply: wp_barrier. Qed.
+    WPasm es
+    ⊢ WPasm (Barrier v ann :t: es).
+  Proof. iApply wp_barrier. Qed.
+
+  Lemma li_wp_abstract_primop es n v args ann:
+    WPasm es
+    ⊢ WPasm (AbstractPrimop n v args ann :t: es).
+  Proof. iApply wp_abstract_primop. Qed.
 
   Lemma li_wp_write_mem len n success kind a (vnew : bv n) tag ann es:
     (⌜n = (8*len)%N⌝ ∗
@@ -1453,8 +1446,9 @@ Section instances.
       match mk with
       | MKMapsTo n' vold => ⌜n' = n⌝ ∗ (bv_unsigned a ↦ₘ vnew -∗ WPasm es)
       | MKArray n' a' l =>
-          ∃ i : nat, ⌜a' = bv_unsigned a - (i * Z.of_N len)⌝ ∗ ⌜i < length l⌝%nat ∗
-          ∃ Heq : n = n', (a' ↦ₘ∗ <[i := (eq_rect n bv vnew n' Heq)]>l -∗ WPasm es)
+        ⌜(bv_unsigned a - a') `mod` Z.of_N len = 0⌝ ∗
+        ∃ i : nat, ⌜Z.of_nat i = (bv_unsigned a - a') / Z.of_N len⌝ ∗ ⌜i < length l⌝%nat ∗
+        ∃ Heq : n = n', (a' ↦ₘ∗ <[i := (eq_rect n bv vnew n' Heq)]>l -∗ WPasm es)
       | MKUninit a' n' =>
         ⌜a' ≤ bv_unsigned a⌝ ∗ ⌜bv_unsigned a + Z.of_N len ≤ a' + n'⌝ ∗ (
         bv_unsigned a ↦ₘ vnew -∗
@@ -1466,12 +1460,14 @@ Section instances.
         ∃ Pκs Pκs', spec_trace Pκs ∗ ⌜scons (SWriteMem a vnew) Pκs' ⊆ Pκs⌝ ∗
         (spec_trace Pκs' -∗ WPasm es)
       end
-    )) -∗
-    WPasm (WriteMem (RVal_Bool success) kind (RVal_Bits (@bv_to_bvn 64 a)) (RVal_Bits (@bv_to_bvn n vnew)) len tag ann :t: es).
+    ))
+    ⊢ WPasm (WriteMem (RVal_Bool success) kind (RVal_Bits (@bv_to_bvn 64 a)) (RVal_Bits (@bv_to_bvn n vnew)) len tag ann :t: es).
   Proof.
-    iDestruct 1 as (?? mk) "[HP Hcont]" => /=. case_match.
+    iDestruct 1 as (? ? mk) "[HP Hcont]" => /=. case_match.
     - iDestruct "Hcont" as (->) "Hcont". iApply (wp_write_mem with "HP Hcont"); [done | lia].
-    - iDestruct "Hcont" as (i?? Heq) "Hcont". subst => /=.
+    - iDestruct "Hcont" as (? i Heqi ? Heq) "Hcont". subst => /=. rename a0 into a'.
+      have {} Heqi: a' = bv_unsigned a - i * Z.of_N len.
+      { rewrite Heqi Z.mul_comm -Z_div_exact_full_2; [lia|lia|done]. }
       iApply (wp_write_mem_array with "HP [Hcont]"); [done|lia|done|done|].
       iIntros "Hl". by iApply "Hcont".
     - iDestruct "Hcont" as (??) "Hcont". subst n.
@@ -1497,19 +1493,24 @@ Section instances.
     find_in_context (FindMemMapsTo (bv_unsigned a)) (λ mk,
       match mk with
       | MKMapsTo n' vmem => ∃ Heq : n = n', (⌜(eq_rect n bv vread n' Heq) = vmem⌝ -∗ bv_unsigned a ↦ₘ vmem -∗ WPasm es)
-      | MKArray n' a' l => ∃ i : nat, ⌜a' = bv_unsigned a - (i * Z.of_N len)⌝ ∗ ⌜i < length l⌝%nat ∗
-         ∃ Heq : n = n', (∀ vmem, ⌜l !! i = Some vmem⌝ -∗ ⌜(eq_rect n bv vread n' Heq) = vmem⌝ -∗ a' ↦ₘ∗ l -∗ WPasm es)
+      | MKArray n' a' l =>
+        ⌜(bv_unsigned a - a') `mod` Z.of_N len = 0⌝ ∗
+        ∃ i : nat, ⌜Z.of_nat i = (bv_unsigned a - a') / Z.of_N len⌝ ∗ ⌜i < length l⌝%nat ∗
+        ∃ Heq : n = n', (∀ vmem, ⌜l !! i = Some vmem⌝ -∗ ⌜(eq_rect n bv vread n' Heq) = vmem⌝ -∗ a' ↦ₘ∗ l -∗ WPasm es)
       | MKUninit a' n' => False
       | MKMMIO a' l =>
         ⌜a' ≤ bv_unsigned a⌝ ∗ ⌜bv_unsigned a + Z.of_N len ≤ a' + l⌝ ∗
         ∃ Pκs Pκs', spec_trace Pκs ∗ ⌜scons (SReadMem a vread) Pκs' ⊆ Pκs⌝ ∗
         (spec_trace Pκs' -∗ WPasm es)
-      end)) -∗
-    WPasm (ReadMem (RVal_Bits (@bv_to_bvn n vread)) kind (RVal_Bits (@bv_to_bvn 64 a)) len tag ann :t: es).
+      end))
+    ⊢ WPasm (ReadMem (RVal_Bits (@bv_to_bvn n vread)) kind (RVal_Bits (@bv_to_bvn 64 a)) len tag ann :t: es).
   Proof.
     iDestruct 1 as (?? mk) "[Hmem Hcont]" => /=. case_match.
     - iDestruct "Hcont" as (?) "Hcont". subst => /=. iApply (wp_read_mem with "Hmem Hcont"); [done|lia].
-    - iDestruct "Hcont" as (i?[??]%lookup_lt_is_Some_2 ?) "Hcont". subst => /=.
+    - iDestruct "Hcont" as (? i Heqi [??]%lookup_lt_is_Some_2 ?) "Hcont". subst => /=.
+      rename a0 into a'.
+      have {} Heqi: a' = bv_unsigned a - i * Z.of_N len.
+      { rewrite Heqi Z.mul_comm -Z_div_exact_full_2; [lia|lia|done]. }
       iApply (wp_read_mem_array with "Hmem [Hcont]"); [done|lia|done|done|].
       iIntros (?) "Hl". by iApply "Hcont".
     - done.
@@ -1521,26 +1522,26 @@ Section instances.
   Qed.
 
   Lemma li_wpe_val v Φ ann:
-    Φ v -∗
-    WPexp (Val v ann) {{ Φ }}.
-  Proof. apply: wpe_val. Qed.
+    Φ v
+    ⊢ WPexp (Val v ann) {{ Φ }}.
+  Proof. iApply wpe_val. Qed.
 
   Lemma li_wpae_var_reg r Φ ann :
     (find_in_context (FindRegMapsTo r) (λ rk,
       match rk with
       | RKMapsTo v => (if v is RegVal_Base v' then r ↦ᵣ v -∗ Φ v' else False)
       | RKCol regs =>
-          tactic_hint (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
+          li_tactic (regcol_compute_hint (regcol_lookup (KindReg r)) regs) (λ '(_, s),
            ∀ v, ⌜valu_has_shape v s⌝ -∗ ∃ v', ⌜v = RegVal_Base v'⌝ ∗ (reg_col regs -∗ Φ v')
              )
-      end)) -∗
-    WPaexp (AExp_Val (AVal_Var r []) ann) {{ Φ }}.
+      end))
+    ⊢ WPaexp (AExp_Val (AVal_Var r []) ann) {{ Φ }}.
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hrk HG]". iApply wpae_var_reg.
     iApply li_wpreadreg_nil. iExists _. iFrame. destruct rk => /=.
     - by case_match.
-    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold li_tactic, regcol_compute_hint.
       iExists (_, _). iSplit; [done|]. iIntros (??) "?".
       iDestruct ("HG" with "[//]") as (??) "HG"; subst. by iApply "HG".
   Qed.
@@ -1549,70 +1550,70 @@ Section instances.
     (find_in_context (FindStructRegMapsTo r f) (λ rk,
       match rk with
       | RKMapsTo v => (if v is RegVal_Base v' then r # f ↦ᵣ v -∗ Φ v' else False)
-      | RKCol regs => tactic_hint (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(b, s),
+      | RKCol regs => li_tactic (regcol_compute_hint (regcol_lookup_field r f) regs) (λ '(b, s),
            ∀ v, ⌜valu_has_shape v s⌝ -∗ if v is RegVal_Base v' then (reg_col regs -∗ Φ v') else False)
-      end)) -∗
-    WPaexp (AExp_Val (AVal_Var r [Field f]) ann) {{ Φ }}.
+      end))
+    ⊢ WPaexp (AExp_Val (AVal_Var r [Field f]) ann) {{ Φ }}.
   Proof.
-    unfold tactic_hint, regcol_compute_hint.
+    unfold li_tactic, regcol_compute_hint.
     iDestruct 1 as (rk) "[Hrk HG]". iApply wpae_var_reg.
     iApply li_wpreadreg_field. iExists _. iFrame. destruct rk => /=.
     - by case_match.
-    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold tactic_hint, regcol_compute_hint.
+    - iDestruct "HG" as ([??]?) "HG"; simplify_eq/=. unfold li_tactic, regcol_compute_hint.
       iExists (_, _). iSplit; [done|]. iIntros (??) "?".
       iDestruct ("HG" with "[//]") as "HG". case_match => //. by iApply "HG".
   Qed.
 
   Lemma li_wpae_bits b Φ ann:
-    Φ (Val_Bits b) -∗
-    WPaexp (AExp_Val (AVal_Bits b) ann) {{ Φ }}.
-  Proof. apply: wpae_bits. Qed.
+    Φ (Val_Bits b)
+    ⊢ WPaexp (AExp_Val (AVal_Bits b) ann) {{ Φ }}.
+  Proof. iApply wpae_bits. Qed.
   Lemma li_wpae_bool b Φ ann:
-    Φ (Val_Bool b) -∗
-    WPaexp (AExp_Val (AVal_Bool b) ann) {{ Φ }}.
-  Proof. apply: wpae_bool. Qed.
+    Φ (Val_Bool b)
+    ⊢ WPaexp (AExp_Val (AVal_Bool b) ann) {{ Φ }}.
+  Proof. iApply wpae_bool. Qed.
   Lemma li_wpae_enum b Φ ann:
-    Φ (Val_Enum b) -∗
-    WPaexp (AExp_Val (AVal_Enum b) ann) {{ Φ }}.
-  Proof. apply: wpae_enum. Qed.
+    Φ (Val_Enum b)
+    ⊢ WPaexp (AExp_Val (AVal_Enum b) ann) {{ Φ }}.
+  Proof. iApply wpae_enum. Qed.
 
   Lemma li_wpe_manyop op es Φ ann:
-    foldr (λ e Ψ, λ vs, WPexp e {{ v, Ψ (vs ++ [v]) }}) (λ vs, ∃ v, ⌜eval_manyop op vs = Some v⌝ ∗ Φ v) es [] -∗
-    WPexp (Manyop op es ann) {{ Φ }}.
-  Proof. apply: wpe_manyop. Qed.
+    foldr (λ e Ψ, λ vs, WPexp e {{ v, Ψ (vs ++ [v]) }}) (λ vs, ∃ v, ⌜eval_manyop op vs = Some v⌝ ∗ Φ v) es []
+    ⊢ WPexp (Manyop op es ann) {{ Φ }}.
+  Proof. iApply wpe_manyop. Qed.
   Lemma li_wpae_manyop op es Φ ann:
-    foldr (λ e Ψ, λ vs, WPaexp e {{ v, Ψ (vs ++ [v]) }}) (λ vs, ∃ v, ⌜eval_manyop op vs = Some v⌝ ∗ Φ v) es [] -∗
-    WPaexp (AExp_Manyop op es ann) {{ Φ }}.
-  Proof. apply: wpae_manyop. Qed.
+    foldr (λ e Ψ, λ vs, WPaexp e {{ v, Ψ (vs ++ [v]) }}) (λ vs, ∃ v, ⌜eval_manyop op vs = Some v⌝ ∗ Φ v) es []
+    ⊢ WPaexp (AExp_Manyop op es ann) {{ Φ }}.
+  Proof. iApply wpae_manyop. Qed.
 
   Lemma li_wpe_unop op e Φ ann:
-    WPexp e {{ v1, ∃ v, ⌜eval_unop op v1 = Some v⌝ ∗ Φ v}} -∗
-    WPexp (Unop op e ann) {{ Φ }}.
-  Proof. apply: wpe_unop. Qed.
+    WPexp e {{ v1, ∃ v, ⌜eval_unop op v1 = Some v⌝ ∗ Φ v}}
+    ⊢ WPexp (Unop op e ann) {{ Φ }}.
+  Proof. iApply wpe_unop. Qed.
   Lemma li_wpae_unop op e Φ ann:
-    WPaexp e {{ v1, ∃ v, ⌜eval_unop op v1 = Some v⌝ ∗ Φ v}} -∗
-    WPaexp (AExp_Unop op e ann) {{ Φ }}.
-  Proof. apply: wpae_unop. Qed.
+    WPaexp e {{ v1, ∃ v, ⌜eval_unop op v1 = Some v⌝ ∗ Φ v}}
+    ⊢ WPaexp (AExp_Unop op e ann) {{ Φ }}.
+  Proof. iApply wpae_unop. Qed.
 
   Lemma li_wpe_binop op e1 e2 Φ ann:
-    WPexp e1 {{ v1, WPexp e2 {{ v2, ∃ v, ⌜eval_binop op v1 v2 = Some v⌝ ∗ Φ v}} }} -∗
-    WPexp (Binop op e1 e2 ann) {{ Φ }}.
-  Proof. apply: wpe_binop. Qed.
+    WPexp e1 {{ v1, WPexp e2 {{ v2, ∃ v, ⌜eval_binop op v1 v2 = Some v⌝ ∗ Φ v}} }}
+    ⊢ WPexp (Binop op e1 e2 ann) {{ Φ }}.
+  Proof. iApply wpe_binop. Qed.
   Lemma li_wpae_binop op e1 e2 Φ ann:
-    WPaexp e1 {{ v1, WPaexp e2 {{ v2, ∃ v, ⌜eval_binop op v1 v2 = Some v⌝ ∗ Φ v}} }} -∗
-    WPaexp (AExp_Binop op e1 e2 ann) {{ Φ }}.
-  Proof. apply: wpae_binop. Qed.
+    WPaexp e1 {{ v1, WPaexp e2 {{ v2, ∃ v, ⌜eval_binop op v1 v2 = Some v⌝ ∗ Φ v}} }}
+    ⊢ WPaexp (AExp_Binop op e1 e2 ann) {{ Φ }}.
+  Proof. iApply wpae_binop. Qed.
 
   Lemma li_wpe_ite e1 e2 e3 Φ ann:
     WPexp e1 {{ v1, WPexp e2 {{ v2, WPexp e3 {{ v3,
-       ∃ b, ⌜v1 = Val_Bool b⌝ ∗ Φ (ite b v2 v3)}} }} }} -∗
-    WPexp (Ite e1 e2 e3 ann) {{ Φ }}.
-  Proof. apply: wpe_ite. Qed.
+       ∃ b, ⌜v1 = Val_Bool b⌝ ∗ Φ (ite b v2 v3)}} }} }}
+    ⊢ WPexp (Ite e1 e2 e3 ann) {{ Φ }}.
+  Proof. iApply wpe_ite. Qed.
   Lemma li_wpae_ite e1 e2 e3 Φ ann:
     WPaexp e1 {{ v1, WPaexp e2 {{ v2, WPaexp e3 {{ v3,
-       ∃ b, ⌜v1 = Val_Bool b⌝ ∗ Φ (ite b v2 v3)}} }} }} -∗
-    WPaexp (AExp_Ite e1 e2 e3 ann) {{ Φ }}.
-  Proof. apply wpae_ite. Qed.
+       ∃ b, ⌜v1 = Val_Bool b⌝ ∗ Φ (ite b v2 v3)}} }} }}
+    ⊢ WPaexp (AExp_Ite e1 e2 e3 ann) {{ Φ }}.
+  Proof. iApply wpae_ite. Qed.
 End instances.
 
 
@@ -1678,7 +1679,7 @@ Global Opaque FindHypEqual.
 
 (* TODO: upstream? *)
 Lemma tac_entails_to_simplify_hyp {Σ} (P Q : iProp Σ):
-  (P ⊢ Q)%I → ∀ G, (Q -∗ G) -∗ simplify_hyp P G.
+  (P ⊢ Q)%I → ∀ G, (Q -∗ G) ⊢ simplify_hyp P G.
 Proof. move => ??. by apply bi.wand_mono. Qed.
 Definition entails_to_simplify_hyp {Σ} (n : N) {P Q : iProp Σ} (Hent : (P ⊢ Q)%I) :
   SimplifyHyp P (Some n) :=
@@ -1763,6 +1764,7 @@ Ltac liAAsm :=
       | Smt (Assert _) _ => notypeclasses refine (tac_fast_apply (li_wp_assert _ _ _) _)
       | Assume _ _ => notypeclasses refine (tac_fast_apply (li_wp_assume _ _ _) _)
       | Barrier _ _ => notypeclasses refine (tac_fast_apply (li_wp_barrier _ _ _) _)
+      | AbstractPrimop _ _ _ _ => notypeclasses refine (tac_fast_apply (li_wp_abstract_primop _ _ _ _ _) _)
       end
     | parametric_trace _ _ => iEval (unfold parametric_trace)
     | ?def => first [
@@ -1814,8 +1816,12 @@ Ltac li_do_unfold P :=
 
 Ltac liUnfoldEarly :=
   lazymatch goal with
-  | |- envs_entails ?Δ (?P -∗ ?Q) => li_do_unfold P
-  | |- envs_entails ?Δ (?P ∗ ?Q) => li_do_unfold P
+  | |- envs_entails _ (?P -∗ _) => li_do_unfold P
+  | |- envs_entails _ (∃ₗ _, ?P _ _ _ ∗ _) => li_do_unfold P
+  | |- envs_entails _ (∃ₗ _, ?P _ _ ∗ _) => li_do_unfold P
+  | |- envs_entails _ (∃ₗ _, ?P _ ∗ _) => li_do_unfold P
+  | |- envs_entails _ (∃ₗ _, ?P ∗ _) => li_do_unfold P
+  | |- envs_entails _ (?P ∗ ?Q) => li_do_unfold P
   end.
 
 Ltac liUnfoldLate :=
@@ -1827,12 +1833,13 @@ Ltac liAOther :=
   lazymatch goal with
   | |- envs_entails ?Δ ?P =>
     lazymatch P with
+    | (∃ₗ _, ?r ↦ᵣ: _)%I => notypeclasses refine (tac_fast_apply (reg_mapsto_pred_ex _ _) _)
     | (_ ↦ᵣ: _)%I => notypeclasses refine (tac_fast_apply (reg_mapsto_pred_intro _ _) _)
     end
   end.
 
 Ltac liAStep :=
- liEnforceInvariantAndUnfoldInstantiatedEvars;
+ liEnsureInvariant;
  try liAIntroduceLetInGoal;
  first [
     liAAsm
