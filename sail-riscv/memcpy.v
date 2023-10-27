@@ -77,7 +77,7 @@ Proof.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_true in Hx12. by rewrite Hx12.
   + rewrite access_vec_dec_to_bv // bitU_of_bool_B0 //.
     rewrite mword_to_bv_add_vec //=. reduce_closed_mword_to_bv.
-    bv_simplify. rename select (bv_extract 1 1 _ = _) into He. bv_simplify He.
+    bv_simplify. rename select (bv_extract 1 _ _ = _) into He. bv_simplify He.
     bitblast. by bitblast He with 0.
   + rewrite mword_to_bv_add_vec //.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_false in Hx12. done.
@@ -204,7 +204,7 @@ Proof.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_false in Hx12. contradict Hx12. by rewrite Hx12.
   + rewrite access_vec_dec_to_bv // bitU_of_bool_B0 //.
     rewrite mword_to_bv_add_vec //=. reduce_closed_mword_to_bv.
-    bv_simplify. rename select (bv_extract 1 1 _ = _) into He. bv_simplify He.
+    bv_simplify. rename select (bv_extract 1 _ _ = _) into He. bv_simplify He.
     bitblast. by bitblast He with 0.
   + rewrite mword_to_bv_add_vec //.
   + rewrite (eq_vec_to_bv 64) // bool_decide_eq_true in Hx12. done.
@@ -222,7 +222,7 @@ Proof.
   + rewrite access_vec_dec_to_bv // bitU_of_bool_B0 //.
     erewrite mword_to_bv_update_vec_dec => //.
     rewrite mword_to_bv_add_vec //=. reduce_closed_mword_to_bv.
-    bv_simplify. rename select (bv_extract 1 1 _ = _) into He. bv_simplify He.
+    bv_simplify. rename select (bv_extract 1 _ _ = _) into He. bv_simplify He.
     bitblast. by bitblast He with 0.
   + erewrite mword_to_bv_update_vec_dec => //.
     rewrite mword_to_bv_add_vec //. reduce_closed_mword_to_bv.

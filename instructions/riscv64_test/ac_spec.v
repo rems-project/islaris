@@ -3,7 +3,7 @@ Require Import isla.riscv64.riscv64.
 Require Export isla.instructions.riscv64_test.ac.
 
 Lemma ac_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some ac) -∗
+  instr pc (Some ac) ⊢
   instr_body pc (ld_spec pc "x11" "x2" (8)).
 Proof.
   iStartProof.

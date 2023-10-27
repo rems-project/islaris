@@ -66,7 +66,7 @@ Class Arch := {
 
 Class islaG Σ := IslaG {
   islaG_invG : invGS Σ;
-  islaG_gen_heapG :> heapG Σ
+  islaG_gen_heapG :: heapG Σ
 }.
 
 Global Instance isla_irisG `{!islaG Σ} : irisGS isla_lang Σ := {
@@ -233,7 +233,7 @@ Section lifting.
   Lemma wp_event_intro e Φ:
     (∀ t, (Φ -∗ WPasm t) -∗ WPasm (e:t:t)) -∗
     WPevent e {{ Φ }}.
-  Proof. rewrite wp_event_eq. done. Qed.
+  Proof. rewrite wp_event_eq. iIntros "?". done. Qed.
 
   Lemma wp_event_elim e t Φ:
     WPevent e {{ Φ }} -∗
@@ -270,7 +270,7 @@ Section lifting.
     }
     iIntros "!>" (????) "_". iMod "HE" as "_". iModIntro.
     inv_seq_step.
-    revert select (∃ _, _) => -[?[?]]; unfold addr, register_name in *; simplify_option_eq.
+    revert select (∃ _, _) => -[?[?]]; unfold register_name in *; simplify_option_eq.
     move => [-> [? ->]].
     iFrame. iSplitL; [|done].
     iApply ("Hcont" with "HPC"); [done|done|done|].
@@ -339,7 +339,7 @@ Section lifting.
   Lemma instr_pre_to_body a P:
     ▷ instr_body a P -∗
     instr_pre a P.
-  Proof. rewrite instr_pre'_eq. done. Qed.
+  Proof. rewrite instr_pre'_eq. iIntros "?". done. Qed.
 
   Lemma instr_pre_intro_Some l P ins a:
     instr a (Some ins) -∗
@@ -834,6 +834,25 @@ Section lifting.
   Lemma wp_barrier es v ann:
     WPasm es -∗
     WPasm (Barrier v ann :t: es).
+  Proof.
+    rewrite wp_asm_eq.
+    iIntros "Hcont" ([????]) "/= -> -> -> Hθ".
+    iApply wp_lift_step; [done|].
+    iIntros (σ1 ??? ?) "Hctx".
+    iApply fupd_mask_intro; first set_solver. iIntros "HE".
+    iSplit. {
+      iPureIntro.
+      eexists _, _, _, _; econstructor; [done |by econstructor| done].
+    }
+    iIntros "!>" (????) "_". iMod "HE" as "_". iModIntro.
+    inv_seq_step.
+    iFrame; iSplit; [|done].
+    iApply "Hcont"; [done..|iFrame].
+  Qed.
+
+  Lemma wp_abstract_primop es n v args ann:
+    WPasm es -∗
+    WPasm (AbstractPrimop n v args ann :t: es).
   Proof.
     rewrite wp_asm_eq.
     iIntros "Hcont" ([????]) "/= -> -> -> Hθ".

@@ -3,4 +3,4 @@
  (package islaris)
  (flags -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "Validation of Islaris against Coq code from Sail model.")
- (theories isla isla.instructions isla.riscv64 isla.examples))
+ (theories isla isla.instructions isla.riscv64 isla.examples Sail RV64 Riscv_common bbv))

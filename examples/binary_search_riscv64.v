@@ -80,7 +80,7 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  liInst Hevar (bv_unsigned b10 <=? bv_unsigned b11). rewrite Zleb_bool_decide.
+  liInst (λ x, x.1ₗ = (bv_unsigned b10 <=? bv_unsigned b11)). rewrite Zleb_bool_decide.
   liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.
@@ -183,8 +183,6 @@ Lemma binary_search_loop :
 Proof.
 (*PROOF_START*)
   iStartProof.
-  liARun.
-  liInst Hevar (Z.to_nat (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2)).
   liARun.
   Unshelve. all: prepare_sidecond.
   all: try bv_solve.

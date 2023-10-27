@@ -83,7 +83,10 @@ Definition spec_uart_wait_write_body (P R : spec) : spec :=
                               (sif (Z.testbit (bv_unsigned b) 5 = true) P R)).
 Global Instance spec_uart_wait_write_body_mono P :
   MonoPred (spec_uart_wait_write_body P).
-Proof. constructor. unfold spec_uart_wait_write_body. by unshelve spec_solver. Qed.
+Proof.
+  constructor. unfold spec_uart_wait_write_body.
+  spec_unfold. move => ???? [x [?|?]]; exists x; naive_solver.
+Qed.
 
 Definition spec_uart_wait_write (P : spec) : spec :=
   srec (spec_uart_wait_write_body P).
@@ -122,7 +125,7 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  liInst Hevar P.
+  liInst (λ x, x.1ₗ = P).
   liARun.
 
   Unshelve. all: prepare_sidecond.
@@ -178,10 +181,10 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  - rewrite sif_true; [|li_shelve_sidecond].
+  - setoid_rewrite sif_true; [|shelve_sidecond].
     liARun.
-  - rewrite sif_false; [|li_shelve_sidecond].
-    liInst Hevar (scons (SWriteMem AUX_MU_IO_REG (bv_zero_extend 32 (bv_extract 0 8 c))) P).
+  - setoid_rewrite sif_false; [|shelve_sidecond].
+    liInst (λ x, x.1ₗ = scons (SWriteMem AUX_MU_IO_REG (bv_zero_extend 32 (bv_extract 0 8 c))) P).
     liARun.
   Unshelve. all: prepare_sidecond.
   all: try by bv_solve.

@@ -92,9 +92,11 @@ module Parser = struct
     let ic = try open_in fname with Sys_error(msg) -> fail "%s" msg in
     let lexbuf = Lexing.from_channel ic in
     try
-      let ast = P.tree_trc_start L.token lexbuf in
+      let ast = P.whole_tree_start L.token lexbuf in
       close_in ic;
-      ast
+      match ast with
+      | BareTree(t) -> t
+      | TreeWithSegments(s, t) -> t
     with e ->
     close_in ic;
     match e with

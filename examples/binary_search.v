@@ -234,8 +234,6 @@ Proof.
 (*PROOF_START*)
   iStartProof.
   liARun.
-  liInst Hevar (Z.to_nat (bv_unsigned l + (bv_unsigned r - bv_unsigned l) `div` 2)).
-  liARun.
   Unshelve. all: prepare_sidecond.
   all: try (rename select (_ ↔ R _ _) into HR; rewrite bv_or_0_l in HR; [|done];
             match type of HR with | (Is_true ?b) ↔ _ => rename b into bres end).
@@ -243,6 +241,9 @@ Proof.
   - bv_solve.
   - bv_solve.
   - bv_solve.
+  - bv_solve.
+  - bv_simplify_arith select (ite _ _ _ ≠ ite _ _ _).
+    destruct bres; simpl in *; bv_solve.
   - bv_simplify_arith select (ite _ _ _ ≠ ite _ _ _).
     destruct bres; simpl in *; bv_solve.
   - bv_simplify_arith select (i < _).

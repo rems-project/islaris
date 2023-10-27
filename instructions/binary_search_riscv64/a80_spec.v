@@ -3,7 +3,7 @@ Require Import isla.riscv64.riscv64.
 Require Export isla.instructions.binary_search_riscv64.a80.
 
 Lemma a80_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a80) -∗
+  instr pc (Some a80) ⊢
   instr_body pc (ld_spec pc "x20" "x2" (16)).
 Proof.
   iStartProof.

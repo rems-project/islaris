@@ -3,7 +3,7 @@ Require Import isla.riscv64.riscv64.
 Require Export isla.instructions.binary_search_riscv64.a94.
 
 Lemma a94_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a94) -∗
+  instr pc (Some a94) ⊢
   instr_body pc (ld_spec pc "x1" "x2" (56)).
 Proof.
   iStartProof.
