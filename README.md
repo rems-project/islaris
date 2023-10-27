@@ -32,8 +32,8 @@ to point to a working checkout of Isla resp. Isla snapshots.)
 
 The following commits of isla and isla-snapshots are tested:
 ```
-isla: 8325ef10e6c5dea8bf73cb255746f815169c974f
-isla-snapshots: b948da37487479ea470e735ea158d62f73bf314f (riscv snapshot is outdated and does not work with isla)
+isla: 473f9986832d95b6c4ebb192bb075f2095a92df1
+isla-snapshots: b58da9170470a422c9396983ac8f87f0a63ba6f8
 ```
 
 Once all needed libraries have been installed, Islaris can be built by running `make` from its root directory.
