@@ -108,7 +108,7 @@ Definition sys_regs_map : reg_map :=
     ("IT", RegVal_Poison); ("IL", RegVal_Poison);
     ("Z", RVal_Bits (BV 1 0)); ("BTYPE", RegVal_Poison);
     ("SSBS", RegVal_Poison); ("T", RegVal_Poison); ("J", RegVal_Poison);
-     ("V", RVal_Bits (BV 1 0)); ("DIT", RegVal_Poison)]) ]> $
+    ("V", RVal_Bits (BV 1 0)); ("DIT", RegVal_Poison)]) ]> $
   <[ "SCTLR_EL1" := RVal_Bits (BV 64 0x0000000004000002) ]> $
   <[ "SCTLR_EL2" := RVal_Bits (BV 64 0x0000000004000002) ]> $
   <[ "SCR_EL3" := RVal_Bits (BV 32 0x00000501) ]> $

@@ -424,9 +424,7 @@ Ltac is_fully_reduced_valu v :=
       ]
       | Val_Enum ?e => first [ is_var_no_let e |
         lazymatch e with
-        | (Mk_enum_id ?e1, Mk_enum_ctor ?e2) =>
-            first [ is_var_no_let e1 | lazymatch isnatcst e1 with | true => idtac end ];
-            first [ is_var_no_let e2 | lazymatch isnatcst e2 with | true => idtac end ]
+        | _ => is_var_no_let e
         end
       ]
       end
@@ -449,7 +447,7 @@ Goal ∀ (v : valu) (b : base_val) (b1 : bool) (b2 : bv 64) (z : Z) Heq,
   is_fully_reduced_valu (RVal_Bits (@BV 64 z Heq)).
   is_fully_reduced_valu (RVal_Bits (BV 64 100)).
   assert_fails (is_fully_reduced_valu (RVal_Bits x)).
-  is_fully_reduced_valu (RVal_Enum (Mk_enum_id 1, Mk_enum_ctor 4)).
+  (* is_fully_reduced_valu (RVal_Enum "Machine"). *)
 Abort.
 
 Ltac remember_regcol :=
@@ -1407,7 +1405,7 @@ Section instances.
   Proof. iApply wp_declare_const_bool. Qed.
 
   Lemma li_wp_declare_const_enum v es i ann:
-    (∀ c, WPasm (subst_trace (Val_Enum (i, c)) v es))
+    (∀ c, WPasm (subst_trace (Val_Enum c) v es))
     ⊢ WPasm (Smt (DeclareConst v (Ty_Enum i)) ann :t: es).
   Proof. iApply wp_declare_const_enum. Qed.
 

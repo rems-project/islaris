@@ -61,7 +61,7 @@ Set Default Proof Using "Type".
 Import uPred.
 
 Class Arch := {
-  arch_pc_reg : register_name;
+  arch_pc_reg : sail_name;
 }.
 
 Class islaG Σ := IslaG {
@@ -98,11 +98,11 @@ Definition wp_asm_eq `{!Arch} `{!islaG Σ} `{!threadG} : wp_asm = @wp_asm_def _ 
 Notation WPasm := wp_asm.
 
 Definition wpreadreg_def `{!islaG Σ} `{!threadG}
-     (r : register_name) (al : accessor_list) (G : valu → iProp Σ) : iProp Σ :=
+     (r : sail_name) (al : accessor_list) (G : valu → iProp Σ) : iProp Σ :=
   ∀ regs, regs_ctx regs -∗
     ∃ v v', ⌜regs !! r = Some v⌝ ∗ ⌜read_accessor al v = Some v'⌝ ∗ regs_ctx regs ∗ G v'.
 Definition wpreadreg_aux `{!islaG Σ} `{!threadG} : seal (@wpreadreg_def _ _ _). by eexists. Qed.
-Definition wpreadreg `{!islaG Σ} `{!threadG} : register_name → accessor_list → (valu → iProp Σ) → iProp Σ := (wpreadreg_aux).(unseal).
+Definition wpreadreg `{!islaG Σ} `{!threadG} : sail_name → accessor_list → (valu → iProp Σ) → iProp Σ := (wpreadreg_aux).(unseal).
 Definition wpreadreg_eq `{!islaG Σ} `{!threadG} : wpreadreg = @wpreadreg_def _ _ _ := (wpreadreg_aux).(seal_eq).
 Notation "'WPreadreg' r '@' al {{ G } }" := (wpreadreg r al G%I)
   (at level 20, r, al, G at level 200, only parsing) : bi_scope.
@@ -270,7 +270,7 @@ Section lifting.
     }
     iIntros "!>" (????) "_". iMod "HE" as "_". iModIntro.
     inv_seq_step.
-    revert select (∃ _, _) => -[?[?]]; unfold register_name in *; simplify_option_eq.
+    revert select (∃ _, _) => -[?[?]]; unfold sail_name in *; simplify_option_eq.
     move => [-> [? ->]].
     iFrame. iSplitL; [|done].
     iApply ("Hcont" with "HPC"); [done|done|done|].
@@ -297,7 +297,7 @@ Section lifting.
     }
     iIntros "!>" (????) "_". iMod "HE" as "_".
     inv_seq_step.
-    revert select (∃ _, _) => -[?[?]]. unfold register_name in *; simplify_option_eq.
+    revert select (∃ _, _) => -[?[?]]. unfold sail_name in *; simplify_option_eq.
     move => [-> ->].
     iMod (spec_ctx_cons with "Hsctx Hspec") as "[??]"; [done|]. iModIntro.
     iFrame. iSplitL; [|done].
@@ -479,7 +479,7 @@ Section lifting.
     iIntros "!>" (????) "_". iMod "HE" as "_". iModIntro.
     inv_seq_step.
     revert select (∃ _, _) => -[?[?[?[?[?[?[?[??]]]]]]]].
-    unfold register_name in *. simplify_eq.
+    unfold sail_name in *. simplify_eq.
     iFrame; iSplitL; [|done].
     iMod (reg_mapsto_update with "Hθ Hr") as "[Hθ Hr]".
     iApply ("Hcont" with "Hr"); [done..|].
@@ -505,7 +505,7 @@ Section lifting.
     iIntros "!>" (????) "_". iMod "HE" as "_". iModIntro.
     inv_seq_step.
     revert select (∃ _, _) => -[?[?[?[?[?[?[?[??]]]]]]]].
-    unfold register_name, write_accessor in *. simplify_option_eq.
+    unfold sail_name, write_accessor in *. simplify_option_eq.
     iFrame; iSplitL; [|done].
     iMod (struct_reg_mapsto_update with "Hθ Hr") as "[Hθ Hr]"; [done..|].
     iApply ("Hcont" with "Hr"); [done..|].
@@ -749,7 +749,7 @@ Section lifting.
   Qed.
 
   Lemma wp_declare_const_enum v es i ann:
-    (∀ c, WPasm (subst_trace (Val_Enum (i, c)) v es)) -∗
+    (∀ c, WPasm (subst_trace (Val_Enum (c)) v es)) -∗
     WPasm (Smt (DeclareConst v (Ty_Enum i)) ann :t: es).
   Proof.
     iIntros "Hcont". setoid_rewrite wp_asm_unfold.

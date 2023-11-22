@@ -3,8 +3,8 @@ Require Import isla.riscv64.riscv64.
 Require Export isla.instructions.binary_search_riscv64.a8.
 
 Lemma a8_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some a8) ⊢
-  instr_body pc (sd_spec pc "x8" "x2" (48)).
+  instr pc (Some a8)
+  ⊢ instr_body pc (sd_spec pc "x8" "x2" (48)).
 Proof.
   iStartProof.
   repeat liAStep; liShow.
