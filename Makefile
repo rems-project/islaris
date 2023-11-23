@@ -102,7 +102,7 @@ strip_license:
 
 # We cannot use builddep-pins as a dependency of builddep-opamfiles because the CI removes all pins.
 builddep-pins:
-	@opam pin add -n -y isla-lang "git+https://git@github.com/rems-project/isla-lang.git#4ee3daa3a9f04b2d6a55dd94026ff5f9d79db5fc"
+	@opam pin add -n -y isla-lang "git+https://github.com/ric-almeida/isla-lang.git"
 .PHONY: builddep-pins
 
 builddep-opamfiles: builddep/islaris-builddep.opam
