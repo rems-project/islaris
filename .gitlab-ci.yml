@@ -33,7 +33,7 @@ variables:
 build-coq.8.17.0-timing:
   <<: *template
   variables:
-    OPAM_PINS: "coq version 8.17.0   isla-lang git git+https://github.com/ric-almeida/isla-lang.git"
+    OPAM_PINS: "coq version 8.17.0   isla-lang git git+https://github.com/rems-project/isla-lang.git"
     DENY_WARNINGS: "1"
     # OPAM_PKG: "1"
   only:
@@ -46,7 +46,7 @@ build-coq.8.17.0-timing:
 build-coq.8.17.0:
   <<: *template
   variables:
-    OPAM_PINS: "coq version 8.17.0   isla-lang git git+https://github.com/ric-almeida/isla-lang.git"
+    OPAM_PINS: "coq version 8.17.0   isla-lang git git+https://github.com/rems-project/isla-lang.git"
     DENY_WARNINGS: "1"
   only:
   - /^ci/@iris/isla-coq
@@ -54,7 +54,7 @@ build-coq.8.17.0:
 trigger-iris.dev:
   <<: *template
   variables:
-    OPAM_PINS: "coq version 8.17.0   coq-stdpp.dev git git+https://gitlab.mpi-sws.org/iris/stdpp.git#$STDPP_REV   coq-iris.dev git git+https://gitlab.mpi-sws.org/iris/iris.git#$IRIS_REV  isla-lang git git+https://github.com/ric-almeida/isla-lang.git"
+    OPAM_PINS: "coq version 8.17.0   coq-stdpp.dev git git+https://gitlab.mpi-sws.org/iris/stdpp.git#$STDPP_REV   coq-iris.dev git git+https://gitlab.mpi-sws.org/iris/iris.git#$IRIS_REV  isla-lang git git+https://github.com/rems-project/isla-lang.git"
   except:
   only:
   - triggers
