@@ -161,7 +161,6 @@ Ltac sim_simpl_goal :=
          | |- Val_Enum ?a = Val_Enum ?b => apply f_equal_help; [done|]
          | |- RegVal_Base ?a = RegVal_Base ?b => apply f_equal_help; [done|]
          | |- RegVal_Struct ?a = RegVal_Struct ?b => apply f_equal_help; [done|]
-         | |- Mk_enum_id ?a = Mk_enum_id ?b => apply f_equal_help; [done|]
          | |- (?a1, ?a2) = (?b1, ?b2) => apply f_equal_help; [apply f_equal_help; [done|] |]
          | |- _::_ = _::_ => apply f_equal_help; [apply f_equal_help; [done|] |]
          end;

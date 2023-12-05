@@ -14,6 +14,7 @@ write_exclusives = ["Write_exclusive", "Write_exclusive_release"]
 assembler = "aarch64-linux-gnu-as -march=armv8.1-a"
 objdump = "aarch64-linux-gnu-objdump"
 linker = "aarch64-linux-gnu-ld"
+nm = "aarch64-linux-gnu-nm"
 
 [mmu]
 page_table_base = "0x300000"

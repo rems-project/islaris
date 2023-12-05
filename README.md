@@ -32,7 +32,7 @@ to point to a working checkout of Isla resp. Isla snapshots.)
 
 The following commits of isla and isla-snapshots are tested:
 ```
-isla: 473f9986832d95b6c4ebb192bb075f2095a92df1
+isla: b8e614bda4a20e42c37d8b216853653133d04322
 isla-snapshots: b58da9170470a422c9396983ac8f87f0a63ba6f8
 ```
 

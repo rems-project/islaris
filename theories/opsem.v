@@ -99,13 +99,6 @@ Definition parametric_trace (v : base_val) (t : isla_trace) : isla_trace :=
 Arguments parametric_trace : simpl never.
 
 Global Instance valu_inhabited : Inhabited valu := populate (RVal_Bool true).
-Global Instance enum_id_eq_decision : EqDecision enum_id.
-Proof. solve_decision. Qed.
-Global Instance enum_ctor_eq_decision : EqDecision enum_ctor.
-Proof. solve_decision. Qed.
-Global Instance enum_eq_decision : EqDecision enum.
-Proof. solve_decision. Qed.
-
 
 Definition ite {A} (b : bool) (x y : A) : A :=
   if b then x else y.
@@ -381,8 +374,8 @@ Fixpoint eval_a_exp (regs : reg_map) (e : a_exp) : option base_val :=
   end.
 
 Inductive trace_label : Set :=
-| LReadReg (r : register_name) (al : accessor_list) (v : valu)
-| LWriteReg (r : register_name) (al : accessor_list) (v : valu)
+| LReadReg (r : sail_name) (al : accessor_list) (v : valu)
+| LWriteReg (r : sail_name) (al : accessor_list) (v : valu)
 | LReadMem (data : valu) (kind : valu) (addr : valu) (len : N) (tag : tag_value)
 | LWriteMem (res : valu) (kind : valu) (addr : valu) (data : valu) (len : N) (tag : tag_value)
 | LBranchAddress (v : valu)
@@ -390,7 +383,7 @@ Inductive trace_label : Set :=
 | LDone (next : isla_trace)
 | LAssert (b : bool)
 | LAssume (b : bool)
-| LAssumeReg (r : register_name) (al : accessor_list) (v : valu)
+| LAssumeReg (r : sail_name) (al : accessor_list) (v : valu)
 .
 
 Inductive trace_step : isla_trace → reg_map → option trace_label → isla_trace → Prop :=
@@ -399,7 +392,7 @@ Inductive trace_step : isla_trace → reg_map → option trace_label → isla_tr
 | DeclareConstBoolS x ann es b regs:
     trace_step (Smt (DeclareConst x Ty_Bool) ann :t: es) regs None (subst_trace (Val_Bool b) x es)
 | DeclareConstEnumS x ann es regs i c:
-    trace_step (Smt (DeclareConst x (Ty_Enum i)) ann :t: es) regs None (subst_trace (Val_Enum (i, c)) x es)
+    trace_step (Smt (DeclareConst x (Ty_Enum i)) ann :t: es) regs None (subst_trace (Val_Enum (c)) x es)
 | DefineConstS x e v ann es regs:
     eval_exp e = Some v ->
     trace_step (Smt (DefineConst x e) ann :t: es) regs None (subst_trace v x es)
@@ -447,7 +440,7 @@ Global Instance eta_seq_global_state : Settable _ := settable! Build_seq_global_
 Record seq_local_state := {
   seq_trace    : isla_trace;
   seq_regs     : reg_map;
-  seq_pc_reg   : register_name;
+  seq_pc_reg   : sail_name;
   seq_nb_state : bool;
 }.
 Global Instance eta_seq_local_state : Settable _ := settable! Build_seq_local_state <seq_trace; seq_regs; seq_pc_reg ;seq_nb_state>.
@@ -574,7 +567,7 @@ Inductive seq_step : seq_local_state → seq_global_state → list seq_label →
 Record seq_val := {
   seq_val_trace  : isla_trace;
   seq_val_regs   : reg_map;
-  seq_val_pc_reg : register_name;
+  seq_val_pc_reg : sail_name;
 }.
 Definition seq_of_val (v : seq_val) : seq_local_state := {|
   seq_trace := v.(seq_val_trace);

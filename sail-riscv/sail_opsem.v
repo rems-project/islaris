@@ -417,7 +417,7 @@ Definition register_value_to_valu (v : register_value) : valu :=
   | Regval_bool b => RVal_Bool b
   | Regval_Misa m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Misa_bits)))]
   | Regval_Mstatus m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Mstatus_bits)))]
-  | Regval_Privilege p => RVal_Enum (Mk_enum_id 3, Mk_enum_ctor (match p with | User => 0 | Supervisor => 1 | Machine => 2 end))
+  | Regval_Privilege p => RVal_Enum (match p with | User => "User" | Supervisor => "Supervisor" | Machine => "Machine" end)
   | _ => RegVal_Poison
   end.
 
@@ -609,7 +609,7 @@ Proof.
     destruct (isla_regs !! "PC") eqn: HPC.
     - have [? [[<-] ->]]:= Hregs "PC" _ ltac:(done). done.
     - move: Hsafe => [[]|]// [?[?[?[? Hsafe]]]]. inv_seq_step.
-      revert select (∃ x, _) => -[?[??]]; unfold register_name in *; simplify_eq.
+      revert select (∃ x, _) => -[?[??]]; unfold sail_name in *; simplify_eq.
   }
   destruct (sail_instrs !! mword_to_bv (PC sail_regs)) as [si|] eqn: Hsi.
   - move: (Hsi) => /(elem_of_dom_2 _ _ _). rewrite -Hdom. move => /elem_of_dom[ii Hii]. clear Hdom.
@@ -978,7 +978,7 @@ Proof.
 Qed.
 
 Lemma sim_DeclareConstEnum A E Σ K e1 e2 ann x id c:
-  sim (A:=A) (E:=E) Σ e1 K (subst_trace (Val_Enum (id, c)) x e2) →
+  sim (A:=A) (E:=E) Σ e1 K (subst_trace (Val_Enum c) x e2) →
   sim (A:=A) (E:=E) Σ e1 K (Smt (DeclareConst x (Ty_Enum id)) ann :t: e2).
 Proof.
   move => Hsim ????????.

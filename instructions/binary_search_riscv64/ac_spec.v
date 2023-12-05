@@ -3,8 +3,8 @@ Require Import isla.riscv64.riscv64.
 Require Export isla.instructions.binary_search_riscv64.ac.
 
 Lemma ac_spec `{!islaG Σ} `{!threadG} pc:
-  instr pc (Some ac) ⊢
-  instr_body pc (sd_spec pc "x9" "x2" (40)).
+  instr pc (Some ac)
+  ⊢ instr_body pc (sd_spec pc "x9" "x2" (40)).
 Proof.
   iStartProof.
   repeat liAStep; liShow.

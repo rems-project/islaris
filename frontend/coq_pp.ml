@@ -88,7 +88,7 @@ let pp_lrng ff _ =
 let pp_var_name ff i =
   Format.fprintf ff "%a" pp_Z i
 
-let pp_register_name ff r =
+let pp_sail_name ff r =
   Format.fprintf ff "%S" r
 
 let remove_zeroes digits =
@@ -127,13 +127,13 @@ let pp_bv ff s =
 let pp_accessor ff a =
   let pp fmt = Format.fprintf ff fmt in
   match a with
-  | Ast.Field(r) -> pp "Field %a" pp_register_name r
+  | Ast.Field(r) -> pp "Field %a" pp_sail_name r
 
 let pp_accessor_list ff l =
   pp_list pp_accessor ff (match l with Ast.Nil -> [] | Ast.Cons(l) -> l)
 
 let pp_enum_id ff i =
-  Format.fprintf ff "(Mk_enum_id %i%%nat)" i
+  Format.fprintf ff "\"%s\"" i  
 
 let rec pp_ty ff ty =
   let pp fmt = Format.fprintf ff fmt in
@@ -214,11 +214,11 @@ let pp_manyop ff o =
   | Ast.Concat         -> pp "Concat"
 
 let pp_enum_ctor ff n =
-  Format.fprintf ff "Mk_enum_ctor %i%%nat" n
+  Format.fprintf ff "\"%s\"" n
 
 let pp_enum ff e =
   let pp fmt = Format.fprintf ff fmt in
-  pp "(%a, %a)" pp_enum_id (fst e) pp_enum_ctor (snd e)
+  pp "%a" pp_enum_ctor e
 
 let pp_base_val ff v =
   let pp fmt = Format.fprintf ff fmt in
@@ -236,7 +236,7 @@ let pp_assume_val ff v =
   let pp fmt = Format.fprintf ff fmt in
   match v with
   | Ast.AVal_Var(r,l)  ->
-      pp "AVal_Var %a %a" pp_register_name r pp_accessor_list l
+      pp "AVal_Var %a %a" pp_sail_name r pp_accessor_list l
   | Ast.AVal_Bool(b)      ->
       pp "AVal_Bool %b" b
   | Ast.AVal_Bits(s)      ->
@@ -261,11 +261,11 @@ let rec pp_valu ff v =
       pp "RegVal_List %a" (pp_list pp_valu) l
   | Ast.RegVal_Struct(l)         ->
       let pp_elt ff (r, v) =
-        Format.fprintf ff "(%a, %a)" pp_register_name r pp_valu v
+        Format.fprintf ff "(%a, %a)" pp_sail_name r pp_valu v
       in
       pp "RegVal_Struct %a" (pp_list pp_elt) l
   | Ast.RegVal_Constructor(r, v) ->
-      pp "RegVal_Constructor %a (%a)" pp_register_name r pp_valu v
+      pp "RegVal_Constructor %a (%a)" pp_sail_name r pp_valu v
   | Ast.RegVal_Poison            ->
       pp "RegVal_Poison"
 
@@ -311,8 +311,8 @@ let pp_smt ff e =
       pp "DefineConst %a (%a)" pp_var_name i pp_exp e
   | Ast.Assert(e)          ->
       pp "Assert (%a)" pp_exp e
-  | Ast.DefineEnum(i)      ->
-      pp "DefineEnum %a" pp_Z i
+  | Ast.DefineEnum(name,len,l)      ->
+      pp "DefineEnum %a %a %a" pp_sail_name name pp_Z len (pp_list pp_sail_name) l   
 
 let pp_event ff e =
   let pp fmt = Format.fprintf ff fmt in
@@ -322,10 +322,10 @@ let pp_event ff e =
   | Ast.Branch(i,s,a)              ->
       pp "Branch %a %a %a" pp_Z i pp_str s pp_lrng a
   | Ast.ReadReg(r,l,v,a)           ->
-      pp "ReadReg %a %a (%a) %a" pp_register_name r pp_accessor_list l
+      pp "ReadReg %a %a (%a) %a" pp_sail_name r pp_accessor_list l
         pp_valu v pp_lrng a
   | Ast.WriteReg(r,l,v,a)          ->
-      pp "WriteReg %a %a (%a) %a" pp_register_name r pp_accessor_list l
+      pp "WriteReg %a %a (%a) %a" pp_sail_name r pp_accessor_list l
         pp_valu v pp_lrng a
   | Ast.ReadMem(v1,v2,v3,i,v,a)    ->
       (* TODO: We remove the kind information since it is quite big and not used.
@@ -362,18 +362,20 @@ let pp_event ff e =
   | Ast.SleepRequest(a)            ->
       pp "SleepRequest %a" pp_lrng a
   | Ast.AssumeReg(r,l,v,a)         ->
-      pp "AssumeReg %a %a (%a) %a" pp_register_name r pp_accessor_list l
+      pp "AssumeReg %a %a (%a) %a" pp_sail_name r pp_accessor_list l
         pp_valu v pp_lrng a
   | Ast.Assume(e,a)                ->
       pp "Assume (%a) %a" pp_a_exp e pp_lrng a
   | Ast.FunAssume(r,v,args,a)      ->
-      pp "FunAssume %a %a %a %a" pp_register_name r pp_valu v pp_arg_list args pp_lrng a
+      pp "FunAssume %a %a %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
   | Ast.UseFunAssume(r,v,args,a)   ->
-      pp "UseFunAssume %a %a %a %a" pp_register_name r pp_valu v pp_arg_list args pp_lrng a
+      pp "UseFunAssume %a %a %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
   | Ast.AbstractCall(r,v,args,a)   ->
-      pp "AbstractCall %a %a %a %a" pp_register_name r pp_valu v pp_arg_list args pp_lrng a
-  | Ast.AbstractPrimop(r,v,args,a)   ->
-      pp "AbstractPrimop %a %a %a %a" pp_register_name r pp_valu v pp_arg_list args pp_lrng a
+      pp "AbstractCall %a %a %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
+  | Ast.AbstractPrimop(r,v,args,a) ->
+      pp "AbstractPrimop %a %a %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
+  | Call (_, _)                    -> () (* TODO: fill in here? *)
+  | Return (_, _)                  -> () (* TODO: fill in here? *)
 
 (** [pp_trace_def name] is a pretty-printer for the Coq definition of a trace,
 with given definition name [name]. *)

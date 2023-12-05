@@ -72,9 +72,9 @@ Definition sys_regs : list (reg_kind * valu_shape) := [
   (KindReg "rv_clint_base" , ExactShape (RVal_Bits (BV 64 0x0000000002000000)));
   (KindReg "rv_clint_size" , ExactShape (RVal_Bits (BV 64 0x00000000000c0000)));
   (KindReg "rv_htif_tohost" , ExactShape (RVal_Bits (BV 64 0x0000000040001000)));
-  (KindReg "cur_privilege" , ExactShape (RVal_Enum (Mk_enum_id 3, Mk_enum_ctor 2)));
+  (KindReg "cur_privilege" , ExactShape (RVal_Enum "Machine"));
   (* TODO: remove this *)
-  (KindReg "Machine" , ExactShape (RVal_Enum (Mk_enum_id 3, Mk_enum_ctor 2)));
+  (KindReg "Machine" , ExactShape (RVal_Enum "Machine"));
   (KindReg "misa" , ExactShape (RegVal_Struct [("bits", RVal_Bits misa_bits)]));
   (* MPRV disabled *)
   (KindReg "mstatus" , StructShape [("bits", MaskShape 64 0x20000 0)]);
@@ -91,8 +91,8 @@ Definition sys_regs_map (mstatus_bits satp : bv 64) : reg_map :=
   <[ "rv_clint_base" := RVal_Bits (BV 64 0x0000000002000000) ]> $
   <[ "rv_clint_size" := RVal_Bits (BV 64 0x00000000000c0000) ]> $
   <[ "rv_htif_tohost" := RVal_Bits (BV 64 0x0000000040001000) ]> $
-  <[ "cur_privilege" := RVal_Enum (Mk_enum_id 3, Mk_enum_ctor 2) ]> $
-  <[ "Machine" := RVal_Enum (Mk_enum_id 3, Mk_enum_ctor 2) ]> $
+  <[ "cur_privilege" := RVal_Enum "Machine" ]> $
+  <[ "Machine" := RVal_Enum "Machine" ]> $
   <[ "misa" := RegVal_Struct [("bits", RVal_Bits misa_bits)] ]> $
   <[ "mstatus" := RegVal_Struct [("bits", RVal_Bits mstatus_bits)] ]> $
   <[ "satp" := RVal_Bits satp ]> $

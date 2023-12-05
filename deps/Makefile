@@ -1,5 +1,4 @@
 SAIL_COMMIT=605cd3cffe4b18fb5d0a99beef5d6ee33e1a7dcb
-BBV_COMMIT=6144e214583b72182a4ed89e4328ea62ba766e2e
 
 all: sail-riscv-coq
 .PHONY: all
@@ -7,16 +6,8 @@ all: sail-riscv-coq
 sail-%.tar.gz:
 	wget "https://github.com/rems-project/sail/archive/$*.tar.gz" -O $@
 
-bbv-%.tar.gz:
-	wget "https://github.com/mit-plv/bbv/archive/$*.tar.gz" -O $@
-
-# TODO: maybe add opam install z3?
-bbv: bbv-$(BBV_COMMIT).tar.gz
-	rm -rf coq-bbv
-	tar xf bbv-$(BBV_COMMIT).tar.gz
-	mv "bbv-${BBV_COMMIT}" coq-bbv
-	cp coq-bbv-1.3.opam coq-bbv/opam
-	opam pin add ./coq-bbv -n
+bbv: 
+	opam pin --yes coq-bbv 1.4
 .PHONY: bbv
 
 # TODO: maybe add opam install z3?

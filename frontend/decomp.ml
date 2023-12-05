@@ -84,7 +84,7 @@ let event_filter : Arch.t -> int -> event -> bool = fun arch i e ->
   | Smt(Assert(_), _)                                    -> i = 0
   | Cycle(_)
   | MarkReg(_, _, _)
-  | Smt(DefineEnum(_), _)                                -> false
+  | Smt(DefineEnum(_,_,_), _)                            -> true
   | _                                                    -> true
 
 (** [gen_coq arch name isla_f coq_f] processes Isla file [isla_f] and produces
