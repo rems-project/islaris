@@ -367,13 +367,13 @@ let pp_event ff e =
   | Ast.Assume(e,a)                ->
       pp "Assume (%a) %a" pp_a_exp e pp_lrng a
   | Ast.FunAssume(r,v,args,a)      ->
-      pp "FunAssume %a %a %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
+      pp "FunAssume %a (%a) %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
   | Ast.UseFunAssume(r,v,args,a)   ->
-      pp "UseFunAssume %a %a %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
+      pp "UseFunAssume %a (%a) %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
   | Ast.AbstractCall(r,v,args,a)   ->
-      pp "AbstractCall %a %a %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
+      pp "AbstractCall %a (%a) %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
   | Ast.AbstractPrimop(r,v,args,a) ->
-      pp "AbstractPrimop %a %a %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
+      pp "AbstractPrimop %a (%a) %a %a" pp_sail_name r pp_valu v pp_arg_list args pp_lrng a
   | Call (_, _)                    -> () (* TODO: fill in here? *)
   | Return (_, _)                  -> () (* TODO: fill in here? *)
 
