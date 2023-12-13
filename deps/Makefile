@@ -6,10 +6,6 @@ all: sail-riscv-coq
 sail-%.tar.gz:
 	wget "https://github.com/rems-project/sail/archive/$*.tar.gz" -O $@
 
-bbv: 
-	opam pin --yes coq-bbv 1.4
-.PHONY: bbv
-
 # TODO: maybe add opam install z3?
 sail: sail-$(SAIL_COMMIT).tar.gz
 	rm -rf sail
@@ -20,7 +16,7 @@ sail: sail-$(SAIL_COMMIT).tar.gz
 	opam pin add coq-sail ./sail/lib/coq -n
 .PHONY: sail
 
-sail-riscv-coq: bbv sail
+sail-riscv-coq: sail
 	opam pin add coq-sail-riscv 'git+https://github.com/riscv/sail-riscv#17a9929821470e119a6d5b4359d0a51d6dae6679' -n
 	opam install coq-sail-riscv
 .PHONY: sail-riscv-coq

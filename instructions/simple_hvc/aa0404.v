@@ -23,7 +23,7 @@ Definition aa0404 : isla_trace :=
   Assume (AExp_Binop (Eq) (AExp_Unop (Extract 55%N 55%N) (AExp_Val (AVal_Var "ELR_EL2" []) Mk_annot) Mk_annot) (AExp_Val (AVal_Bits (BV 1%N 0x0%Z)) Mk_annot) Mk_annot) Mk_annot :t:
   ReadReg "ELR_EL2" [] (RegVal_Base (Val_Symbolic 27%Z)) Mk_annot :t:
   Smt (DefineConst 30%Z (Unop (Extract 55%N 0%N) (Val (Val_Symbolic 27%Z) Mk_annot) Mk_annot)) Mk_annot :t:
-  AbstractPrimop "sail_eret" RegVal_Unit [RegVal_Base (Val_Symbolic 30%Z)] Mk_annot :t:
+  AbstractPrimop "sail_eret" (RegVal_Unit) [RegVal_Base (Val_Symbolic 30%Z)] Mk_annot :t:
   ReadReg "SPSR_EL2" [] (RegVal_Base (Val_Symbolic 26%Z)) Mk_annot :t:
   WriteReg "PSTATE" [Field "SS"] (RegVal_Struct [("SS", RegVal_Base (Val_Bits (BV 1%N 0x0%Z)))]) Mk_annot :t:
   Smt (DefineConst 50%Z (Unop (Extract 3%N 2%N) (Val (Val_Symbolic 26%Z) Mk_annot) Mk_annot)) Mk_annot :t:
