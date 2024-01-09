@@ -114,6 +114,39 @@ Lemma regstate_eta (regs : regstate) :
     uepc := uepc regs;
     uscratch := uscratch regs;
     utvec := utvec regs;
+    vcsr := vcsr regs;
+    vr31 := vr31 regs;
+    vr30 := vr30 regs;
+    vr29 := vr29 regs;
+    vr28 := vr28 regs;
+    vr27 := vr27 regs;
+    vr26 := vr26 regs;
+    vr25 := vr25 regs;
+    vr24 := vr24 regs;
+    vr23 := vr23 regs;
+    vr22 := vr22 regs;
+    vr21 := vr21 regs;
+    vr20 := vr20 regs;
+    vr19 := vr19 regs;
+    vr18 := vr18 regs;
+    vr17 := vr17 regs;
+    vr16 := vr16 regs;
+    vr15 := vr15 regs;
+    vr14 := vr14 regs;
+    vr13 := vr13 regs;
+    vr12 := vr12 regs;
+    vr11 := vr11 regs;
+    vr10 := vr10 regs;
+    vr9 := vr9 regs;
+    vr8 := vr8 regs;
+    vr7 := vr7 regs;
+    vr6 := vr6 regs;
+    vr5 := vr5 regs;
+    vr4 := vr4 regs;
+    vr3 := vr3 regs;
+    vr2 := vr2 regs;
+    vr1 := vr1 regs;
+    vr0 := vr0 regs;
     pmpaddr15 := pmpaddr15 regs;
     pmpaddr14 := pmpaddr14 regs;
     pmpaddr13 := pmpaddr13 regs;
@@ -146,6 +179,14 @@ Lemma regstate_eta (regs : regstate) :
     pmp2cfg := pmp2cfg regs;
     pmp1cfg := pmp1cfg regs;
     pmp0cfg := pmp0cfg regs;
+    vtype := vtype regs;
+    vlenb := vlenb regs;
+    vl := vl regs;
+    vxrm := vxrm regs;
+    vxsat := vxsat regs;
+    vstart := vstart regs;
+    senvcfg := senvcfg regs;
+    menvcfg := menvcfg regs;
     tselect := tselect regs;
     stval := stval regs;
     scause := scause regs;
@@ -213,6 +254,8 @@ Lemma regstate_eta (regs : regstate) :
     instbits := instbits regs;
     nextPC := nextPC regs;
     PC := PC regs;
+    vlen := vlen regs;
+    elen := elen regs;
   |}.
 Proof. now destruct regs. Qed.
 
@@ -643,6 +686,39 @@ Definition riscv_regs := [
   ("uepc", RegRef uepc_ref);
   ("uscratch", RegRef uscratch_ref);
   ("utvec", RegRef utvec_ref);
+  ("vcsr", RegRef vcsr_ref);
+  ("vr31", RegRef vr31_ref);
+  ("vr30", RegRef vr30_ref);
+  ("vr29", RegRef vr29_ref);
+  ("vr28", RegRef vr28_ref);
+  ("vr27", RegRef vr27_ref);
+  ("vr26", RegRef vr26_ref);
+  ("vr25", RegRef vr25_ref);
+  ("vr24", RegRef vr24_ref);
+  ("vr23", RegRef vr23_ref);
+  ("vr22", RegRef vr22_ref);
+  ("vr21", RegRef vr21_ref);
+  ("vr20", RegRef vr20_ref);
+  ("vr19", RegRef vr19_ref);
+  ("vr18", RegRef vr18_ref);
+  ("vr17", RegRef vr17_ref);
+  ("vr16", RegRef vr16_ref);
+  ("vr15", RegRef vr15_ref);
+  ("vr14", RegRef vr14_ref);
+  ("vr13", RegRef vr13_ref);
+  ("vr12", RegRef vr12_ref);
+  ("vr11", RegRef vr11_ref);
+  ("vr10", RegRef vr10_ref);
+  ("vr9", RegRef vr9_ref);
+  ("vr8", RegRef vr8_ref);
+  ("vr7", RegRef vr7_ref);
+  ("vr6", RegRef vr6_ref);
+  ("vr5", RegRef vr5_ref);
+  ("vr4", RegRef vr4_ref);
+  ("vr3", RegRef vr3_ref);
+  ("vr2", RegRef vr2_ref);
+  ("vr1", RegRef vr1_ref);
+  ("vr0", RegRef vr0_ref);
   ("pmpaddr15", RegRef pmpaddr15_ref);
   ("pmpaddr14", RegRef pmpaddr14_ref);
   ("pmpaddr13", RegRef pmpaddr13_ref);
@@ -675,6 +751,14 @@ Definition riscv_regs := [
   ("pmp2cfg", RegRef pmp2cfg_ref);
   ("pmp1cfg", RegRef pmp1cfg_ref);
   ("pmp0cfg", RegRef pmp0cfg_ref);
+  ("vtype", RegRef vtype_ref);
+  ("vlenb", RegRef vlenb_ref);
+  ("vl", RegRef vl_ref);
+  ("vxrm", RegRef vxrm_ref);
+  ("vxsat", RegRef vxsat_ref);
+  ("vstart", RegRef vstart_ref);
+  ("senvcfg", RegRef senvcfg_ref);
+  ("menvcfg", RegRef menvcfg_ref);
   ("tselect", RegRef tselect_ref);
   ("stval", RegRef stval_ref);
   ("scause", RegRef scause_ref);
@@ -741,20 +825,22 @@ Definition riscv_regs := [
   ("x1", RegRef x1_ref);
   ("instbits", RegRef instbits_ref);
   ("nextPC", RegRef nextPC_ref);
-  ("PC", RegRef PC_ref)
+  ("PC", RegRef PC_ref);
+  ("vlen", RegRef vlen_ref);
+  ("elen", RegRef elen_ref)
 ].
 
 Lemma get_regval_refs_eq r regs regs':
-  (∀ rf, (r, rf) ∈ riscv_regs → rf.(reg_ref_ref).(read_from) regs' = rf.(reg_ref_ref).(read_from) regs) →
+  (Forall (λ '(r', rf), r = r' → rf.(reg_ref_ref).(read_from) regs' = rf.(reg_ref_ref).(read_from) regs) riscv_regs) →
   get_regval r regs' = get_regval r regs.
 Proof.
   unfold get_regval.
   have Hcase : ∀ s (e1 e2 e1' e2' : option register_value) rf' rfs,
       (read_from (reg_ref_ref rf') regs' = read_from (reg_ref_ref rf') regs → e1 = e1') →
-      ((∀ rf, (r, rf) ∈ rfs → read_from (reg_ref_ref rf) regs' = read_from (reg_ref_ref rf) regs) → e2 = e2') →
-      (∀ rf, (r, rf) ∈ (s, rf')::rfs → read_from (reg_ref_ref rf) regs' = read_from (reg_ref_ref rf) regs) →
+      ((Forall (λ '(r', rf), r = r' → read_from (reg_ref_ref rf) regs' = read_from (reg_ref_ref rf) regs) rfs) → e2 = e2') →
+      (Forall (λ '(r', rf), r = r' → read_from (reg_ref_ref rf) regs' = read_from (reg_ref_ref rf) regs) ((s, rf')::rfs)) →
       (if string_dec r s then e1 else e2) = (if string_dec r s then e1' else e2'). {
-    move => s ?????? He1 He2 Hf2. destruct (string_dec r s); set_solver.
+    move => s ?????? He1 He2 /(Forall_cons_1 _ _ _) [??]. destruct (string_dec r s); naive_solver.
   }
   repeat (apply Hcase; [ by destruct regs, regs' => -> |]). done.
 Qed.
@@ -781,7 +867,7 @@ Lemma get_set_regval_ne r r' regs regs' v:
   get_regval r regs' = get_regval r regs.
 Proof.
   move => /set_regval_refs_eq[rf1 [? [Hin1 ->]]] Hneq.
-  apply get_regval_refs_eq => rf2 Hin2.
+  apply get_regval_refs_eq.
   have Hcase : ∀ a b (P : Prop) r rf (rfs : list (string * register_ref_record)),
       (a = r → b = rf → P) →
       ((a, b) ∈ rfs → P) →
@@ -790,23 +876,28 @@ Proof.
   }
   destruct regs.
   revert Hin1.
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 10 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
-  do 8 (apply Hcase; [abstract (move => ? ?; subst; revert Hin2; repeat (apply Hcase; [move => ? ->; done|]); by move =>/elem_of_nil)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 10 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
+  do 1 (apply Hcase; [abstract (move => ??; subst; repeat constructor; done)|]).
   by move =>/elem_of_nil.
-Qed.
+Time Qed.
 
 Lemma get_regval_None_stable r regs regs':
   get_regval r regs = None →

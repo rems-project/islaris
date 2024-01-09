@@ -183,6 +183,25 @@ Ltac sim_simpl_hyp H :=
   try apply bool_decide_eq_false_1 in H;
   try (apply Eqdep_dec.inj_pair2_eq_dec in H; [|by move => ??; apply decide; apply _]).
 
+
+Lemma of_regval_regval_of_mstatus a :
+ Mstatus_of_regval (regval_of_Mstatus a) = Some a.
+Proof. by destruct a. Qed.
+Lemma of_regval_regval_of_misa a :
+ Misa_of_regval (regval_of_Misa a) = Some a.
+Proof. by destruct a. Qed.
+
+Ltac solve_of_regval_regval_of :=
+  match goal with
+  (* some goals of this form contain eta expansions that done cannot
+  solve, so we have to manually apply a lemma *)
+  | _ =>
+      by apply of_regval_regval_of_mstatus
+  | _ =>
+      by apply of_regval_regval_of_misa
+  | _ => done
+  end.
+
 Ltac red_monad_sim :=
   repeat match goal with
          | |- sim _ (_ >>= _) _ _  => apply sim_bind
@@ -212,7 +231,7 @@ Ltac red_monad_sim :=
          | |- sim _ _ _ (AssumeReg _ _ _ _:t:_)  =>
              let H := fresh "Hassume" in apply: sim_AssumeReg => H; simpl in H; sim_simpl_hyp H
          | |- sim _ _ _ (ReadReg _ _ _ _:t:_)  => apply: sim_ReadReg_config; [reflexivity | try done; shelve|]
-         | |- sim _ (read_reg _) _ (ReadReg _ _ _ _:t:_)  => apply: sim_read_reg; [done | done | try done; shelve|]
+         | |- sim _ (read_reg _) _ (ReadReg _ _ _ _:t:_)  => apply: sim_read_reg; [done | solve_of_regval_regval_of | try done; shelve|]
          | |- sim _ (write_reg nextPC_ref _) _ _  => apply: sim_write_reg_private; [done..|]
          | |- sim _ (read_reg nextPC_ref) _ _  => apply: sim_read_reg_l; [done..|]
          | |- sim _ (get_next_pc ()) _ _  => apply: sim_read_reg_l; [done..|]
@@ -290,9 +309,9 @@ Lemma sim_haveFExt Σ K e2:
 Proof.
   move => Hsim.
   unfold haveFExt. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim.
-  case_match => //. red_sim.
-  apply: sim_read_reg_l; [done|].
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|].
+  red_sim. case_match => //. red_sim.
+  apply sim_read_reg_l; [solve_of_regval_regval_of|].
   by red_sim.
 Qed.
 
@@ -302,9 +321,9 @@ Lemma sim_haveDExt Σ K e2:
 Proof.
   move => Hsim.
   unfold haveDExt. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim.
-  case_match => //. red_sim.
-  apply: sim_read_reg_l; [done|].
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|].
+  red_sim. case_match => //. red_sim.
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|].
   by red_sim.
 Qed.
 

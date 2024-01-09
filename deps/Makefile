@@ -16,8 +16,10 @@ sail: sail-$(SAIL_COMMIT).tar.gz
 	opam pin add coq-sail ./sail/lib/coq -n
 .PHONY: sail
 
-sail-riscv-coq: sail
-	opam pin add coq-sail-riscv 'git+https://github.com/riscv/sail-riscv#17a9929821470e119a6d5b4359d0a51d6dae6679' -n
+sail-riscv-coq:
+	opam pin add 'git+https://github.com/rems-project/sail#b14f649845db850b3673696e2aa90565fa2a60ef' -n
+	opam pin add coq-sail 'git+https://github.com/rems-project/coq-sail#169934e27ceafe393ed4d365985f7b12d974d56e' -n
+	opam pin add coq-sail-riscv 'git+https://github.com/riscv/sail-riscv#837ede9b39fae2aa97849da89c4b3b5a93344890' -n
 	opam install coq-sail-riscv
 .PHONY: sail-riscv-coq
 

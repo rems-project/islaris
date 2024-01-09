@@ -307,7 +307,7 @@ Section instr.
   Proof.
     rewrite instr_eq. iIntros (??) "?". iExists _, _. iFrame.
     iPureIntro. split; [|done].
-    unfold Z_to_bv_checked. case_option_guard => //.
+    unfold Z_to_bv_checked. case_guard => //=.
     f_equal. by apply bv_eq.
   Qed.
 
@@ -332,7 +332,7 @@ Section instr.
     instr_ctx instrs -∗ instr (bv_unsigned a) i -∗ ⌜instrs !! a = i⌝.
   Proof.
     iIntros "Hctx Hinstr". iDestruct (instr_lookup with "Hctx Hinstr") as %[b [Hb ?]].
-    iPureIntro. unfold Z_to_bv_checked in *. case_option_guard => //; by simplify_eq.
+    iPureIntro. unfold Z_to_bv_checked in *. case_guard => //=; by simplify_eq/=.
   Qed.
 
 End instr.
@@ -364,7 +364,7 @@ Section reg.
         move => [??] /=? /lookup_kmap_Some[?[? /elem_of_list_to_map/(elem_of_list_lookup_1 _ _)[//|i ?]]]; simplify_map_eq.
         eexists _, _. split_and! => //.
         apply list_find_idx_Some. eexists _. split_and!; [done..|] => j[??]/=???; simplify_eq.
-        efeed pose proof (NoDup_lookup l.*1 i j); [done| rewrite list_lookup_fmap fmap_Some.. | lia].
+        opose proof* (NoDup_lookup l.*1 i j); [done| rewrite list_lookup_fmap fmap_Some.. | lia].
         all: naive_solver.
       + move => ? [? /lookup_delete_Some[??]] [?[?/lookup_union_Some[| |]]]; [| |naive_solver].
         { apply map_disjoint_spec => -[??]?? /lookup_kmap_Some. naive_solver. }

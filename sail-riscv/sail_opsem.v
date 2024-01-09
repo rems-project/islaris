@@ -100,7 +100,7 @@ Lemma mword_to_bv_unsigned {n1 n2} (b : mword n1):
   n1 = Z.of_N n2 →
   bv_unsigned (mword_to_bv (n2:=n2) b) = Z.of_N (Word.wordToN (get_word b)).
 Proof.
-  move => Heq. rewrite /mword_to_bv/Z_to_bv_checked. case_option_guard as Hn => //=.
+  move => Heq. rewrite /mword_to_bv/Z_to_bv_checked. case_guard as Hn => //=.
   contradict Hn. apply/bv_wf_in_range. unfold bv_modulus.
   have /lt_Npow2:= Word.wordToN_bound (get_word b). subst. lia.
 Qed.
@@ -251,7 +251,7 @@ Qed.
 
 Lemma unfold_sign_extend m n (w: Word.word m) :
   forall H : (m <= n)%nat,
-  MachineWord.sign_extend n w = cast_nat (Word.sext w (n - m)) (le_plus_minus_r m n H).
+  MachineWord.sign_extend n w = cast_nat (Word.sext w (n - m)) (MachineWord.MachineWord.extend_ok H).
 Proof.
   intro.
   rewrite /MachineWord.sign_extend.
@@ -268,19 +268,19 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma mword_to_bv_EXTS n1 n2' n2 (b : mword n1):
+Lemma mword_to_bv_sign_extend' n1 n2' n2 (b : mword n1):
   0 ≤ n1 →
   n2' = Z.of_N n2 →
   n1 ≤ n2' →
-  mword_to_bv (n2:=n2) (@EXTS _ n2' b) = bv_sign_extend _ (mword_to_bv (n2:=(Z.to_N n1)) b).
+  mword_to_bv (n2:=n2) (sign_extend' n2' b) = bv_sign_extend _ (mword_to_bv (n2:=(Z.to_N n1)) b).
 Proof.
   move => ???.
-  apply bv_eq_signed. rewrite mword_to_bv_signed //. rewrite /EXTS/sign_extend/exts_vec/= get_word_to_word.
+  apply bv_eq_signed. rewrite mword_to_bv_signed //. rewrite /sign_extend'/sign_extend/exts_vec/= get_word_to_word.
   rewrite unfold_sign_extend. 1: lia. move => ?. rewrite wordToZ_cast_nat.
   rewrite Word.sext_wordToZ bv_sign_extend_signed ?mword_to_bv_signed //.
   all: lia.
 Qed.
-Arguments EXTS : simpl never.
+Global Arguments sign_extend' : simpl never.
 
 (* #[local] Hint Rewrite wordToN_spec_high Z_of_bool_spec_high using lia : rewrite_bits_db. *)
 Lemma mword_to_bv_update_vec_dec n1 n2 (b : mword n1) b1 z b2:
@@ -411,15 +411,28 @@ Proof.
   f_equal. lia.
 Qed.
 
-Definition register_value_to_valu (v : register_value) : valu :=
+Definition register_value_to_valu (r : register_name) (v : register_value) : valu :=
+  if bool_decide (r = "misa" ∨ r = "mstatus") then
+    if v is Regval_bitvector_64 m then
+      RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m))]
+    else
+      RegVal_Poison
+  else
   match v with
-  | Regval_bitvector_64_dec m => RVal_Bits (mword_to_bv (n2:=64) m)
+  | Regval_bitvector_1 m => RVal_Bits (mword_to_bv (n2:=1) m)
+  | Regval_bitvector_2 m => RVal_Bits (mword_to_bv (n2:=2) m)
+  | Regval_bitvector_3 m => RVal_Bits (mword_to_bv (n2:=3) m)
+  | Regval_bitvector_4 m => RVal_Bits (mword_to_bv (n2:=4) m)
+  | Regval_bitvector_8 m => RVal_Bits (mword_to_bv (n2:=8) m)
+  | Regval_bitvector_16 m => RVal_Bits (mword_to_bv (n2:=16) m)
+  | Regval_bitvector_32 m => RVal_Bits (mword_to_bv (n2:=32) m)
+  | Regval_bitvector_64 m => RVal_Bits (mword_to_bv (n2:=64) m)
+  | Regval_bitvector_65536 m => RVal_Bits (mword_to_bv (n2:=65536) m)
   | Regval_bool b => RVal_Bool b
-  | Regval_Misa m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Misa_bits)))]
-  | Regval_Mstatus m => RegVal_Struct [("bits", RVal_Bits (mword_to_bv (n2:=64) m.(Mstatus_bits)))]
   | Regval_Privilege p => RVal_Enum (match p with | User => "User" | Supervisor => "Supervisor" | Machine => "Machine" end)
   | _ => RegVal_Poison
   end.
+Global Arguments register_value_to_valu !_ !_ /.
 
 Lemma iris_module_wf_isla_lang :
   iris_module_wf isla_lang.
@@ -544,13 +557,13 @@ Definition get_plat_config (reg_name : string) : option register_value :=
   match reg_name with
   | "rv_enable_pmp" => Some (Regval_bool (plat_enable_pmp ()))
   | "rv_enable_misaligned_access" => Some (Regval_bool (plat_enable_misaligned_access ()))
-  | "rv_ram_base" => Some (Regval_bitvector_64_dec (plat_ram_base ()))
-  | "rv_ram_size" => Some (Regval_bitvector_64_dec (plat_ram_size ()))
-  | "rv_rom_base" => Some (Regval_bitvector_64_dec (plat_rom_base ()))
-  | "rv_rom_size" => Some (Regval_bitvector_64_dec (plat_rom_size ()))
-  | "rv_clint_base" => Some (Regval_bitvector_64_dec (plat_clint_base ()))
-  | "rv_clint_size" => Some (Regval_bitvector_64_dec (plat_clint_size ()))
-  | "rv_htif_tohost" => Some (Regval_bitvector_64_dec (plat_htif_tohost ()))
+  | "rv_ram_base" => Some (Regval_bitvector_64 (plat_ram_base ()))
+  | "rv_ram_size" => Some (Regval_bitvector_64 (plat_ram_size ()))
+  | "rv_rom_base" => Some (Regval_bitvector_64 (plat_rom_base ()))
+  | "rv_rom_size" => Some (Regval_bitvector_64 (plat_rom_size ()))
+  | "rv_clint_base" => Some (Regval_bitvector_64 (plat_clint_base ()))
+  | "rv_clint_size" => Some (Regval_bitvector_64 (plat_clint_size ()))
+  | "rv_htif_tohost" => Some (Regval_bitvector_64 (plat_htif_tohost ()))
   | "Machine" => Some (Regval_Privilege (Machine))
   | _ => None
   end.
@@ -562,7 +575,7 @@ Definition get_regval_or_config (reg_name : string) (s : regstate) : option regi
   end.
 
 Definition isla_regs_wf (regs : regstate) (isla_regs : reg_map) : Prop :=
-  ∀ r vi, isla_regs !! r = Some vi → ∃ vs, get_regval_or_config r regs = Some vs ∧ vi = (register_value_to_valu vs).
+  ∀ r vi, isla_regs !! r = Some vi → ∃ vs, get_regval_or_config r regs = Some vs ∧ vi = (register_value_to_valu r vs).
 
 Definition private_regs_wf (isla_regs : reg_map) : Prop :=
   isla_regs !! "nextPC" = None.
@@ -723,7 +736,7 @@ Qed.
 Lemma sim_read_reg A E Σ K e2 ann r v v':
   get_regval (name r) Σ.(sim_regs) = Some v' →
   of_regval r v' = Some (read_from r Σ.(sim_regs)) →
-  v = register_value_to_valu v' →
+  v = register_value_to_valu (name r) v' →
   sim (A:=A) (E:=E) Σ (Done (read_from r Σ.(sim_regs))) K e2 →
   sim (A:=A) (E:=E) Σ (read_reg r) K (ReadReg (name r) [] v ann :t: e2).
 Proof.
@@ -743,7 +756,7 @@ Qed.
 
 Lemma sim_ReadReg_config A E Σ K e1 e2 ann r v v':
   get_plat_config r = Some v' →
-  v = register_value_to_valu v' →
+  v = register_value_to_valu r v' →
   sim (A:=A) (E:=E) Σ e1 K e2 →
   sim (A:=A) (E:=E) Σ e1 K (ReadReg r [] v ann :t: e2).
 Proof.
@@ -763,7 +776,7 @@ Qed.
 Lemma sim_write_reg {A E} Σ (r : register_ref _ _ A) e2 v K v' ann:
   name r ≠ "tlb48" ∧ name r ≠ "tlb39" →
   set_regval (name r) (regval_of r v) Σ.(sim_regs) = Some (write_to r v Σ.(sim_regs)) →
-  v' = register_value_to_valu (regval_of r v) →
+  v' = register_value_to_valu (name r) (regval_of r v) →
   sim (Σ <|sim_regs := write_to r v Σ.(sim_regs)|>) (Done tt) K e2 →
   sim (E:=E) Σ (write_reg r v) K (WriteReg (name r) [] v' ann :t: e2).
 Proof.
@@ -894,7 +907,7 @@ Proof.
     (read_mem_list mem (bv_unsigned a') len' = None ∧
        bv_unsigned a' + Z.of_N len' ≤ 2 ^ 64 ∧
        set_Forall (λ ad, ¬ (bv_unsigned a' ≤ bv_unsigned ad < bv_unsigned a' + Z.of_N len')) (dom mem))). {
-    efeed pose proof Hsafe as He.
+    opose proof* Hsafe as He.
     { apply: steps_l'; [|apply steps_refl|done].
       constructor. econstructor; [done|eapply (DeclareConstBitVecS' (bv_0 _))|] => /=. done. }
     move: He => [| {}Hsafe]. { unfold seq_to_val. by case. }
@@ -1027,7 +1040,7 @@ Qed.
 Definition eval_assume_val' (regs : regstate) (v : assume_val) : option base_val :=
   match v with
   | AVal_Var r l => v' ← get_regval_or_config r regs;
-                   v'' ← read_accessor l (register_value_to_valu v');
+                   v'' ← read_accessor l (register_value_to_valu r v');
                    if v'' is RegVal_Base b then Some b else None
   | AVal_Bool b => Some (Val_Bool b)
   | AVal_Bits b => Some (Val_Bits b)
@@ -1093,7 +1106,7 @@ Proof.
 Qed.
 
 Lemma sim_AssumeReg A E Σ K e1 e2 ann r v al:
-  ((v' ← get_regval_or_config r Σ.(sim_regs); read_accessor al (register_value_to_valu v')) = Some v
+  ((v' ← get_regval_or_config r Σ.(sim_regs); read_accessor al (register_value_to_valu r v')) = Some v
     → sim (A:=A) (E:=E) Σ e1 K e2) →
   sim (A:=A) (E:=E) Σ e1 K (AssumeReg r al v ann :t: e2).
 Proof.

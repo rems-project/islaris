@@ -91,14 +91,14 @@ Proof.
   unfold translateAddr. red_sim. rewrite mstatus_nextPC.
   apply sim_effectivePrivilege; [done|]. red_sim.
   unfold translateAddr_priv. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim.
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|]. red_sim.
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|]. red_sim.
   unfold translationMode. rewrite cur_privilege_nextPC.
   have -> : (cur_privilege regs) = Machine by destruct (cur_privilege regs). red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim. rewrite x11_nextPC.
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|]. red_sim. rewrite x11_nextPC.
   unfold mem_write_value, mem_write_value_meta. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim. rewrite mstatus_nextPC.
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|]. red_sim.
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|]. red_sim. rewrite mstatus_nextPC.
   apply sim_effectivePrivilege; [done|]. red_sim.
   rewrite Hassume. red_sim.
   rewrite if_false; [|shelve]. rewrite if_true; [|shelve]. red_sim.
@@ -132,14 +132,14 @@ Proof.
   unfold translateAddr. red_sim. rewrite mstatus_nextPC.
   apply sim_effectivePrivilege; [done|]. red_sim.
   unfold translateAddr_priv. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim.
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|]. red_sim.
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|]. red_sim.
   unfold translationMode. rewrite cur_privilege_nextPC.
   have -> : (cur_privilege regs) = Machine by destruct (cur_privilege regs). red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim. rewrite x2_nextPC.
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|]. red_sim. rewrite x2_nextPC.
   unfold mem_read. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim.
-  apply: sim_read_reg_l; [done|]. red_sim. rewrite mstatus_nextPC.
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|]. red_sim.
+  apply: sim_read_reg_l; [solve_of_regval_regval_of|]. red_sim. rewrite mstatus_nextPC.
   apply sim_effectivePrivilege; [done|]. red_sim.
   rewrite Hassume. red_sim.
   rewrite if_false; [|shelve]. rewrite if_true; [|shelve]. red_sim.
@@ -159,7 +159,7 @@ Proof.
       change (2 + 1 - 0)%N with (3%N).
       lia.
   - by rewrite mword_to_bv_add_vec.
-  - rewrite mword_to_bv_EXTS // mword_to_bv_to_mword //.
+  - rewrite mword_to_bv_sign_extend' // mword_to_bv_to_mword //.
   - by rewrite mword_to_bv_add_vec.
     Unshelve. all: exact: inhabitant.
 Qed.

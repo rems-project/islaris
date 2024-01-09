@@ -281,28 +281,28 @@ Definition eval_binop (b : binop) (v1 v2 : base_val) : option base_val :=
     Some (Val_Bits (bv_ashiftr n1.(bvn_val) n2'))
 
   | Bvcomp Bvult, Val_Bits n1, Val_Bits n2 =>
-    guard (n1.(bvn_n) = n2.(bvn_n));
+    guard (n1.(bvn_n) = n2.(bvn_n));;
     Some (Val_Bool (bool_decide (bv_unsigned n1.(bvn_val) < bv_unsigned n2.(bvn_val))))
   | Bvcomp Bvslt, Val_Bits n1, Val_Bits n2 =>
-    guard (n1.(bvn_n) = n2.(bvn_n));
+    guard (n1.(bvn_n) = n2.(bvn_n));;
     Some (Val_Bool (bool_decide (bv_signed n1.(bvn_val) < bv_signed n2.(bvn_val))))
   | Bvcomp Bvule, Val_Bits n1, Val_Bits n2 =>
-    guard (n1.(bvn_n) = n2.(bvn_n));
+    guard (n1.(bvn_n) = n2.(bvn_n));;
     Some (Val_Bool (bool_decide (bv_unsigned n1.(bvn_val) ≤ bv_unsigned n2.(bvn_val))))
   | Bvcomp Bvsle, Val_Bits n1, Val_Bits n2 =>
-    guard (n1.(bvn_n) = n2.(bvn_n));
+    guard (n1.(bvn_n) = n2.(bvn_n));;
     Some (Val_Bool (bool_decide (bv_signed n1.(bvn_val) ≤ bv_signed n2.(bvn_val))))
   | Bvcomp Bvuge, Val_Bits n1, Val_Bits n2 =>
-    guard (n1.(bvn_n) = n2.(bvn_n));
+    guard (n1.(bvn_n) = n2.(bvn_n));;
     Some (Val_Bool (bool_decide (bv_unsigned n1.(bvn_val) >= bv_unsigned n2.(bvn_val))))
   | Bvcomp Bvsge, Val_Bits n1, Val_Bits n2 =>
-    guard (n1.(bvn_n) = n2.(bvn_n));
+    guard (n1.(bvn_n) = n2.(bvn_n));;
     Some (Val_Bool (bool_decide (bv_signed n1.(bvn_val) >= bv_signed n2.(bvn_val))))
   | Bvcomp Bvugt, Val_Bits n1, Val_Bits n2 =>
-    guard (n1.(bvn_n) = n2.(bvn_n));
+    guard (n1.(bvn_n) = n2.(bvn_n));;
     Some (Val_Bool (bool_decide (bv_unsigned n1.(bvn_val) > bv_unsigned n2.(bvn_val))))
   | Bvcomp Bvsgt, Val_Bits n1, Val_Bits n2 =>
-    guard (n1.(bvn_n) = n2.(bvn_n));
+    guard (n1.(bvn_n) = n2.(bvn_n));;
     Some (Val_Bool (bool_decide (bv_signed n1.(bvn_val) > bv_signed n2.(bvn_val))))
   | _, _, _ => None
   end.

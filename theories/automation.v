@@ -371,7 +371,7 @@ this is useful (if one defines a function [Definition test_to_A {A} (x : A) (X :
 then vm_compute still reduces x). *)
 Ltac solve_compute_wp_exp :=
   let H := fresh in move => ? H;
-  lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret foldl bvn_to_bv decide decide_rel BinNat.N.eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect BinPos.Pos.eq_dec Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ mguard option_guard Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
+  lazy [eval_exp' mapM mbind option_bind eval_unop eval_manyop eval_binop option_fmap option_map fmap mret option_ret guard_or mthrow option_mfail foldl bvn_to_bv decide decide_rel BinNat.N.eq_dec N.eq_dec N_rec N_rect bvn_n sumbool_rec sumbool_rect BinPos.Pos.eq_dec Pos.eq_dec positive_rect positive_rec eq_rect eq_ind_r eq_ind eq_sym bvn_val N.add N.sub Pos.add Pos.succ Pos.sub_mask Pos.double_mask Pos.succ_double_mask Pos.pred_double Pos.double_pred_mask];
   lazymatch goal with | |- Some _ = _ => idtac | |- ?G => idtac "solve_compute_wp_exp failed:" G; fail end;
   autorewrite with isla_coq_rewrite;
   apply H.
@@ -543,7 +543,7 @@ Proof.
         move: Hs => [Hlen Hall'']. move: (Hall'') => /Forall_fold_right/(Forall_lookup_1 _ _ _ _)Hall.
         have [|[??]?]:= lookup_lt_is_Some_2 rs i.
         { rewrite -Hlen. apply: lookup_lt_is_Some_1. naive_solver. }
-        efeed pose proof Hall as Hall'. { by rewrite ->lookup_zip_with; simplify_option_eq. }
+        opose proof* Hall as Hall'. { by rewrite ->lookup_zip_with; simplify_option_eq. }
         destruct Hall' as [??]; simplify_eq.
         iExists _, _. rewrite ->reg_col_cons. iSplit; [done|]. iFrame. iSplit. {
           iPureIntro. rewrite /read_accessor => /=. apply bind_Some. eexists _. split.
@@ -551,7 +551,7 @@ Proof.
           apply list_find_idx_Some. eexists (_, _). split_and! => //. move => j[??]?/=.
           have [|[??]?]:= lookup_lt_is_Some_2 ss j.
           { rewrite Hlen. apply: lookup_lt_is_Some_1. naive_solver. }
-          efeed pose proof Hall as Hall'. { by rewrite ->lookup_zip_with; simplify_option_eq. }
+          opose proof* Hall as Hall'. { by rewrite ->lookup_zip_with; simplify_option_eq. }
           eapply (Hnot _ (_, _)). naive_solver.
         }
         iIntros "[? %]". iExists _. by iFrame.
