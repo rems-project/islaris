@@ -327,6 +327,8 @@ Fixpoint eval_exp' (e : exp) : option base_val :=
         | Val_Bits b2, Val_Bits b3 =>
             b3' ← bvn_to_bv b2.(bvn_n) b3;
             Some (Val_Bits (ite b b2.(bvn_val) b3'))
+        | Val_Bool b2, Val_Bool b3 =>
+            Some (Val_Bool (ite b b2 b3))
         | _, _ => Some (ite b v2 v3)
         end
     | _ => None

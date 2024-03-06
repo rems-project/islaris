@@ -69,7 +69,13 @@ Definition instr_ite : isla_trace :=
                                ] Mk_annot)
                           (Val (Val_Bits (BV 64%N 0%Z)) Mk_annot)
                           (Val (Val_Symbolic 1%Z) Mk_annot) Mk_annot)) Mk_annot :t:
+  Smt (DefineConst 4%Z (Unop Not (Ite (Manyop And [
+     Binop Eq (Val (Val_Symbolic 1%Z) Mk_annot) (Val (Val_Bits (BV 64%N 0%Z)) Mk_annot) Mk_annot
+                               ] Mk_annot)
+                          (Val (Val_Bool true) Mk_annot)
+                          (Val (Val_Bool false) Mk_annot) Mk_annot) Mk_annot)) Mk_annot :t:
   WriteReg "R0" [] (RegVal_Base (Val_Symbolic 3%Z)) Mk_annot :t:
+  WriteReg "R1" [] (RegVal_Base (Val_Symbolic 4%Z)) Mk_annot :t:
   Smt (DeclareConst 10%Z (Ty_BitVec 64%N)) Mk_annot :t:
   ReadReg "_PC" [] (RegVal_Base (Val_Symbolic 10%Z)) Mk_annot :t:
   Smt (DefineConst 11%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 10%Z) Mk_annot; Val (Val_Bits (BV 64%N 0x4%Z)) Mk_annot] Mk_annot)) Mk_annot :t:
@@ -83,7 +89,7 @@ Definition spec `{!islaG Σ} `{!threadG} a : iProp Σ :=
   "R2" ↦ᵣ RVal_Bits v2 ∗
   "R0" ↦ᵣ RVal_Bits vold ∗
   instr_pre a (
-    "R1" ↦ᵣ RVal_Bits v1 ∗
+    "R1" ↦ᵣ RVal_Bool (negb (ite (bool_decide (v1 = 0%bv)) true false)) ∗
     "R2" ↦ᵣ RVal_Bits v2 ∗
     "R0" ↦ᵣ RVal_Bits (ite (bool_decide (v1 = 0%bv) && bool_decide (v2 = 1%bv)) 0%bv v1) ∗
     True).
