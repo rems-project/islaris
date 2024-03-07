@@ -10,8 +10,8 @@ dev-repo: "git+https://github.com/rems-project/islaris.git"
 synopsis: "Islaris assembly verification tool"
 
 depends: [
-  "coq" { (= "8.18.0") | (= "dev") }
-  "coq-lithium" { (= "dev.2023-11-30.0.65d25ad4") | (= "dev") }
+  "coq" { (= "8.19.0") | (= "dev") }
+  "coq-lithium" { (= "dev.2024-03-12.0.de68b772") | (= "dev") }
   "coq-stdpp-unstable"
   "coq-record-update" { (= "0.3.3") | (= "dev") }
   "cmdliner" {>= "1.1.0"}

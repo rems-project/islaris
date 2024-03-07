@@ -304,8 +304,7 @@ Proof.
   { iExists []. iSplit; done. }
   simpl. iDestruct "Hl" as "[[%x Hx] Hl]".
   iDestruct ("IH" with "Hl") as (xs) "[%Heq ?]".
-  iExists (x::xs) => /=. iSplit; [by rewrite /= Heq|]. iFrame.
-  iExists _. by iFrame.
+  iExists (x::xs) => /=. iSplit; [by rewrite /= Heq|]. by iFrame.
 Qed.
 
 (** fixpoints based on iris/bi/lib/fixpoint.v *)

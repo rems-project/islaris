@@ -445,7 +445,7 @@ Section reg.
     iIntros (?). rewrite /reg_col. erewrite (delete_Permutation regs); [|done] => /=.
     iSplit.
     - iDestruct 1 as "[[%vact [??] ]?]". iExists _. iFrame.
-    - iDestruct 1 as (v ?) "[??]". iFrame. iExists _. by iFrame.
+    - iDestruct 1 as (v ?) "[??]". by iFrame.
   Qed.
 End reg.
 
@@ -575,7 +575,7 @@ Section mem.
     rewrite Z_to_bv_bv_unsigned.
     iMod (ghost_map_update with "Hmem Hbyte") as "[$ ?]".
     rewrite -{1}(insert_id mem a' v) // !dom_insert_L. iFrame.
-    iExists _. iFrame. by rewrite Z_to_bv_checked_bv_unsigned.
+    by rewrite Z_to_bv_checked_bv_unsigned.
   Qed.
 
   Lemma mem_mapsto_byte_update_big mem a bs bs' :

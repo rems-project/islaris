@@ -119,8 +119,8 @@ Definition binary_search_loop_spec : iProp Σ :=
   ⌜0x0000000080000000 ≤ bv_unsigned sp - stack_size ∧ bv_unsigned sp < 0x0000000080000000 + 0x0000000004000000⌝ ∗
   ⌜bv_unsigned sp `mod` 16 = 0⌝ ∗
   ⌜StronglySorted R data⌝ ∗ ⌜Transitive R⌝ ∗
-  ⌜∀ (i : nat) y, i < bv_unsigned l → data !! i = Some y → R y x⌝ ∗
-  ⌜∀ (i : nat) y, bv_unsigned r ≤ i → data !! i = Some y → ¬ R y x⌝ ∗
+  ⌜list_Forall (λ i y, i < bv_unsigned l → R y x) data⌝ ∗
+  ⌜list_Forall (λ i y, bv_unsigned r ≤ i → ¬ R y x) data⌝ ∗
   instr_pre 0x0000000010300078 (
     ∃ (l' r' tmp1 : bv 64),
       reg_col sys_regs ∗
@@ -141,8 +141,8 @@ Definition binary_search_loop_spec : iProp Σ :=
       bv_unsigned xs ↦ₘ∗ data ∗
       P ∗
       (bv_unsigned sp - stack_size) ↦ₘ? stack_size ∗
-      ⌜∀ (i : nat) y, i < bv_unsigned l' → data !! i = Some y → R y x⌝ ∗
-      ⌜∀ (i : nat) y, bv_unsigned l' ≤ i → data !! i = Some y → ¬ R y x⌝ ∗
+      ⌜list_Forall (λ i y, i < bv_unsigned l' → R y x) data⌝ ∗
+      ⌜list_Forall (λ i y, bv_unsigned l' ≤ i → ¬ R y x) data⌝ ∗
       True
   )
 .
@@ -201,7 +201,7 @@ Proof.
     apply: binary_search_cond_1; [solve_goal..| bv_solve].
   - bv_simplify_arith select (_ ≤ _).
     bv_simplify_arith select (¬ (_ < _)).
-    naive_solver bv_solve.
+    trigger_foralls. refined_solver bv_solve.
 (*PROOF_END*)
 Time Qed.
 
@@ -221,8 +221,8 @@ Definition binary_search_spec (stack_size : Z) : iProp Σ :=
     RET (λ rets,
       bv_unsigned (args !!! 1%nat) ↦ₘ∗ data ∗
       P ∗
-      ⌜∀ (i : nat) y, i < bv_unsigned (rets !!! 0%nat) → data !! i = Some y → R y (args !!! 3%nat)⌝ ∗
-      ⌜∀ (i : nat) y, bv_unsigned (rets !!! 0%nat) ≤ i → data !! i = Some y → ¬ R y (args !!! 3%nat)⌝ ∗
+      ⌜list_Forall (λ i y, i < bv_unsigned (rets !!! 0%nat) → R y (args !!! 3%nat)) data⌝ ∗
+      ⌜list_Forall (λ i y, bv_unsigned (rets !!! 0%nat) ≤ i → ¬ R y (args !!! 3%nat)) data⌝ ∗
       True))
   )%I.
 (*SPEC_END*)

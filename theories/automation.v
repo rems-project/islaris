@@ -558,11 +558,11 @@ Proof.
         }
         iIntros "[? %]". iExists _. by iFrame.
     + iDestruct ("IH" with "[//] Hregs") as (???) "[? Hregs]". iExists _, _. iSplit;[done|]. iFrame.
-      iIntros "Hr". rewrite ->reg_col_cons. iDestruct ("Hregs" with "Hr") as "$". eauto with iFrame.
+      iIntros "Hr". iDestruct ("Hregs" with "Hr") as "$". eauto with iFrame.
   - rewrite !String_eqb_eq andb_bool_decide in Hr. case_bool_decide; destruct_and?; simplify_eq/=.
     + iExists _, _. rewrite ->reg_col_cons. iSplit; [done|]. iFrame. iIntros "?". iExists _. by iFrame.
     + iDestruct ("IH" with "[//] Hregs") as (???) "[? Hregs]". iExists _, _. iSplit;[done|]. iFrame.
-      iIntros "Hr". rewrite ->reg_col_cons. iDestruct ("Hregs" with "Hr") as "$". eauto with iFrame.
+      iIntros "Hr". iDestruct ("Hregs" with "Hr") as "$". eauto with iFrame.
       Unshelve. all: by apply inhabitant.
 Qed.
 
@@ -585,8 +585,7 @@ Proof.
   { iExists _. by iFrame. }
   move: Hr => /fmap_Some[[??]/=[??]]; subst => /=.
   iDestruct ("IH" with "[//] Hregs") as (v' ?) "[? ?]" => /=.
-  iExists _. rewrite reg_col_cons. iFrame. iSplit; [done|].
-  iExists _. by iFrame.
+  iExists _. rewrite reg_col_cons. by iFrame.
 Qed.
 
 Fixpoint regcol_cancel (regs1 regs2 : list (reg_kind * valu_shape)) : list (reg_kind * valu_shape) * list (reg_kind * valu_shape) * list (valu_shape * valu_shape) :=
