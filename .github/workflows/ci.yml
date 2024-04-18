@@ -22,7 +22,7 @@ jobs:
 
     env:
       OCAML: "ocaml-variants.4.14.0+options ocaml-option-flambda"
-      OPAM_PINS: "coq version 8.19.0   isla-lang git git+https://github.com/rems-project/isla-lang.git"
+      OPAM_PINS: "coq version 8.19.0"
       CPU_CORES: "1"
       DENY_WARNINGS: "1"
       CI_RUNNER: "dummy"

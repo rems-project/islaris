@@ -24,6 +24,10 @@ depends: [
   "isla-lang"
 ]
 
+pin-depends: [
+  [ "isla-lang.dev" "git+https://github.com/rems-project/isla-lang.git#6a1d25dc35a7f3c8442b61bfed3cca38f958f49f" ]
+]
+
 build: [
   ["dune" "subst"] {pinned}
   ["dune" "build" "-p" name "-j" jobs]
