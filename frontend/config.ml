@@ -62,7 +62,7 @@ let pkgname : string = "islaris"
 let prefix : Filename.dirpath =
   (* Obtain a normalised path to the executable. *)
   let exe =
-    try Sys.executable_name  with Invalid_argument(_) ->
+    try Filename.realpath Sys.executable_name  with Invalid_argument(_) ->
       panic "Unable to find an absolute path to the current executable."
   in
   (* Is it in the development repo? Find the ["_build"] directory. *)
