@@ -6,8 +6,9 @@ It is recommended to install the dependencies of Islaris via opam
 (version 2.0.0 or newer) into a new switch. This can be done via the
 following commands. You also need to make sure that you have the GNU
 GMP library on your system (`libgmp-dev` package on Debian),
-aarch64-linux-gnu-as (`binutils-aarch64-linux-gnu` package on Debian) and
-riscv64-linux-gnu-as (`binutils-riscv64-linux-gnu` package on Debian).
+aarch64-linux-gnu-as (`binutils-aarch64-linux-gnu` package on Debian,
+`aarch64-elf-binutils` package on MacOS) and
+riscv64-linux-gnu-as (`binutils-riscv64-linux-gnu` package on Debian, `riscv64-elf-binutils` on MacOS).
 
 ```
 opam switch create . ocaml-variants.4.14.0+options ocaml-option-flambda --no-install
