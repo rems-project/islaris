@@ -1,7 +1,7 @@
 From isla Require Import opsem.
 
 Definition a10 : isla_trace :=
-  AssumeReg "rv_enable_pmp" [] (RegVal_Base (Val_Bool false)) Mk_annot :t:
+  AssumeReg "rv_pmp_count" [] (RegVal_I 0%Z 64%Z) Mk_annot :t:
   AssumeReg "rv_enable_misaligned_access" [] (RegVal_Base (Val_Bool false)) Mk_annot :t:
   AssumeReg "rv_ram_base" [] (RegVal_Base (Val_Bits (BV 64%N 0x80000000%Z))) Mk_annot :t:
   AssumeReg "rv_ram_size" [] (RegVal_Base (Val_Bits (BV 64%N 0x4000000%Z))) Mk_annot :t:
@@ -27,14 +27,13 @@ Definition a10 : isla_trace :=
   Smt (DefineConst 6%Z (Manyop (Bvmanyarith Bvadd) [Val (Val_Symbolic 3%Z) Mk_annot; Val (Val_Bits (BV 64%N 0x20%Z)) Mk_annot] Mk_annot)) Mk_annot :t:
   ReadReg "mstatus" [] (RegVal_Struct [("bits", RegVal_Base (Val_Symbolic 1%Z))]) Mk_annot :t:
   ReadReg "cur_privilege" [] (RegVal_Base (Val_Symbolic 2%Z)) Mk_annot :t:
-  Smt (DeclareConst 20%Z (Ty_BitVec 64%N)) Mk_annot :t:
-  ReadReg "satp" [] (RegVal_Base (Val_Symbolic 20%Z)) Mk_annot :t:
-  Smt (DeclareConst 25%Z (Ty_BitVec 64%N)) Mk_annot :t:
-  ReadReg "x18" [] (RegVal_Base (Val_Symbolic 25%Z)) Mk_annot :t:
-  Smt (DefineConst 28%Z (Unop (ZeroExtend 64%N) (Val (Val_Symbolic 6%Z) Mk_annot) Mk_annot)) Mk_annot :t:
-  Smt (DefineConst 34%Z (Unop (ZeroExtend 64%N) (Val (Val_Symbolic 6%Z) Mk_annot) Mk_annot)) Mk_annot :t:
-  Smt (DeclareConst 38%Z Ty_Bool) Mk_annot :t:
-  WriteMem (RegVal_Base (Val_Symbolic 38%Z)) (RegVal_Poison) (RegVal_Base (Val_Symbolic 6%Z)) (RegVal_Base (Val_Symbolic 25%Z)) 8%N None Mk_annot :t:
+  Smt (DeclareConst 17%Z (Ty_BitVec 64%N)) Mk_annot :t:
+  ReadReg "x18" [] (RegVal_Base (Val_Symbolic 17%Z)) Mk_annot :t:
+  ReadReg "rv_pmp_count" [] (RegVal_I 0%Z 64%Z) Mk_annot :t:
+  Smt (DefineConst 20%Z (Unop (ZeroExtend 64%N) (Val (Val_Symbolic 6%Z) Mk_annot) Mk_annot)) Mk_annot :t:
+  Smt (DefineConst 26%Z (Unop (ZeroExtend 64%N) (Val (Val_Symbolic 6%Z) Mk_annot) Mk_annot)) Mk_annot :t:
+  Smt (DeclareConst 30%Z Ty_Bool) Mk_annot :t:
+  WriteMem (RegVal_Base (Val_Symbolic 30%Z)) (RegVal_Poison) (RegVal_Base (Val_Symbolic 6%Z)) (RegVal_Base (Val_Symbolic 17%Z)) 8%N None Mk_annot :t:
   WriteReg "PC" [] (RegVal_Base (Val_Symbolic 5%Z)) Mk_annot :t:
   tnil
 .
