@@ -306,7 +306,7 @@ Lemma nextPC_nextPC regs n:
 Proof. now rewrite (regstate_eta regs). Qed.
 
 (* This breaks the `with` notations so we have to import it later. *)
-Require Import stdpp.unstable.bitvector_tactics.
+Require Import stdpp.bitvector.bitvector.
 Require Import isla.base.
 
 Local Open Scope Z_scope.
@@ -593,9 +593,9 @@ Lemma length_bits_of_bytes l:
   length (bits_of_bytes l) = (length l * 8)%nat.
 Proof.
   move => Hf.
-  rewrite /bits_of_bytes concat_join map_fmap join_length -list_fmap_compose /compose.
+  rewrite /bits_of_bytes concat_join map_fmap length_join -list_fmap_compose /compose.
   rewrite (sum_list_fmap_same 8) //.
-  apply list.Forall_forall => ?. rewrite /bits_of/= map_fmap fmap_length. apply: Hf.
+  apply list.Forall_forall => ?. rewrite /bits_of/= map_fmap length_fmap. apply: Hf.
 Qed.
 
 Lemma length_bits_of_mem_bytes l:

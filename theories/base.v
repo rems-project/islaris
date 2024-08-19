@@ -59,7 +59,7 @@ From stdpp.unstable Require Export bitblast.
 From RecordUpdate Require Export RecordSet.
 From iris.proofmode Require Import tactics.
 From lithium Require Export base.
-From stdpp.unstable Require Export bitvector.
+From stdpp.bitvector Require Export definitions.
 Export RecordSetNotations.
 
 Open Scope Z_scope.

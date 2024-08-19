@@ -9,6 +9,9 @@ separately. This can be done by calling `make saildep` in the root
 directory of this repository. This command installs the Coq code
 generated from the RISC-V Sail model into the current opam switch.
 
+Note that this command requires `z3` to be installed. One can install it with
+`opam install z3`.
+
 Afterwards one has to enable compilation of this directory by running
 `make enable-sail-riscv` in the root directory of this repository.
 Afterwards, the files in this folder are compiled together with the

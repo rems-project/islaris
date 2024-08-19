@@ -121,7 +121,7 @@ Proof.
   iModIntro.
   iExists _, (replicate (length regs) (λ _, True%I)), _, _.
   iSplitL "Hs2 Hm1"; last first; [iSplitL|].
-  - rewrite big_sepL2_replicate_r ?fmap_length // big_sepL_fmap.
+  - rewrite big_sepL2_replicate_r ?length_fmap // big_sepL_fmap.
     iApply (big_sepL_impl with "Hwp").
     iIntros "!>" (? rs ?) "Hwp".
     iMod (ghost_map_alloc (rs)) as (γr) "[Hr1 Hr2]".

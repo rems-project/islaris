@@ -56,7 +56,7 @@
 Require Import Sail.Base.
 Require Import Sail.State_monad.
 Require Import Sail.State_lifting.
-Require Import stdpp.unstable.bitvector_tactics.
+Require Import stdpp.bitvector.bitvector.
 Require Import isla.sail_riscv.sail_opsem.
 
 Arguments read_accessor : simpl nomatch.

@@ -125,7 +125,7 @@ Proof.
   all: try bv_solve.
   all: try bv_simplify_arith select (bv_extract _ _ _ ≠ _).
   all: try bv_simplify_arith select (bv_extract _ _ _ = _).
-  - rewrite insert_length. bv_solve.
+  - rewrite length_insert. bv_solve.
   - bv_solve.
   - bv_simplify.
     rewrite bv_wrap_small; [|bv_solve].
@@ -141,7 +141,7 @@ Proof.
     + rewrite take_insert; [done|bv_solve].
     + erewrite drop_S. 2: { erewrite <- list_lookup_insert; do 2 f_equal; bv_solve. }
       erewrite (drop_S srcdata). 2: { rewrite <- H6. f_equal. bv_solve. }
-      rewrite !drop_ge ?insert_length; [ |bv_solve..].
+      rewrite !drop_ge ?length_insert; [ |bv_solve..].
       f_equal. bv_solve.
 (*PROOF_END*)
 Time Qed.

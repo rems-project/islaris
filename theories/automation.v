@@ -56,7 +56,7 @@
 From iris.proofmode Require Import coq_tactics reduction.
 From lithium Require Import hooks.
 From lithium Require Export all.
-From stdpp.unstable Require Export bitvector_tactics.
+From stdpp.bitvector Require Export bitvector.
 From isla Require Export lifting.
 Set Default Proof Using "Type".
 

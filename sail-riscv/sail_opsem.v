@@ -311,16 +311,16 @@ Proof.
   rewrite /mem_bytes_of_bits/bytes_of_bits/bits_of/= option_map_fmap map_fmap.
   apply fmap_Some. eexists (rev _). rewrite rev_involutive. split; [|done].
   rewrite (byte_chunks_reshape (Z.to_nat len)).
-  2: { rewrite fmap_length MachineWord.word_to_bools_length. lia. }
+  2: { rewrite length_fmap MachineWord.word_to_bools_length. lia. }
   f_equal. eapply list_eq_same_length; [done | |].
-  { rewrite reshape_length rev_length replicate_length fmap_length bv_to_little_endian_length; lia. }
+  { rewrite length_reshape rev_length length_replicate length_fmap length_bv_to_little_endian; lia. }
   move => i x y ?. rewrite rev_reverse sublist_lookup_reshape; [|lia|].
-  2: { rewrite fmap_length MachineWord.word_to_bools_length. lia. }
+  2: { rewrite length_fmap MachineWord.word_to_bools_length. lia. }
   move => /sublist_lookup_Some'[??] /reverse_lookup_Some.
-  rewrite list_lookup_fmap fmap_length bv_to_little_endian_length; [|lia] => -[Hl ?].
+  rewrite list_lookup_fmap length_fmap length_bv_to_little_endian; [|lia] => -[Hl ?].
   move: Hl => /fmap_Some[?[/bv_to_little_endian_lookup_Some[|???]]]; [lia|]. simplify_eq.
   apply: list_eq_same_length; [done|..].
-  { rewrite byte_to_memory_byte_length take_length_le ?drop_length; lia. }
+  { rewrite byte_to_memory_byte_length length_take_le ?length_drop; lia. }
   move => i' x y ? /lookup_take_Some. rewrite lookup_drop list_lookup_fmap.
   have H : (Z.to_nat (8 * len) > 0)%nat by lia.
   move => [/fmap_Some[?[/(word_to_bools_lookup_Some _ _ _ _ H)[??]?]]?] /byte_to_memory_byte_lookup_Some[??].
@@ -335,8 +335,8 @@ Lemma just_list_bits_of_mem_bytes bs:
     Some (mjoin (((λ x, reverse (bv_to_bits x)) <$> reverse bs))).
 Proof.
   rewrite just_list_mapM. apply mapM_Some_2. apply Forall2_same_length_lookup_2. {
-    rewrite fmap_length join_length -list_fmap_compose /compose /= sum_list_fmap_const.
-    rewrite length_bits_of_mem_bytes ?fmap_length ?reverse_length //.
+    rewrite length_fmap length_join -list_fmap_compose /compose /= sum_list_fmap_const.
+    rewrite length_bits_of_mem_bytes ?length_fmap ?length_reverse //.
     move => ? /elem_of_list_fmap[?[??]]. subst. by rewrite byte_to_memory_byte_length.
   }
   move => i x y. rewrite list_lookup_fmap /bits_of_mem_bytes/bits_of_bytes concat_join map_fmap.
@@ -347,12 +347,12 @@ Proof.
   move: Hrev => /reverse_lookup_Some. rewrite list_lookup_fmap => -[/fmap_Some[?[Hbs ?]] ?]. subst.
   move: Hl => /byte_to_memory_byte_lookup_Some[??].
   move => /join_lookup_Some_same_length'[| |].
-  { apply list.Forall_forall => ? /elem_of_list_fmap[?[??]]. subst. by rewrite reverse_length bv_to_bits_length. }
+  { apply list.Forall_forall => ? /elem_of_list_fmap[?[??]]. subst. by rewrite length_reverse length_bv_to_bits. }
   { done. }
   move => ?. rewrite list_lookup_fmap => -[/fmap_Some[?[/reverse_lookup_Some[??] ?]] Hl].
-  rewrite fmap_length in Hbs; simplify_eq.
+  rewrite length_fmap in Hbs; simplify_eq.
   move: Hl => /reverse_lookup_Some [/bv_to_bits_lookup_Some[??] ?]; simplify_eq.
-  by rewrite bool_of_bitU_of_bool bv_to_bits_length.
+  by rewrite bool_of_bitU_of_bool length_bv_to_bits.
 Qed.
 
 Lemma wordToN_cast_nat m n w (E: m = n) :
@@ -372,14 +372,14 @@ Proof.
   have n_pos : n >=? 0 = true by lia.
   rewrite /of_bits just_list_bits_of_mem_bytes.
   match goal with |- match ?e with | _ => _ end = _ => destruct e as [Hhyp|Hhyp] end. 2: {
-    rewrite /length_list join_length -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?reverse_length in Hhyp; [lia|].
+    rewrite /length_list length_join -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?length_reverse in Hhyp; [lia|].
     by apply Forall_true.
   }
   f_equal.
   apply get_word_inj. rewrite !get_word_to_word cast_Z_id.
   destruct Hhyp => /=. apply Word.wordToN_inj.
   rewrite Word.wordToN_NToWord_2. 2: {
-    rewrite -Npow2_pow Z_to_bv_unsigned /length_list join_length Nat2Z.id -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?reverse_length; [|by apply Forall_true].
+    rewrite -Npow2_pow Z_to_bv_unsigned /length_list length_join Nat2Z.id -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?length_reverse; [|by apply Forall_true].
     have ? := bv_wrap_in_range (8 * len') (little_endian_to_bv 8 bs).
     unfold bv_modulus in *.
     apply N2Z.inj_lt.
@@ -394,14 +394,14 @@ Proof.
   rewrite get_word_to_word wordToN_cast_nat.
   rewrite bools_to_word_spec rev_reverse.
   rewrite bv_wrap_spec //. case_bool_decide => /=.
-  2: { rewrite lookup_ge_None_2 // reverse_length join_length -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?reverse_length; [lia|]. by apply Forall_true. }
+  2: { rewrite lookup_ge_None_2 // length_reverse length_join -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?length_reverse; [lia|]. by apply Forall_true. }
   rewrite /default. case_match as Hc.
-  2: { rewrite lookup_ge_None reverse_length join_length -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?reverse_length in Hc; [lia|]. by apply Forall_true. }
+  2: { rewrite lookup_ge_None length_reverse length_join -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?length_reverse in Hc; [lia|]. by apply Forall_true. }
   move: Hc => /reverse_lookup_Some [/(join_lookup_Some_same_length 8)[|j1 [?[j2[Hl[Hl2 Hi]]]] ?]]. {
     apply Forall_forall => ? /elem_of_list_fmap[?[??]]. subst.
-    by rewrite reverse_length bv_to_bits_length.
+    by rewrite length_reverse length_bv_to_bits.
   }
-  move: Hi => /Nat2Z.inj_iff. rewrite join_length -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?reverse_length.
+  move: Hi => /Nat2Z.inj_iff. rewrite length_join -list_fmap_compose /compose /= (sum_list_fmap_same 8) ?length_reverse.
   2: { by apply Forall_forall. }
   move => Hi.
   have {Hi} ?: i = (length bs * 8 - 1 - (j1 * 8 + j2))%nat by lia. simplify_eq.
@@ -921,8 +921,8 @@ Proof.
   split. {
     right. move: Hor => [[? Hm]//|[Hm [??]]].
     all: eexists _, _; eapply SailReadMem; [done..| | by rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned Hm].
-    - move: Hm => /mapM_Some /Forall2_length <-. rewrite seqZ_length. lia.
-    - apply replicate_length.
+    - move: Hm => /mapM_Some /Forall2_length <-. rewrite length_seqZ. lia.
+    - apply length_replicate.
   }
   move => ? ? ? ? Hstep. inversion_clear Hstep; simplify_eq.
   move: H2. rewrite !Z_nat_N !N2Z.id !Heq Z_to_bv_bv_unsigned.

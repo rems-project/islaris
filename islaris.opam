@@ -11,7 +11,8 @@ synopsis: "Islaris assembly verification tool"
 
 depends: [
   "coq" { (= "8.19.0") | (= "dev") }
-  "coq-lithium" { (= "dev.2024-03-12.0.de68b772") | (= "dev") }
+  "coq-lithium" { (= "dev.2024-08-19.0.2d6158dd") | (= "dev") }
+  "coq-stdpp-bitvector"
   "coq-stdpp-unstable"
   "coq-record-update" { (= "0.3.3") | (= "dev") }
   "cmdliner" {>= "1.1.0"}
@@ -25,7 +26,7 @@ depends: [
 ]
 
 pin-depends: [
-  [ "isla-lang.dev" "git+https://github.com/rems-project/isla-lang.git#6a1d25dc35a7f3c8442b61bfed3cca38f958f49f" ]
+  [ "isla-lang.dev" "git+https://github.com/rems-project/isla-lang.git#bda86c9f0bd28bbaa2481f50ddc986ede342805a" ]
 ]
 
 build: [

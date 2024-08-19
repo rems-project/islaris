@@ -61,7 +61,7 @@ From iris.bi Require Import fractional.
 From iris.base_logic Require Export lib.own.
 From iris.base_logic.lib Require Import ghost_map ghost_var.
 From iris.proofmode Require Export tactics.
-From stdpp.unstable Require Import bitvector_tactics.
+From stdpp.bitvector Require Import bitvector.
 From isla Require Export opsem spec.
 Set Default Proof Using "Type".
 Import uPred.
@@ -619,7 +619,7 @@ Section mem.
     rewrite mem_mapsto_eq. iIntros "Hmem". iDestruct 1 as (len Hlen ?) "Hlist". subst.
     iExists _. iSplit; [done|].
     iDestruct (mem_mapsto_byte_lookup_big with "Hmem Hlist") as %Hall.
-    iPureIntro. apply mapM_Some. rewrite bv_to_little_endian_length ?Z2Nat.id in Hall; [|lia..].
+    iPureIntro. apply mapM_Some. rewrite length_bv_to_little_endian ?Z2Nat.id in Hall; [|lia..].
     by have ->: (Z.of_N (N.of_nat len) = len) by lia.
   Qed.
 
@@ -641,7 +641,7 @@ Section mem.
     rewrite mem_mapsto_eq. iIntros "Hmem". iDestruct 1 as (len Hlen ?) "Hlist". subst.
     iExists _. iSplitR; [done|].
     iMod (mem_mapsto_byte_update_big with "Hmem Hlist") as "[$ H]".
-    { rewrite !bv_to_little_endian_length; lia. }
+    { rewrite !length_bv_to_little_endian; lia. }
     iExists _. by iFrame.
   Qed.
 
@@ -668,7 +668,7 @@ Section mem.
   Proof.
     rewrite mem_mapsto_array_eq. iIntros (??) "[%len' [% [% Ha]]]". have ? : len = len' by lia. subst.
     iDestruct (big_sepL_insert_acc with "Ha") as "[$ Ha]"; [done|].
-    iIntros (?) "?". iExists _. iSplit; [done|]. rewrite insert_length. iSplit;[done|]. by iApply "Ha".
+    iIntros (?) "?". iExists _. iSplit; [done|]. rewrite length_insert. iSplit;[done|]. by iApply "Ha".
   Qed.
 
   Lemma mem_mapsto_array_lookup_acc n a (i : nat) (l : list (bv n)) q len v :
@@ -706,7 +706,7 @@ Section mem.
     - iExists _. iSplit; [| iSplit; [|done]]; iPureIntro; lia.
     - iExists (nn - Z.to_nat ns)%nat. iSplit; [iPureIntro; lia|]. iSplit; [iPureIntro; lia|].
       iApply (big_sepL_impl with "Hm2").
-      iIntros "!>" (???) "[%v ?]". rewrite replicate_length. iExists _.
+      iIntros "!>" (???) "[%v ?]". rewrite length_replicate. iExists _.
       have -> : (a + (Z.to_nat ns `min` nn + k)%nat) = (a + ns + k) by lia.
       done.
   Qed.
@@ -722,7 +722,7 @@ Section mem.
     iExists (nn1 + nn2)%nat. iSplit; [iPureIntro; lia|]. iSplit; [iPureIntro; lia|].
     rewrite replicate_add big_sepL_app. iFrame.
     iApply (big_sepL_impl with "Hm2").
-    iIntros "!>" (???) "[%v ?]". rewrite replicate_length. iExists _.
+    iIntros "!>" (???) "[%v ?]". rewrite length_replicate. iExists _.
     have -> : (a + nn1 + k) = (a + (nn1 + k)%nat) by lia.
     done.
   Qed.
@@ -733,14 +733,14 @@ Section mem.
     rewrite mem_mapsto_uninit_eq.
     iIntros "[%nn [% [% Hm]]]"; subst.
     iDestruct (big_sepL_exist with "Hm") as (ls Hlen) "Hm".
-    rewrite replicate_length in Hlen. subst.
+    rewrite length_replicate in Hlen. subst.
     iExists _, (Z_to_bv _ (little_endian_to_bv _ ls)). iSplit; [done|].
     rewrite mem_mapsto_eq. iExists (length ls).
     iSplit; [iPureIntro; lia|]. iSplit; [iPureIntro; lia|].
     rewrite Z_to_bv_small ?bv_to_little_endian_to_bv //.
     2: { pose proof (little_endian_to_bv_bound 8 ls).
          unfold bv_modulus. rewrite N2Z.inj_mul Z2N.id; lia. }
-    iApply (big_sepL_impl' with "Hm"). { by rewrite replicate_length. }
+    iApply (big_sepL_impl' with "Hm"). { by rewrite length_replicate. }
     iIntros "!>" (k ? ? ??) "[%y [% ?]]"; by simplify_eq.
   Qed.
 
@@ -749,7 +749,7 @@ Section mem.
   Proof.
     rewrite mem_mapsto_uninit_eq mem_mapsto_eq.
     iIntros "[%len [-> [% Hm]]]". iExists len. iSplit; [iPureIntro; lia|]. iSplit; [iPureIntro; lia|].
-    iApply (big_sepL_impl' with "Hm"). { rewrite replicate_length bv_to_little_endian_length; lia. }
+    iApply (big_sepL_impl' with "Hm"). { rewrite length_replicate length_bv_to_little_endian; lia. }
     iIntros "!>" (k ? ? ??) "?". eauto with iFrame.
   Qed.
 End mem.
