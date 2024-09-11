@@ -133,7 +133,7 @@ Qed.
 
 Lemma String_eqb_eq s1 s2:
   (s1 =? s2)%string = bool_decide (s1 = s2).
-Proof. case_bool_decide; subst; by rewrite ?String.eqb_eq ?eqb_neq. Qed.
+Proof. case_bool_decide; subst; by rewrite ?String.eqb_eq ?String.eqb_neq. Qed.
 
 Lemma andb_bool_decide P1 P2 `{!Decision P1} `{!Decision P2} :
   bool_decide P1 && bool_decide P2 = bool_decide (P1 ∧ P2).

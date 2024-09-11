@@ -11,7 +11,7 @@ synopsis: "Islaris assembly verification tool"
 
 depends: [
   "coq" { (= "8.19.0") | (= "dev") }
-  "coq-lithium" { (= "dev.2024-08-19.0.2d6158dd") | (= "dev") }
+  "coq-lithium" { (= "dev.2024-09-11.0.7945a29d") | (= "dev") }
   "coq-stdpp-bitvector"
   "coq-stdpp-unstable"
   "coq-record-update" { (= "0.3.3") | (= "dev") }
